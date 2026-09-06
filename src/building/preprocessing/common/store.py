@@ -21,8 +21,8 @@ INSIDE = "inside"
 VALID = "valid"
 
 # What the crop is described by, beside the arrays it holds: what each array's
-# own axes are called, where the feature it was cut to sits, and the label every
-# product it was published as carries.
+# own axes are called and which of them are ground, where the feature it was cut
+# to sits, and the label every product it was published as carries.
 META = "meta"
 
 
@@ -100,6 +100,8 @@ def write_sample(
         "centre_lon": frame.centre_lon,
         "centre_lat": frame.centre_lat,
         "dims": {name: list(axes) for name, axes in along.items()},
+        "axes": list(layout.axes),
+        "ground": list(ground),
         "label": held.label,
     }
     # Written whole and moved into place, so a crop a reader finds is a crop

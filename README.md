@@ -96,37 +96,98 @@ still spans the classes and the seasons. The same seed and a larger cap gives a
 superset, so a small build is always part of the full one.
 
 `ready` holds the downloads to the room they were given, so they cannot race
-ahead and put the whole archive on disk before the first crops are written. Keep
-it well above `workers`, or the build pool starves waiting for products.
+ahead of the builds that consume them. A product is deleted once every feature
+that wanted it has been cut, so a build needs room for what it holds at once and
+never for everything it ever fetched. Keep `ready` well above `workers`, or the
+build pool starves waiting for products.
 
 ## Using the dataset
 
-The dataset is one directory: the crops, and beside them the index that says
-what each is. Each crop is a Zarr group whose arrays carry the names of their
-own axes, so `xarray` opens one with no schema to agree on first.
+The dataset is one directory: a crop per observation of a feature, and beside
+them the index that says what each is. Nothing outside it is needed to read it.
 
-```python
-from building.writing.read import read_dataset
-
-dataset = read_dataset()
-parts = dataset.split(seed=0, train=0.7, val=0.15, test=0.15)
-
-for feature in parts["train"]:
-    for crop in dataset.crops(feature):
-        held = dataset.open(crop)  # nothing is read off disk yet
-        print(crop.instrument, held[held.attrs["measurement"]].dims)
+```
+dataset/
+  dataset.json          what this dataset is: format version, when, from what
+  features.parquet      one row per feature: where it is, and what was kept of it
+  observations.parquet  one row per crop: its shape, its ground, its statistics
+  <class>/<feature>/<instrument>/<identifier>.npz
 ```
 
-The index is read on its own, so a split or a count opens no array at all. A
-split is drawn over features and never over observations, since one feature is
-seen in many observations and splitting those would put the same ground on both
-sides of it. Reading a crop needs `xarray`, which is the reader's choice rather
-than the pipeline's: the build itself only writes Zarr.
+Each crop is a single `.npz`. Beside its arrays it carries a `meta` entry, a
+JSON object saying what every array's axes are called, which of them are ground,
+where the feature it was cut to sits, and the label every product it was
+published as was written with.
 
-Every crop holds its measurement placed by `north` and `east` coordinates, in
-degrees from the feature's own centre. Nothing in an array says where on Mars
-its feature is; that is in the index alone, so two instruments over one feature
-merge by sharing a frame rather than a coordinate.
+```python
+import json
+from pathlib import Path
+
+import numpy as np
+import pyarrow.parquet as pq
+
+root = Path("data/building/dataset")
+rows = pq.read_table(root / "observations.parquet").to_pylist()
+
+held = np.load(root / rows[0]["path"], allow_pickle=False)
+meta = json.loads(str(held["meta"]))
+values = held[meta["measurement"]]  # what the instrument measured
+```
+
+The index is read on its own, so a count, a filter or a split opens no array at
+all. A split is drawn over features and never over observations, since one
+feature is seen in many observations and splitting those would put the same
+ground on both sides of it.
+
+Every crop holds its measurement placed by `north` and `east`, in degrees from
+the feature's own centre. Nothing in an array says where on Mars its feature is,
+so adding the centre back is what turns a placement into a coordinate:
+
+```python
+latitude = meta["centre_lat"] + held["north"]
+longitude = meta["centre_lon"] + held["east"]
+```
+
+An axis named in `meta["ground"]` is ground; the others are the instrument's own
+and are sampled in their own unit, which `meta["axes"]` names. A grid places one
+axis each and a swath or a track places every sample, which is what `separable`
+says. Two masks narrow what is a measurement, and each is written only when it
+excludes something, so an absent one means every sample is kept:
+
+```python
+kept = np.ones(
+    [
+        values.shape[meta["dims"][meta["measurement"]].index(one)]
+        for one in meta["ground"]
+    ],
+    bool,
+)
+for name in ("inside", "valid"):  # in the box, and measured
+    if name in held.files:
+        kept &= held[name]
+```
+
+`inside` is unset for a map raster, which meets a feature's box in a rectangle,
+and set for a swath or a track, which does not. `valid` is unset where every
+sample is a measurement.
+
+Each row of the index carries the statistics of its own crop, over the samples
+those two masks keep. They pool exactly, since every row says how many values it
+was measured over, and an average of per-crop means or standard deviations would
+not. Pool them per instrument, since each measures its own quantity:
+
+```python
+held_rows = [one for one in rows if one["instrument"] == "CRISM"]
+n = sum(one["valid_count"] for one in held_rows)
+mean = sum(one["value_mean"] * one["valid_count"] for one in held_rows) / n
+var = (
+    sum(
+        one["valid_count"] * (one["value_std"] ** 2 + (one["value_mean"] - mean) ** 2)
+        for one in held_rows
+    )
+    / n
+)
+```
 
 ## Notebooks
 
@@ -182,15 +243,16 @@ src/
     configs/            # What each instrument is, read by every stage
     common/             # Naming, the product cache, the PDS formats
     download/           # Bringing down what the selection kept
-    preprocessing/      # Turning what landed into cleaned arrays
-    metadata/           # Where each feature is, and what was taken of it
-    geometry/           # Placing every sample relative to its own feature
-    crop/               # Cutting each observation to its feature's extent
-    writing/            # Writing every crop down, and reading the dataset back
+    preprocessing/      # One product read, cut to a feature, and written down
+      common/           # What every instrument's crop shares
+      crism/ ctx/       # What each instrument reads and cuts of its own
+      mola/ sharad/
+    metadata/           # What the dataset, its features and its crops are
+    models/             # The frame, the jobs, the settings
+    dispatcher.py       # What each instrument does at every stage of a build
     planner.py          # What a build has to fetch and cut
     runner.py           # Holds the build's pools
     console.py          # Progress and totals
-    build.py            # One product, cut to every feature that kept it
 data/                   # Laid out as src is, each half owning what it writes
   _catalog/             # Cached ODE catalogs, read by both halves
   analysis/
