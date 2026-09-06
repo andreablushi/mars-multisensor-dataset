@@ -34,7 +34,7 @@ class Cut:
     """What one feature's box keeps of one observation.
 
     Attributes:
-        bounds: The samples to keep of each ground axis, in the placement's
+        bounds: The samples to keep of each ground axis, in the position's
             order.
         inside: Which of the samples that survives the cut truly falls in the
             box, or None where every one of them does. A map raster meets a box

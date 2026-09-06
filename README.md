@@ -1,4 +1,4 @@
-# MarsMultiSensorFeatures
+# Mars Multi-Sensor Observations Dataset
 
 A multi-sensor build dataset pipeline of Mars geological features. One sample is a single named
 landform seen by three instruments inside one shared time window: CTX visible

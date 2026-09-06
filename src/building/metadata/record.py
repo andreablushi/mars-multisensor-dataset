@@ -1,4 +1,4 @@
-"""Building what one stored observation is, from the placement it was stored with."""
+"""Building what one stored observation is, from the position it was stored with."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from datetime import datetime
 from building.common.layout import Layout
 from building.metadata.models.feature import FeatureFrame
 from building.metadata.models.observation import ObservationRecord
-from building.preprocessing.common import project
+from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.crop import Crop
 
 
@@ -24,7 +24,7 @@ def observation_record(
     """Return the record one stored observation is read back through.
 
     Args:
-        held: The crop that was written, whose placement the sample size is
+        held: The crop that was written, whose position the sample size is
             measured off.
         frame: The local frame of the feature it was kept for.
         layout: What its instrument's arrays hold.
@@ -47,8 +47,8 @@ def observation_record(
         path=path,
         axes=layout.axes,
         shape=tuple(getattr(held.sample, layout.measurement).shape),
-        ground_sample_m=project.ground_sample_m(held.placement, frame),
-        separable=held.placement.separable,
+        ground_sample_m=relative_positioning.ground_sample_m(held.position, frame),
+        separable=held.position.separable,
         t_start=t_start,
         t_end=t_end,
         altitude_min_m=low,

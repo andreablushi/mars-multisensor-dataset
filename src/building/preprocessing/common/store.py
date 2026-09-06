@@ -62,7 +62,7 @@ def write_crop(
     """Write one crop's arrays down, each saying which axes it runs along.
 
     Args:
-        held: The crop, whose placement and mask are written beside the values.
+        held: The crop, whose position and mask are written beside the values.
         arrays: What the instrument publishes, keyed by the name to write it as,
             each with the names of its own axes.
         layout: How that instrument's arrays are laid out.
@@ -73,14 +73,14 @@ def write_crop(
         The directory the crop was written in.
     """
     ground = layout.ground
-    # A separable placement holds one ground axis each, and any other a value
+    # A separable position holds one ground axis each, and any other a value
     # for every sample, so it runs along the whole of the ground.
     north, east = (
-        (ground[:1], ground[1:]) if held.placement.separable else (ground, ground)
+        (ground[:1], ground[1:]) if held.position.separable else (ground, ground)
     )
     placed: Arrays = {
-        NORTH: (held.placement.north, north),
-        EAST: (held.placement.east, east),
+        NORTH: (held.position.north, north),
+        EAST: (held.position.east, east),
     }
     if held.inside is not None:
         placed[INSIDE] = (held.inside, ground)
@@ -101,7 +101,7 @@ def write_crop(
             "feature_class": frame.feature_class,
             "feature_name": frame.feature_name,
             "measurement": layout.measurement,
-            "separable": held.placement.separable,
+            "separable": held.position.separable,
             "centre_lon": frame.centre_lon,
             "centre_lat": frame.centre_lat,
         }

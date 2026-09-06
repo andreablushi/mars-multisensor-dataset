@@ -19,9 +19,9 @@ class ObservationRecord:
         axes: What each axis of the value array holds, in the array's own order.
         shape: The value array's shape, in that same order.
         ground_sample_m: How much ground one sample spans along each ground
-            axis, in the order those axes run, measured off the placement
+            axis, in the order those axes run, measured off the position
             rather than claimed by a label.
-        separable: Whether the placement holds one axis each rather than a
+        separable: Whether the position holds one axis each rather than a
             value per sample.
         t_start: When the observation started, or None where the archive
             publishes no time for it.

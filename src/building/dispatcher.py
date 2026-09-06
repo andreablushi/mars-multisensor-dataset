@@ -1,4 +1,4 @@
-"""What each instrument does at every stage of a build, declared in one place."""
+"""Handing each stage of a build to the instrument whose product it is."""
 
 from __future__ import annotations
 

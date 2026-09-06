@@ -16,7 +16,7 @@ from rich.console import Console
 import utils.disk.paths as paths
 from building import console as printing
 from building import planner
-from building.instruments import INSTRUMENTS
+from building.dispatcher import INSTRUMENTS
 from building.metadata import read as metadata_read
 from building.metadata import record
 from building.metadata import write as metadata
@@ -24,7 +24,7 @@ from building.metadata.models.observation import ObservationRecord
 from building.models.job import Job, Outcome, Plan
 from building.models.settings import Settings
 from building.preprocessing.common.crop import crop
-from building.preprocessing.common.place import place
+from building.preprocessing.common.relative_positioning import relative_position
 
 
 def run_build(
@@ -201,7 +201,7 @@ def build_product(job: Job, root: Path = paths.DATASET_ROOT) -> Outcome:
     missed = 0
     for frame in job.frames:
         try:
-            held = crop(sample, steps.cut, place(sample, frame), frame)
+            held = crop(sample, steps.cut, relative_position(sample, frame), frame)
         except Exception as error:  # noqa: BLE001
             # What is already on disk is handed back, so a later failure never
             # leaves a written crop out of the index.

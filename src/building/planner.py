@@ -14,7 +14,7 @@ import httpx
 import utils.disk.paths as paths
 from analysis import dataset_list
 from analysis.selector.models.selection import Selection
-from building.instruments import INSTRUMENTS
+from building.dispatcher import INSTRUMENTS
 from building.metadata import frame as frames
 from building.metadata.models.feature import FeatureFrame
 from building.models.job import Job, Plan

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-# What an axis of a value array holds. A ground axis is the one a placement
+# What an axis of a value array holds. A ground axis is the one a position
 # places; the others are the instrument's own and are sampled in their own unit.
 GROUND = "ground"
 WAVELENGTH = "wavelength"
@@ -30,7 +30,7 @@ class Layout:
 
     @property
     def ground(self) -> tuple[str, ...]:
-        """Return the names of the axes a placement places.
+        """Return the names of the axes a position places.
 
         Returns:
             The ground axes, outermost first.

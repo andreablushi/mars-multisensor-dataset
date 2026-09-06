@@ -6,18 +6,18 @@ import numpy as np
 
 from building.metadata.models.feature import FeatureFrame
 from building.preprocessing.common.models.cut import Box, Cut
-from building.preprocessing.common.models.placement import Placement
+from building.preprocessing.common.models.relative_position import RelativePosition
 from utils.geometry import geodesy
 
 # The whole turn, which a longitude offset is measured round.
 TURN = 360.0
 
 
-def cut(placement: Placement, frame: FeatureFrame) -> Cut | None:
+def cut(position: RelativePosition, frame: FeatureFrame) -> Cut | None:
     """Return what one feature's box keeps of an observation placed against it.
 
     Args:
-        placement: Where the observation's samples sit, in degrees from the
+        position: Where the observation's samples sit, in degrees from the
             feature centre.
         frame: The feature's local frame, carrying the box the catalogue gives
             it, which is read as the same degrees from that centre.
@@ -31,22 +31,20 @@ def cut(placement: Placement, frame: FeatureFrame) -> Cut | None:
         west=geodesy.normalise_longitude(frame.west_lon - frame.centre_lon),
         span=geodesy.longitude_span(frame.west_lon, frame.east_lon),
     )
-    if placement.separable:
+    if position.separable:
         # The box is a rectangle on a grid whose axes run north and east, so
         # each axis is asked on its own and what they keep is exactly the box.
-        lines = np.flatnonzero(_upward(placement.north, box))
+        lines = np.flatnonzero(_upward(position.north, box))
         # An axis counts from its own first longitude, and a box running over
         # the meridian keeps two ends of it that are one strip of ground, so
         # ordering by how far east each lies is what joins those ends back up.
-        reach = _eastward(placement.east, box)
+        reach = _eastward(position.east, box)
         held = np.flatnonzero(reach <= box.span)
         samples = held[np.argsort(reach[held], kind="stable")]
         if not lines.size or not samples.size:
             return None
         return Cut((lines, samples), None)
-    inside = _upward(placement.north, box) & (
-        _eastward(placement.east, box) <= box.span
-    )
+    inside = _upward(position.north, box) & (_eastward(position.east, box) <= box.span)
     if not inside.any():
         return None
     where = np.argwhere(inside)
@@ -80,21 +78,21 @@ def taken(array: np.ndarray, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     return array[np.ix_(*bounds)] if len(bounds) > 1 else array[bounds[0]]
 
 
-def cut_placement(placement: Placement, held: Cut) -> Placement:
+def cut_position(position: RelativePosition, held: Cut) -> RelativePosition:
     """Return where the samples one cut keeps sit.
 
     Args:
-        placement: The placement the cut was worked out against.
+        position: The position the cut was worked out against.
         held: What the feature's box keeps of it.
 
     Returns:
-        The placement of the samples that are left, held the same way.
+        The position of the samples that are left, held the same way.
     """
-    if placement.separable:
+    if position.separable:
         lines, samples = held.bounds
-        return Placement(placement.north[lines], placement.east[samples], True)
-    return Placement(
-        taken(placement.north, held.bounds), taken(placement.east, held.bounds), False
+        return RelativePosition(position.north[lines], position.east[samples], True)
+    return RelativePosition(
+        taken(position.north, held.bounds), taken(position.east, held.bounds), False
     )
 
 

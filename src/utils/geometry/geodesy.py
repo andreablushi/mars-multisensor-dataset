@@ -136,6 +136,26 @@ def laea_forward(
     return x, y
 
 
+def haversine_steps(lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
+    """Return the great-circle distance between each neighbouring pair of points.
+
+    Args:
+        lon: The point longitudes in degrees.
+        lat: The point latitudes in degrees.
+
+    Returns:
+        One distance in metres per neighbouring pair, and nothing at all for
+        fewer than two points.
+    """
+    lam = np.radians(np.asarray(lon, dtype=float))
+    phi = np.radians(np.asarray(lat, dtype=float))
+    hav = (
+        np.sin(np.diff(phi) / 2.0) ** 2
+        + np.cos(phi[:-1]) * np.cos(phi[1:]) * np.sin(np.diff(lam) / 2.0) ** 2
+    )
+    return 2.0 * RADIUS_M * np.arcsin(np.sqrt(np.clip(hav, 0.0, 1.0)))
+
+
 def haversine_length(lon: np.ndarray, lat: np.ndarray) -> float:
     """Return the great-circle length along a sequence of lon/lat points.
 
@@ -146,16 +166,32 @@ def haversine_length(lon: np.ndarray, lat: np.ndarray) -> float:
     Returns:
         The summed length in metres, or 0.0 for fewer than two points.
     """
-    if len(lon) < 2:
-        return 0.0
-    lam = np.radians(np.asarray(lon, dtype=float))
-    phi = np.radians(np.asarray(lat, dtype=float))
-    hav = (
-        np.sin(np.diff(phi) / 2.0) ** 2
-        + np.cos(phi[:-1]) * np.cos(phi[1:]) * np.sin(np.diff(lam) / 2.0) ** 2
-    )
-    steps = 2.0 * RADIUS_M * np.arcsin(np.sqrt(np.clip(hav, 0.0, 1.0)))
-    return float(steps.sum())
+    return float(haversine_steps(lon, lat).sum())
+
+
+def northward_m(degrees: float) -> float:
+    """Return how far north a span of latitude reaches, in metres.
+
+    Args:
+        degrees: The span of latitude in degrees.
+
+    Returns:
+        The distance in metres along a meridian.
+    """
+    return math.radians(degrees) * RADIUS_M
+
+
+def eastward_m(degrees: float, lat: float) -> float:
+    """Return how far east a span of longitude reaches at one latitude, in metres.
+
+    Args:
+        degrees: The span of longitude in degrees.
+        lat: The latitude it is spanned at, in degrees.
+
+    Returns:
+        The distance in metres along that parallel.
+    """
+    return math.radians(degrees) * RADIUS_M * math.cos(math.radians(lat))
 
 
 def laea_inverse(

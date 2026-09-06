@@ -1,4 +1,4 @@
-"""Where one feature sits on Mars, which is what its placements are relative to."""
+"""Where one feature sits on Mars, which every position of it is relative to."""
 
 from __future__ import annotations
 

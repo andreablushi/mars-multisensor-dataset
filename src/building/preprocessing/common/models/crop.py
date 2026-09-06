@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from building.preprocessing.common.models.placement import Placement
+from building.preprocessing.common.models.relative_position import RelativePosition
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,11 +15,11 @@ class Crop[Sample]:
 
     Attributes:
         sample: The instrument's own sample, every array of it cut to the box.
-        placement: Where the samples that are left sit, cut the same way.
+        position: Where the samples that are left sit, cut the same way.
         inside: Which of them truly falls in the box, or None where every one
             of them does.
     """
 
     sample: Sample
-    placement: Placement
+    position: RelativePosition
     inside: np.ndarray | None

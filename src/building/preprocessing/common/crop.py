@@ -5,16 +5,16 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from building.metadata.models.feature import FeatureFrame
-from building.preprocessing.common.cut import cut, cut_placement
+from building.preprocessing.common.cut import cut, cut_position
 from building.preprocessing.common.models.crop import Crop
 from building.preprocessing.common.models.cut import Cut
-from building.preprocessing.common.models.placement import Placement
+from building.preprocessing.common.models.relative_position import RelativePosition
 
 
 def crop[Sample](
     sample: Sample,
     cut_sample: Callable[[Sample, Cut], Sample],
-    placement: Placement,
+    position: RelativePosition,
     frame: FeatureFrame,
 ) -> Crop[Sample] | None:
     """Return one observation cut to the box of the feature it was kept for.
@@ -26,17 +26,17 @@ def crop[Sample](
     Args:
         sample: The observation as it was read off disk.
         cut_sample: What cuts that instrument's own arrays to what a cut keeps.
-        placement: Where its samples sit, against that same feature.
+        position: Where its samples sit, against that same feature.
         frame: The local frame of the feature it was kept for.
 
     Returns:
         The crop, or None where the observation reaches none of the feature.
     """
-    held = cut(placement, frame)
+    held = cut(position, frame)
     if held is None:
         return None
     return Crop(
         sample=cut_sample(sample, held),
-        placement=cut_placement(placement, held),
+        position=cut_position(position, held),
         inside=held.inside,
     )
