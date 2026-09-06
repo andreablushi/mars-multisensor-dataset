@@ -114,8 +114,7 @@ def observation_metadata(
         claimed.
     """
     values = getattr(held, layout.measurement)
-    # A mask over the ground reaches every value standing on that ground, so it
-    # is spread over the axes the instrument samples in its own units.
+    # A ground mask reaches every value on it, so it spreads over the instrument's axes.
     ground = tuple(
         size if holds == GROUND else 1
         for size, holds in zip(values.shape, layout.axes, strict=True)
@@ -125,8 +124,7 @@ def observation_metadata(
         if mask is not None:
             measured = measured & mask.reshape(ground)
     low, high = altitude if altitude else (None, None)
-    # An integer measurement cannot hold an infinite identity, so the reduction
-    # starts from the widest value its own type can take.
+    # An integer holds no infinite identity, so the reduction starts at its type's edge.
     limits = (
         np.iinfo(values.dtype)
         if np.issubdtype(values.dtype, np.integer)

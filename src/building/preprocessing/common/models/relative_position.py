@@ -6,11 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-# The polar stereographic grid a placement may be measured on: the longitude it
-# is centred on, whether that centre is the north pole rather than the south,
-# and the sphere it is built on in metres. A grid like this is regular in metres
-# rather than in degrees, so a placement on it keeps one axis per side only
-# while it stays in the projection's own metres.
+# A polar grid: its centre longitude, whether north, and the sphere it is built on.
 PolarGrid = tuple[float, bool, float]
 
 

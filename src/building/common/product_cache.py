@@ -58,6 +58,5 @@ class ProductCache:
         Returns:
             None.
         """
-        # Only the product's own directory, so what every observation shares
-        # sits beside it under a name of its own and is left alone.
+        # Only its own directory, so what every observation shares is left alone.
         shutil.rmtree(self.root / directory, ignore_errors=True)

@@ -135,15 +135,13 @@ def clean_detectors(identifier: str) -> dict[str, Detector]:
     """
     cleaned = {}
     for name, detector in read_detectors(identifier).items():
-        # Every step works on the one cube the calibration allocated, so the
-        # chain never holds a second copy of it.
+        # Every step works on the one cube, so the chain holds no second copy.
         cube, table = detector.cube, detector.wavelengths
         mask = masking.bad_pixels(cube, table, name)
         mask = atmospheric.remove_atmospheric_bands(cube, mask, table, name)
         mask = destripe.remove_spike_columns(cube, mask, table, name)
         ratio.ratio_colmed(cube, mask.pixels)
-        # Despike only the bands still in play, so the filled ones cannot pull
-        # the moving median around at their edges.
+        # Despike only the bands in play, so filled ones cannot pull the median about.
         kept = ~mask.bands
         block = np.ascontiguousarray(cube[:, :, kept])
         despike.remove_spikes(block, bands_calibration.centres(table)[kept])
@@ -188,8 +186,7 @@ def crop(observation: CrismObservation, frame: FeatureFrame) -> CrismSample | No
     held = overlap(observation, frame)
     if held is None:
         return None
-    # The detector is calibrated column by column, so the wavelengths and the
-    # columns are cut by the column axis alone and the bands are left whole.
+    # Calibrated column by column, so only that axis cuts and the bands stay whole.
     columns = held.bounds[1]
     return CrismSample(
         identifier=observation.identifier,

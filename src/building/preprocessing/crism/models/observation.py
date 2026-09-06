@@ -6,9 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-# Which DDR backplane places a pixel. The other twelve are dropped: three carry
-# the null sentinel in every pixel, four barely vary across a scan, and the rest
-# are MOLA resampled onto this grid, which the MOLA tile itself holds better.
+# Which DDR backplane places a pixel; the other twelve say nothing MOLA says better.
 BACKPLANES = {"latitude": 3, "longitude": 4}
 
 
@@ -37,8 +35,7 @@ class CrismObservation:
     columns: np.ndarray
     valid: np.ndarray
 
-    # A pushbroom swath bends as the spacecraft flies, so every pixel carries
-    # the pair its own backplanes give it.
+    # A pushbroom swath bends, so every pixel carries its own backplanes' pair.
     separable = False
 
     @property

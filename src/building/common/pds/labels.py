@@ -7,8 +7,7 @@ from pathlib import Path
 # The order a TRDR writes its bands in, against a DDR's band sequential.
 BIL = "LINE_INTERLEAVED"
 
-# What a label says about the file its values were published in, which says
-# nothing once those values are stored as arrays of their own.
+# What a label says about its own file, which stored arrays no longer need.
 LAYOUT = frozenset(
     {
         "BANDS",
@@ -58,8 +57,7 @@ def _value(text: str) -> str:
         The value alone.
     """
     held = text.strip()
-    # The unit comes off before the quotes, since a quoted value carries it
-    # outside its own closing quote.
+    # The unit comes off first, since a quoted value carries it outside its quote.
     if held.endswith(">") and "<" in held:
         held = held[: held.rindex("<")].strip()
     return held.strip('"')

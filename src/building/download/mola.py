@@ -23,22 +23,18 @@ PRODUCT_TYPE = "MEGDR"
 # ODE names a gridded product by its image file, suffix included.
 ODE_SUFFIX = ".img"
 
-# Each tile's own extent alongside its files, so which tiles a feature falls on
-# is worked out here rather than by a query for every feature that wants them.
+# Each tile's extent beside its files, so no feature is queried for on its own.
 FIELDS = "opmf"
 
-# How many products to ask for at once. The whole record is under a hundred, so
-# one page holds every tile of every resolution.
+# How many to ask at once. The record is under a hundred, so one page holds it all.
 PAGE = 500
 
-# How fine a grid to read, in pixels per degree. MEGDR publishes 4, 16, 32, 64
-# and 128, and only 128 is finer than a kilometre.
+# How fine a grid to read. MEGDR publishes 4 to 128, and only 128 beats a kilometre.
 RESOLUTION = 128
 
 Box = tuple[float, float, float, float]
 
-# The whole record, which is under a hundred products and never changes, so it
-# is read once and answers every feature and every tile of a run.
+# The whole record, under a hundred and unchanging, so it is read once for a run.
 _RECORD: dict[str, tuple[str, Box]] = {}
 
 
@@ -80,8 +76,7 @@ def tiles(feature: FeatureFrame, client: httpx.Client) -> list[str]:
     Returns:
         The tile ids both planes are published for, sorted and without repeats.
     """
-    # A feature circling a pole reaches every longitude, and one running over
-    # the meridian is two runs, since a number line holds only one of them.
+    # A feature at a pole reaches every longitude, one over the meridian is two runs.
     if feature.west_lon == feature.east_lon:
         spans = ((0.0, 360.0),)
     elif feature.west_lon > feature.east_lon:
@@ -126,8 +121,7 @@ def fetch(tile: str, client: httpx.Client) -> None:
         for kind in configs.KINDS
     }
     if any(not path.exists() for files in wanted.values() for path in files.values()):
-        # ODE gives a gridded product no id of its own, so it is reached by the
-        # name of the file it is published as and not by a product id.
+        # A gridded product has no id, so it is reached by the file it is published as.
         offered = record(client)
         for kind, files in wanted.items():
             product = configs.NAMING.product(tile, kind)

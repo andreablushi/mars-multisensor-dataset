@@ -9,9 +9,7 @@ from building.common.naming import Naming
 from building.common.product_cache import ProductCache
 from utils.disk import paths
 
-# The two products one scan is downloaded as, what places the pixels and the
-# pixels. The label comes first, since which projection ASU wrote the scan in
-# is found by asking for its label, and a wrong guess costs the smaller file.
+# The two products a scan comes as, the label first so a wrong projection costs less.
 LABEL = "label"
 IMAGE = "image"
 KINDS = (LABEL, IMAGE)
@@ -19,8 +17,7 @@ KINDS = (LABEL, IMAGE)
 # What each kind is suffixed with once it is on disk.
 SUFFIXES = {LABEL: ".isis.hdr", IMAGE: ".tiff"}
 
-# How a scan is named, for its mission phase, orbit, latitude and where it
-# looked.
+# How a scan is named, for its mission phase, orbit, latitude and where it looked.
 NAMING = Naming(
     re.compile(
         r"^(?P<scan>(?:[a-z]\d{2}|moi)_\d{6}_\d{4}_[a-z]{2}_\d{2}[ns]\d{3}[we])$"
@@ -36,6 +33,5 @@ LAYOUT = Layout(
     measurement="image",
 )
 
-# Where both products of a scan are kept. ASU names them after the scan itself,
-# so the suffix is all that tells them apart.
+# Where both are kept. ASU names both after the scan, so only the suffix differs.
 CACHE = ProductCache(paths.CTX_ROOT, {None: tuple(SUFFIXES.values())})

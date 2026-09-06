@@ -13,12 +13,10 @@ from utils.fetch.http import FetchError
 # What ODE publishes CTX under.
 ODE = {"ihid": "MRO", "iid": "CTX"}
 
-# The only product type ODE carries for CTX, which is the raw scan. ASU builds
-# the calibrated and projected one, and is asked for it directly.
+# The only type ODE carries, the raw scan. ASU builds the projected one and is asked.
 PRODUCT_TYPE = "EDR"
 
-# The scan's own metadata, which is where the volume it was archived on is
-# published, rather than a download URL the volume would have to be read out of.
+# The scan's metadata, where the volume is published rather than buried in a URL.
 FIELDS = "opm"
 VOLUME_KEY = "PDSVolume_Id"
 
@@ -31,10 +29,7 @@ ASU_PATH = "/mars/images/ctx/{volume}/{place}/{name}"
 # Which ASU directory each kind is kept in.
 DIRECTORIES = {configs.IMAGE: "prj_full", configs.LABEL: "stage"}
 
-# What ASU suffixes the image with, which is the one file either projection is
-# published as, and what it suffixes the label with, one per projection it
-# writes a scan in and asked for in this order. Only the label says which of
-# them a scan was written in.
+# What ASU suffixes each with: one shared image, and a label per projection it writes.
 REMOTE_IMAGE = ".tiff"
 REMOTE_LABELS = (".scyl.isis.hdr", ".ps.isis.hdr")
 

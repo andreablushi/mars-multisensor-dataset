@@ -9,8 +9,7 @@ import numpy as np
 # Which geometry field places a trace.
 PLACEMENT = {"latitude": "LATITUDE", "longitude": "LONGITUDE"}
 
-# Which fields the spacecraft's height above the ground is read between, in km,
-# since that is what the delay axis is turned into a depth through.
+# Which fields the height above ground is read between, in km, for the delay axis.
 RADII = {"ground": "MARS RADIUS", "spacecraft": "SPACECRAFT RADIUS"}
 
 
@@ -33,8 +32,7 @@ class SharadObservation:
     geometry: np.recarray
     traces: np.ndarray
 
-    # A sounder walks a line rather than sweeping ground, so every trace carries
-    # the pair its own geometry sounded it at.
+    # A sounder walks a line, so every trace carries its own geometry's pair.
     separable = False
 
     @property

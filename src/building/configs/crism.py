@@ -17,8 +17,7 @@ OBSERVATION = "observation"
 GEOMETRY = "geometry"
 KINDS = (OBSERVATION, GEOMETRY)
 
-# How ODE spells one detector of an observation, the detector and the kind
-# written where the observation's own id carries neither.
+# How ODE spells one detector, its kind written where the id carries neither.
 NAMING = Naming(
     re.compile(r"^(?P<stem>\w+)_if(?P<code>\d+)(?P<detector>[ls]?)_(?P<level>trr\d+)$"),
     identity="{stem}_if{code}_{level}",
@@ -33,8 +32,7 @@ NAMING = Naming(
 # What a label calls the wavelength file it was calibrated against.
 WAVELENGTH_KEY = "MRO:WAVELENGTH_FILE_NAME"
 
-# Where each product of an observation is kept, and what it is called there.
-# The geometry sits in a subdirectory of its own, beside the scan it belongs to.
+# Where each product is kept, the geometry in a subdirectory beside its own scan.
 CACHE = ProductCache(paths.CRISM_ROOT, {None: (".lbl", ".img")}, {GEOMETRY: "ddr"})
 
 # What the arrays of one observation hold, and which of them is stored for.

@@ -8,8 +8,7 @@ from building.preprocessing.crism.correction import bands_calibration
 from building.preprocessing.crism.models.detector import Detector
 from building.preprocessing.crism.models.observation import CrismObservation
 
-# Which detector carries which half of the spectrum, and the order the two are
-# read in, which is the order their bands are laid out before being sorted.
+# Which detector carries which half, and the order their bands are laid out in.
 VISIBLE = "s"
 INFRARED = "l"
 HALVES = (VISIBLE, INFRARED)
@@ -51,8 +50,7 @@ def merge_detectors(
     )
     # The two overlap around a micron, so ordering is a sort and not a join.
     order = np.argsort(bands_calibration.centres(table))
-    # Where each band of each half lands once they are ordered, so every half
-    # is written straight into the joined cube and none is joined then sorted.
+    # Where each band lands once ordered, so each half writes straight into the cube.
     lands = np.empty(order.size, dtype="i8")
     lands[order] = np.arange(order.size)
 

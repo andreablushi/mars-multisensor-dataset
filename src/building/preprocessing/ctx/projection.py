@@ -6,14 +6,11 @@ import numpy as np
 
 from building.preprocessing.common.models.relative_position import PolarGrid
 
-# The two projections ASU writes a CTX RDR in, the second above about seventy
-# degrees, where a cylindrical grid stops holding a scan in any usable shape.
+# The two projections ASU writes a scan in, the second above about seventy degrees.
 CYLINDRICAL = "SimpleCylindrical"
 POLAR = "PolarStereographic"
 
-# The only reading of latitude and longitude this places. Which domain a label
-# numbers its longitudes in is not among them, since every longitude read here
-# is wrapped before it is compared and none is ever compared as a number.
+# The only reading of latitude and longitude this places; the domain does not matter.
 CONVENTIONS = {
     "LatitudeType": "Planetocentric",
     "LongitudeDirection": "PositiveEast",
@@ -48,8 +45,7 @@ def load(
             raise ValueError(f"Cannot place a grid whose {key} is {label[key]}.")
     radius = float(label["EquatorialRadius"])
     resolution = float(label["PixelResolution"])
-    # The corner the projection starts from, moved in by half a pixel so that
-    # every axis holds the centre of what it places rather than its edge.
+    # The corner it starts from, moved in half a pixel so an axis holds centres.
     half = resolution / 2.0
     top = float(label["UpperLeftCornerY"]) - half
     left = float(label["UpperLeftCornerX"]) + half

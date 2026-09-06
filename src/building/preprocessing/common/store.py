@@ -21,16 +21,11 @@ EAST = "east"
 INSIDE = "inside"
 VALID = "valid"
 
-# What the two placing arrays are measured in: degrees from the feature centre,
-# which a reader turns into metres by the spheroid written beside them and the
-# centre latitude they offset from, or the metres of the polar grid beside them.
+# What the placing arrays are measured in, degrees from the centre or a grid's metres.
 DEGREES = "degrees"
 METRES = "metres"
 
-# What the crop is described by, beside the arrays it holds: what each array's
-# own axes are called and which of them are ground, where the feature it was cut
-# to sits, what the arrays placing it are measured in, and the label every
-# product it was published as carries.
+# What the crop is described by: its axes, its feature, its units and its label.
 META = "meta"
 
 
@@ -76,8 +71,7 @@ def write_sample(
         The file it was written as.
     """
     ground = layout.ground
-    # A separable position holds one ground axis each, and any other a value
-    # for every sample, so it runs along the whole of the ground.
+    # A separable position holds one ground axis each, any other a value per sample.
     north, east = (
         (ground[:1], ground[1:]) if held.position.separable else (ground, ground)
     )
@@ -116,11 +110,7 @@ def write_sample(
         "ground": list(ground),
         "label": held.label,
     }
-    # Compressed, since a crop is mostly the ground its instrument swept past
-    # and the masks saying so, none of which is worth a byte apiece on disk or
-    # in the bandwidth every epoch of training reads it back over.
-    # Written whole and moved into place, so a crop a reader finds is a crop
-    # that was finished and never one a run was interrupted partway through.
+    # Compressed, and written whole then moved, so a crop a reader finds was finished.
     with atomic_path(path) as tmp, tmp.open("wb") as handle:
         np.savez_compressed(handle, **arrays, **{META: np.array(json.dumps(described))})
     return path

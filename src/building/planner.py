@@ -48,21 +48,18 @@ def build_plan(
     wanted: dict[tuple[str, str], list[FeatureFrame]] = defaultdict(list)
     taken: dict[tuple[str, str], datetime] = {}
     for one, feature in zip(picked, features, strict=True):
-        # A feature is built whole, with every observation the selection left
-        # it that this build has an instrument for.
+        # A feature is built whole, every observation this build has an instrument for.
         for kept in one.observations:
             if kept.iid not in settings.instruments:
                 continue
             named = INSTRUMENTS.get(kept.iid)
-            # Skip a product no instrument here builds, and one whose id names
-            # no observation its instrument can be asked for.
+            # Skip a product no instrument builds, and an id naming no observation.
             read = named.observation_id if named else None
             if read and (held := read(kept.pdsid)):
                 wanted[(kept.iid, held)].append(feature.frame)
                 taken.setdefault((kept.iid, held), kept.t_start)
     if ode is not None:
-        # An instrument the selection can never name is asked which of its
-        # products hold each feature's ground.
+        # An instrument the selection cannot name is asked which products hold it.
         for name in settings.instruments:
             named = INSTRUMENTS.get(name)
             if not named or not named.identifiers:
@@ -83,9 +80,7 @@ def build_plan(
             when = taken.get((instrument, identifier))
             jobs.append(Job(instrument, identifier, left, when))
     return Plan(
-        # The heaviest first, so a long job is never the one left running alone.
-        # What a job costs is what its product weighs far more than how many
-        # features want it, a CTX scan outweighing every other by twenty times.
+        # Heaviest first, weighed by the product and not by how many features want it.
         jobs=tuple(
             sorted(
                 jobs,
@@ -122,8 +117,7 @@ def _sampled(picked: Sequence[Selection], settings: Settings) -> list[Selection]
         draw.shuffle(held)
     order = sorted(classes)
     draw.shuffle(order)
-    # One from each class in turn, so every class is reached before any is
-    # drawn from twice and a small build spans as many as it has room for.
+    # One from each class in turn, so every class is reached before any is drawn twice.
     rounds = zip_longest(*(classes[name] for name in order))
     taken = [at for at in chain.from_iterable(rounds) if at is not None]
     return [kept[at] for at in sorted(taken[:wanted])]

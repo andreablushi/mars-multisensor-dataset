@@ -16,12 +16,10 @@ from building.preprocessing.ctx.models.observation import CtxObservation
 from building.preprocessing.ctx.models.sample import BLANK, CtxSample
 from utils.geometry import geodesy
 
-# The longest segment the feature's box is walked in before it is projected, in
-# degrees. A chord this short leaves the arc it stands in by under a pixel.
+# The longest segment the box is walked in, a chord leaving its arc by under a pixel.
 STEP = 0.1
 
-# How many pixels of a polar cut are turned back into degrees at once. A feature
-# can want most of a scan, so the mask over it is built a block of lines a time.
+# How many pixels of a polar cut become degrees at once, since a scan can be huge.
 BLOCK = 4_000_000
 
 
@@ -111,8 +109,7 @@ def polar_overlap(observation: CtxObservation, frame: FeatureFrame) -> Overlap |
     )
     if not lines.size or not samples.size:
         return None
-    # Only the rectangle the sector stands in is crossed back into degrees, and
-    # only a block of its lines at a time.
+    # Only the sector's rectangle is crossed back, a block of its lines at a time.
     span = geodesy.longitude_span(frame.west_lon, frame.east_lon)
     across = observation.across[samples][None, :]
     inside = np.empty((lines.size, samples.size), dtype=bool)

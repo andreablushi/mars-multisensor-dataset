@@ -80,9 +80,7 @@ INSTRUMENTS = {
         ctx_configs.CACHE.discard,
         ctx.crop,
         observation_id=ctx_configs.NAMING.parse,
-        # A scan near seventy degrees runs to 64000 lines by 44000 samples,
-        # 2.6 GB of pixels, and a build holds the scan, the crop and its two
-        # masks at once. An 829 MB scan measured 2.77 GB.
+        # A 2.6 GB scan, held with its crop and two masks; 829 MB measured 2.77 GB.
         worker_bytes=9 * 1024**3,
     ),
     mola_configs.LAYOUT.instrument: Instrument(

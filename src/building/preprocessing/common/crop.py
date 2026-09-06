@@ -36,18 +36,14 @@ def overlap(observation: Positioned, frame: FeatureFrame) -> Overlap | None:
         west=geodesy.normalise_longitude(frame.west_lon - frame.centre_lon),
         span=geodesy.longitude_span(frame.west_lon, frame.east_lon),
     )
-    # How far north of the box's southern edge and east of its western one
-    # every sample lies, which is all either branch asks of the box.
+    # How far north and east of the box's own edges every sample lies.
     upward = (position.north >= box.south) & (position.north <= box.north)
     # Measured round the turn, so the meridian the box may run over is no edge.
     eastward = (position.east - box.west) % TURN
     if position.separable:
-        # The box is a rectangle on a grid whose axes run north and east, so
-        # each axis is asked on its own and what they keep is exactly the box.
+        # The box is a rectangle here, so each axis is asked alone and keeps exactly it.
         lines = np.flatnonzero(upward)
-        # An axis counts from its own first longitude, and a box running over
-        # the meridian keeps two ends of it that are one strip of ground, so
-        # ordering by how far east each lies is what joins those ends back up.
+        # A box over the meridian keeps two ends of one strip, joined by ordering east.
         held = np.flatnonzero(eastward <= box.span)
         samples = held[np.argsort(eastward[held], kind="stable")]
         if not lines.size or not samples.size:
@@ -97,8 +93,7 @@ def taken(array: np.ndarray, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     Returns:
         The part that is left, every axis past the ground's kept whole.
     """
-    # Bounds that neighbour are sliced rather than gathered, which is what all
-    # but an axis rejoined across the meridian keeps, and costs nothing to take.
+    # Neighbouring bounds are sliced rather than gathered, which costs nothing to take.
     runs = tuple(
         slice(int(held[0]), int(held[-1]) + 1)
         for held in bounds

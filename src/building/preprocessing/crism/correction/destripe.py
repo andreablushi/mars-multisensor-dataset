@@ -49,8 +49,7 @@ def remove_spike_columns(
     # Where each caught cell of the block sits in the cube it was taken from.
     at_column, at_band = np.nonzero(caught)
     if at_column.size:
-        # Only a column holding a caught cell is worth smoothing, and a scan
-        # whose detector read straight holds none at all.
+        # Only a column holding a caught cell is worth smoothing, and some hold none.
         live = np.unique(at_column)
         smoothed = medfilt1(block[:, live], size)
         cube[:, live_columns[at_column], live_bands[at_band]] = smoothed[
@@ -79,8 +78,7 @@ def medfilt1(array: np.ndarray, size: int, out: np.ndarray | None = None) -> np.
     for at in range(array.shape[-1]):
         window = array[..., max(at - left, 0) : at + right]
         held = window.shape[-1]
-        # Partitioned rather than taken as a median, which sorts no further
-        # than the middle and writes straight into the row it is filling.
+        # Partitioned rather than sorted, which stops at the middle and writes in place.
         part = np.partition(window, held // 2, axis=-1)
         out[..., at] = (
             part[..., held // 2]

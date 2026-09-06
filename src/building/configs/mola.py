@@ -14,8 +14,7 @@ TOPOGRAPHY = "topography"
 COUNTS = "counts"
 KINDS = (TOPOGRAPHY, COUNTS)
 
-# How the archive spells one plane of a tile, named for the corner it starts at
-# and how fine it is. Its kind is what drops the polar tiles.
+# How a plane is spelled, named for its corner and step. Its kind drops polar tiles.
 NAMING = Naming(
     re.compile(r"^(?:meg(?P<marker>[tc]))?(?P<tile>\d{2}[ns]\d{3}(?P<step>[cefgh])b)$"),
     identity="{tile}",

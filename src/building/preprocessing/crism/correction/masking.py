@@ -36,8 +36,7 @@ def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: str) -> Mask:
     edges = ~blank & ((centre < low) | (centre > high))
     bands = blank | edges
 
-    # What no value test may look at, held per column and band rather than per
-    # cell, so it costs nothing beside the cube and broadcasts over it.
+    # What no value test may look at, held per column and band so it broadcasts.
     dead = np.zeros(cube.shape[1:], dtype=bool)
     dead[columns, :] = True
     dead[:, bands] = True
@@ -55,8 +54,7 @@ def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: str) -> Mask:
     pixels = scattered.any(axis=2)
     pixels[:, columns] = True
 
-    # One stand-in for every refused cell, taken from what survives, and read
-    # off the cube in place rather than off a copy of everything kept.
+    # One stand-in for every refused cell, read off the cube in place, not a copy.
     refused = scattered | dead
     np.logical_not(refused, out=refused)
     fill = float(np.mean(cube, where=refused))

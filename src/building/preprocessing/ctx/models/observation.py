@@ -32,8 +32,7 @@ class CtxObservation:
     across: np.ndarray
     polar: PolarGrid | None = None
 
-    # Either projection is regular along both of its own axes, so one axis
-    # places each side and neither is held per pixel.
+    # Either projection is regular on both axes, so one axis places each side.
     separable = True
 
     @property

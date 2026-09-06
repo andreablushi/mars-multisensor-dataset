@@ -68,8 +68,7 @@ def crop(observation: SharadObservation, frame: FeatureFrame) -> SharadSample | 
     held = overlap(observation, frame)
     if held is None:
         return None
-    # A sounder walks a line, so the traces are the radargram's second axis and
-    # the delay each one was sounded over is left whole.
+    # The traces are the radargram's second axis, and the delay is left whole.
     (traces,) = held.bounds
     return SharadSample(
         identifier=observation.identifier,

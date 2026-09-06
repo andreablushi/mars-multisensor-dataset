@@ -14,8 +14,7 @@ OBSERVATION = "observation"
 GEOMETRY = "geometry"
 KINDS = (OBSERVATION, GEOMETRY)
 
-# How ODE spells one product of a track, which writes its kind after the track
-# the observation on its own ends at.
+# How ODE spells one product of a track, its kind written after the track itself.
 NAMING = Naming(
     re.compile(r"^(?P<track>s_\d+)(?:_(?P<marker>rgram|geom))?$"),
     identity="{track}",
@@ -24,8 +23,7 @@ NAMING = Naming(
     fields={OBSERVATION: {"marker": "rgram"}, GEOMETRY: {"marker": "geom"}},
 )
 
-# What the arrays of one track hold, and which of them is stored for. A sounder
-# walks a line rather than sweeping ground, so only one axis is placed.
+# What one track's arrays hold. A sounder walks a line, so only one axis is placed.
 LAYOUT = Layout(
     instrument="SHARAD",
     dims=("delay", "trace"),
@@ -34,8 +32,7 @@ LAYOUT = Layout(
     beside={"traces": ("trace",)},
 )
 
-# Where each product of an observation is kept. The geometry is a table rather
-# than an image, and sits in a subdirectory of its own.
+# Where each product is kept. The geometry is a table, in a subdirectory of its own.
 CACHE = ProductCache(
     paths.SHARAD_ROOT,
     {OBSERVATION: (".lbl", ".img"), GEOMETRY: (".lbl", ".tab")},

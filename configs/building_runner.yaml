@@ -1,27 +1,20 @@
 # What a build of the dataset holds, and how much of it to build.
 
-# What this build is called. It is the directory the dataset is written in and
-# the name it is published under, so a half build and a whole one sit side by
-# side rather than one overwriting the other.
+# The directory it is written in and the name it is published under.
 name: half
 
-# What share of the features the selection kept to build, from above zero to
-# one. Features are drawn evenly across their classes, and a feature is built
-# whole: every observation the selection left it, never a sample of them. The
-# same seed and a larger share gives a superset.
+# What share of the features the selection kept to build, above zero and up to one.
 share: 0.5
 
-# Which instruments to build. MOLA is placed by the feature's own box rather than
-# by the selection, since the gridded record carries no per observation time.
+# Which instruments to build. MOLA is placed by the feature's box, not the selection.
 instruments:
   - CTX
   - CRISM
   - SHARAD
   - MOLA
 
-# The number every draw is made with.
+# The number every draw is made with, so a smaller build is a reproducible subset.
 seed: 42
 
-# Which layout the arrays and the index are written in. Raise it when what is
-# written stops being readable by whatever read the version before it.
+# Which layout the arrays and the index are written in. Raise it when a reader breaks.
 version: 2

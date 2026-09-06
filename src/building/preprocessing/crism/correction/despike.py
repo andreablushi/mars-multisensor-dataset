@@ -20,8 +20,7 @@ def remove_spikes(pixspec: np.ndarray, centre: np.ndarray) -> None:
     Returns:
         None.
     """
-    # The moving median, how far every sample sits from it, and which samples
-    # that catches, refilled each pass rather than allocated again.
+    # The median, the distance from it and what that catches, refilled each pass.
     pixmed = np.empty_like(pixspec)
     apart = np.empty_like(pixspec)
     caught = np.empty(pixspec.shape, dtype=bool)

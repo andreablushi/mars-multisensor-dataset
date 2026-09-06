@@ -24,26 +24,20 @@ from building.models.job import Job, Outcome, Plan
 from building.models.settings import Settings
 from building.preprocessing.common import store
 
-# How much of what the machine has free a build may hold at once, the rest left
-# to the downloads, to the page cache the reads go through, and to everything
-# else running beside it.
+# How much of what the machine has free a build may hold, the rest left elsewhere.
 MEMORY_SHARE = 0.7
 
-# Where a container writes the memory it is held to, which is what a job on a
-# platform was given rather than what the machine it landed on has.
+# Where a container writes the memory it is held to, which is what a job was given.
 CGROUP_LIMITS = (
     Path("/sys/fs/cgroup/memory.max"),
     Path("/sys/fs/cgroup/memory/memory.limit_in_bytes"),
 )
 
-# How many downloads run per build, and the most that run at all. A download
-# waits on an archive rather than on the processor, so more of them run than
-# there are builds, up to what one archive is worth asking at once.
+# How many downloads run per build and at all; they wait on an archive, not on cores.
 FETCHING_PER_BUILD = 4
 MOST_FETCHING = 16
 
-# How many downloaded products may wait per build, which has to be well above
-# one or a build waits on the network it was meant to be running ahead of.
+# How many products may wait per build, well above one or a build waits on the network.
 READY_PER_BUILD = 4
 
 
@@ -117,8 +111,7 @@ def run_build(
         printing.describe(
             plan, settings, (building_count, fetching_count, ready), console
         )
-        # A download waits on the network and a build waits on the processor, so
-        # the two run on pools of their own and neither waits for the other.
+        # A download waits on the network and a build on the cores, so the pools differ.
         with (
             ProcessPoolExecutor(max_workers=building_count) as building,
             ThreadPoolExecutor(max_workers=fetching_count) as fetching,
@@ -177,8 +170,7 @@ def _outcomes(
         Returns:
             None.
         """
-        # The place is taken before the download rather than after, so the room
-        # a product is about to need is never given away to another one.
+        # The place is taken before the download, so the room is never given elsewhere.
         waiting.acquire()
         try:
             INSTRUMENTS[job.instrument].fetch(job.identifier, ode)
@@ -186,8 +178,7 @@ def _outcomes(
                 partial(built, job)
             )
         except Exception as error:  # noqa: BLE001
-            # The download failed, or the build pool is shutting down, and
-            # either way this job is built nowhere.
+            # The download failed or the pool is closing, so this builds nowhere.
             finish(Outcome(job, error=error))
 
     def built(job: Job, done: Future[Outcome]) -> None:
@@ -206,8 +197,7 @@ def _outcomes(
             outcome = Outcome(job, error=error)
         finish(outcome)
 
-    # Every path leaves exactly one outcome on the queue and gives back the one
-    # place it took, since a job leaving neither would be waited on for ever.
+    # Every path leaves one outcome and gives its place back, or it waits for ever.
     for job in jobs:
         fetching.submit(fetched, job)
     for _ in jobs:
@@ -233,18 +223,15 @@ def build_product(job: Job, root: Path) -> Outcome:
     written: list[ObservationMetadata] = []
     missed = 0
     try:
-        # Read and cleaned once however many features want it, which is what
-        # makes the product rather than the feature the unit of work.
+        # Read once however many features want it, which is why the product is the unit.
         observation = steps.read_observation(job.identifier)
         for frame in job.frames:
             try:
                 held = steps.crop(observation, frame)
             except Exception as error:  # noqa: BLE001
-                # What is already on disk is handed back, so a later failure
-                # never leaves a written sample out of the index.
+                # What is on disk is handed back, so no written sample misses the index.
                 return Outcome(job, records=tuple(written), error=error)
-            # A product reaching none of a feature is no failure: the coverage
-            # it was kept for is a box overlap, and a crop can come out empty.
+            # Reaching none of a feature is no failure, coverage being a box overlap.
             if held is None:
                 missed += 1
                 continue
@@ -260,9 +247,7 @@ def build_product(job: Job, root: Path) -> Outcome:
                 )
             )
     finally:
-        # The tree is a cache, so a product is gone the moment every feature
-        # that wanted it has been cut, which is what holds a build to the room
-        # its downloads were given rather than to everything it ever fetched.
+        # A product goes once every feature that wanted it is cut; it is a cache.
         steps.discard(job.identifier)
     return Outcome(job, records=tuple(written), missed=missed)
 
@@ -288,16 +273,14 @@ def _indexed(
         earlier = metadata_read.read_feature_metadata(root)
     except FileNotFoundError:
         standing, earlier = [], {}
-    # What an earlier run left, less what this run rewrote and what has since
-    # been deleted from the tree.
+    # What an earlier run left, less what this run rewrote and what has been deleted.
     records = [
         one
         for one in standing
         if one.identity not in rewritten and (root / one.path).exists()
     ] + written
     features = {one.identity: one for one in plan.features}
-    # A feature this run did not cover is carried forward with the records an
-    # earlier run left of it, so no record names a feature nothing describes.
+    # A feature this run missed is carried forward, so no record names an unknown one.
     for one in records:
         if one.feature not in features and one.feature in earlier:
             features[one.feature] = earlier[one.feature]

@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-# What an axis of a value array holds. A ground axis is the one a position
-# places; the others are the instrument's own and are sampled in their own unit.
+# What an axis holds. A ground axis is placed; the others are the instrument's own.
 GROUND = "ground"
 WAVELENGTH = "wavelength"
 DELAY = "delay"

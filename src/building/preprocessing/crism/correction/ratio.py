@@ -19,8 +19,7 @@ def ratio_colmed(pixspec: np.ndarray, rem: np.ndarray) -> None:
     """
     for at in range(pixspec.shape[1]):
         live = ~rem[:, at]
-        # A column holding no measurement at all has nothing to ratio against,
-        # and every spectrum of it is refused anyway.
+        # A column with no measurement has nothing to ratio, and is refused anyway.
         if live.any():
             column = pixspec[:, at, :]
             held = column[live]

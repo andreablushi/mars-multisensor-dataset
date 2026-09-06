@@ -74,8 +74,7 @@ def degrees(
         across = position.east[taken] if taken else position.east
     if position.polar is None:
         return frame.centre_lon + across, frame.centre_lat + down
-    # The offsets stand from the feature's own centre, so where that centre
-    # falls on the grid is worked out again rather than carried beside them.
+    # The offsets stand from the feature centre, so where that falls is worked again.
     centre_x, centre_y = geodesy.stereographic_forward(
         frame.centre_lon, frame.centre_lat, *position.polar
     )
@@ -102,8 +101,7 @@ def metres(
         further north it is measured; every other position is crossed already.
     """
     if position.polar is not None:
-        # A projection's metres are its own, so the ground is measured off the
-        # degrees it is inverted to rather than off the offsets themselves.
+        # A projection's metres are its own, so the ground comes off its degrees.
         lon, lat = degrees(position, frame)
         radius = geodesy.local_radius_m(lat)
         north = np.radians(lat - frame.centre_lat) * radius
@@ -158,8 +156,7 @@ def ground_sample_m(
     steps: list[float] = []
     for axis in range(position.ground_axes):
         if plain:
-            # One axis holds every line's latitude and the other every sample's
-            # longitude, so the walked one is read across the middle of the other.
+            # One axis holds latitude, the other longitude, walked at the middle.
             lon, lat = degrees(position, frame)
             if axis == 0:
                 walked = lat[middle(lat.size)]
@@ -168,16 +165,14 @@ def ground_sample_m(
                 walked = lon[middle(lon.size)]
                 line = (walked, np.full(walked.size, lat[lat.size // 2]))
         else:
-            # Only the one line is crossed, so a projected grid is never held
-            # whole to measure two steps across it.
+            # Only one line is crossed, so a projected grid is never held whole here.
             taken = tuple(
                 middle(size) if held == axis else slice(size // 2, size // 2 + 1)
                 for held, size in enumerate(sizes)
             )
             lon, lat = degrees(position, frame, taken)
             line = (np.ravel(lon), np.ravel(lat))
-        # The spheroid is measured on where each pair of samples stands, since
-        # one sphere for all of them is right at a single latitude alone.
+        # The spheroid is measured where each pair stands, not on one sphere for all.
         middles = (line[1][:-1] + line[1][1:]) / 2.0
         walk = geodesy.haversine_steps(*line, geodesy.local_radius_m(middles))
         steps.append(float(np.median(walk)) if walk.size else float("nan"))
