@@ -26,6 +26,7 @@ except ModuleNotFoundError:
 BUILD_HANDLER = "scripts.building_pipeline:run_build"
 
 _DATASET = configs.load().publishes.get("dataset", "dataset")
+_SELECTION = configs.load().publishes.get("selection", "selection")
 
 
 def _published(name: str) -> str:
@@ -79,6 +80,12 @@ def run_build(project, force: bool = False, cores: int | None = None):
     """
     os.environ[console.PLAIN_LOG_ENV] = "1"
     choices = settings.load(cores=cores)
+    # The platform clones the repository alone, and the tree it reads is no part
+    # of it, so what the selection left is read back off the archive it published.
+    print("fetching the selection", flush=True)
+    archives.unpacked(
+        project.get_artifact(_SELECTION).download(overwrite=True), paths.SELECTION_ROOT
+    )
     print(f"building {choices.share:.0%} of the dataset as {choices.name}", flush=True)
     failed = build(force, cores)
     published = archives.logged(
