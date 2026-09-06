@@ -18,26 +18,29 @@ LISTED = 5
 PLAIN_LOG_ENV = "PIPELINE_PLAIN_LOG"
 
 # How many progress lines a stage prints where no cursor can be moved
-LOGGED_LINES = 50
+LOGGED_LINES = 2000
 
 
 def describe(
-    plan: Plan, settings: Settings, pools: tuple[int, int, int], console: Console
+    plan: Plan,
+    settings: Settings,
+    pools: tuple[int, int, int, int],
+    console: Console,
 ) -> None:
     """Print what a build has to do before it starts.
 
     Args:
         plan: What the planner worked out.
         settings: The settled choices for the build, which size it.
-        pools: The builds, the downloads and the products that may wait, as the
-            runner worked them out from the machine.
+        pools: The builds, the downloads, the products that may wait and the
+            memory they share, as the runner worked them out from the machine.
         console: The console to print on.
 
     Returns:
         None.
     """
     crops = sum(len(job.frames) for job in plan.jobs)
-    building, fetching, ready = pools
+    building, fetching, ready, room = pools
     console.print(
         f"building {plan.feature_count} features from {len(plan.jobs)} products, "
         f"{crops} crops to write, {plan.skipped_existing} already written"
@@ -46,7 +49,7 @@ def describe(
         f"instruments: {', '.join(settings.instruments)}; "
         f"share {settings.share:.0%}, seed {settings.seed}; "
         f"build pool {building}, download pool {fetching}, "
-        f"{ready} products may wait"
+        f"{ready} products may wait, {room / 1024**3:.1f} GiB shared between builds"
     )
 
 
