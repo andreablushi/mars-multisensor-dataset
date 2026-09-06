@@ -24,7 +24,7 @@ LOGGED_LINES = 2000
 def describe(
     plan: Plan,
     settings: Settings,
-    pools: tuple[int, int, int, int],
+    pools: tuple[int, int, int],
     console: Console,
 ) -> None:
     """Print what a build has to do before it starts.
@@ -40,7 +40,7 @@ def describe(
         None.
     """
     crops = sum(len(job.frames) for job in plan.jobs)
-    building, fetching, ready, room = pools
+    building, fetching, ready = pools
     console.print(
         f"building {plan.feature_count} features from {len(plan.jobs)} products, "
         f"{crops} crops to write, {plan.skipped_existing} already written"
@@ -49,7 +49,7 @@ def describe(
         f"instruments: {', '.join(settings.instruments)}; "
         f"share {settings.share:.0%}, seed {settings.seed}; "
         f"build pool {building}, download pool {fetching}, "
-        f"{ready} products may wait, {room / 1024**3:.1f} GiB shared between builds"
+        f"{ready} products may wait"
     )
 
 
