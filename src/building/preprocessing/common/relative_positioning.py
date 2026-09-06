@@ -48,6 +48,27 @@ def relative_position(observation: Positioned, frame: FeatureFrame) -> RelativeP
     )
 
 
+def metres(
+    position: RelativePosition, frame: FeatureFrame
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return where every sample sits, in metres north and east of its feature.
+
+    Args:
+        position: Where the samples sit, in degrees from the feature centre.
+        frame: The feature's local frame, which those degrees are relative to.
+
+    Returns:
+        The northing and the easting in metres. A separable position holds one
+        ground axis each and its northing stays on the one it was held over,
+        while its easting is spread over both, since a degree of longitude
+        covers less ground the further north it is measured.
+    """
+    stretch = np.cos(np.radians(frame.centre_lat + position.north))
+    north = np.radians(position.north) * geodesy.RADIUS_M
+    east = np.radians(position.east) * geodesy.RADIUS_M
+    return north, east * (stretch[:, None] if position.separable else stretch)
+
+
 def ground_sample_m(
     position: RelativePosition, frame: FeatureFrame
 ) -> tuple[float, ...]:

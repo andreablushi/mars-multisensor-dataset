@@ -125,6 +125,13 @@ def observation_metadata(
         if mask is not None:
             measured = measured & mask.reshape(ground)
     low, high = altitude if altitude else (None, None)
+    # An integer measurement cannot hold an infinite identity, so the reduction
+    # starts from the widest value its own type can take.
+    limits = (
+        np.iinfo(values.dtype)
+        if np.issubdtype(values.dtype, np.integer)
+        else np.finfo(values.dtype)
+    )
     return ObservationMetadata(
         feature_class=frame.feature_class,
         feature_name=frame.feature_name,
@@ -136,8 +143,8 @@ def observation_metadata(
         ground_sample_m=relative_positioning.ground_sample_m(held.position, frame),
         separable=held.position.separable,
         valid_count=int(measured.sum()) * int(np.prod(values.shape) // measured.size),
-        value_min=float(np.min(values, where=measured, initial=np.inf)),
-        value_max=float(np.max(values, where=measured, initial=-np.inf)),
+        value_min=float(np.min(values, where=measured, initial=limits.max)),
+        value_max=float(np.max(values, where=measured, initial=limits.min)),
         value_mean=float(np.mean(values, where=measured)),
         value_std=float(np.std(values, where=measured)),
         t_start=_moment(held.label, STARTED) or t_start,

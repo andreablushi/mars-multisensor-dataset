@@ -5,7 +5,7 @@ from __future__ import annotations
 from building.common.pds import images, labels
 from building.configs import mola as configs
 from building.models.feature import FeatureFrame
-from building.preprocessing.common.crop import overlap, taken
+from building.preprocessing.common.crop import marked, overlap, taken
 from building.preprocessing.mola import projection
 from building.preprocessing.mola.models.observation import MolaObservation
 from building.preprocessing.mola.models.sample import MolaSample
@@ -57,11 +57,13 @@ def crop(observation: MolaObservation, frame: FeatureFrame) -> MolaSample | None
     held = overlap(observation, frame)
     if held is None:
         return None
+    counts = taken(observation.counts, held.bounds)
     return MolaSample(
         identifier=observation.identifier,
         position=held.position,
         label=observation.label,
         inside=held.inside,
+        valid=marked(counts != 0),
         topography=taken(observation.topography, held.bounds),
-        counts=taken(observation.counts, held.bounds),
+        counts=counts,
     )

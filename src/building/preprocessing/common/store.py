@@ -13,6 +13,7 @@ from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.sample import Sample
 from utils.disk.files import atomic_path
 from utils.disk.slugify import slugify
+from utils.geometry import geodesy
 
 # What the arrays placing a crop are called, and what the masks beside them are.
 NORTH = "north"
@@ -20,9 +21,14 @@ EAST = "east"
 INSIDE = "inside"
 VALID = "valid"
 
+# What the two placing arrays are measured in, which a reader turns into metres
+# by the radius written beside them and the centre latitude they offset from.
+POSITION_UNITS = "degrees"
+
 # What the crop is described by, beside the arrays it holds: what each array's
 # own axes are called and which of them are ground, where the feature it was cut
-# to sits, and the label every product it was published as carries.
+# to sits, what the arrays placing it are measured in, and the label every
+# product it was published as carries.
 META = "meta"
 
 
@@ -99,6 +105,8 @@ def write_sample(
         "separable": held.position.separable,
         "centre_lon": frame.centre_lon,
         "centre_lat": frame.centre_lat,
+        "position_units": POSITION_UNITS,
+        "radius_m": geodesy.RADIUS_M,
         "dims": {name: list(axes) for name, axes in along.items()},
         "axes": list(layout.axes),
         "ground": list(ground),
