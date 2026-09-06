@@ -41,17 +41,17 @@ def _published(name: str) -> str:
     return f"{_DATASET}-{name}"
 
 
-def build(force: bool = False, workers: int | None = None) -> int:
+def build(force: bool = False, cores: int | None = None) -> int:
     """Build the dataset the selection asks for, over as much of it as configured.
 
     Args:
         force: Whether to rebuild crops that are already written.
-        workers: How many jobs to run at once, or None for the config.
+        cores: How many cores the run was given, or None for the machine's.
 
     Returns:
         A process exit code, non zero when any product failed to build.
     """
-    choices = settings.load(workers=workers)
+    choices = settings.load(cores=cores)
     printing = Console()
     started_at = time.monotonic()
     outcomes = runner.run_build(
@@ -62,13 +62,13 @@ def build(force: bool = False, workers: int | None = None) -> int:
 
 
 @handler(outputs=[_DATASET])
-def run_build(project, force: bool = False, workers: int | None = None):
+def run_build(project, force: bool = False, cores: int | None = None):
     """Build the dataset on DigitalHub and publish what it left on disk.
 
     Args:
         project: The DigitalHub project the archive is logged into.
         force: Whether to rebuild crops that are already written.
-        workers: How many jobs to run at once, as the job was sized.
+        cores: How many cores the run was given, as the job was sized.
 
     Returns:
         The uploaded archive of the dataset.
@@ -78,9 +78,9 @@ def run_build(project, force: bool = False, workers: int | None = None):
             what the selection asked for.
     """
     os.environ[console.PLAIN_LOG_ENV] = "1"
-    choices = settings.load(workers=workers)
+    choices = settings.load(cores=cores)
     print(f"building {choices.share:.0%} of the dataset as {choices.name}", flush=True)
-    failed = build(force, workers)
+    failed = build(force, cores)
     published = archives.logged(
         project,
         paths.dataset_root(choices.name),

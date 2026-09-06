@@ -23,8 +23,6 @@ class FeatureFrame:
         max_lat: The northernmost latitude of the box, in degrees.
         west_lon: The westernmost longitude of the box, 0 to 360.
         east_lon: The easternmost longitude of the box, 0 to 360.
-        east_m: How far east of the centre the box reaches, in metres.
-        north_m: How far north of the centre it reaches, in metres.
     """
 
     feature_class: str
@@ -35,5 +33,3 @@ class FeatureFrame:
     max_lat: float
     west_lon: float
     east_lon: float
-    east_m: float
-    north_m: float

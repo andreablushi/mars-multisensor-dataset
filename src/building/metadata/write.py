@@ -19,6 +19,7 @@ def write_metadata(
     held: Sequence[FeatureMetadata],
     taken: Sequence[ObservationMetadata],
     instruments: tuple[str, ...],
+    version: int,
     root: Path,
 ) -> None:
     """Write down what the dataset is, every feature in it, and every observation.
@@ -27,6 +28,7 @@ def write_metadata(
         held: One row per feature, in the order to write them.
         taken: One record per feature and observation, in the same manner.
         instruments: The instruments the build covered.
+        version: Which layout what is written is in.
         root: The directory the files are written in, made when missing.
 
     Returns:
@@ -35,5 +37,5 @@ def write_metadata(
     root.mkdir(parents=True, exist_ok=True)
     parquet.write(held, features.SCHEMA, root / paths.FEATURE_METADATA_NAME)
     parquet.write(taken, records.SCHEMA, root / paths.OBSERVATION_METADATA_NAME)
-    manifest = dataset.as_written(dataset.dataset_manifest(instruments))
+    manifest = dataset.as_written(dataset.dataset_manifest(instruments, version))
     (root / paths.DATASET_MANIFEST_NAME).write_text(json.dumps(manifest, indent=2))

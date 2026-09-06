@@ -21,28 +21,32 @@ PLAIN_LOG_ENV = "PIPELINE_PLAIN_LOG"
 LOGGED_LINES = 50
 
 
-def describe(plan: Plan, settings: Settings, console: Console) -> None:
+def describe(
+    plan: Plan, settings: Settings, pools: tuple[int, int, int], console: Console
+) -> None:
     """Print what a build has to do before it starts.
 
     Args:
         plan: What the planner worked out.
         settings: The settled choices for the build, which size it.
+        pools: The builds, the downloads and the products that may wait, as the
+            runner worked them out from the machine.
         console: The console to print on.
 
     Returns:
         None.
     """
     crops = sum(len(job.frames) for job in plan.jobs)
+    building, fetching, ready = pools
     console.print(
         f"building {plan.feature_count} features from {len(plan.jobs)} products, "
-        f"{crops} crops to write, {plan.skipped_existing} already written, "
-        f"{settings.workers} workers, {settings.ready} products may wait"
+        f"{crops} crops to write, {plan.skipped_existing} already written"
     )
     console.print(
         f"instruments: {', '.join(settings.instruments)}; "
-        f"features {settings.features or 'all'}, "
-        f"observations per feature {settings.observations_per_feature or 'all'}, "
-        f"seed {settings.seed}"
+        f"share {settings.share:.0%}, seed {settings.seed}; "
+        f"build pool {building}, download pool {fetching}, "
+        f"{ready} products may wait"
     )
 
 

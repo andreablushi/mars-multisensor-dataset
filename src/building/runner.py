@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import queue
 import threading
 from collections.abc import Iterator, Sequence
@@ -22,6 +23,71 @@ from building.metadata.observation import ObservationMetadata, observation_metad
 from building.models.job import Job, Outcome, Plan
 from building.models.settings import Settings
 from building.preprocessing.common import store
+
+# How much of what the machine has free a build may hold at once, the rest left
+# to the downloads, to the page cache the reads go through, and to everything
+# else running beside it.
+MEMORY_SHARE = 0.7
+
+# Where a container writes the memory it is held to, which is what a job on a
+# platform was given rather than what the machine it landed on has.
+CGROUP_LIMITS = (
+    Path("/sys/fs/cgroup/memory.max"),
+    Path("/sys/fs/cgroup/memory/memory.limit_in_bytes"),
+)
+
+# How many downloads run per build, and the most that run at all. A download
+# waits on an archive rather than on the processor, so more of them run than
+# there are builds, up to what one archive is worth asking at once.
+FETCHING_PER_BUILD = 4
+MOST_FETCHING = 16
+
+# How many downloaded products may wait per build, which has to be well above
+# one or a build waits on the network it was meant to be running ahead of.
+READY_PER_BUILD = 4
+
+
+def _room() -> int:
+    """Return how much memory this run may hold, in bytes.
+
+    Returns:
+        The share of what is free that a build is allowed, measured against the
+        limit a container holds it to where there is one.
+    """
+    free = os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
+    for path in CGROUP_LIMITS:
+        try:
+            free = min(free, int(path.read_text().split()[0]))
+        except (OSError, ValueError):
+            continue
+    return int(free * MEMORY_SHARE)
+
+
+def pools(instruments: tuple[str, ...], cores: int | None) -> tuple[int, int, int]:
+    """Return how many builds run, how many downloads, and how many may wait.
+
+    A build holds a whole product in memory, and the largest of them is a CTX
+    scan many times the size of anything else, so what the machine has room for
+    and not what it has cores for is what sizes the pool.
+
+    Args:
+        instruments: The instruments the build covers, which say how much one
+            build of it holds.
+        cores: How many cores the run was given, or None for the machine's.
+
+    Returns:
+        The builds to run at once, the downloads to run at once, and how many
+        downloaded products may wait for a build to reach them.
+    """
+    held = max(
+        INSTRUMENTS[name].worker_bytes for name in instruments if name in INSTRUMENTS
+    )
+    building = max(1, min(cores or os.cpu_count() or 1, _room() // held))
+    return (
+        building,
+        min(MOST_FETCHING, building * FETCHING_PER_BUILD),
+        (building * READY_PER_BUILD),
+    )
 
 
 def run_build(
@@ -45,16 +111,19 @@ def run_build(
     Raises:
         FileNotFoundError: When no selection has been written to build from.
     """
+    building_count, fetching_count, ready = pools(settings.instruments, settings.cores)
     with httpx.Client() as ode:
         plan = planner.build_plan(settings, root, ode, force=force)
-        printing.describe(plan, settings, console)
+        printing.describe(
+            plan, settings, (building_count, fetching_count, ready), console
+        )
         # A download waits on the network and a build waits on the processor, so
         # the two run on pools of their own and neither waits for the other.
         with (
-            ProcessPoolExecutor(max_workers=settings.workers) as building,
-            ThreadPoolExecutor(max_workers=settings.workers) as fetching,
+            ProcessPoolExecutor(max_workers=building_count) as building,
+            ThreadPoolExecutor(max_workers=fetching_count) as fetching,
         ):
-            held = _outcomes(plan.jobs, ode, fetching, building, root, settings.ready)
+            held = _outcomes(plan.jobs, ode, fetching, building, root, ready)
             with closing(held) as outcomes:
                 collected = printing.render(
                     outcomes, len(plan.jobs), "building", console
@@ -233,5 +302,5 @@ def _indexed(
         if one.feature not in features and one.feature in earlier:
             features[one.feature] = earlier[one.feature]
     metadata.write_metadata(
-        list(features.values()), records, settings.instruments, root
+        list(features.values()), records, settings.instruments, settings.version, root
     )

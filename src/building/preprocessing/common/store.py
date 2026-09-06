@@ -116,8 +116,11 @@ def write_sample(
         "ground": list(ground),
         "label": held.label,
     }
+    # Compressed, since a crop is mostly the ground its instrument swept past
+    # and the masks saying so, none of which is worth a byte apiece on disk or
+    # in the bandwidth every epoch of training reads it back over.
     # Written whole and moved into place, so a crop a reader finds is a crop
     # that was finished and never one a run was interrupted partway through.
     with atomic_path(path) as tmp, tmp.open("wb") as handle:
-        np.savez(handle, **arrays, **{META: np.array(json.dumps(described))})
+        np.savez_compressed(handle, **arrays, **{META: np.array(json.dumps(described))})
     return path

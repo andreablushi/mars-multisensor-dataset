@@ -20,14 +20,18 @@ class Settings:
         instruments: Which instruments to build, as ODE names them.
         seed: The number every draw is made with, so a smaller build is a
             reproducible subset of the full one.
-        workers: How many jobs to run at once.
-        ready: How many downloaded products may wait at once for the builds to
-            reach them, which is what keeps the downloads from racing ahead.
+        version: Which layout the arrays and the index are written in, raised
+            when what is written stops being readable by whatever read the
+            version before it.
+        cores: How many cores the run was given, for a job a platform sized
+            itself, and None to read the machine's own. How many builds and
+            downloads run at once is worked out from this and from the memory
+            the machine has free, so neither is a setting a run carries.
     """
 
     name: str
     share: float
     instruments: tuple[str, ...]
     seed: int
-    workers: int
-    ready: int
+    version: int
+    cores: int | None = None

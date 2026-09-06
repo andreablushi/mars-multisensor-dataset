@@ -60,14 +60,6 @@ def feature_metadata(feature: SelectedFeature) -> FeatureMetadata:
     centre_lon, centre_lat = geodesy.bbox_centre(
         feature.min_lat, feature.max_lat, feature.west_lon, feature.east_lon
     )
-    span = geodesy.longitude_span(feature.west_lon, feature.east_lon)
-    # A degree of longitude is longest at the equator, so the box reaches
-    # furthest east at whichever of its latitudes lies nearest to it.
-    widest = (
-        0.0
-        if feature.min_lat <= 0.0 <= feature.max_lat
-        else min(abs(feature.min_lat), abs(feature.max_lat))
-    )
     return FeatureMetadata(
         frame=FeatureFrame(
             feature_class=feature.feature_class,
@@ -78,8 +70,6 @@ def feature_metadata(feature: SelectedFeature) -> FeatureMetadata:
             max_lat=feature.max_lat,
             west_lon=feature.west_lon,
             east_lon=feature.east_lon,
-            east_m=geodesy.eastward_m(span / 2.0, widest),
-            north_m=geodesy.northward_m((feature.max_lat - feature.min_lat) / 2.0),
         ),
         area_km2=feature.area_km2,
         kept=feature.kept,
@@ -89,9 +79,6 @@ def feature_metadata(feature: SelectedFeature) -> FeatureMetadata:
         window_share=feature.geo_mean,
         observations_kept=feature.taken,
     )
-
-
-SCHEMA = parquet.schema_of(FeatureMetadata)
 
 
 SCHEMA = parquet.schema_of(FeatureMetadata)

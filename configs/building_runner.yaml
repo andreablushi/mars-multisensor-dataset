@@ -22,11 +22,6 @@ instruments:
 # The number every draw is made with.
 seed: 42
 
-# Jobs at once: download threads, then build processes.
-workers: 8
-
-# How many downloaded products may wait at once for the builds to reach them.
-# A product is deleted once every feature that wanted it has been cut, so this
-# is the room the downloads are held to. Below the worker count the build pool
-# starves, so keep it well above.
-ready: 32
+# Which layout the arrays and the index are written in. Raise it when what is
+# written stops being readable by whatever read the version before it.
+version: 2

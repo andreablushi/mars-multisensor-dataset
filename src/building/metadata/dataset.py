@@ -8,10 +8,6 @@ from datetime import UTC, datetime
 
 import utils.disk.paths as paths
 
-# What this layout of the dataset is called, raised when what is written stops
-# being readable by what read the version before it.
-VERSION = 1
-
 
 @dataclass(frozen=True, slots=True)
 class DatasetManifest:
@@ -32,11 +28,12 @@ class DatasetManifest:
     revision: str | None
 
 
-def dataset_manifest(instruments: tuple[str, ...]) -> DatasetManifest:
+def dataset_manifest(instruments: tuple[str, ...], version: int) -> DatasetManifest:
     """Return what to write beside the dataset to say what it is.
 
     Args:
         instruments: The instruments the build covered.
+        version: Which layout what is written is in, as the build was configured.
 
     Returns:
         The manifest, its revision unset where the build ran outside a checkout.
@@ -52,7 +49,7 @@ def dataset_manifest(instruments: tuple[str, ...]) -> DatasetManifest:
     except (OSError, subprocess.CalledProcessError):
         revision = None
     return DatasetManifest(
-        version=VERSION,
+        version=version,
         built_at=datetime.now(UTC).isoformat(timespec="seconds"),
         instruments=tuple(sorted(instruments)),
         selection=str(paths.SELECTION_ROOT.relative_to(paths.REPO_ROOT)),

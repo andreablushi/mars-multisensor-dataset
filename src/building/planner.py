@@ -84,7 +84,17 @@ def build_plan(
             jobs.append(Job(instrument, identifier, left, when))
     return Plan(
         # The heaviest first, so a long job is never the one left running alone.
-        jobs=tuple(sorted(jobs, key=lambda job: -len(job.frames))),
+        # What a job costs is what its product weighs far more than how many
+        # features want it, a CTX scan outweighing every other by twenty times.
+        jobs=tuple(
+            sorted(
+                jobs,
+                key=lambda job: (
+                    -INSTRUMENTS[job.instrument].worker_bytes,
+                    -len(job.frames),
+                ),
+            )
+        ),
         features=tuple(features),
         skipped_existing=skipped,
     )

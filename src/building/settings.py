@@ -10,15 +10,13 @@ import utils.disk.paths as paths
 from building.models.settings import Settings
 
 
-def load(
-    path: Path = paths.BUILDING_CONFIG_PATH, workers: int | None = None
-) -> Settings:
+def load(path: Path = paths.BUILDING_CONFIG_PATH, cores: int | None = None) -> Settings:
     """Settle what a build should do, reading the config file once.
 
     Args:
         path: The config file, which carries every setting a build turns on.
-        workers: How many jobs to run at once, standing in for the config where
-            a run was given a number of cores of its own.
+        cores: How many cores the run was given, for a job a platform sized
+            itself, and None to read the machine's own.
 
     Returns:
         The settled choices for the build.
@@ -29,6 +27,6 @@ def load(
         share=config["share"],
         instruments=tuple(config["instruments"]),
         seed=config["seed"],
-        workers=workers or config["workers"],
-        ready=config["ready"],
+        version=config["version"],
+        cores=cores,
     )

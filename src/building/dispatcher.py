@@ -46,6 +46,9 @@ class Instrument:
             None for every instrument named by a product id.
         altitude: What reads how high the spacecraft flew, for a sounder whose
             delay axis is read through it, and None for every other instrument.
+        worker_bytes: What one build holds of its largest product at once, the
+            product itself and the crop and masks that stand beside it, which
+            is what says how many builds a machine has room to run.
     """
 
     layout: Layout
@@ -56,6 +59,7 @@ class Instrument:
     observation_id: Callable[[str], str | None] | None = None
     identifiers: Callable[[Feature, httpx.Client], list[str]] | None = None
     altitude: Callable[[Any], tuple[float, float]] | None = None
+    worker_bytes: int = 512 * 1024**2
 
 
 INSTRUMENTS = {
@@ -66,6 +70,8 @@ INSTRUMENTS = {
         crism_configs.CACHE.discard,
         crism.crop,
         observation_id=crism_configs.NAMING.parse,
+        # A cleaned observation measured 203 MB, both detectors and the chain.
+        worker_bytes=512 * 1024**2,
     ),
     ctx_configs.LAYOUT.instrument: Instrument(
         ctx_configs.LAYOUT,
@@ -74,6 +80,10 @@ INSTRUMENTS = {
         ctx_configs.CACHE.discard,
         ctx.crop,
         observation_id=ctx_configs.NAMING.parse,
+        # A scan near seventy degrees runs to 64000 lines by 44000 samples,
+        # 2.6 GB of pixels, and a build holds the scan, the crop and its two
+        # masks at once. An 829 MB scan measured 2.77 GB.
+        worker_bytes=9 * 1024**3,
     ),
     mola_configs.LAYOUT.instrument: Instrument(
         mola_configs.LAYOUT,
@@ -82,6 +92,8 @@ INSTRUMENTS = {
         mola_configs.CACHE.discard,
         mola.crop,
         identifiers=mola_download.tiles,
+        # A tile and its shot counts measured 214 MB.
+        worker_bytes=512 * 1024**2,
     ),
     sharad_configs.LAYOUT.instrument: Instrument(
         sharad_configs.LAYOUT,
@@ -91,5 +103,7 @@ INSTRUMENTS = {
         sharad.crop,
         observation_id=sharad_configs.NAMING.parse,
         altitude=altitude.altitude_m,
+        # A radargram and its geometry measured 135 MB.
+        worker_bytes=256 * 1024**2,
     ),
 }
