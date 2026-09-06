@@ -30,6 +30,7 @@ LAYOUT = Layout(
     dims=("line", "sample"),
     axes=(GROUND, GROUND),
     measurement="topography",
+    beside={"counts": ("line", "sample")},
 )
 
 # Where both planes of a tile are kept, in the one directory of the tile.

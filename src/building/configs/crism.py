@@ -47,6 +47,7 @@ LAYOUT = Layout(
         WAVELENGTH,
     ),
     measurement="cube",
+    beside={"wavelengths": ("sample", "band"), "columns": ("sample",)},
 )
 
 # The directory every wavelength file is kept in, shared by every observation.

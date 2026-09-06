@@ -26,8 +26,6 @@ COORDINATES = "coordinates"
 # raster without ever reading the whole of it.
 CHUNK = 1 << 22
 
-Arrays = dict[str, tuple[np.ndarray, tuple[str, ...]]]
-
 
 def sample_path(
     frame: FeatureFrame, instrument: str, identifier: str, root: Path
@@ -54,7 +52,6 @@ def sample_path(
 
 def write_sample(
     held: Sample,
-    arrays: Arrays,
     layout: Layout,
     frame: FeatureFrame,
     root: Path = paths.DATASET_ROOT,
@@ -63,9 +60,8 @@ def write_sample(
 
     Args:
         held: The sample, whose position and mask are written beside the values.
-        arrays: What the instrument publishes, keyed by the name to write it as,
-            each with the names of its own axes.
-        layout: How that instrument's arrays are laid out.
+        layout: How that instrument's arrays are laid out, which names every
+            one of them the sample is read for.
         frame: The feature it was cut to.
         root: The dataset's own root directory.
 
@@ -78,26 +74,25 @@ def write_sample(
     north, east = (
         (ground[:1], ground[1:]) if held.position.separable else (ground, ground)
     )
-    placed: Arrays = {
+    placed = {
         NORTH: (held.position.north, north),
         EAST: (held.position.east, east),
     }
     if held.inside is not None:
         placed[INSIDE] = (held.inside, ground)
 
-    identifier = held.identifier
-    path = sample_path(frame, layout.instrument, identifier, root)
+    path = sample_path(frame, layout.instrument, held.identifier, root)
     path.parent.mkdir(parents=True, exist_ok=True)
     group = zarr.open_group(store=path, mode="w")
     for name, (values, along) in placed.items():
         _written(group, name, np.asarray(values), along)
-    for name, (values, along) in arrays.items():
-        stored = _written(group, name, np.asarray(values), along)
+    for name, along in {layout.measurement: layout.dims, **layout.beside}.items():
+        stored = _written(group, name, np.asarray(getattr(held, name)), along)
         stored.attrs[COORDINATES] = f"{NORTH} {EAST}"
     group.attrs.update(
         {
             "instrument": layout.instrument,
-            "identifier": identifier,
+            "identifier": held.identifier,
             "feature_class": frame.feature_class,
             "feature_name": frame.feature_name,
             "measurement": layout.measurement,

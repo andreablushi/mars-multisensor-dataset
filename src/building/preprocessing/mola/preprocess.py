@@ -1,11 +1,14 @@
-"""Reading one MOLA tile off disk and joining its planes onto one grid."""
+"""Reading one MOLA tile off disk and cutting it to the feature it was kept for."""
 
 from __future__ import annotations
 
 from building.common.pds import images
 from building.configs import mola as configs
+from building.metadata.models.feature import FeatureFrame
+from building.preprocessing.common.crop import overlap, taken
 from building.preprocessing.mola import projection
 from building.preprocessing.mola.models.observation import MolaObservation
+from building.preprocessing.mola.models.sample import MolaSample
 
 
 def read_observation(identifier: str) -> MolaObservation:
@@ -34,4 +37,26 @@ def read_observation(identifier: str) -> MolaObservation:
     height, label = planes[configs.TOPOGRAPHY]
     return MolaObservation(
         identifier, height, planes[configs.COUNTS][0], *projection.load(label)
+    )
+
+
+def crop(observation: MolaObservation, frame: FeatureFrame) -> MolaSample | None:
+    """Return one tile holding only the bins its feature's box keeps.
+
+    Args:
+        observation: The tile as it was read off disk.
+        frame: The local frame of the feature it was kept for.
+
+    Returns:
+        The tile cut to that feature, or None where it reaches none of it.
+    """
+    held = overlap(observation, frame)
+    if held is None:
+        return None
+    return MolaSample(
+        identifier=observation.identifier,
+        position=held.position,
+        inside=held.inside,
+        topography=taken(observation.topography, held.bounds),
+        counts=taken(observation.counts, held.bounds),
     )

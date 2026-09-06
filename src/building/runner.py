@@ -23,6 +23,7 @@ from building.metadata import write as metadata
 from building.metadata.models.observation import ObservationRecord
 from building.models.job import Job, Outcome, Plan
 from building.models.settings import Settings
+from building.preprocessing.common import store
 
 
 def run_build(
@@ -208,7 +209,7 @@ def build_product(job: Job, root: Path = paths.DATASET_ROOT) -> Outcome:
         if held is None:
             missed += 1
             continue
-        path = steps.write(held, frame, root)
+        path = store.write_sample(held, steps.layout, frame, root)
         written.append(
             record.observation_record(
                 held,

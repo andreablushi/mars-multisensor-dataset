@@ -31,6 +31,7 @@ LAYOUT = Layout(
     dims=("delay", "trace"),
     axes=(DELAY, GROUND),
     measurement="power",
+    beside={"traces": ("trace",)},
 )
 
 # Where each product of an observation is kept. The geometry is a table rather
