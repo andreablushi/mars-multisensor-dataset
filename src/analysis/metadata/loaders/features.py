@@ -7,10 +7,10 @@ from pathlib import Path
 
 import utils.disk.paths as paths
 from analysis.metadata.fetchers.features import fetch_features
+from analysis.metadata.ode import ODEClient
 from analysis.models.feature import Feature
 from utils.disk.files import read_jsonl, write_jsonl
 from utils.disk.paths import features_path
-from utils.ode.client import ODEClient
 
 
 def load_features(

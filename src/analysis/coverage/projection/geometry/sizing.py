@@ -9,8 +9,9 @@ import numpy as np
 from shapely import from_wkt
 
 from analysis.coverage import configs
-from analysis.coverage.projection.geometry import footprints, geodesy
+from analysis.coverage.projection.geometry import footprints
 from analysis.models.observation import Observation
+from utils.geometry import geodesy
 
 
 def track_widths(observations: Sequence[Observation]) -> list[float | None]:
@@ -35,8 +36,8 @@ def track_widths(observations: Sequence[Observation]) -> list[float | None]:
         )
         # The speed that trace implies fixes the altitude, and so the swath
         speed = length / observation.duration_s
-        radius = (configs.MARS_GM * configs.MARS_RADIUS_M**2 / speed**2) ** (1.0 / 3.0)
-        altitude = radius - configs.MARS_RADIUS_M
+        radius = (configs.MARS_GM * geodesy.RADIUS_M**2 / speed**2) ** (1.0 / 3.0)
+        altitude = radius - geodesy.RADIUS_M
         widths[position] = 2.0 * math.sqrt(configs.SHARAD_WAVELENGTH_M * altitude / 2.0)
     return widths
 

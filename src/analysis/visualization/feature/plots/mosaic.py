@@ -13,9 +13,9 @@ import ipywidgets as widgets
 from matplotlib import image as reading
 from matplotlib.axes import Axes
 
-from analysis.coverage.projection.geometry import geodesy
 from analysis.visualization.common import panels
 from analysis.visualization.feature.models.placing import Box
+from utils.geometry import geodesy
 
 BASEMAP_URL = "https://planetarymaps.usgs.gov/cgi-bin/mapserv"
 BASEMAP_MAP = "/maps/mars/mars_simp_cyl.map"

@@ -19,10 +19,10 @@ from analysis.console import describe, render
 from analysis.coverage import compute
 from analysis.metadata import download, file_explorer
 from analysis.metadata.loaders.features import load_features
+from analysis.metadata.ode import ODEClient
 from analysis.models.job import Job, Outcome
 from analysis.models.progress import ProgressEvent
 from analysis.models.settings import Settings
-from utils.ode.client import ODEClient
 
 
 def run_jobs(

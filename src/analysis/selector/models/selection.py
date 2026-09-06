@@ -13,6 +13,10 @@ class SelectedFeature:
     Attributes:
         feature_class: The feature class, such as Crater.
         feature_name: The feature name as ODE spells it.
+        min_lat: The southernmost planetocentric latitude in degrees.
+        max_lat: The northernmost planetocentric latitude in degrees.
+        west_lon: The westernmost longitude in degrees, 0 to 360.
+        east_lon: The easternmost longitude in degrees, 0 to 360.
         kept: Whether the feature earned a place at all.
         area_km2: How much ground it covers.
         start: When the earliest observation it keeps was taken, or None where
@@ -25,6 +29,10 @@ class SelectedFeature:
 
     feature_class: str
     feature_name: str
+    min_lat: float
+    max_lat: float
+    west_lon: float
+    east_lon: float
     kept: bool
     area_km2: float
     start: datetime | None

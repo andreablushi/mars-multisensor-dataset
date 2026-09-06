@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Mask:
     """Where one cube was filled rather than measured, and why.
 
@@ -20,9 +20,8 @@ class Mask:
         edges: One flag per band, True only where the band was dropped for
             falling outside the window, which is the part `bands` adds to what
             the wavelength file already refused to name.
-        scattered: Lines by samples by bands, True where a single value inside
-            the kept columns and bands was outside the range a brightness can
-            take.
+        scattered: How many values inside the kept columns and bands were
+            outside the range a brightness can take.
         pixels: Lines by samples, True where the pixel carries no usable
             spectrum, being in a dead column or holding a scattered value.
         fill: The value every flagged cell was replaced with.
@@ -37,7 +36,7 @@ class Mask:
     columns: np.ndarray
     bands: np.ndarray
     edges: np.ndarray
-    scattered: np.ndarray
+    scattered: int
     pixels: np.ndarray
     fill: float
     atmospheric: np.ndarray | None = None

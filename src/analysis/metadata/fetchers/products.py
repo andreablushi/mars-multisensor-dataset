@@ -6,11 +6,33 @@ from collections.abc import Iterator
 from typing import Any, TypeAlias
 
 import analysis.metadata.provenance as provenance
+from analysis.metadata.ode import ODEClient
 from analysis.models.feature import Feature
 from analysis.models.instrument import InstrumentSet
-from utils.ode import configs
-from utils.ode.client import ODEClient
-from utils.ode.errors import ODEError
+from utils.fetch import ode_configs
+from utils.fetch.ode_configs import ODEError
+
+# A feature running through every longitude is asked for in two halves, since
+# no single box ODE accepts reaches round every longitude at once.
+LONGITUDE_HALVES = ((0.0, 180.0), (180.0, 360.0))
+
+PAGE_SIZE = 5000
+PAGE_ORDER = "oba"
+
+RETAINED_FIELDS = (
+    "pdsid",
+    "ihid",
+    "iid",
+    "pt",
+    "Map_scale",
+    "UTC_start_time",
+    "UTC_stop_time",
+    "Minimum_latitude",
+    "Maximum_latitude",
+    "Westernmost_longitude",
+    "Easternmost_longitude",
+    "Footprint_C0_geometry",
+)
 
 Box = tuple[float, float, float, float]
 ProductRecord: TypeAlias = dict[str, Any]
@@ -28,7 +50,7 @@ def _boxes(feature: Feature) -> tuple[Box, ...]:
     if feature.circles_a_pole:
         return tuple(
             (feature.min_lat, feature.max_lat, west, east)
-            for west, east in configs.LONGITUDE_HALVES
+            for west, east in LONGITUDE_HALVES
         )
     return ((feature.min_lat, feature.max_lat, feature.west_lon, feature.east_lon),)
 
@@ -47,7 +69,7 @@ def _params(box: Box, instrument_set: InstrumentSet, loc: str) -> dict[str, str]
     min_lat, max_lat, west_lon, east_lon = box
     params = {
         "query": "product",
-        "target": configs.ODE_TARGET,
+        "target": ode_configs.ODE_TARGET,
         "ihid": instrument_set.ihid,
         "iid": instrument_set.iid,
         "pt": instrument_set.pt,
@@ -87,8 +109,8 @@ def _pages(client: ODEClient, params: dict[str, str]) -> Iterator[list[Any]]:
             {
                 **params,
                 "results": "opm",
-                "order": configs.PAGE_ORDER,
-                "limit": str(configs.PAGE_SIZE),
+                "order": PAGE_ORDER,
+                "limit": str(PAGE_SIZE),
                 "offset": str(offset),
             }
         )
@@ -130,6 +152,6 @@ def fetch_products(
                 if identity in seen:
                     continue
                 seen.add(identity)
-                kept = {f: item[f] for f in configs.RETAINED_FIELDS if f in item}
+                kept = {f: item[f] for f in RETAINED_FIELDS if f in item}
                 records.append(kept | stamped)
     return records

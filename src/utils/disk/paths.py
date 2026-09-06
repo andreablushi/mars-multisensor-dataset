@@ -15,6 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 CONFIGS_ROOT = REPO_ROOT / "configs"
 RUNNER_CONFIG_PATH = CONFIGS_ROOT / "analysis_runner.yaml"
+BUILDING_CONFIG_PATH = CONFIGS_ROOT / "building_runner.yaml"
 FILTER_CONFIG_PATH = CONFIGS_ROOT / "window_filter.yaml"
 PLATFORM_CONFIG_PATH = CONFIGS_ROOT / "digitalhub.yaml"
 
@@ -29,6 +30,7 @@ STATS_ROOT = ANALYSIS_ROOT / "stats"
 SELECTION_ROOT = ANALYSIS_ROOT / "selection"
 
 BUILDING_ROOT = DATA_ROOT / "building"
+DATASETS_ROOT = BUILDING_ROOT / "dataset"
 PREPROCESSING_ROOT = BUILDING_ROOT / "preprocessing"
 CRISM_ROOT = PREPROCESSING_ROOT / "crism"
 SHARAD_ROOT = PREPROCESSING_ROOT / "sharad"
@@ -36,12 +38,29 @@ MOLA_ROOT = PREPROCESSING_ROOT / "mola"
 CTX_ROOT = PREPROCESSING_ROOT / "ctx"
 
 STATS_NAME = "stats.json"
+FEATURE_METADATA_NAME = "features.parquet"
+OBSERVATION_METADATA_NAME = "observations.parquet"
+DATASET_MANIFEST_NAME = "dataset.json"
+SAMPLE_SUFFIX = ".npz"
 SELECTED_FEATURES_NAME = "features.parquet"
 SELECTED_OBSERVATIONS_NAME = "observations.parquet"
 FEATURES_CACHE_NAME = "features.jsonl"
 SUMMARY_NAME = "summary.parquet"
 EVENTS_SUFFIX = ".events.parquet"
 SET_SUMMARY_SUFFIX = ".summary.parquet"
+
+
+def dataset_root(name: str, root: Path = DATASETS_ROOT) -> Path:
+    """Return where one named build of the dataset is written.
+
+    Args:
+        name: What the build is called, as its config names it.
+        root: The directory every build of the dataset is written under.
+
+    Returns:
+        The directory that build owns, which need not exist.
+    """
+    return root / slugify(name)
 
 
 def metadata_file(root: Path, feature: Feature, instrument_set: InstrumentSet) -> Path:

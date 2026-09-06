@@ -37,6 +37,7 @@ notebook = [
     "jupyterlab>=4.3.0",
     "matplotlib>=3.10.0",
     "pandas>=2.2",
+    "xarray>=2026.7.0",
 ]
 digitalhub = [
     "digitalhub>=0.15,<0.16",

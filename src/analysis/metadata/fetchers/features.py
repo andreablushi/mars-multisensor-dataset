@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from analysis.metadata.ode import ODEClient
 from analysis.models.feature import Feature
-from utils.ode import configs
-from utils.ode.client import ODEClient
+
+ODE_META_DB = "mars"
 
 
 def fetch_features(client: ODEClient) -> list[Feature]:
@@ -19,7 +20,7 @@ def fetch_features(client: ODEClient) -> list[Feature]:
     Raises:
         KeyError: When ODE answers without the catalog it always publishes.
     """
-    results = client.query({"query": "featuredata", "odemetadb": configs.ODE_META_DB})
+    results = client.query({"query": "featuredata", "odemetadb": ODE_META_DB})
     features: list[Feature] = []
     # ODE publishes one feature twice; the first spelling of each is kept
     seen: set[Feature] = set()

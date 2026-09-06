@@ -1,1 +1,1 @@
-"""What a loaded tile carries, and what joining its planes leaves."""
+"""What one tile is, once its planes have been read onto the grid they share."""

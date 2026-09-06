@@ -6,20 +6,24 @@ import tomllib
 
 import digitalhub as dh
 
-import analysis.utils.settings as settings
 import utils.disk.paths as paths
 from dhub import configs
 
 COMPLETED = "COMPLETED"
 
 
-def submitted(half: str, handler: str, ref: str, **parameters) -> int:
+def submitted(
+    half: str, handler: str, ref: str, sized: str = "workers", **parameters
+) -> int:
     """Register a version of one half from a pushed commit, and run it.
 
     Args:
-        half: Which half to submit, naming the function it is registered as.
+        half: Which half to submit, naming the function it is registered as
+            and the resources it is given.
         handler: The dotted path the platform imports and calls.
         ref: The branch, tag, or commit the platform clones.
+        sized: The keyword the handler is told its cores through, which the
+            analysis half runs one worker per and a build sizes its pools from.
         **parameters: What the handler is called with on the platform.
 
     Returns:
@@ -46,15 +50,15 @@ def submitted(half: str, handler: str, ref: str, **parameters) -> int:
         return 1
     function.refresh()
 
-    # Start the job on the built image, telling it where the clone lands. The
-    # cores it is given are the jobs it runs at once, however the config reads
-    cores = int(platform.cpu or settings.load().workers)
+    # Start the job on the built image, telling it where the clone lands and
+    # how many cores it was given to size itself by.
+    asked = platform.resources[half]
     root = platform.source_root
     run = function.run(
         action="job",
-        resources={"cpu": str(cores), "mem": platform.memory, "disk": platform.disk},
+        resources={"cpu": asked["cpu"], "mem": asked["memory"], "disk": asked["disk"]},
         envs=[{"name": "PYTHONPATH", "value": f"{root}:{root}/src:{root}/scripts"}],
-        parameters=parameters | {"workers": cores},
+        parameters=parameters | {sized: int(asked["cpu"])},
         wait=False,
     )
     print(run.key)

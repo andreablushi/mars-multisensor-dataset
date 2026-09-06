@@ -1,4 +1,4 @@
-# MarsMultiSensorFeatures
+# Mars Multi-Sensor Observations Dataset
 
 A multi-sensor build dataset pipeline of Mars geological features. One sample is a single named
 landform seen by three instruments inside one shared time window: CTX visible
@@ -79,6 +79,116 @@ publishes.
 | `metadata` | the ODE records behind the measurements | `data/analysis/metadata/` |
 | `selection` | the features and observations the filter keeps | `data/analysis/selection/` |
 | `stats` | what the filter left of the dataset | `data/analysis/stats/` |
+| `dataset` | the cropped observations and their index | `data/building/dataset/` |
+
+## Building the dataset
+
+```bash
+uv run python scripts/building_pipeline.py          # here
+uv run --group digitalhub python scripts/building_pipeline.py --dh
+```
+
+`configs/building_runner.yaml` says how much to build. `share` is what fraction
+of the features the selection kept to build, drawn evenly across their classes,
+and `name` is what that build is called: it is the directory it is written in
+and the name it is published under, so a half build and a whole one sit side by
+side. A feature is built whole, with every observation the selection left it.
+The same seed and a larger share gives a superset, so a small build is always
+part of the larger one.
+
+`ready` holds the downloads to the room they were given, so they cannot race
+ahead of the builds that consume them. A product is deleted once every feature
+that wanted it has been cut, so a build needs room for what it holds at once and
+never for everything it ever fetched. Keep `ready` well above `workers`, or the
+build pool starves waiting for products.
+
+## Using the dataset
+
+The dataset is one directory: a crop per observation of a feature, and beside
+them the index that says what each is. Nothing outside it is needed to read it.
+
+```
+dataset/
+  dataset.json          what this dataset is: format version, when, from what
+  features.parquet      one row per feature: where it is, and what was kept of it
+  observations.parquet  one row per crop: its shape, its ground, its statistics
+  <class>/<feature>/<instrument>/<identifier>.npz
+```
+
+Each crop is a single `.npz`. Beside its arrays it carries a `meta` entry, a
+JSON object saying what every array's axes are called, which of them are ground,
+where the feature it was cut to sits, and the label every product it was
+published as was written with.
+
+```python
+import json
+from pathlib import Path
+
+import numpy as np
+import pyarrow.parquet as pq
+
+root = Path("data/building/dataset")
+rows = pq.read_table(root / "observations.parquet").to_pylist()
+
+held = np.load(root / rows[0]["path"], allow_pickle=False)
+meta = json.loads(str(held["meta"]))
+values = held[meta["measurement"]]  # what the instrument measured
+```
+
+The index is read on its own, so a count, a filter or a split opens no array at
+all. A split is drawn over features and never over observations, since one
+feature is seen in many observations and splitting those would put the same
+ground on both sides of it.
+
+Every crop holds its measurement placed by `north` and `east`, in degrees from
+the feature's own centre. Nothing in an array says where on Mars its feature is,
+so adding the centre back is what turns a placement into a coordinate:
+
+```python
+latitude = meta["centre_lat"] + held["north"]
+longitude = meta["centre_lon"] + held["east"]
+```
+
+An axis named in `meta["ground"]` is ground; the others are the instrument's own
+and are sampled in their own unit, which `meta["axes"]` names. A grid places one
+axis each and a swath or a track places every sample, which is what `separable`
+says. Two masks narrow what is a measurement, and each is written only when it
+excludes something, so an absent one means every sample is kept:
+
+```python
+kept = np.ones(
+    [
+        values.shape[meta["dims"][meta["measurement"]].index(one)]
+        for one in meta["ground"]
+    ],
+    bool,
+)
+for name in ("inside", "valid"):  # in the box, and measured
+    if name in held.files:
+        kept &= held[name]
+```
+
+`inside` is unset for a map raster, which meets a feature's box in a rectangle,
+and set for a swath or a track, which does not. `valid` is unset where every
+sample is a measurement.
+
+Each row of the index carries the statistics of its own crop, over the samples
+those two masks keep. They pool exactly, since every row says how many values it
+was measured over, and an average of per-crop means or standard deviations would
+not. Pool them per instrument, since each measures its own quantity:
+
+```python
+held_rows = [one for one in rows if one["instrument"] == "CRISM"]
+n = sum(one["valid_count"] for one in held_rows)
+mean = sum(one["value_mean"] * one["valid_count"] for one in held_rows) / n
+var = (
+    sum(
+        one["valid_count"] * (one["value_std"] ** 2 + (one["value_mean"] - mean) ** 2)
+        for one in held_rows
+    )
+    / n
+)
+```
 
 ## Notebooks
 
@@ -96,6 +206,7 @@ published and builds no artifact of its own.
 configs/
   analysis_runner.yaml  # What a run downloads and measures, and on how many workers
   window_filter.yaml    # What a window has to hold for a feature to earn a place
+  building_runner.yaml  # How much of the dataset to build, and on how many workers
   digitalhub.yaml       # What a submitted run is given, and what it publishes
 ```
 
@@ -106,8 +217,10 @@ the check. What changes from one run to the next is a flag instead.
 
 ```
 scripts/
-  analysis_pipeline.py  # The one entry point, and the two platform handlers
-  dh_download.sh        # Brings published entities back down
+  analysis_pipeline.py  # Measures what the archives cover, and selects from it
+  building_pipeline.py  # Builds the dataset the selection asks for
+  dh_download.sh        # Brings the analysis entities back down
+  dh_dataset.sh         # Brings one build of the dataset back down
   dhub/                 # Only what a submitted run needs
     configs.py          # Reads configs/digitalhub.yaml
     archives.py         # Packs what is published, unpacks what is read back
@@ -116,7 +229,8 @@ notebooks/              # The two notebooks that read the results
 src/
   utils/                # What both halves use
     ode/                # The ODE client, its settings, its errors
-    disk/               # Project paths, atomic writes, slugs
+    disk/               # Project paths, atomic writes, slugs, parquet
+    geometry/           # Mars, its longitudes and the local projection
   analysis/             # What the archives cover, and what the notebooks read
     console.py          # Progress bars and totals
     planner.py          # What each half has left to do
@@ -128,7 +242,19 @@ src/
     stats/              # What the filter left, measured over one feature or all
     visualization/      # What the notebooks draw
   building/             # What a chosen observation is turned into
-    preprocessing/      # One package per instrument, and what they share
+    configs/            # What each instrument is, read by every stage
+    common/             # Naming, the product cache, the PDS formats
+    download/           # Bringing down what the selection kept
+    preprocessing/      # One product read, cut to a feature, and written down
+      common/           # What every instrument's crop shares
+      crism/ ctx/       # What each instrument reads and cuts of its own
+      mola/ sharad/
+    metadata/           # What the dataset, its features and its crops are
+    models/             # The frame, the jobs, the settings
+    dispatcher.py       # What each instrument does at every stage of a build
+    planner.py          # What a build has to fetch and cut
+    runner.py           # Holds the build's pools
+    console.py          # Progress and totals
 data/                   # Laid out as src is, each half owning what it writes
   _catalog/             # Cached ODE catalogs, read by both halves
   analysis/
@@ -139,5 +265,6 @@ data/                   # Laid out as src is, each half owning what it writes
     selection/          # The features and observations the filter keeps
     stats/              # What the filter left of the dataset
   building/
+    dataset/            # The built dataset: crops, and the index over them
     preprocessing/      # One directory per instrument, holding its products
 ```

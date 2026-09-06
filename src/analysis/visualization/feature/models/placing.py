@@ -6,8 +6,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from analysis.coverage.projection.geometry import footprints, geodesy
+from analysis.coverage.projection.geometry import footprints
 from analysis.models.feature import Feature
+from utils.geometry import geodesy
 
 MIN_SPAN_DEG = 0.5
 RING_SAMPLES = 17

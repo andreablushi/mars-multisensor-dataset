@@ -151,7 +151,7 @@ def run_stats(project, workers: int | None = None):
     """Select the dataset on DigitalHub under the filter, and publish what it leaves.
 
     Args:
-        project: The DigitalHub project both archives are logged into.
+        project: The DigitalHub project the archives are logged into.
         workers: How many processes to run on at once, as the job was sized.
 
     Returns:
@@ -165,6 +165,10 @@ def run_stats(project, workers: int | None = None):
     archives.unpacked(
         project.get_artifact(_COVERAGE).download(overwrite=True), paths.COVERAGE_ROOT
     )
+    # The selection writes each feature's own ground, which it reads here
+    archives.unpacked(
+        project.get_artifact(_CATALOG).download(overwrite=True), paths.CATALOG_ROOT
+    )
     if not index.catalogued_features():
         raise RuntimeError("the published measurements hold no feature to search")
     stats(workers)
@@ -177,7 +181,7 @@ def _published_selection(project):
     """Publish what the filter keeps of the features, and what it left of them.
 
     Args:
-        project: The DigitalHub project both archives are logged into.
+        project: The DigitalHub project the archives are logged into.
 
     Returns:
         The uploaded archive of the selection, then the one of the stats.

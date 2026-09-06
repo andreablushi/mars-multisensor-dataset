@@ -4,8 +4,7 @@ from __future__ import annotations
 
 SPEED_OF_LIGHT = 299_792_458.0
 
-# IAU mean radius and gravitational parameter for Mars
-MARS_RADIUS_M = 3_389_500.0
+# The gravitational parameter for Mars, whose radius is named beside the planet
 MARS_GM = 4.2828372e13
 
 # SHARAD transmits 15-25 MHz; its centre sets the sounding wavelength
@@ -15,7 +14,6 @@ SHARAD_WAVELENGTH_M = SPEED_OF_LIGHT / SHARAD_CENTRE_FREQUENCY_HZ
 # Tracks are clipped to a dilated box so buffering still reaches the edge
 LINE_CLIP_MARGIN_DEG = 2.0
 
-LAEA_MIN_DENOMINATOR = 1e-12
 
 # The union is kept per cell so each insert touches a small shape. A cell of
 # this grid is not a unit of the survey: it exists only to keep the union small.

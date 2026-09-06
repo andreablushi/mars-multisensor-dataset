@@ -1,1 +1,1 @@
-"""What a loaded radargram carries, and what joining its geometry leaves."""
+"""What one track is, once its geometry has placed the traces it keeps."""

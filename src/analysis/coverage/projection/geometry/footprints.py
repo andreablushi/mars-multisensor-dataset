@@ -23,8 +23,8 @@ from shapely.geometry.base import BaseGeometry
 
 from analysis.coverage import configs
 from analysis.coverage.models.region import FeatureRegion
-from analysis.coverage.projection.geometry import geodesy
 from analysis.models.feature import Feature
+from utils.geometry import geodesy
 
 _EMPTY = Polygon()
 _LINESTRING = 1
@@ -44,7 +44,9 @@ def feature_region(feature: Feature) -> FeatureRegion:
     min_lat, max_lat = feature.min_lat, feature.max_lat
     west_lon, east_lon = feature.west_lon, feature.east_lon
     centre_lon, centre_lat = geodesy.bbox_centre(min_lat, max_lat, west_lon, east_lon)
-    lons, lats = geodesy.bbox_ring(min_lat, max_lat, west_lon, east_lon)
+    lons, lats = geodesy.bbox_ring(
+        min_lat, max_lat, west_lon, east_lon, configs.MAX_SEGMENT_DEG
+    )
     x, y = geodesy.laea_forward(lons, lats, centre_lon, centre_lat)
     shape = Polygon(np.column_stack((x, y)))
     # A box reaching every longitude crosses itself once projected

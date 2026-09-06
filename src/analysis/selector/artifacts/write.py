@@ -11,7 +11,7 @@ from analysis.selector.models.selection import (
     SelectedObservation,
     Selection,
 )
-from analysis.utils import parquet
+from utils.disk import parquet
 
 FEATURES = parquet.schema_of(SelectedFeature)
 OBSERVATIONS = parquet.schema_of(SelectedObservation)

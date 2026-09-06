@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from analysis.coverage.models.coverage import Event
 from analysis.coverage.models.summary import Summary
 from analysis.models.job import Job
-from analysis.utils import parquet
+from utils.disk import parquet
 
 EVENTS = parquet.schema_of(Event)
 SUMMARY = parquet.schema_of(Summary)

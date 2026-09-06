@@ -1,4 +1,4 @@
-"""One SHARAD track as it comes off disk, raw and whole."""
+"""One SHARAD radargram as it comes off disk, with its geometry joined onto it."""
 
 from __future__ import annotations
 
@@ -6,33 +6,49 @@ from dataclasses import dataclass
 
 import numpy as np
 
+# Which geometry field places a trace.
+PLACEMENT = {"latitude": "LATITUDE", "longitude": "LONGITUDE"}
 
-@dataclass(frozen=True)
+# Which fields the height above ground is read between, in km, for the delay axis.
+RADII = {"ground": "MARS RADIUS", "spacecraft": "SPACECRAFT RADIUS"}
+
+
+@dataclass(frozen=True, slots=True)
 class SharadObservation:
-    """One radargram with the geometry published beside it.
+    """One track holding only the traces its geometry places.
 
     Attributes:
-        identifier: The observation id, such as s_00577101.
-        power: The radar backscatter power as delay samples by traces, the
-            first axis running down into the ground and the second along track.
-        label: The parsed label of the radargram.
-        geometry: One row per radargram column, its fields named as the
-            geometry label names its columns, `RADARGRAM COLUMN` among them.
-        geometry_label: The parsed label of the geometry, whose COLUMN objects
-            say what each field holds and in what unit.
+        label: What every product it was published as says about it, merged.
+        identifier: The observation id.
+        power: Delay samples by traces, holding only the placed traces.
+        geometry: One row per kept trace, in the same order.
+        traces: Which of the original radargram columns these traces are,
+            counted from zero.
     """
 
     identifier: str
-    power: np.ndarray
     label: dict[str, str]
+    power: np.ndarray
     geometry: np.recarray
-    geometry_label: dict[str, str]
+    traces: np.ndarray
+
+    # A sounder walks a line, so every trace carries its own geometry's pair.
+    separable = False
 
     @property
-    def traces(self) -> int:
-        """Return how many traces the radargram holds.
+    def latitude(self) -> np.ndarray:
+        """Return the latitude every kept trace was sounded at.
 
         Returns:
-            The count of columns across track.
+            One per trace, in degrees.
         """
-        return int(self.power.shape[1])
+        return self.geometry[PLACEMENT["latitude"]]
+
+    @property
+    def longitude(self) -> np.ndarray:
+        """Return the longitude every kept trace was sounded at.
+
+        Returns:
+            One per trace, in degrees.
+        """
+        return self.geometry[PLACEMENT["longitude"]]

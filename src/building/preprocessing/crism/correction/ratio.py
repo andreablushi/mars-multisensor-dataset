@@ -5,36 +5,23 @@ from __future__ import annotations
 import numpy as np
 
 
-def ratio_colmed(
-    pixspec: np.ndarray, rem: np.ndarray, midonly: bool = False
-) -> np.ndarray:
+def ratio_colmed(pixspec: np.ndarray, rem: np.ndarray) -> None:
     """Use the median of a column for ratioing, as crism_ml's ColMed does.
 
     Args:
-        pixspec: The values as lines by samples by bands.
+        pixspec: The values as lines by samples by bands, divided through in
+            place.
         rem: Lines by samples, True where the pixel is not a measurement and so
             is kept out of the median.
-        midonly: Take the median over the middle half of the column only.
 
     Returns:
-        The ratioed spectra, with the refused pixels set to zero.
+        None.
     """
-
-    def medcol(idx: int) -> np.ndarray:
-        """Ratio one column against the median of its own usable spectra.
-
-        Args:
-            idx: Which sample across the slit.
-
-        Returns:
-            That column's spectra, divided through.
-        """
-        colwin = pixspec[:, idx, :][~rem[:, idx]]
-        nrows = len(colwin)
-        colwin = colwin[nrows // 4 : -nrows // 4] if midonly else colwin
-
-        normed = pixspec[:, idx, :] / np.median(colwin, axis=0)
-        normed[rem[:, idx]] = 0
-        return normed
-
-    return np.stack([medcol(i) for i in range(pixspec.shape[1])], axis=1)
+    for at in range(pixspec.shape[1]):
+        live = ~rem[:, at]
+        # A column with no measurement has nothing to ratio, and is refused anyway.
+        if live.any():
+            column = pixspec[:, at, :]
+            held = column[live]
+            column[live] = held / np.median(held, axis=0)
+    pixspec[rem] = 0.0

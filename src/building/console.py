@@ -1,0 +1,141 @@
+"""Everything a build prints: its plan, live progress, and totals."""
+
+from __future__ import annotations
+
+import os
+from collections.abc import Iterable, Sequence
+
+from rich.console import Console
+from rich.progress import BarColumn, MofNCompleteColumn, Progress
+
+from building.models.job import Outcome, Plan
+from building.models.settings import Settings
+
+# How many items are named before the rest are counted
+LISTED = 5
+
+# Set by a platform run, whose log takes plain flushed lines rather than a bar.
+PLAIN_LOG_ENV = "PIPELINE_PLAIN_LOG"
+
+# How many progress lines a stage prints where no cursor can be moved
+LOGGED_LINES = 2000
+
+
+def describe(
+    plan: Plan,
+    settings: Settings,
+    pools: tuple[int, int, int],
+    console: Console,
+) -> None:
+    """Print what a build has to do before it starts.
+
+    Args:
+        plan: What the planner worked out.
+        settings: The settled choices for the build, which size it.
+        pools: The builds, the downloads, the products that may wait and the
+            memory they share, as the runner worked them out from the machine.
+        console: The console to print on.
+
+    Returns:
+        None.
+    """
+    crops = sum(len(job.frames) for job in plan.jobs)
+    building, fetching, ready = pools
+    console.print(
+        f"building {plan.feature_count} features from {len(plan.jobs)} products, "
+        f"{crops} crops to write, {plan.skipped_existing} already written"
+    )
+    console.print(
+        f"instruments: {', '.join(settings.instruments)}; "
+        f"share {settings.share:.0%}, seed {settings.seed}; "
+        f"build pool {building}, download pool {fetching}, "
+        f"{ready} products may wait"
+    )
+
+
+def render(
+    outcomes: Iterable[Outcome], total: int, description: str, console: Console
+) -> list[Outcome]:
+    """Draw a live progress bar while collecting what each job left.
+
+    Args:
+        outcomes: The outcomes as the runner finishes them.
+        total: How many jobs there are.
+        description: The label for the progress task.
+        console: The console to render on.
+
+    Returns:
+        Every outcome collected, in completion order.
+    """
+    collected: list[Outcome] = []
+    # A platform log takes plain flushed lines, since no cursor can be moved there
+    if os.environ.get(PLAIN_LOG_ENV):
+        step = max(1, total // LOGGED_LINES)
+        for outcome in outcomes:
+            collected.append(outcome)
+            if outcome.failed:
+                print(f"error {outcome.label}: {outcome.error}", flush=True)
+            if len(collected) % step == 0 or len(collected) == total:
+                share = len(collected) / total
+                print(
+                    f"{description} {len(collected)}/{total} ({share:.0%}) "
+                    f"{outcome.label}",
+                    flush=True,
+                )
+        return collected
+    with Progress(
+        BarColumn(bar_width=None), MofNCompleteColumn(), console=console
+    ) as progress:
+        task = progress.add_task(description, total=total)
+        for outcome in outcomes:
+            collected.append(outcome)
+            if outcome.failed:
+                console.print(f"[red]error[/red] {outcome.label}: {outcome.error}")
+            progress.update(task, completed=len(collected))
+    return collected
+
+
+def print_summary(
+    outcomes: Sequence[Outcome], elapsed: float, console: Console
+) -> None:
+    """Print the totals for a finished build.
+
+    Args:
+        outcomes: What every job left.
+        elapsed: How long the build took, in seconds.
+        console: The console to print on.
+
+    Returns:
+        None.
+    """
+    written = sum(one.written for one in outcomes)
+    missed = sum(one.missed for one in outcomes)
+    failed = [one for one in outcomes if one.failed]
+    console.print(
+        f"built {len(outcomes) - len(failed)} products into {written:,} crops, "
+        f"{len(failed)} failed, in {elapsed:.1f}s"
+    )
+    if missed:
+        console.print(
+            f"[yellow]{missed:,} crops came out empty, the product reaching "
+            f"none of the feature it was kept for[/yellow]"
+        )
+    if not failed:
+        return
+    console.print(f"[yellow]{len(failed)} products failed:[/yellow]")
+    for one in failed[:LISTED]:
+        console.print(f"[yellow]  {one.label}: {one.error}[/yellow]")
+    if len(failed) > LISTED:
+        console.print(f"[yellow]  and {len(failed) - LISTED} more[/yellow]")
+
+
+def print_interrupted() -> None:
+    """Print the notice shown when a build is stopped with Ctrl-C.
+
+    Returns:
+        None.
+    """
+    Console().print(
+        "[yellow]interrupted: pending jobs cancelled, written crops kept. "
+        "Re-run to resume.[/yellow]"
+    )
