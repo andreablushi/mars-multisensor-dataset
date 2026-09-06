@@ -5,6 +5,10 @@ from __future__ import annotations
 # What a wavelength file writes where the detector was never calibrated.
 UNCALIBRATED = 65535.0
 
+# Which detector's backplanes place a merged observation. Both halves are taken
+# on the one grid, so one of them places every pixel of it.
+PLACING_DETECTOR = "l"
+
 # The wavelength window in nm each detector is trusted over, outside which the
 # sensor edge sees almost no light and the reading is noise.
 WINDOWS = {"l": (1020.0, 2650.0), "s": (400.0, 1060.0)}

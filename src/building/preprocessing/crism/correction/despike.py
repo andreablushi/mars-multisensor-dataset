@@ -9,11 +9,8 @@ from building.preprocessing.crism.correction import bands_calibration
 from building.preprocessing.crism.correction.destripe import medfilt1
 
 
-def remove_spikes(pixspec: np.ndarray, centre: np.ndarray) -> np.ndarray:
+def remove_spikes(pixspec: np.ndarray, centre: np.ndarray) -> None:
     """Remove spikes with narrowing windows, as crism_ml does.
-
-    Each pass replaces the samples sitting further than sigma deviations from a
-    moving median of their own neighbours.
 
     Args:
         pixspec: The ratioed values as lines by samples by bands, changed in
@@ -21,15 +18,20 @@ def remove_spikes(pixspec: np.ndarray, centre: np.ndarray) -> np.ndarray:
         centre: The centre wavelength of every band it holds.
 
     Returns:
-        The spectra without spikes.
+        None.
     """
+    # The moving median, how far every sample sits from it, and which samples
+    # that catches, refilled each pass rather than allocated again.
+    pixmed = np.empty_like(pixspec)
+    apart = np.empty_like(pixspec)
+    caught = np.empty(pixspec.shape, dtype=bool)
     for width, sigma in configs.SPIKE_PASSES:
-        pixmed = medfilt1(pixspec, bands_calibration.window(centre, width))
-        apart = np.abs(pixmed - pixspec)
+        medfilt1(pixspec, bands_calibration.window(centre, width), out=pixmed)
+        np.subtract(pixmed, pixspec, out=apart)
+        np.abs(apart, out=apart)
         # crism_ml judges every sample against the whole cube's own spread.
         limit = np.mean(apart.mean(axis=-1), keepdims=True) + sigma * np.mean(
             apart.std(ddof=1, axis=-1), keepdims=True
         )
-        caught = apart > limit
-        pixspec[caught] = pixmed[caught]
-    return pixspec
+        np.greater(apart, limit, out=caught)
+        np.copyto(pixspec, pixmed, where=caught)

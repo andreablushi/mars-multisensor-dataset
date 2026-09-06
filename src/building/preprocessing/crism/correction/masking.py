@@ -9,20 +9,18 @@ from building.preprocessing.crism.correction import bands_calibration
 from building.preprocessing.crism.models.mask import Mask
 
 
-def bad_pixels(
-    cube: np.ndarray, table: np.ndarray, detector: str
-) -> tuple[np.ndarray, Mask]:
+def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: str) -> Mask:
     """Fill everything one cube holds that is not a measurement.
 
     Args:
-        cube: The values as lines by samples by bands, ordered by wavelength.
+        cube: The values as lines by samples by bands, ordered by wavelength,
+            filled in place.
         table: The centre wavelength of every column and band, in that order.
         detector: Which detector, `l` for infrared or `s` for visible, which
             picks the window.
 
     Returns:
-        The cube with every refused cell replaced by the mean of what is kept,
-        and the mask saying where that happened.
+        The mask saying where the cube was filled rather than measured.
 
     Raises:
         KeyError: When no window is configured for that detector.
@@ -38,23 +36,30 @@ def bad_pixels(
     edges = ~blank & ((centre < low) | (centre > high))
     bands = blank | edges
 
-    # Everything a value test is allowed to look at.
-    live = np.ones(cube.shape, dtype=bool)
-    live[:, columns, :] = False
-    live[:, :, bands] = False
-    if not live.any():
+    # What no value test may look at, held per column and band rather than per
+    # cell, so it costs nothing beside the cube and broadcasts over it.
+    dead = np.zeros(cube.shape[1:], dtype=bool)
+    dead[columns, :] = True
+    dead[:, bands] = True
+    if dead.all():
         raise ValueError(f"The {detector} window keeps no band of this cube.")
 
     # A brightness outside what light can do is not a reading.
     floor, ceiling = configs.BRIGHTNESS
-    scattered = live & ((cube < floor) | (cube > ceiling) | ~np.isfinite(cube))
-
-    # One stand-in for every refused cell, taken from what survives.
-    kept = live & ~scattered
-    fill = float(np.mean(cube[kept]))
-    filled = np.where(kept, cube, fill).astype("f4")
+    scattered = cube < floor
+    scattered |= cube > ceiling
+    scattered |= ~np.isfinite(cube)
+    scattered &= ~dead
 
     # A pixel is unusable when its column is dead or any of its bands is.
     pixels = scattered.any(axis=2)
     pixels[:, columns] = True
-    return filled, Mask(columns, bands, edges, scattered, pixels, fill)
+
+    # One stand-in for every refused cell, taken from what survives, and read
+    # off the cube in place rather than off a copy of everything kept.
+    refused = scattered | dead
+    np.logical_not(refused, out=refused)
+    fill = float(np.mean(cube, where=refused))
+    np.logical_not(refused, out=refused)
+    np.copyto(cube, fill, where=refused)
+    return Mask(columns, bands, edges, int(scattered.sum()), pixels, fill)

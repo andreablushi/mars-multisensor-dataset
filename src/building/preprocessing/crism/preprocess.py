@@ -35,24 +35,19 @@ def read_detectors(identifier: str) -> dict[str, Detector]:
             labels names included.
 
     Returns:
-        Both detectors and both geometries, each cube ordered by the wavelength
-        file its own label was calibrated against.
+        Both detectors, each cube ordered by the wavelength file its own label
+        was calibrated against.
 
     Raises:
-        FileNotFoundError: When any of the four images, their labels, or a
-            wavelength file a label names is missing.
+        FileNotFoundError: When either image, its label, or a wavelength file
+            a label names is missing.
         ValueError: When a label names a band order this cannot read, or the
             wavelength file does not describe the cube beside it.
     """
     detectors = {}
     for name in configs.DETECTORS:
-        # The scan itself, then the geometry published beside it.
         scan = configs.NAMING.product(identifier, configs.OBSERVATION, detector=name)
         cube, label = images.load_cube(configs.CACHE.files(identifier, scan)[".img"])
-        geometry = configs.NAMING.product(identifier, configs.GEOMETRY, detector=name)
-        planes, geometry_label = images.load_cube(
-            configs.CACHE.files(identifier, geometry, configs.GEOMETRY)[".img"]
-        )
         # The wavelength file this half was calibrated against, and no other.
         wavelength = Path(label[configs.WAVELENGTH_KEY]).stem.lower()
         record = configs.CACHE.files(configs.WAVELENGTH_DIR, wavelength)[".img"]
@@ -64,9 +59,31 @@ def read_detectors(identifier: str) -> dict[str, Detector]:
         )
         # Order the bands by wavelength and mark what was never calibrated.
         cube, table = bands_calibration.calibrate(cube, wavelengths)
-        # Pair each detector's own cube with the geometry beside it.
-        detectors[name] = Detector(name, cube, label, table, planes, geometry_label)
+        detectors[name] = Detector(name, cube, table)
     return detectors
+
+
+def read_geometry(identifier: str) -> np.ndarray:
+    """Read the backplanes that place every pixel of one observation.
+
+    Args:
+        identifier: The observation, whose files must already be in the cache
+            that `download.fetch` puts them in.
+
+    Returns:
+        The backplanes of the detector that places it, as lines by samples by
+        fourteen.
+
+    Raises:
+        FileNotFoundError: When the geometry or its label is missing.
+        KeyError: When the label names a sample type this cannot read.
+    """
+    product = configs.NAMING.product(
+        identifier, configs.GEOMETRY, detector=cleaning.PLACING_DETECTOR
+    )
+    return images.load_cube(
+        configs.CACHE.files(identifier, product, configs.GEOMETRY)[".img"]
+    )[0]
 
 
 def clean_detectors(identifier: str) -> dict[str, Detector]:
@@ -86,25 +103,20 @@ def clean_detectors(identifier: str) -> dict[str, Detector]:
     """
     cleaned = {}
     for name, detector in read_detectors(identifier).items():
-        cube, mask = masking.bad_pixels(
-            detector.cube, detector.wavelengths, detector.name
-        )
-        cube, mask = atmospheric.remove_atmospheric_bands(
-            cube, mask, detector.wavelengths, detector.name
-        )
-        cube, mask = destripe.remove_spike_columns(
-            cube, mask, detector.wavelengths, detector.name
-        )
-        cube = ratio.ratio_colmed(cube, mask.pixels)
+        # Every step works on the one cube the calibration allocated, so the
+        # chain never holds a second copy of it.
+        cube, table = detector.cube, detector.wavelengths
+        mask = masking.bad_pixels(cube, table, name)
+        mask = atmospheric.remove_atmospheric_bands(cube, mask, table, name)
+        mask = destripe.remove_spike_columns(cube, mask, table, name)
+        ratio.ratio_colmed(cube, mask.pixels)
         # Despike only the bands still in play, so the filled ones cannot pull
         # the moving median around at their edges.
         kept = ~mask.bands
         block = np.ascontiguousarray(cube[:, :, kept])
-        despike.remove_spikes(
-            block, bands_calibration.centres(detector.wavelengths)[kept]
-        )
+        despike.remove_spikes(block, bands_calibration.centres(table)[kept])
         cube[:, :, kept] = block
-        cleaned[name] = replace(detector, cube=cube, mask=mask)
+        cleaned[name] = replace(detector, mask=mask)
     return cleaned
 
 
@@ -122,7 +134,9 @@ def read_observation(identifier: str) -> CrismObservation:
         FileNotFoundError: When any file the observation needs is missing.
         ValueError: When a window keeps no band of a cube.
     """
-    return merge.merge_detectors(identifier, clean_detectors(identifier))
+    return merge.merge_detectors(
+        identifier, clean_detectors(identifier), read_geometry(identifier)
+    )
 
 
 def crop(observation: CrismObservation, frame: FeatureFrame) -> CrismSample | None:
