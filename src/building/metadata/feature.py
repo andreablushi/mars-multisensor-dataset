@@ -38,6 +38,15 @@ class FeatureMetadata:
     window_share: float
     observations_kept: int
 
+    @property
+    def identity(self) -> tuple[str, str]:
+        """Return what tells this feature from every other.
+
+        Returns:
+            Its class and its name.
+        """
+        return (self.frame.feature_class, self.frame.feature_name)
+
 
 def feature_metadata(feature: SelectedFeature) -> FeatureMetadata:
     """Return what the dataset holds about one feature the selection kept.

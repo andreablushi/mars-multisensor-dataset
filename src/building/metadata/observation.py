@@ -70,6 +70,24 @@ class ObservationMetadata:
     altitude_min_m: float | None = None
     altitude_max_m: float | None = None
 
+    @property
+    def feature(self) -> tuple[str, str]:
+        """Return the feature this observation was kept for.
+
+        Returns:
+            Its class and its name.
+        """
+        return (self.feature_class, self.feature_name)
+
+    @property
+    def identity(self) -> tuple[str, str, str, str]:
+        """Return what tells this stored observation from every other.
+
+        Returns:
+            The feature it was kept for, and the product it was cut from.
+        """
+        return (*self.feature, self.instrument, self.identifier)
+
 
 def observation_metadata(
     held: Sample,

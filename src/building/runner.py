@@ -34,9 +34,6 @@ def run_build(
 ) -> list[Outcome]:
     """Fetch every product a build needs and cut each to the features that kept it.
 
-    A download waits on the network and a crop waits on the processor, so the
-    two run on pools of their own and a product is built the moment it lands.
-
     Args:
         settings: The settled choices for the build.
         console: The console to render on.
@@ -52,9 +49,8 @@ def run_build(
     with httpx.Client() as ode:
         plan = planner.build_plan(settings, ode, root, force=force)
         printing.describe(plan, settings, console)
-        if not plan.jobs:
-            _indexed(plan, [], settings, root)
-            return []
+        # A download waits on the network and a build waits on the processor, so
+        # the two run on pools of their own and neither waits for the other.
         with (
             ProcessPoolExecutor(max_workers=settings.workers) as building,
             ThreadPoolExecutor(max_workers=settings.workers) as fetching,
@@ -78,17 +74,6 @@ def _outcomes(
 ) -> Iterator[Outcome]:
     """Fetch every product and build it the moment it lands, in whatever order.
 
-    A download waits on the network and a build waits on the processor, so a
-    product goes to the build pool as soon as it is on disk, however many of the
-    downloads planned ahead of it are still running. The jobs are still handed to
-    the pool heaviest first, so what changes is which of them is waited on and
-    never which of them is started.
-
-    Downloading is the faster of the two, so it is held to the room it was given:
-    a product takes a place before it comes down and gives it back once it has
-    been built, which is what stops the whole archive landing on disk before the
-    first crop is written.
-
     Args:
         jobs: The products to fetch and build, heaviest first.
         ode: The client every download is asked through.
@@ -103,79 +88,65 @@ def _outcomes(
     finished: queue.Queue[Outcome] = queue.Queue()
     waiting = threading.Semaphore(ready)
 
-    def downloaded(job: Job) -> Outcome:
-        """Take a place on disk for one product and bring it down into it.
+    def finish(outcome: Outcome) -> None:
+        """Record what one job left and give back the place it took.
 
-        The place is taken before the download rather than after, so the room a
-        product is about to need is never given away to another one, and it is
-        given back once the product has been built.
+        Args:
+            outcome: What the job left, whether it was built or failed.
+
+        Returns:
+            None.
+        """
+        finished.put(outcome)
+        waiting.release()
+
+    def fetched(job: Job) -> None:
+        """Bring one product down and hand it to the pool that builds it.
 
         Args:
             job: The product to fetch.
 
         Returns:
-            The outcome, holding nothing when the product came down and the
-            error that stopped it otherwise.
+            None.
         """
+        # The place is taken before the download rather than after, so the room
+        # a product is about to need is never given away to another one.
         waiting.acquire()
         try:
             INSTRUMENTS[job.instrument].fetch(job.identifier, ode)
-            return Outcome(job)
+            building.submit(build_product, job, root).add_done_callback(
+                partial(built, job)
+            )
         except Exception as error:  # noqa: BLE001
-            return Outcome(job, error=error)
+            # The download failed, or the build pool is shutting down, and
+            # either way this job is built nowhere.
+            finish(Outcome(job, error=error))
 
-    def send_to_build(job: Job, done: Future[Outcome]) -> None:
-        """Hand a product that came down whole to the build pool.
-
-        Every path here leaves exactly one outcome on the queue and gives back
-        the one place it took, since a job that left neither would be waited on
-        for ever.
-
-        Args:
-            job: The job whose product came down.
-            done: What the download left, which `downloaded` never raises from.
-
-        Returns:
-            None.
-        """
-        outcome = done.result()
-        if not outcome.failed:
-            try:
-                building.submit(build_product, job, root).add_done_callback(
-                    partial(collect, job)
-                )
-                return
-            except RuntimeError as error:
-                # The build pool is shutting down, so this job builds nowhere.
-                outcome = Outcome(job, error=error)
-        finished.put(outcome)
-        waiting.release()
-
-    def collect(job: Job, done: Future[Outcome]) -> None:
-        """Put what one job's build left on the queue, and give its place back.
+    def built(job: Job, done: Future[Outcome]) -> None:
+        """Record what one job's build left, a worker the pool lost included.
 
         Args:
             job: The job that was built.
-            done: What the build pool left, an outcome or the error it raised,
-                a worker it lost included.
+            done: What the build pool left.
 
         Returns:
             None.
         """
         try:
-            finished.put(done.result())
+            outcome = done.result()
         except Exception as error:  # noqa: BLE001
-            finished.put(Outcome(job, error=error))
-        finally:
-            waiting.release()
+            outcome = Outcome(job, error=error)
+        finish(outcome)
 
+    # Every path leaves exactly one outcome on the queue and gives back the one
+    # place it took, since a job leaving neither would be waited on for ever.
     for job in jobs:
-        fetching.submit(downloaded, job).add_done_callback(partial(send_to_build, job))
+        fetching.submit(fetched, job)
     for _ in jobs:
         yield finished.get()
 
 
-def build_product(job: Job, root: Path = paths.DATASET_ROOT) -> Outcome:
+def build_product(job: Job, root: Path) -> Outcome:
     """Cut one downloaded product to every feature that kept it, and write each.
 
     Args:
@@ -227,9 +198,6 @@ def _indexed(
 ) -> None:
     """Write the index over every crop the dataset holds, not this run's alone.
 
-    A build that skips what is already written would otherwise index only what
-    it rewrote, so what an earlier run left is read back and carried forward.
-
     Args:
         plan: What the build set out to do, whose features this run covers.
         collected: What every job of this run left.
@@ -240,35 +208,25 @@ def _indexed(
         None.
     """
     written = [held for one in collected for held in one.records]
-    rewritten = {
-        (held.feature_class, held.feature_name, held.instrument, held.identifier)
-        for held in written
-    }
+    rewritten = {one.identity for one in written}
     try:
         standing = metadata_read.read_observation_metadata(root)
-    except FileNotFoundError:
-        standing = []
-    kept = [
-        held
-        for held in standing
-        if (held.feature_class, held.feature_name, held.instrument, held.identifier)
-        not in rewritten
-        and (root / held.path).exists()
-    ]
-    records = kept + written
-    features = {
-        (one.frame.feature_class, one.frame.feature_name): one for one in plan.features
-    }
-    try:
         earlier = metadata_read.read_feature_metadata(root)
     except FileNotFoundError:
-        earlier = {}
+        standing, earlier = [], {}
+    # What an earlier run left, less what this run rewrote and what has since
+    # been deleted from the tree.
+    records = [
+        one
+        for one in standing
+        if one.identity not in rewritten and (root / one.path).exists()
+    ] + written
+    features = {one.identity: one for one in plan.features}
     # A feature this run did not cover is carried forward with the records an
     # earlier run left of it, so no record names a feature nothing describes.
-    for held in records:
-        named = (held.feature_class, held.feature_name)
-        if named not in features and named in earlier:
-            features[named] = earlier[named]
+    for one in records:
+        if one.feature not in features and one.feature in earlier:
+            features[one.feature] = earlier[one.feature]
     metadata.write_metadata(
         list(features.values()), records, settings.instruments, root
     )
