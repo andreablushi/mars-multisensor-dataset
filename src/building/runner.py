@@ -162,34 +162,40 @@ def build_product(job: Job, root: Path) -> Outcome:
             hands back for the runner to collect as this job's own failure.
     """
     steps = INSTRUMENTS[job.instrument]
-    # Read and cleaned once however many features want it, which is what makes
-    # the product rather than the feature the unit of work.
-    observation = steps.read_observation(job.identifier)
     written: list[ObservationMetadata] = []
     missed = 0
-    for frame in job.frames:
-        try:
-            held = steps.crop(observation, frame)
-        except Exception as error:  # noqa: BLE001
-            # What is already on disk is handed back, so a later failure never
-            # leaves a written sample out of the index.
-            return Outcome(job, records=tuple(written), error=error)
-        # A product reaching none of a feature is no failure: the coverage it
-        # was kept for is a box overlap, and a crop can still come out empty.
-        if held is None:
-            missed += 1
-            continue
-        path = store.write_sample(held, steps.layout, frame, root)
-        written.append(
-            observation_metadata(
-                held,
-                frame,
-                steps.layout,
-                str(path.relative_to(root)),
-                t_start=job.t_start,
-                altitude=steps.altitude(held) if steps.altitude else None,
+    try:
+        # Read and cleaned once however many features want it, which is what
+        # makes the product rather than the feature the unit of work.
+        observation = steps.read_observation(job.identifier)
+        for frame in job.frames:
+            try:
+                held = steps.crop(observation, frame)
+            except Exception as error:  # noqa: BLE001
+                # What is already on disk is handed back, so a later failure
+                # never leaves a written sample out of the index.
+                return Outcome(job, records=tuple(written), error=error)
+            # A product reaching none of a feature is no failure: the coverage
+            # it was kept for is a box overlap, and a crop can come out empty.
+            if held is None:
+                missed += 1
+                continue
+            path = store.write_sample(held, steps.layout, frame, root)
+            written.append(
+                observation_metadata(
+                    held,
+                    frame,
+                    steps.layout,
+                    str(path.relative_to(root)),
+                    t_start=job.t_start,
+                    altitude=steps.altitude(held) if steps.altitude else None,
+                )
             )
-        )
+    finally:
+        # The tree is a cache, so a product is gone the moment every feature
+        # that wanted it has been cut, which is what holds a build to the room
+        # its downloads were given rather than to everything it ever fetched.
+        steps.discard(job.identifier)
     return Outcome(job, records=tuple(written), missed=missed)
 
 

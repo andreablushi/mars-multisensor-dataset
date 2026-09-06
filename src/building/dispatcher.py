@@ -35,6 +35,7 @@ class Instrument:
         layout: What its arrays hold, and which of them it is stored for.
         fetch: What brings one product of it down into the cache.
         read_observation: What reads a fetched product off disk, whole.
+        discard: What deletes the product from the cache once it is built.
         crop: What cuts that observation to one feature's box, handing back the
             sample to store or None where it reaches none of it.
         observation_id: What reads which observation a product the selection
@@ -50,6 +51,7 @@ class Instrument:
     layout: Layout
     fetch: Callable[[str, httpx.Client], None]
     read_observation: Callable[[str], Any]
+    discard: Callable[[str], None]
     crop: Callable[..., Any]
     observation_id: Callable[[str], str | None] | None = None
     identifiers: Callable[[Feature, httpx.Client], list[str]] | None = None
@@ -61,6 +63,7 @@ INSTRUMENTS = {
         crism_configs.LAYOUT,
         crism_download.fetch,
         crism.read_observation,
+        crism_configs.CACHE.discard,
         crism.crop,
         observation_id=crism_configs.NAMING.parse,
     ),
@@ -68,6 +71,7 @@ INSTRUMENTS = {
         ctx_configs.LAYOUT,
         ctx_download.fetch,
         ctx.read_observation,
+        ctx_configs.CACHE.discard,
         ctx.crop,
         observation_id=ctx_configs.NAMING.parse,
     ),
@@ -75,6 +79,7 @@ INSTRUMENTS = {
         mola_configs.LAYOUT,
         mola_download.fetch,
         mola.read_observation,
+        mola_configs.CACHE.discard,
         mola.crop,
         identifiers=mola_download.tiles,
     ),
@@ -82,6 +87,7 @@ INSTRUMENTS = {
         sharad_configs.LAYOUT,
         sharad_download.fetch,
         sharad.read_observation,
+        sharad_configs.CACHE.discard,
         sharad.crop,
         observation_id=sharad_configs.NAMING.parse,
         altitude=altitude.altitude_m,

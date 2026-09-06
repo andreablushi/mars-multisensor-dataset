@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -46,3 +47,17 @@ class ProductCache:
             place = place / self.subdirectories[kind]
         wanted = self.suffixes[kind if kind in self.suffixes else None]
         return {suffix: place / f"{stem}{suffix}" for suffix in wanted}
+
+    def discard(self, directory: str) -> None:
+        """Delete everything one product was downloaded as.
+
+        Args:
+            directory: The directory under the root the product was kept in,
+                which is the observation or tile it belongs to.
+
+        Returns:
+            None.
+        """
+        # Only the product's own directory, so what every observation shares
+        # sits beside it under a name of its own and is left alone.
+        shutil.rmtree(self.root / directory, ignore_errors=True)
