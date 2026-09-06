@@ -19,7 +19,7 @@ def write_metadata(
     held: Sequence[FeatureMetadata],
     taken: Sequence[ObservationMetadata],
     instruments: tuple[str, ...],
-    root: Path = paths.DATASET_ROOT,
+    root: Path,
 ) -> None:
     """Write down what the dataset is, every feature in it, and every observation.
 

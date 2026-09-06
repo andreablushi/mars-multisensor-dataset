@@ -30,7 +30,7 @@ STATS_ROOT = ANALYSIS_ROOT / "stats"
 SELECTION_ROOT = ANALYSIS_ROOT / "selection"
 
 BUILDING_ROOT = DATA_ROOT / "building"
-DATASET_ROOT = BUILDING_ROOT / "dataset"
+DATASETS_ROOT = BUILDING_ROOT / "dataset"
 PREPROCESSING_ROOT = BUILDING_ROOT / "preprocessing"
 CRISM_ROOT = PREPROCESSING_ROOT / "crism"
 SHARAD_ROOT = PREPROCESSING_ROOT / "sharad"
@@ -48,6 +48,19 @@ FEATURES_CACHE_NAME = "features.jsonl"
 SUMMARY_NAME = "summary.parquet"
 EVENTS_SUFFIX = ".events.parquet"
 SET_SUMMARY_SUFFIX = ".summary.parquet"
+
+
+def dataset_root(name: str, root: Path = DATASETS_ROOT) -> Path:
+    """Return where one named build of the dataset is written.
+
+    Args:
+        name: What the build is called, as its config names it.
+        root: The directory every build of the dataset is written under.
+
+    Returns:
+        The directory that build owns, which need not exist.
+    """
+    return root / slugify(name)
 
 
 def metadata_file(root: Path, feature: Feature, instrument_set: InstrumentSet) -> Path:

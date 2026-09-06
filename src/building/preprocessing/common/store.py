@@ -53,7 +53,7 @@ def write_sample(
     held: Sample,
     layout: Layout,
     frame: FeatureFrame,
-    root: Path = paths.DATASET_ROOT,
+    root: Path,
 ) -> Path:
     """Write one sample down, its arrays and what describes them in one file.
 

@@ -25,8 +25,8 @@ def load(
     """
     config = yaml.safe_load(path.read_text(encoding="utf-8"))
     return Settings(
-        features=config["features"],
-        observations_per_feature=config["observations_per_feature"],
+        name=config["name"],
+        share=config["share"],
         instruments=tuple(config["instruments"]),
         seed=config["seed"],
         workers=workers or config["workers"],

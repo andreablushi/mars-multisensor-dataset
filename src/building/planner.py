@@ -11,7 +11,6 @@ from pathlib import Path
 
 import httpx
 
-import utils.disk.paths as paths
 from analysis import dataset_list
 from analysis.selector.models.selection import Selection
 from building.dispatcher import INSTRUMENTS
@@ -24,8 +23,8 @@ from building.preprocessing.common.store import sample_path
 
 def build_plan(
     settings: Settings,
+    root: Path,
     ode: httpx.Client | None = None,
-    root: Path = paths.DATASET_ROOT,
     *,
     force: bool = False,
 ) -> Plan:
@@ -33,9 +32,9 @@ def build_plan(
 
     Args:
         settings: The settled choices for the build, which size it.
+        root: The directory this build of the dataset is written in.
         ode: The client an instrument searched by ground is looked up through,
             or None to leave those instruments out of the plan.
-        root: The dataset's own root directory.
         force: When True, plan products every crop of which is already written.
 
     Returns:
@@ -49,7 +48,11 @@ def build_plan(
     wanted: dict[tuple[str, str], list[FeatureFrame]] = defaultdict(list)
     taken: dict[tuple[str, str], datetime] = {}
     for one, feature in zip(picked, features, strict=True):
-        for kept in _observations(one, settings):
+        # A feature is built whole, with every observation the selection left
+        # it that this build has an instrument for.
+        for kept in one.observations:
+            if kept.iid not in settings.instruments:
+                continue
             named = INSTRUMENTS.get(kept.iid)
             # Skip a product no instrument here builds, and one whose id names
             # no observation its instrument can be asked for.
@@ -88,10 +91,7 @@ def build_plan(
 
 
 def _sampled(picked: Sequence[Selection], settings: Settings) -> list[Selection]:
-    """Keep the features one build covers, drawn evenly across their classes.
-
-    A smaller build is drawn from the same shuffle as a larger one, so raising
-    the cap adds features rather than exchanging them.
+    """Keep the share of the features one build covers, evenly across classes.
 
     Args:
         picked: What the search left of every feature it searched.
@@ -101,7 +101,8 @@ def _sampled(picked: Sequence[Selection], settings: Settings) -> list[Selection]
         The selections to build, in the order the selection was written.
     """
     kept = [one for one in picked if one.feature.kept]
-    if settings.features is None or settings.features >= len(kept):
+    wanted = round(settings.share * len(kept))
+    if wanted >= len(kept):
         return kept
     classes: dict[str, list[int]] = defaultdict(list)
     for at, one in enumerate(kept):
@@ -115,30 +116,4 @@ def _sampled(picked: Sequence[Selection], settings: Settings) -> list[Selection]
     # drawn from twice and a small build spans as many as it has room for.
     rounds = zip_longest(*(classes[name] for name in order))
     taken = [at for at in chain.from_iterable(rounds) if at is not None]
-    return [kept[at] for at in sorted(taken[: settings.features])]
-
-
-def _observations(one: Selection, settings: Settings):
-    """Keep the observations one feature contributes, spread across its window.
-
-    Args:
-        one: What the search left of that feature.
-        settings: The settled choices for the build.
-
-    Returns:
-        The observations to build, oldest first.
-    """
-    held = [kept for kept in one.observations if kept.iid in settings.instruments]
-    cap = settings.observations_per_feature
-    if cap is None:
-        return held
-    by_instrument: dict[str, list] = defaultdict(list)
-    for kept in held:
-        by_instrument[kept.iid].append(kept)
-    taken = []
-    for named in by_instrument.values():
-        # Evenly along the window rather than the front of it, so a small build
-        # keeps the spread of time the window was chosen for.
-        step = max(1, len(named) // cap)
-        taken.extend(named[::step][:cap])
-    return sorted(taken, key=lambda kept: kept.t_start)
+    return [kept[at] for at in sorted(taken[:wanted])]

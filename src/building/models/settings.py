@@ -10,10 +10,13 @@ class Settings:
     """The settled choices for a build, read from one flat config file.
 
     Attributes:
-        features: How many features to build, or None for every one the
-            selection kept.
-        observations_per_feature: How many observations to keep of each, or
-            None for every one it kept.
+        name: What this build of the dataset is called, which is the directory
+            it is written in and the name it is published under, so one build
+            never overwrites another.
+        share: What share of the features the selection kept to build, from
+            above zero to one, drawn evenly across their classes. A feature is
+            built whole or not at all, with every observation the selection
+            left it.
         instruments: Which instruments to build, as ODE names them.
         seed: The number every draw is made with, so a smaller build is a
             reproducible subset of the full one.
@@ -22,8 +25,8 @@ class Settings:
             reach them, which is what keeps the downloads from racing ahead.
     """
 
-    features: int | None
-    observations_per_feature: int | None
+    name: str
+    share: float
     instruments: tuple[str, ...]
     seed: int
     workers: int

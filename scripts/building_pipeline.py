@@ -28,6 +28,19 @@ BUILD_HANDLER = "scripts.building_pipeline:run_build"
 _DATASET = configs.load().publishes.get("dataset", "dataset")
 
 
+def _published(name: str) -> str:
+    """Return what one build of the dataset is published under.
+
+    Args:
+        name: What the build is called, as its config names it.
+
+    Returns:
+        The artifact name, which carries the build's own so one never
+        overwrites another.
+    """
+    return f"{_DATASET}-{name}"
+
+
 def build(force: bool = False, workers: int | None = None) -> int:
     """Build the dataset the selection asks for, over as much of it as configured.
 
@@ -41,7 +54,9 @@ def build(force: bool = False, workers: int | None = None) -> int:
     choices = settings.load(workers=workers)
     printing = Console()
     started_at = time.monotonic()
-    outcomes = runner.run_build(choices, printing, force=force)
+    outcomes = runner.run_build(
+        choices, printing, paths.dataset_root(choices.name), force=force
+    )
     console.print_summary(outcomes, time.monotonic() - started_at, printing)
     return 1 if any(one.failed for one in outcomes) else 0
 
@@ -63,13 +78,15 @@ def run_build(project, force: bool = False, workers: int | None = None):
             what the selection asked for.
     """
     os.environ[console.PLAIN_LOG_ENV] = "1"
-    print("building the dataset", flush=True)
+    choices = settings.load(workers=workers)
+    print(f"building {choices.share:.0%} of the dataset as {choices.name}", flush=True)
     failed = build(force, workers)
     published = archives.logged(
         project,
-        paths.DATASET_ROOT,
-        _DATASET,
-        "The cropped observations and their index; unpack under data/building/.",
+        paths.dataset_root(choices.name),
+        _published(choices.name),
+        "The cropped observations and their index; unpack under "
+        "data/building/dataset/.",
     )
     if failed:
         raise RuntimeError("the build had failures; the archive holds what finished")

@@ -88,12 +88,13 @@ uv run python scripts/building_pipeline.py          # here
 uv run --group digitalhub python scripts/building_pipeline.py --dh
 ```
 
-`configs/building_runner.yaml` says how much to build. Leave `features` and
-`observations_per_feature` empty for the whole of what the selection kept, or
-cap them for a smaller build. Features are drawn stratified by class and
-observations are spread across the window each feature earned, so a small build
-still spans the classes and the seasons. The same seed and a larger cap gives a
-superset, so a small build is always part of the full one.
+`configs/building_runner.yaml` says how much to build. `share` is what fraction
+of the features the selection kept to build, drawn evenly across their classes,
+and `name` is what that build is called: it is the directory it is written in
+and the name it is published under, so a half build and a whole one sit side by
+side. A feature is built whole, with every observation the selection left it.
+The same seed and a larger share gives a superset, so a small build is always
+part of the larger one.
 
 `ready` holds the downloads to the room they were given, so they cannot race
 ahead of the builds that consume them. A product is deleted once every feature
@@ -218,7 +219,8 @@ the check. What changes from one run to the next is a flag instead.
 scripts/
   analysis_pipeline.py  # Measures what the archives cover, and selects from it
   building_pipeline.py  # Builds the dataset the selection asks for
-  dh_download.sh        # Brings published entities back down
+  dh_download.sh        # Brings the analysis entities back down
+  dh_dataset.sh         # Brings one build of the dataset back down
   dhub/                 # Only what a submitted run needs
     configs.py          # Reads configs/digitalhub.yaml
     archives.py         # Packs what is published, unpacks what is read back

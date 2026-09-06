@@ -13,7 +13,6 @@ from pathlib import Path
 import httpx
 from rich.console import Console
 
-import utils.disk.paths as paths
 from building import console as printing
 from building import planner
 from building.dispatcher import INSTRUMENTS
@@ -28,7 +27,7 @@ from building.preprocessing.common import store
 def run_build(
     settings: Settings,
     console: Console,
-    root: Path = paths.DATASET_ROOT,
+    root: Path,
     *,
     force: bool = False,
 ) -> list[Outcome]:
@@ -37,7 +36,7 @@ def run_build(
     Args:
         settings: The settled choices for the build.
         console: The console to render on.
-        root: The dataset's own root directory.
+        root: The directory this build of the dataset is written in.
         force: Whether to rebuild crops that are already written.
 
     Returns:
@@ -47,7 +46,7 @@ def run_build(
         FileNotFoundError: When no selection has been written to build from.
     """
     with httpx.Client() as ode:
-        plan = planner.build_plan(settings, ode, root, force=force)
+        plan = planner.build_plan(settings, root, ode, force=force)
         printing.describe(plan, settings, console)
         # A download waits on the network and a build waits on the processor, so
         # the two run on pools of their own and neither waits for the other.

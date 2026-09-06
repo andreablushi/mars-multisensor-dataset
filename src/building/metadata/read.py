@@ -15,7 +15,7 @@ from utils.disk import parquet
 
 
 def read_feature_metadata(
-    root: Path = paths.DATASET_ROOT,
+    root: Path,
 ) -> dict[tuple[str, str], FeatureMetadata]:
     """Read what the dataset holds about every feature, keyed by the feature.
 
@@ -36,7 +36,7 @@ def read_feature_metadata(
 
 
 def read_observation_metadata(
-    root: Path = paths.DATASET_ROOT,
+    root: Path,
 ) -> list[ObservationMetadata]:
     """Read what every stored observation is, in the order they were written.
 
