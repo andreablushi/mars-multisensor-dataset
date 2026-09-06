@@ -15,7 +15,6 @@ dependencies = [
     "rich>=14.0.0",
     "shapely>=2.1.2",
     "tifffile>=2026.8.23",
-    "zarr>=3.3.0",
 ]
 
 [build-system]
