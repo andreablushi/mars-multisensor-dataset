@@ -22,7 +22,7 @@ INSIDE = "inside"
 VALID = "valid"
 
 # What the two placing arrays are measured in: degrees from the feature centre,
-# which a reader turns into metres by the radius written beside them and the
+# which a reader turns into metres by the spheroid written beside them and the
 # centre latitude they offset from, or the metres of the polar grid beside them.
 DEGREES = "degrees"
 METRES = "metres"
@@ -109,7 +109,7 @@ def write_sample(
         "centre_lon": frame.centre_lon,
         "centre_lat": frame.centre_lat,
         "position_units": DEGREES if grid is None else METRES,
-        "radius_m": geodesy.RADIUS_M,
+        "radii_m": [geodesy.EQUATORIAL_RADIUS_M, geodesy.POLAR_RADIUS_M],
         "polar": None if grid is None else list(grid),
         "dims": {name: list(axes) for name, axes in along.items()},
         "axes": list(layout.axes),

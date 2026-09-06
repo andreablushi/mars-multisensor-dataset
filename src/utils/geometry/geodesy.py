@@ -6,8 +6,16 @@ import math
 
 import numpy as np
 
-# IAU mean radius for Mars, which every distance here is measured on.
+# IAU mean radius for Mars, which the equal-area projection is built on and
+# which an orbit is measured from the centre of.
 RADIUS_M = 3_389_500.0
+
+# The IAU axes Mars is an oblate spheroid of, which every archive here places a
+# sample against and which a distance along its surface is therefore measured
+# on. A single sphere is right at one latitude alone: the mean radius runs a
+# fifth of a per cent short at the equator and four tenths long at a pole.
+EQUATORIAL_RADIUS_M = 3_396_190.0
+POLAR_RADIUS_M = 3_376_200.0
 
 # A degree of longitude vanishes at a pole, so the correction is floored
 MIN_COSINE = 0.05
@@ -136,12 +144,32 @@ def laea_forward(
     return x, y
 
 
-def haversine_steps(lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
+def local_radius_m(lat: np.ndarray | float) -> np.ndarray:
+    """Return the radius Mars stands at, at one planetocentric latitude.
+
+    Args:
+        lat: The latitude in degrees, or an array of them.
+
+    Returns:
+        The radius in metres, falling from the equatorial axis to the polar one.
+    """
+    phi = np.radians(np.asarray(lat, dtype=float))
+    return (EQUATORIAL_RADIUS_M * POLAR_RADIUS_M) / np.hypot(
+        POLAR_RADIUS_M * np.cos(phi), EQUATORIAL_RADIUS_M * np.sin(phi)
+    )
+
+
+def haversine_steps(
+    lon: np.ndarray, lat: np.ndarray, radius: np.ndarray | float = RADIUS_M
+) -> np.ndarray:
     """Return the great-circle distance between each neighbouring pair of points.
 
     Args:
         lon: The point longitudes in degrees.
         lat: The point latitudes in degrees.
+        radius: The sphere each pair is measured on, one radius for all of them
+            or one per pair, which is how a distance is measured on the
+            spheroid rather than on a sphere standing in for it.
 
     Returns:
         One distance in metres per neighbouring pair, and nothing at all for
@@ -153,7 +181,7 @@ def haversine_steps(lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
         np.sin(np.diff(phi) / 2.0) ** 2
         + np.cos(phi[:-1]) * np.cos(phi[1:]) * np.sin(np.diff(lam) / 2.0) ** 2
     )
-    return 2.0 * RADIUS_M * np.arcsin(np.sqrt(np.clip(hav, 0.0, 1.0)))
+    return 2.0 * radius * np.arcsin(np.sqrt(np.clip(hav, 0.0, 1.0)))
 
 
 def haversine_length(lon: np.ndarray, lat: np.ndarray) -> float:

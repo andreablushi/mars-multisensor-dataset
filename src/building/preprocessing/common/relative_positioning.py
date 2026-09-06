@@ -105,13 +105,16 @@ def metres(
         # A projection's metres are its own, so the ground is measured off the
         # degrees it is inverted to rather than off the offsets themselves.
         lon, lat = degrees(position, frame)
-        north = np.radians(lat - frame.centre_lat) * geodesy.RADIUS_M
+        radius = geodesy.local_radius_m(lat)
+        north = np.radians(lat - frame.centre_lat) * radius
         east = np.radians(geodesy.normalise_longitude(lon - frame.centre_lon))
-        return north, east * geodesy.RADIUS_M * np.cos(np.radians(lat))
-    stretch = np.cos(np.radians(frame.centre_lat + position.north))
-    north = np.radians(position.north) * geodesy.RADIUS_M
-    east = np.radians(position.east) * geodesy.RADIUS_M
-    return north, east * (stretch[:, None] if position.separable else stretch)
+        return north, east * radius * np.cos(np.radians(lat))
+    lat = frame.centre_lat + position.north
+    radius = geodesy.local_radius_m(lat)
+    reach = radius * np.cos(np.radians(lat))
+    north = np.radians(position.north) * radius
+    east = np.radians(position.east)
+    return north, east * (reach[:, None] if position.separable else reach)
 
 
 def ground_sample_m(
@@ -173,6 +176,9 @@ def ground_sample_m(
             )
             lon, lat = degrees(position, frame, taken)
             line = (np.ravel(lon), np.ravel(lat))
-        walk = geodesy.haversine_steps(*line)
+        # The spheroid is measured on where each pair of samples stands, since
+        # one sphere for all of them is right at a single latitude alone.
+        middles = (line[1][:-1] + line[1][1:]) / 2.0
+        walk = geodesy.haversine_steps(*line, geodesy.local_radius_m(middles))
         steps.append(float(np.median(walk)) if walk.size else float("nan"))
     return tuple(steps)
