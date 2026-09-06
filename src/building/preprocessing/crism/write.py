@@ -8,12 +8,11 @@ import utils.disk.paths as paths
 from building.configs import crism as configs
 from building.metadata.models.feature import FeatureFrame
 from building.preprocessing.common import store
-from building.preprocessing.common.models.crop import Crop
 from building.preprocessing.crism.models.sample import CrismSample
 
 
 def write(
-    held: Crop[CrismSample], frame: FeatureFrame, root: Path = paths.DATASET_ROOT
+    held: CrismSample, frame: FeatureFrame, root: Path = paths.DATASET_ROOT
 ) -> Path:
     """Write one cropped observation down, its cube and what each band holds.
 
@@ -26,15 +25,15 @@ def write(
         root: The dataset's own root directory.
 
     Returns:
-        The directory the crop was written in.
+        The directory it was written in.
     """
     _, sample, band = configs.LAYOUT.dims
-    return store.write_crop(
+    return store.write_sample(
         held,
         {
-            configs.LAYOUT.measurement: (held.sample.cube, configs.LAYOUT.dims),
-            "wavelengths": (held.sample.wavelengths, (sample, band)),
-            "columns": (held.sample.columns, (sample,)),
+            configs.LAYOUT.measurement: (held.cube, configs.LAYOUT.dims),
+            "wavelengths": (held.wavelengths, (sample, band)),
+            "columns": (held.columns, (sample,)),
         },
         configs.LAYOUT,
         frame,

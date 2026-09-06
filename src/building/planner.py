@@ -19,7 +19,7 @@ from building.metadata import frame as frames
 from building.metadata.models.feature import FeatureFrame
 from building.models.job import Job, Plan
 from building.models.settings import Settings
-from building.preprocessing.common.store import crop_path
+from building.preprocessing.common.store import sample_path
 
 
 def build_plan(
@@ -80,7 +80,7 @@ def build_plan(
         left = [
             frame
             for frame in held
-            if force or not crop_path(frame, instrument, identifier, root).exists()
+            if force or not sample_path(frame, instrument, identifier, root).exists()
         ]
         skipped += len(held) - len(left)
         if left:

@@ -1,4 +1,4 @@
-"""Both detectors of one observation as a single cube."""
+"""One CRISM observation cut to the feature it was kept for."""
 
 from __future__ import annotations
 
@@ -6,50 +6,20 @@ from dataclasses import dataclass
 
 import numpy as np
 
-# Which DDR backplane places a pixel. The other twelve are dropped: three carry
-# the null sentinel in every pixel, four barely vary across a scan, and the rest
-# are MOLA resampled onto this grid, which the MOLA tile itself holds better.
-BACKPLANES = {"latitude": 3, "longitude": 4}
+from building.preprocessing.common.models.sample import Sample
 
 
-@dataclass(frozen=True, slots=True)
-class CrismSample:
-    """One observation with its two detectors joined.
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CrismSample(Sample):
+    """The spectra one observation measured over one feature.
 
     Attributes:
-        identifier: The observation id.
-        cube: Lines by columns by bands, bands ascending in wavelength, holding
-            only what both detectors kept.
+        cube: Lines by columns by bands, bands ascending in wavelength.
         wavelengths: The centre wavelength of every column and band, in that
             same order.
-        geometry: The backplanes on the same grid, as lines by columns by 14.
         columns: Which of the original 64 samples these columns are.
     """
 
-    identifier: str
     cube: np.ndarray
     wavelengths: np.ndarray
-    geometry: np.ndarray
     columns: np.ndarray
-
-    # A pushbroom swath bends as the spacecraft flies, so every pixel carries
-    # the pair its own backplanes give it.
-    separable = False
-
-    @property
-    def latitude(self) -> np.ndarray:
-        """Return the latitude every pixel was measured at.
-
-        Returns:
-            Lines by columns, in degrees.
-        """
-        return self.geometry[:, :, BACKPLANES["latitude"]]
-
-    @property
-    def longitude(self) -> np.ndarray:
-        """Return the longitude every pixel was measured at.
-
-        Returns:
-            Lines by columns, in degrees.
-        """
-        return self.geometry[:, :, BACKPLANES["longitude"]]

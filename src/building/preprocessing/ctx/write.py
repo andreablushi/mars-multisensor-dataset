@@ -8,12 +8,11 @@ import utils.disk.paths as paths
 from building.configs import ctx as configs
 from building.metadata.models.feature import FeatureFrame
 from building.preprocessing.common import store
-from building.preprocessing.common.models.crop import Crop
 from building.preprocessing.ctx.models.sample import CtxSample
 
 
 def write(
-    held: Crop[CtxSample], frame: FeatureFrame, root: Path = paths.DATASET_ROOT
+    held: CtxSample, frame: FeatureFrame, root: Path = paths.DATASET_ROOT
 ) -> Path:
     """Write one cropped scan down, its brightness and the ground it swept.
 
@@ -23,13 +22,13 @@ def write(
         root: The dataset's own root directory.
 
     Returns:
-        The directory the crop was written in.
+        The directory it was written in.
     """
-    return store.write_crop(
+    return store.write_sample(
         held,
         {
-            configs.LAYOUT.measurement: (held.sample.image, configs.LAYOUT.dims),
-            "blank": (held.sample.blank, configs.LAYOUT.dims),
+            configs.LAYOUT.measurement: (held.image, configs.LAYOUT.dims),
+            "blank": (held.blank, configs.LAYOUT.dims),
         },
         configs.LAYOUT,
         frame,

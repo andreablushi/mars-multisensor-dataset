@@ -5,10 +5,10 @@ from __future__ import annotations
 from building.common.pds import images
 from building.configs import mola as configs
 from building.preprocessing.mola import projection
-from building.preprocessing.mola.models.sample import MolaSample
+from building.preprocessing.mola.models.observation import MolaObservation
 
 
-def read(identifier: str) -> MolaSample:
+def read_observation(identifier: str) -> MolaObservation:
     """Read every plane one tile was downloaded as onto the grid they share.
 
     Args:
@@ -16,8 +16,8 @@ def read(identifier: str) -> MolaSample:
             `download.fetch` puts them in.
 
     Returns:
-        The sample, its two planes on the one grid their labels project them
-        onto.
+        The observation, its two planes on the one grid their labels project
+        them onto.
 
     Raises:
         FileNotFoundError: When either plane or its label is missing.
@@ -32,12 +32,6 @@ def read(identifier: str) -> MolaSample:
         )
     # Both planes are written on the one grid, so the height's places them all.
     height, label = planes[configs.TOPOGRAPHY]
-    latitude, longitude = projection.load(label)
-    return MolaSample(
-        identifier,
-        height,
-        planes[configs.COUNTS][0],
-        latitude,
-        longitude,
-        configs.resolution(identifier),
+    return MolaObservation(
+        identifier, height, planes[configs.COUNTS][0], *projection.load(label)
     )

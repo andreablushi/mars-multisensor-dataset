@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from building.preprocessing.sharad.models.sample import RADII, SharadSample
+from building.preprocessing.sharad.models.observation import RADII
+from building.preprocessing.sharad.models.sample import SharadSample
 
 # The archive writes both radii in kilometres.
 KM = 1000.0
@@ -17,7 +18,7 @@ def altitude_m(sample: SharadSample) -> tuple[float, float]:
     that conversion needs beside the track that would be converted.
 
     Args:
-        sample: The radargram holding only the traces its geometry places.
+        sample: The track cut to the feature it was kept for.
 
     Returns:
         The lowest and the highest height above the ground in metres, over the

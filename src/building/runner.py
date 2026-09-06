@@ -23,8 +23,6 @@ from building.metadata import write as metadata
 from building.metadata.models.observation import ObservationRecord
 from building.models.job import Job, Outcome, Plan
 from building.models.settings import Settings
-from building.preprocessing.common.crop import crop
-from building.preprocessing.common.relative_positioning import relative_position
 
 
 def run_build(
@@ -180,15 +178,12 @@ def _outcomes(
 def build_product(job: Job, root: Path = paths.DATASET_ROOT) -> Outcome:
     """Cut one downloaded product to every feature that kept it, and write each.
 
-    The product is read and cleaned once however many features want it, which is
-    what makes the product rather than the feature the unit of work.
-
     Args:
         job: The product to build, and the features to cut it to.
         root: The dataset's own root directory.
 
     Returns:
-        The outcome, holding the record of every crop written, and the error
+        The outcome, holding the record of every sample written, and the error
         that stopped it where one did after some were already on disk.
 
     Raises:
@@ -196,15 +191,17 @@ def build_product(job: Job, root: Path = paths.DATASET_ROOT) -> Outcome:
             hands back for the runner to collect as this job's own failure.
     """
     steps = INSTRUMENTS[job.instrument]
-    sample = steps.sample(job.identifier)
+    # Read and cleaned once however many features want it, which is what makes
+    # the product rather than the feature the unit of work.
+    observation = steps.read_observation(job.identifier)
     written: list[ObservationRecord] = []
     missed = 0
     for frame in job.frames:
         try:
-            held = crop(sample, steps.cut, relative_position(sample, frame), frame)
+            held = steps.crop(observation, frame)
         except Exception as error:  # noqa: BLE001
             # What is already on disk is handed back, so a later failure never
-            # leaves a written crop out of the index.
+            # leaves a written sample out of the index.
             return Outcome(job, records=tuple(written), error=error)
         # A product reaching none of a feature is no failure: the coverage it
         # was kept for is a box overlap, and a crop can still come out empty.
@@ -217,10 +214,9 @@ def build_product(job: Job, root: Path = paths.DATASET_ROOT) -> Outcome:
                 held,
                 frame,
                 steps.layout,
-                job.identifier,
                 str(path.relative_to(root)),
                 t_start=job.t_start,
-                altitude=steps.altitude(held.sample) if steps.altitude else None,
+                altitude=steps.altitude(held) if steps.altitude else None,
             )
         )
     return Outcome(job, records=tuple(written), missed=missed)

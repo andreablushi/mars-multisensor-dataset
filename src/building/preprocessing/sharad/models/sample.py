@@ -1,4 +1,4 @@
-"""One SHARAD radargram with its geometry joined onto it."""
+"""One SHARAD track cut to the feature it was kept for."""
 
 from __future__ import annotations
 
@@ -6,49 +6,21 @@ from dataclasses import dataclass
 
 import numpy as np
 
-# Which geometry field places a trace.
-PLACEMENT = {"latitude": "LATITUDE", "longitude": "LONGITUDE"}
-
-# Which fields the spacecraft's height above the ground is read between, in km,
-# since that is what the delay axis is turned into a depth through.
-RADII = {"ground": "MARS RADIUS", "spacecraft": "SPACECRAFT RADIUS"}
+from building.preprocessing.common.models.sample import Sample
 
 
-@dataclass(frozen=True, slots=True)
-class SharadSample:
-    """One track holding only the traces its geometry places.
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SharadSample(Sample):
+    """The echoes one track sounded over one feature.
 
     Attributes:
-        identifier: The observation id.
-        power: Delay samples by traces, holding only the placed traces.
-        geometry: One row per kept trace, in the same order.
+        power: Delay samples by traces, holding only the traces that are left.
+        geometry: One row per kept trace, in the same order, which the altitude
+            the delay axis is read through is measured off.
         traces: Which of the original radargram columns these traces are,
             counted from zero.
     """
 
-    identifier: str
     power: np.ndarray
     geometry: np.recarray
     traces: np.ndarray
-
-    # A sounder walks a line rather than sweeping ground, so every trace carries
-    # the pair its own geometry sounded it at.
-    separable = False
-
-    @property
-    def latitude(self) -> np.ndarray:
-        """Return the latitude every kept trace was sounded at.
-
-        Returns:
-            One per trace, in degrees.
-        """
-        return self.geometry[PLACEMENT["latitude"]]
-
-    @property
-    def longitude(self) -> np.ndarray:
-        """Return the longitude every kept trace was sounded at.
-
-        Returns:
-            One per trace, in degrees.
-        """
-        return self.geometry[PLACEMENT["longitude"]]

@@ -10,7 +10,7 @@ import zarr
 import utils.disk.paths as paths
 from building.common.layout import Layout
 from building.metadata.models.feature import FeatureFrame
-from building.preprocessing.common.models.crop import Crop
+from building.preprocessing.common.models.sample import Sample
 from utils.disk.slugify import slugify
 
 # What the arrays placing a crop are called, and what the mask beside them is.
@@ -29,19 +29,19 @@ CHUNK = 1 << 22
 Arrays = dict[str, tuple[np.ndarray, tuple[str, ...]]]
 
 
-def crop_path(
+def sample_path(
     frame: FeatureFrame, instrument: str, identifier: str, root: Path
 ) -> Path:
-    """Return where one crop's arrays belong.
+    """Return where one cropped observation's arrays belong.
 
     Args:
-        frame: The feature the crop was cut to.
+        frame: The feature it was cut to.
         instrument: The instrument that took it, as ODE names it.
         identifier: What that instrument was asked for.
         root: The dataset's own root directory.
 
     Returns:
-        The directory the crop is written in, which need not exist.
+        The directory it is written in, which need not exist.
     """
     return (
         root
@@ -52,25 +52,25 @@ def crop_path(
     )
 
 
-def write_crop(
-    held: Crop,
+def write_sample(
+    held: Sample,
     arrays: Arrays,
     layout: Layout,
     frame: FeatureFrame,
     root: Path = paths.DATASET_ROOT,
 ) -> Path:
-    """Write one crop's arrays down, each saying which axes it runs along.
+    """Write one sample's arrays down, each saying which axes it runs along.
 
     Args:
-        held: The crop, whose position and mask are written beside the values.
+        held: The sample, whose position and mask are written beside the values.
         arrays: What the instrument publishes, keyed by the name to write it as,
             each with the names of its own axes.
         layout: How that instrument's arrays are laid out.
-        frame: The feature the crop was cut to.
+        frame: The feature it was cut to.
         root: The dataset's own root directory.
 
     Returns:
-        The directory the crop was written in.
+        The directory it was written in.
     """
     ground = layout.ground
     # A separable position holds one ground axis each, and any other a value
@@ -85,8 +85,8 @@ def write_crop(
     if held.inside is not None:
         placed[INSIDE] = (held.inside, ground)
 
-    identifier = held.sample.identifier
-    path = crop_path(frame, layout.instrument, identifier, root)
+    identifier = held.identifier
+    path = sample_path(frame, layout.instrument, identifier, root)
     path.parent.mkdir(parents=True, exist_ok=True)
     group = zarr.open_group(store=path, mode="w")
     for name, (values, along) in placed.items():
@@ -115,7 +115,7 @@ def _written(
     """Write one array into the group, chunked so a patch is read on its own.
 
     Args:
-        group: The crop's group.
+        group: The sample's group.
         name: What to call the array.
         values: What to write.
         dims: What each of its axes is called.

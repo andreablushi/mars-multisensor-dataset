@@ -8,12 +8,11 @@ import utils.disk.paths as paths
 from building.configs import sharad as configs
 from building.metadata.models.feature import FeatureFrame
 from building.preprocessing.common import store
-from building.preprocessing.common.models.crop import Crop
 from building.preprocessing.sharad.models.sample import SharadSample
 
 
 def write(
-    held: Crop[SharadSample], frame: FeatureFrame, root: Path = paths.DATASET_ROOT
+    held: SharadSample, frame: FeatureFrame, root: Path = paths.DATASET_ROOT
 ) -> Path:
     """Write one cropped track down, its echoes and which columns they were.
 
@@ -23,14 +22,14 @@ def write(
         root: The dataset's own root directory.
 
     Returns:
-        The directory the crop was written in.
+        The directory it was written in.
     """
     (trace,) = configs.LAYOUT.ground
-    return store.write_crop(
+    return store.write_sample(
         held,
         {
-            configs.LAYOUT.measurement: (held.sample.power, configs.LAYOUT.dims),
-            "traces": (held.sample.traces, (trace,)),
+            configs.LAYOUT.measurement: (held.power, configs.LAYOUT.dims),
+            "traces": (held.traces, (trace,)),
         },
         configs.LAYOUT,
         frame,

@@ -7,10 +7,10 @@ import tifffile
 from building.common.pds import labels
 from building.configs import ctx as configs
 from building.preprocessing.ctx import projection
-from building.preprocessing.ctx.models.sample import CtxSample
+from building.preprocessing.ctx.models.observation import CtxObservation
 
 
-def read(identifier: str) -> CtxSample:
+def read_observation(identifier: str) -> CtxObservation:
     """Read one scan and place it on the grid its label projects it onto.
 
     Args:
@@ -18,8 +18,7 @@ def read(identifier: str) -> CtxSample:
             that `download.fetch` puts them in.
 
     Returns:
-        The sample, its image on that grid and the pixels it never measured
-        marked.
+        The observation, its image on that grid.
 
     Raises:
         FileNotFoundError: When the image or its label is missing.
@@ -32,5 +31,4 @@ def read(identifier: str) -> CtxSample:
     image = tifffile.imread(files[configs.SUFFIXES[configs.IMAGE]])
     if image.ndim != 2:
         raise ValueError(f"{identifier} holds a {image.ndim} dimensional image.")
-    latitude, longitude = projection.load(label)
-    return CtxSample(identifier, image, latitude, longitude, projection.pixel(label))
+    return CtxObservation(identifier, image, *projection.load(label))

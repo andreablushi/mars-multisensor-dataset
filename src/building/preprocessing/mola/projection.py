@@ -26,7 +26,8 @@ def load(label: dict[str, str]) -> tuple[np.ndarray, np.ndarray]:
     """
     if label["MAP_PROJECTION_TYPE"] != PROJECTION:
         raise ValueError(f"Cannot place a {label['MAP_PROJECTION_TYPE']} grid.")
-    step = pixel(label)
+    # How many degrees one pixel spans, the same in both directions.
+    step = 1.0 / float(label["MAP_RESOLUTION"])
     # The projection counts pixels from one, from the offset it puts its origin at.
     north = (
         float(label["CENTER_LATITUDE"])
@@ -40,15 +41,3 @@ def load(label: dict[str, str]) -> tuple[np.ndarray, np.ndarray]:
         north - np.arange(int(label["LINES"])) * step,
         west + np.arange(int(label["LINE_SAMPLES"])) * step,
     )
-
-
-def pixel(label: dict[str, str]) -> float:
-    """Return how many degrees one pixel of a tile spans.
-
-    Args:
-        label: The parsed label of one plane.
-
-    Returns:
-        The width of a pixel in degrees, the same in both directions.
-    """
-    return 1.0 / float(label["MAP_RESOLUTION"])

@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from building.common.pds import images, tables
 from building.configs import sharad as configs
-from building.preprocessing.sharad.models.sample import SharadSample
+from building.preprocessing.sharad.models.observation import SharadObservation
 
 # The field the geometry names each radargram column in, counted from one.
 COLUMN_FIELD = "RADARGRAM COLUMN"
 
 
-def read(identifier: str) -> SharadSample:
+def read_observation(identifier: str) -> SharadObservation:
     """Read one radargram and join it to the geometry it was measured at.
 
     Args:
@@ -18,8 +18,8 @@ def read(identifier: str) -> SharadSample:
             that `download.fetch` puts them in.
 
     Returns:
-        The sample holding only the traces the geometry places, in the order
-        the radargram stores them.
+        The observation holding only the traces the geometry places, in the
+        order the radargram stores them.
 
     Raises:
         FileNotFoundError: When either product or its label is missing.
@@ -43,4 +43,4 @@ def read(identifier: str) -> SharadSample:
     )[0]
     # The geometry counts columns from one, and the radargram from zero.
     traces = geometry[COLUMN_FIELD].astype("i8") - 1
-    return SharadSample(identifier, power[:, traces], geometry, traces)
+    return SharadObservation(identifier, power[:, traces], geometry, traces)

@@ -19,12 +19,12 @@ from building.preprocessing.crism.correction import (
     merge,
     ratio,
 )
-from building.preprocessing.crism.models.observation import CrismObservation, Detector
-from building.preprocessing.crism.models.sample import CrismSample
+from building.preprocessing.crism.models.detector import Detector
+from building.preprocessing.crism.models.observation import CrismObservation
 
 
-def read(identifier: str) -> CrismObservation:
-    """Read every image one observation was downloaded as into an observation.
+def read_detectors(identifier: str) -> dict[str, Detector]:
+    """Read every image one observation was downloaded as, keyed by detector.
 
     Args:
         identifier: The observation, whose files must already be in the cache
@@ -32,8 +32,8 @@ def read(identifier: str) -> CrismObservation:
             labels names included.
 
     Returns:
-        The observation, both detectors and both geometries loaded, each cube
-        ordered by the wavelength file its own label was calibrated against.
+        Both detectors and both geometries, each cube ordered by the wavelength
+        file its own label was calibrated against.
 
     Raises:
         FileNotFoundError: When any of the four images, their labels, or a
@@ -63,10 +63,10 @@ def read(identifier: str) -> CrismObservation:
         cube, table = bands_calibration.calibrate(cube, wavelengths)
         # Pair each detector's own cube with the geometry beside it.
         detectors[name] = Detector(name, cube, label, table, planes, geometry_label)
-    return CrismObservation(identifier, detectors)
+    return detectors
 
 
-def clean(identifier: str) -> CrismObservation:
+def clean_detectors(identifier: str) -> dict[str, Detector]:
     """Read one observation and refuse everything in it that is not measured.
 
     Args:
@@ -74,16 +74,15 @@ def clean(identifier: str) -> CrismObservation:
             that `download.fetch` puts them in.
 
     Returns:
-        The observation with each detector's cube filled where it was not
-        measured and its mask set beside it.
+        Both detectors, each cube filled where it was not measured and its mask
+        set beside it.
 
     Raises:
         FileNotFoundError: When any file the observation needs is missing.
         ValueError: When a window keeps no band of a cube.
     """
-    observation = read(identifier)
-    detectors = {}
-    for name, detector in observation.detectors.items():
+    cleaned = {}
+    for name, detector in read_detectors(identifier).items():
         cube, mask = masking.bad_pixels(
             detector.cube, detector.wavelengths, detector.name
         )
@@ -102,11 +101,11 @@ def clean(identifier: str) -> CrismObservation:
             block, bands_calibration.centres(detector.wavelengths)[kept]
         )
         cube[:, :, kept] = block
-        detectors[name] = replace(detector, cube=cube, mask=mask)
-    return CrismObservation(identifier, detectors)
+        cleaned[name] = replace(detector, cube=cube, mask=mask)
+    return cleaned
 
 
-def read_sample(identifier: str) -> CrismSample:
+def read_observation(identifier: str) -> CrismObservation:
     """Read one observation, clean it, and join its two detectors into one cube.
 
     Args:
@@ -114,10 +113,10 @@ def read_sample(identifier: str) -> CrismSample:
             that `download.fetch` puts them in.
 
     Returns:
-        The joined sample, its bands ascending in wavelength.
+        The observation, its bands ascending in wavelength.
 
     Raises:
         FileNotFoundError: When any file the observation needs is missing.
         ValueError: When a window keeps no band of a cube.
     """
-    return merge.merge_detectors(clean(identifier))
+    return merge.merge_detectors(identifier, clean_detectors(identifier))
