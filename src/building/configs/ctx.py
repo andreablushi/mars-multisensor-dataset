@@ -9,13 +9,15 @@ from building.common.naming import Naming
 from building.common.product_cache import ProductCache
 from utils.disk import paths
 
-# The two products one scan is downloaded as, the pixels and what places them.
-IMAGE = "image"
+# The two products one scan is downloaded as, what places the pixels and the
+# pixels. The label comes first, since which projection ASU wrote the scan in
+# is found by asking for its label, and a wrong guess costs the smaller file.
 LABEL = "label"
-KINDS = (IMAGE, LABEL)
+IMAGE = "image"
+KINDS = (LABEL, IMAGE)
 
 # What each kind is suffixed with once it is on disk.
-SUFFIXES = {IMAGE: ".tiff", LABEL: ".isis.hdr"}
+SUFFIXES = {LABEL: ".isis.hdr", IMAGE: ".tiff"}
 
 # How a scan is named, for its mission phase, orbit, latitude and where it
 # looked.

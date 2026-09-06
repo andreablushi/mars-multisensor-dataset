@@ -48,21 +48,66 @@ def relative_position(observation: Positioned, frame: FeatureFrame) -> RelativeP
     )
 
 
+def degrees(
+    position: RelativePosition, frame: FeatureFrame, taken: tuple = ()
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return the longitude and latitude the samples of one position sit at.
+
+    Args:
+        position: Where the samples sit, in degrees from the feature centre or
+            in the metres of the projection it was placed on.
+        frame: The feature's local frame, which those offsets are relative to.
+        taken: Which of each ground axis to read, outermost first, empty for
+            all of them. A projected grid is crossed to be read, so this keeps
+            the crossing to the part that is wanted.
+
+    Returns:
+        The longitudes and latitudes in degrees. They hold one axis each where
+        the position is separable degrees, and are crossed over both axes where
+        it is separable metres on a projection.
+    """
+    if position.separable:
+        down = position.north[taken[0]] if taken else position.north
+        across = position.east[taken[1]] if taken else position.east
+    else:
+        down = position.north[taken] if taken else position.north
+        across = position.east[taken] if taken else position.east
+    if position.polar is None:
+        return frame.centre_lon + across, frame.centre_lat + down
+    # The offsets stand from the feature's own centre, so where that centre
+    # falls on the grid is worked out again rather than carried beside them.
+    centre_x, centre_y = geodesy.stereographic_forward(
+        frame.centre_lon, frame.centre_lat, *position.polar
+    )
+    x, y = across + centre_x, down + centre_y
+    if position.separable:
+        x, y = x[None, :], y[:, None]
+    return geodesy.stereographic_inverse(x, y, *position.polar)
+
+
 def metres(
     position: RelativePosition, frame: FeatureFrame
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return where every sample sits, in metres north and east of its feature.
 
     Args:
-        position: Where the samples sit, in degrees from the feature centre.
-        frame: The feature's local frame, which those degrees are relative to.
+        position: Where the samples sit, in degrees from the feature centre or
+            in the metres of the projection it was placed on.
+        frame: The feature's local frame, which those offsets are relative to.
 
     Returns:
-        The northing and the easting in metres. A separable position holds one
-        ground axis each and its northing stays on the one it was held over,
-        while its easting is spread over both, since a degree of longitude
-        covers less ground the further north it is measured.
+        The northing and the easting in metres. A separable position in degrees
+        keeps its northing on the one axis it was held over and spreads its
+        easting over both, since a degree of longitude covers less ground the
+        further north it is measured; every other position is crossed already.
     """
+    if position.polar is not None:
+        # A projection's metres are its own, so the ground is measured off the
+        # degrees it is inverted to rather than off the offsets themselves.
+        lon, lat = degrees(position, frame)
+        north = np.radians(lat - frame.centre_lat) * geodesy.RADIUS_M
+        east = np.radians(geodesy.normalise_longitude(lon - frame.centre_lon))
+        return north, east * geodesy.RADIUS_M * np.cos(np.radians(lat))
     stretch = np.cos(np.radians(frame.centre_lat + position.north))
     north = np.radians(position.north) * geodesy.RADIUS_M
     east = np.radians(position.east) * geodesy.RADIUS_M
@@ -75,17 +120,18 @@ def ground_sample_m(
     """Return how much ground one sample spans, along each of its ground axes.
 
     Args:
-        position: Where the samples sit, in degrees from the feature centre.
+        position: Where the samples sit, in degrees from the feature centre or
+            in the metres of the projection it was placed on.
         frame: The feature's local frame, which the offsets are relative to.
 
     Returns:
         The median great-circle distance in metres between samples neighbouring
         along each ground axis, in the order those axes run, and not a number
         for an axis holding a single sample. A map raster near a pole is far
-        finer across than along, so one figure for both would say neither.
+        finer across than along, so one figure for both would say neither, and
+        a projection's own metres are not the ground's, so both are measured
+        off the degrees rather than read from the offsets.
     """
-    lat = frame.centre_lat + position.north
-    lon = frame.centre_lon + position.east
 
     def middle(length: int) -> slice:
         """Return at most MEASURED samples from the middle of one axis.
@@ -100,11 +146,18 @@ def ground_sample_m(
         start = (length - kept) // 2
         return slice(start, start + kept)
 
+    plain = position.separable and position.polar is None
+    sizes = (
+        (position.north.size, position.east.size)
+        if position.separable
+        else position.north.shape
+    )
     steps: list[float] = []
     for axis in range(position.ground_axes):
-        if position.separable:
+        if plain:
             # One axis holds every line's latitude and the other every sample's
             # longitude, so the walked one is read across the middle of the other.
+            lon, lat = degrees(position, frame)
             if axis == 0:
                 walked = lat[middle(lat.size)]
                 line = (np.full(walked.size, lon[lon.size // 2]), walked)
@@ -112,11 +165,14 @@ def ground_sample_m(
                 walked = lon[middle(lon.size)]
                 line = (walked, np.full(walked.size, lat[lat.size // 2]))
         else:
+            # Only the one line is crossed, so a projected grid is never held
+            # whole to measure two steps across it.
             taken = tuple(
                 middle(size) if held == axis else slice(size // 2, size // 2 + 1)
-                for held, size in enumerate(lat.shape)
+                for held, size in enumerate(sizes)
             )
-            line = (np.ravel(lon[taken]), np.ravel(lat[taken]))
+            lon, lat = degrees(position, frame, taken)
+            line = (np.ravel(lon), np.ravel(lat))
         walk = geodesy.haversine_steps(*line)
         steps.append(float(np.median(walk)) if walk.size else float("nan"))
     return tuple(steps)

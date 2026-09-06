@@ -21,9 +21,11 @@ EAST = "east"
 INSIDE = "inside"
 VALID = "valid"
 
-# What the two placing arrays are measured in, which a reader turns into metres
-# by the radius written beside them and the centre latitude they offset from.
-POSITION_UNITS = "degrees"
+# What the two placing arrays are measured in: degrees from the feature centre,
+# which a reader turns into metres by the radius written beside them and the
+# centre latitude they offset from, or the metres of the polar grid beside them.
+DEGREES = "degrees"
+METRES = "metres"
 
 # What the crop is described by, beside the arrays it holds: what each array's
 # own axes are called and which of them are ground, where the feature it was cut
@@ -96,6 +98,7 @@ def write_sample(
             along[name] = ground
 
     path = sample_path(frame, layout.instrument, held.identifier, root)
+    grid = held.position.polar
     described = {
         "instrument": layout.instrument,
         "identifier": held.identifier,
@@ -105,8 +108,9 @@ def write_sample(
         "separable": held.position.separable,
         "centre_lon": frame.centre_lon,
         "centre_lat": frame.centre_lat,
-        "position_units": POSITION_UNITS,
+        "position_units": DEGREES if grid is None else METRES,
         "radius_m": geodesy.RADIUS_M,
+        "polar": None if grid is None else list(grid),
         "dims": {name: list(axes) for name, axes in along.items()},
         "axes": list(layout.axes),
         "ground": list(ground),

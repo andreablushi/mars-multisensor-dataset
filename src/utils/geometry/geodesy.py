@@ -228,3 +228,56 @@ def laea_inverse(
     return normalise_longitude(np.degrees(lon)), np.degrees(
         np.where(rho == 0.0, phi0, lat)
     )
+
+
+def stereographic_forward(
+    lon: np.ndarray | float,
+    lat: np.ndarray | float,
+    centre_lon: float,
+    north: bool,
+    radius: float = RADIUS_M,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Project lon/lat degrees into polar stereographic metres.
+
+    Args:
+        lon: The longitudes in degrees.
+        lat: The latitudes in degrees.
+        centre_lon: The longitude the projection is centred on, in degrees.
+        north: Whether it is centred on the north pole rather than the south.
+        radius: The sphere the projection is built on, in metres.
+
+    Returns:
+        The projected eastings and northings in metres.
+    """
+    lam = np.radians(np.asarray(lon, dtype=float) - centre_lon)
+    phi = np.radians(np.asarray(lat, dtype=float))
+    quarter = math.pi / 4.0
+    rho = 2.0 * radius * np.tan(quarter - (phi if north else -phi) / 2.0)
+    return rho * np.sin(lam), (-1.0 if north else 1.0) * rho * np.cos(lam)
+
+
+def stereographic_inverse(
+    x: np.ndarray | float,
+    y: np.ndarray | float,
+    centre_lon: float,
+    north: bool,
+    radius: float = RADIUS_M,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Turn polar stereographic metres back into lon/lat degrees.
+
+    Args:
+        x: The projected eastings in metres.
+        y: The projected northings in metres.
+        centre_lon: The longitude the projection is centred on, in degrees.
+        north: Whether it is centred on the north pole rather than the south.
+        radius: The sphere the projection is built on, in metres.
+
+    Returns:
+        The longitudes in -180 to 180 degrees and the latitudes in degrees.
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    angle = 2.0 * np.arctan2(np.hypot(x, y), 2.0 * radius)
+    lat = np.degrees(math.pi / 2.0 - angle) * (1.0 if north else -1.0)
+    lon = centre_lon + np.degrees(np.arctan2(x, -y if north else y))
+    return normalise_longitude(lon), lat
