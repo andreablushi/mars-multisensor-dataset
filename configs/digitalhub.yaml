@@ -14,11 +14,20 @@ image_extras:
   - digitalhub>=0.15.6,<0.16
   - pandas
 
-# What the platform gives a job. The cores size the pools inside it too, so
-# leave cpu blank to run the workers the analysis runner config asks for.
-cpu:
-memory: 32Gi
-disk: 64Gi
+# What the platform gives each half, which asks for what that half is held up by.
+resources:
+  pipeline:
+    cpu: 16
+    memory: 32Gi
+    disk: 64Gi
+  stats:
+    cpu: 16
+    memory: 32Gi
+    disk: 64Gi
+  build:
+    cpu: 32
+    memory: 64Gi
+    disk: 500Gi
 
 # The function each run is registered as: the whole pipeline, or the selection
 # alone. The project scopes them already, so a name carries no prefix.

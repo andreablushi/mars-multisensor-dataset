@@ -116,7 +116,7 @@ def main() -> int:
         from dhub import submit
 
         return submit.submitted(
-            "build", BUILD_HANDLER, arguments.ref, force=arguments.force
+            "build", BUILD_HANDLER, arguments.ref, "cores", force=arguments.force
         )
     return build(arguments.force)
 
