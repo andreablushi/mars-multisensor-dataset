@@ -1,37 +1,39 @@
-"""Writing the metadata down: where each feature is, and what was taken of it."""
+"""Writing the metadata down: what the dataset is, and what was taken of it."""
 
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
 from pathlib import Path
 
 import utils.disk.paths as paths
-from building.metadata.models.feature import FeatureFrame
-from building.metadata.models.observation import ObservationRecord
+from building.metadata import dataset
+from building.metadata import feature as features
+from building.metadata import observation as records
+from building.metadata.feature import FeatureMetadata
+from building.metadata.observation import ObservationMetadata
 from utils.disk import parquet
-
-FRAMES = parquet.schema_of(FeatureFrame)
-RECORDS = parquet.schema_of(ObservationRecord)
 
 
 def write_metadata(
-    frames: Sequence[FeatureFrame],
-    records: Sequence[ObservationRecord],
+    held: Sequence[FeatureMetadata],
+    taken: Sequence[ObservationMetadata],
+    instruments: tuple[str, ...],
     root: Path = paths.DATASET_ROOT,
-) -> tuple[Path, Path]:
-    """Write every feature's frame down, and every observation taken of them.
+) -> None:
+    """Write down what the dataset is, every feature in it, and every observation.
 
     Args:
-        frames: One frame per feature, in the order to write them.
-        records: One record per feature and observation, in the same manner.
-        root: The directory the two files are written in, made when missing.
+        held: One row per feature, in the order to write them.
+        taken: One record per feature and observation, in the same manner.
+        instruments: The instruments the build covered.
+        root: The directory the files are written in, made when missing.
 
     Returns:
-        The frames file and the records file, in that order.
+        None.
     """
     root.mkdir(parents=True, exist_ok=True)
-    frames_path = root / paths.FEATURE_FRAMES_NAME
-    records_path = root / paths.OBSERVATION_RECORDS_NAME
-    parquet.write(frames, FRAMES, frames_path)
-    parquet.write(records, RECORDS, records_path)
-    return frames_path, records_path
+    parquet.write(held, features.SCHEMA, root / paths.FEATURE_METADATA_NAME)
+    parquet.write(taken, records.SCHEMA, root / paths.OBSERVATION_METADATA_NAME)
+    manifest = dataset.as_written(dataset.dataset_manifest(instruments))
+    (root / paths.DATASET_MANIFEST_NAME).write_text(json.dumps(manifest, indent=2))

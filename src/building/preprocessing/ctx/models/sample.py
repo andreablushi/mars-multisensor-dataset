@@ -21,13 +21,3 @@ class CtxSample(Sample):
     """
 
     image: np.ndarray
-
-    @property
-    def blank(self) -> np.ndarray:
-        """Return where the projection left no ground.
-
-        Returns:
-            Lines by samples, True at every pixel outside the corners the scan
-            swept, worked out from the image rather than carried beside it.
-        """
-        return self.image == BLANK

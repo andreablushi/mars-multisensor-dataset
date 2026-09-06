@@ -5,8 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from building.metadata.models.feature import FeatureFrame
-from building.metadata.models.observation import ObservationRecord
+from building.metadata.feature import FeatureMetadata
+from building.metadata.observation import ObservationMetadata
+from building.models.feature import FeatureFrame
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,7 +52,7 @@ class Outcome:
     """
 
     job: Job
-    records: tuple[ObservationRecord, ...] = ()
+    records: tuple[ObservationMetadata, ...] = ()
     missed: int = 0
     error: Exception | None = None
 
@@ -89,13 +90,13 @@ class Plan:
 
     Attributes:
         jobs: The products that still need building.
-        frames: The local frame of every feature the build covers.
+        features: What the dataset holds about every feature the build covers.
         skipped_existing: Products left alone because every crop of them is
             already written.
     """
 
     jobs: tuple[Job, ...]
-    frames: tuple[FeatureFrame, ...] = ()
+    features: tuple[FeatureMetadata, ...] = ()
     skipped_existing: int = 0
 
     @property
@@ -103,6 +104,6 @@ class Plan:
         """Return how many features the build covers.
 
         Returns:
-            One per frame it holds.
+            One per feature it holds.
         """
-        return len(self.frames)
+        return len(self.features)

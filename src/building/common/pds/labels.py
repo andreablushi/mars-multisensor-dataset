@@ -7,6 +7,38 @@ from pathlib import Path
 # The order a TRDR writes its bands in, against a DDR's band sequential.
 BIL = "LINE_INTERLEAVED"
 
+# What a label says about the file its values were published in, which says
+# nothing once those values are stored as arrays of their own.
+LAYOUT = frozenset(
+    {
+        "BANDS",
+        "BAND_STORAGE_TYPE",
+        "BIT_MASK",
+        "BYTES",
+        "COLUMNS",
+        "COLUMN_NUMBER",
+        "COMPRESSION_TYPE",
+        "DATA_TYPE",
+        "END_OBJECT",
+        "FILE_RECORDS",
+        "INTERCHANGE_FORMAT",
+        "LINES",
+        "LINE_SAMPLES",
+        "OBJECT",
+        "PDS_VERSION_ID",
+        "RECORD_BYTES",
+        "RECORD_TYPE",
+        "ROWS",
+        "ROW_BYTES",
+        "SAMPLE_BITS",
+        "SAMPLE_TYPE",
+        "START_BYTE",
+    }
+)
+
+# What a label writes where the archive has no value to give.
+MISSING = frozenset({"", "NULL", "N/A", "UNK", "UNKNOWN"})
+
 # What a PDS sample type and width mean as a numpy dtype.
 _DTYPES = {
     ("PC_REAL", 32): "<f4",
@@ -17,7 +49,7 @@ _DTYPES = {
 
 
 def _value(text: str) -> str:
-    """Return one label value, its quotes and its unit suffix stripped.
+    """Return one label value, its unit suffix and then its quotes stripped.
 
     Args:
         text: What the label writes after the equals sign.
@@ -25,7 +57,12 @@ def _value(text: str) -> str:
     Returns:
         The value alone.
     """
-    return text.strip().strip('"').split("<")[0].strip()
+    held = text.strip()
+    # The unit comes off before the quotes, since a quoted value carries it
+    # outside its own closing quote.
+    if held.endswith(">") and "<" in held:
+        held = held[: held.rindex("<")].strip()
+    return held.strip('"')
 
 
 def load(path: Path) -> dict[str, str]:
@@ -44,7 +81,8 @@ def load(path: Path) -> dict[str, str]:
         if skipping:
             skipping = "}" not in line
             continue
-        if "=" not in line:
+        # A comment is a comment, however much it looks like a key.
+        if "=" not in line or line.lstrip().startswith("/*"):
             continue
         key, _, value = line.partition("=")
         value = value.strip()
@@ -105,3 +143,22 @@ def columns(path: Path) -> list[dict[str, str]]:
         elif inside is not None and key:
             inside[key] = _value(value)
     return found
+
+
+def merge(*held: dict[str, str]) -> dict[str, str]:
+    """Return one label for an observation published as several products.
+
+    Args:
+        held: The label of each product, in the order they are preferred.
+
+    Returns:
+        Their keys in one map, without what only describes the file they were
+        published in, and without a key the archive left unset.
+    """
+    merged: dict[str, str] = {}
+    for one in held:
+        for key, value in one.items():
+            kept = key not in merged and not key.startswith("^") and key not in LAYOUT
+            if kept and value.upper() not in MISSING:
+                merged[key] = value
+    return merged

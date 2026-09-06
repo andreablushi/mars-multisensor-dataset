@@ -9,14 +9,19 @@ import zarr
 
 import utils.disk.paths as paths
 from building.common.layout import Layout
-from building.metadata.models.feature import FeatureFrame
+from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.sample import Sample
 from utils.disk.slugify import slugify
 
-# What the arrays placing a crop are called, and what the mask beside them is.
+# What the arrays placing a crop are called, and what the masks beside them are.
 NORTH = "north"
 EAST = "east"
 INSIDE = "inside"
+VALID = "valid"
+
+# What the group calls the label every product of the observation was published
+# with, kept whole beside the arrays it describes.
+LABEL = "label"
 
 # How a variable names the arrays that place it, which is what a reader turns
 # into coordinates rather than into more data.
@@ -80,6 +85,8 @@ def write_sample(
     }
     if held.inside is not None:
         placed[INSIDE] = (held.inside, ground)
+    if held.valid is not None:
+        placed[VALID] = (held.valid, ground)
 
     path = sample_path(frame, layout.instrument, held.identifier, root)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -99,6 +106,7 @@ def write_sample(
             "separable": held.position.separable,
             "centre_lon": frame.centre_lon,
             "centre_lat": frame.centre_lat,
+            LABEL: held.label,
         }
     )
     return path

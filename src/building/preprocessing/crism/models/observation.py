@@ -17,6 +17,7 @@ class CrismObservation:
     """One observation with its two detectors joined.
 
     Attributes:
+        label: What every product it was published as says about it, merged.
         identifier: The observation id.
         cube: Lines by columns by bands, bands ascending in wavelength, holding
             only what both detectors kept.
@@ -24,13 +25,17 @@ class CrismObservation:
             same order.
         geometry: The backplanes on the same grid, as lines by columns by 14.
         columns: Which of the original 64 samples these columns are.
+        valid: Lines by columns, True where the pixel carries a measurement
+            rather than a cell the cleaning filled.
     """
 
     identifier: str
+    label: dict[str, str]
     cube: np.ndarray
     wavelengths: np.ndarray
     geometry: np.ndarray
     columns: np.ndarray
+    valid: np.ndarray
 
     # A pushbroom swath bends as the spacecraft flies, so every pixel carries
     # the pair its own backplanes give it.

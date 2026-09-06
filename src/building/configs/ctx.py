@@ -32,7 +32,6 @@ LAYOUT = Layout(
     dims=("line", "sample"),
     axes=(GROUND, GROUND),
     measurement="image",
-    beside={"blank": ("line", "sample")},
 )
 
 # Where both products of a scan are kept. ASU names them after the scan itself,

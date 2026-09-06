@@ -18,9 +18,8 @@ from building import console as printing
 from building import planner
 from building.dispatcher import INSTRUMENTS
 from building.metadata import read as metadata_read
-from building.metadata import record
 from building.metadata import write as metadata
-from building.metadata.models.observation import ObservationRecord
+from building.metadata.observation import ObservationMetadata, observation_metadata
 from building.models.job import Job, Outcome, Plan
 from building.models.settings import Settings
 from building.preprocessing.common import store
@@ -54,7 +53,7 @@ def run_build(
         plan = planner.build_plan(settings, ode, root, force=force)
         printing.describe(plan, settings, console)
         if not plan.jobs:
-            _indexed(plan, [], root)
+            _indexed(plan, [], settings, root)
             return []
         with (
             ProcessPoolExecutor(max_workers=settings.workers) as building,
@@ -65,7 +64,7 @@ def run_build(
                 collected = printing.render(
                     outcomes, len(plan.jobs), "building", console
                 )
-    _indexed(plan, collected, root)
+    _indexed(plan, collected, settings, root)
     return collected
 
 
@@ -195,7 +194,7 @@ def build_product(job: Job, root: Path = paths.DATASET_ROOT) -> Outcome:
     # Read and cleaned once however many features want it, which is what makes
     # the product rather than the feature the unit of work.
     observation = steps.read_observation(job.identifier)
-    written: list[ObservationRecord] = []
+    written: list[ObservationMetadata] = []
     missed = 0
     for frame in job.frames:
         try:
@@ -211,7 +210,7 @@ def build_product(job: Job, root: Path = paths.DATASET_ROOT) -> Outcome:
             continue
         path = store.write_sample(held, steps.layout, frame, root)
         written.append(
-            record.observation_record(
+            observation_metadata(
                 held,
                 frame,
                 steps.layout,
@@ -223,15 +222,18 @@ def build_product(job: Job, root: Path = paths.DATASET_ROOT) -> Outcome:
     return Outcome(job, records=tuple(written), missed=missed)
 
 
-def _indexed(plan: Plan, collected: Sequence[Outcome], root: Path) -> None:
+def _indexed(
+    plan: Plan, collected: Sequence[Outcome], settings: Settings, root: Path
+) -> None:
     """Write the index over every crop the dataset holds, not this run's alone.
 
     A build that skips what is already written would otherwise index only what
     it rewrote, so what an earlier run left is read back and carried forward.
 
     Args:
-        plan: What the build set out to do, whose frames every feature is in.
+        plan: What the build set out to do, whose features this run covers.
         collected: What every job of this run left.
+        settings: The settled choices for the build, which name its instruments.
         root: The dataset's own root directory.
 
     Returns:
@@ -243,7 +245,7 @@ def _indexed(plan: Plan, collected: Sequence[Outcome], root: Path) -> None:
         for held in written
     }
     try:
-        standing = metadata_read.read_observation_records(root)
+        standing = metadata_read.read_observation_metadata(root)
     except FileNotFoundError:
         standing = []
     kept = [
@@ -253,4 +255,20 @@ def _indexed(plan: Plan, collected: Sequence[Outcome], root: Path) -> None:
         not in rewritten
         and (root / held.path).exists()
     ]
-    metadata.write_metadata(plan.frames, kept + written, root)
+    records = kept + written
+    features = {
+        (one.frame.feature_class, one.frame.feature_name): one for one in plan.features
+    }
+    try:
+        earlier = metadata_read.read_feature_metadata(root)
+    except FileNotFoundError:
+        earlier = {}
+    # A feature this run did not cover is carried forward with the records an
+    # earlier run left of it, so no record names a feature nothing describes.
+    for held in records:
+        named = (held.feature_class, held.feature_name)
+        if named not in features and named in earlier:
+            features[named] = earlier[named]
+    metadata.write_metadata(
+        list(features.values()), records, settings.instruments, root
+    )

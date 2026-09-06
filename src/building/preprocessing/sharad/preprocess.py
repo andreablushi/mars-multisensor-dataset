@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from building.common.pds import images, tables
+from building.common.pds import images, labels, tables
 from building.configs import sharad as configs
-from building.metadata.models.feature import FeatureFrame
+from building.models.feature import FeatureFrame
 from building.preprocessing.common.crop import overlap
 from building.preprocessing.sharad.models.observation import SharadObservation
 from building.preprocessing.sharad.models.sample import SharadSample
@@ -30,23 +30,29 @@ def read_observation(identifier: str) -> SharadObservation:
         ValueError: When the geometry holds fewer rows than its label promises.
     """
     # The echoes themselves, then the places they were sounded at.
-    power = images.load_plane(
+    power, sounding = images.load_plane(
         configs.CACHE.files(
             identifier,
             configs.NAMING.product(identifier, configs.OBSERVATION),
             configs.OBSERVATION,
         )[".img"]
-    )[0]
-    geometry = tables.load_table(
+    )
+    geometry, placing = tables.load_table(
         configs.CACHE.files(
             identifier,
             configs.NAMING.product(identifier, configs.GEOMETRY),
             configs.GEOMETRY,
         )[".tab"]
-    )[0]
+    )
     # The geometry counts columns from one, and the radargram from zero.
     traces = geometry[COLUMN_FIELD].astype("i8") - 1
-    return SharadObservation(identifier, power[:, traces], geometry, traces)
+    return SharadObservation(
+        identifier,
+        labels.merge(sounding, placing),
+        power[:, traces],
+        geometry,
+        traces,
+    )
 
 
 def crop(observation: SharadObservation, frame: FeatureFrame) -> SharadSample | None:
@@ -68,6 +74,7 @@ def crop(observation: SharadObservation, frame: FeatureFrame) -> SharadSample | 
     return SharadSample(
         identifier=observation.identifier,
         position=held.position,
+        label=observation.label,
         inside=held.inside,
         power=observation.power[:, traces],
         geometry=observation.geometry[traces],

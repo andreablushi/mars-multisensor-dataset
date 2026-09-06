@@ -6,11 +6,11 @@ import tifffile
 
 from building.common.pds import labels
 from building.configs import ctx as configs
-from building.metadata.models.feature import FeatureFrame
-from building.preprocessing.common.crop import overlap, taken
+from building.models.feature import FeatureFrame
+from building.preprocessing.common.crop import marked, overlap, taken
 from building.preprocessing.ctx import projection
 from building.preprocessing.ctx.models.observation import CtxObservation
-from building.preprocessing.ctx.models.sample import CtxSample
+from building.preprocessing.ctx.models.sample import BLANK, CtxSample
 
 
 def read_observation(identifier: str) -> CtxObservation:
@@ -34,7 +34,9 @@ def read_observation(identifier: str) -> CtxObservation:
     image = tifffile.imread(files[configs.SUFFIXES[configs.IMAGE]])
     if image.ndim != 2:
         raise ValueError(f"{identifier} holds a {image.ndim} dimensional image.")
-    return CtxObservation(identifier, image, *projection.load(label))
+    return CtxObservation(
+        identifier, labels.merge(label), image, *projection.load(label)
+    )
 
 
 def crop(observation: CtxObservation, frame: FeatureFrame) -> CtxSample | None:
@@ -50,9 +52,12 @@ def crop(observation: CtxObservation, frame: FeatureFrame) -> CtxSample | None:
     held = overlap(observation, frame)
     if held is None:
         return None
+    image = taken(observation.image, held.bounds)
     return CtxSample(
         identifier=observation.identifier,
         position=held.position,
+        label=observation.label,
         inside=held.inside,
-        image=taken(observation.image, held.bounds),
+        valid=marked(image != BLANK),
+        image=image,
     )

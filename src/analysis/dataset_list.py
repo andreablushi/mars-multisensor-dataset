@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 import pyarrow.parquet as pq
 
 import utils.disk.paths as paths
-from analysis.models.feature import Feature
 from analysis.selector.artifacts.write import FEATURES, OBSERVATIONS
 from analysis.selector.models.selection import (
     SelectedFeature,
@@ -53,27 +51,4 @@ def read_dataset_list(root: Path = paths.SELECTION_ROOT) -> list[Selection]:
             SelectedFeature(**row)
             for row in pq.read_table(features, schema=FEATURES).to_pylist()
         )
-    ]
-
-
-def kept_features(picked: Sequence[Selection]) -> list[Feature]:
-    """Read the ground of every feature the filter kept, as the selection holds it.
-
-    Args:
-        picked: What the search left of each feature, as the selection was read.
-
-    Returns:
-        The ground of each kept feature, in the order they were written.
-    """
-    return [
-        Feature(
-            name=one.feature.feature_name,
-            feature_class=one.feature.feature_class,
-            min_lat=one.feature.min_lat,
-            max_lat=one.feature.max_lat,
-            west_lon=one.feature.west_lon,
-            east_lon=one.feature.east_lon,
-        )
-        for one in picked
-        if one.feature.kept
     ]

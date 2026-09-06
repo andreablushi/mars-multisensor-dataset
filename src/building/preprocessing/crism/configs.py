@@ -5,6 +5,10 @@ from __future__ import annotations
 # What a wavelength file writes where the detector was never calibrated.
 UNCALIBRATED = 65535.0
 
+# What a label says about the ground calibration software rather than about the
+# scan, which reads the same in every product it ever wrote.
+GROUND_SOFTWARE = ("MRO:IKF_", "MRO:RSC_", "MRO:REFZ_", "MRO:FRAM_STAT_")
+
 # Which detector's backplanes place a merged observation. Both halves are taken
 # on the one grid, so one of them places every pixel of it.
 PLACING_DETECTOR = "l"

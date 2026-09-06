@@ -7,10 +7,10 @@ from pathlib import Path
 
 import numpy as np
 
-from building.common.pds import images
+from building.common.pds import images, labels
 from building.configs import crism as configs
-from building.metadata.models.feature import FeatureFrame
-from building.preprocessing.common.crop import overlap, taken
+from building.models.feature import FeatureFrame
+from building.preprocessing.common.crop import marked, overlap, taken
 from building.preprocessing.crism import configs as cleaning
 from building.preprocessing.crism.correction import (
     atmospheric,
@@ -61,6 +61,38 @@ def read_detectors(identifier: str) -> dict[str, Detector]:
         cube, table = bands_calibration.calibrate(cube, wavelengths)
         detectors[name] = Detector(name, cube, table)
     return detectors
+
+
+def read_label(identifier: str) -> dict[str, str]:
+    """Read what every product one observation is published as says about it.
+
+    Args:
+        identifier: The observation, whose files must already be in the cache
+            that `download.fetch` puts them in.
+
+    Returns:
+        Their labels merged into one, without the tuning of the software that
+        calibrated them.
+
+    Raises:
+        FileNotFoundError: When a label is missing.
+    """
+    held = []
+    for name in configs.DETECTORS:
+        scan = configs.NAMING.product(identifier, configs.OBSERVATION, detector=name)
+        held.append(labels.load(configs.CACHE.files(identifier, scan)[".lbl"]))
+    product = configs.NAMING.product(
+        identifier, configs.GEOMETRY, detector=cleaning.PLACING_DETECTOR
+    )
+    held.append(
+        labels.load(configs.CACHE.files(identifier, product, configs.GEOMETRY)[".lbl"])
+    )
+    merged = labels.merge(*held)
+    return {
+        key: value
+        for key, value in merged.items()
+        if not key.startswith(cleaning.GROUND_SOFTWARE)
+    }
 
 
 def read_geometry(identifier: str) -> np.ndarray:
@@ -135,7 +167,10 @@ def read_observation(identifier: str) -> CrismObservation:
         ValueError: When a window keeps no band of a cube.
     """
     return merge.merge_detectors(
-        identifier, clean_detectors(identifier), read_geometry(identifier)
+        identifier,
+        clean_detectors(identifier),
+        read_geometry(identifier),
+        read_label(identifier),
     )
 
 
@@ -159,7 +194,9 @@ def crop(observation: CrismObservation, frame: FeatureFrame) -> CrismSample | No
     return CrismSample(
         identifier=observation.identifier,
         position=held.position,
+        label=observation.label,
         inside=held.inside,
+        valid=marked(taken(observation.valid, held.bounds)),
         cube=taken(observation.cube, held.bounds),
         wavelengths=observation.wavelengths[columns],
         columns=observation.columns[columns],

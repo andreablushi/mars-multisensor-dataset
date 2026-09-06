@@ -12,6 +12,7 @@ class CtxObservation:
     """One scan on the grid its label projects it onto.
 
     Attributes:
+        label: What every product it was published as says about it, merged.
         identifier: The observation id.
         image: The brightness as lines by samples.
         latitude: The centre latitude in degrees of every line.
@@ -19,6 +20,7 @@ class CtxObservation:
     """
 
     identifier: str
+    label: dict[str, str]
     image: np.ndarray
     latitude: np.ndarray
     longitude: np.ndarray

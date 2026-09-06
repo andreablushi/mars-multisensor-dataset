@@ -6,7 +6,7 @@ from typing import Protocol
 
 import numpy as np
 
-from building.metadata.models.feature import FeatureFrame
+from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.relative_position import RelativePosition
 from utils.geometry import geodesy
 

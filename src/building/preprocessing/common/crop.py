@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from building.metadata.models.feature import FeatureFrame
+from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.overlap import Box, Overlap
 from building.preprocessing.common.models.relative_position import RelativePosition
 from building.preprocessing.common.relative_positioning import (
@@ -65,14 +65,26 @@ def overlap(observation: Positioned, frame: FeatureFrame) -> Overlap | None:
         np.arange(int(low), int(high) + 1)
         for low, high in zip(where.min(axis=0), where.max(axis=0), strict=True)
     )
-    kept = taken(inside, bounds)
     return Overlap(
         bounds,
-        None if kept.all() else kept,
+        marked(taken(inside, bounds)),
         RelativePosition(
             taken(position.north, bounds), taken(position.east, bounds), False
         ),
     )
+
+
+def marked(held: np.ndarray) -> np.ndarray | None:
+    """Return one mask, or nothing at all where it marks every sample.
+
+    Args:
+        held: The mask over the samples a crop keeps.
+
+    Returns:
+        The mask, or None where every sample of it is true and so it says
+        nothing the shape does not already.
+    """
+    return None if held.all() else held
 
 
 def taken(array: np.ndarray, bounds: tuple[np.ndarray, ...]) -> np.ndarray:

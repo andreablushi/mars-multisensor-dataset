@@ -12,7 +12,7 @@ from building.configs import mola as configs
 from building.download import archive
 
 if TYPE_CHECKING:
-    from analysis.models.feature import Feature
+    from building.models.feature import FeatureFrame
 
 # What ODE publishes MOLA under.
 ODE = {"ihid": "MGS", "iid": "MOLA"}
@@ -67,14 +67,14 @@ def record(client: httpx.Client) -> dict[str, tuple[str, Box]]:
     return _RECORD
 
 
-def tiles(feature: Feature, client: httpx.Client) -> list[str]:
+def tiles(feature: FeatureFrame, client: httpx.Client) -> list[str]:
     """Read which tiles hold one feature's ground.
 
     The gridded record carries no per observation time, so the selection never
     names a tile and each tile's own extent is what the feature is matched to.
 
     Args:
-        feature: The feature whose ground the tiles have to cover.
+        feature: The frame of the feature whose ground the tiles have to cover.
         client: The client whose connections the query is asked over.
 
     Returns:
@@ -82,7 +82,7 @@ def tiles(feature: Feature, client: httpx.Client) -> list[str]:
     """
     # A feature circling a pole reaches every longitude, and one running over
     # the meridian is two runs, since a number line holds only one of them.
-    if feature.circles_a_pole:
+    if feature.west_lon == feature.east_lon:
         spans = ((0.0, 360.0),)
     elif feature.west_lon > feature.east_lon:
         spans = ((feature.west_lon, 360.0), (0.0, feature.east_lon))

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import fields
+from dataclasses import fields, is_dataclass
 from datetime import datetime
 from pathlib import Path
 from types import NoneType, UnionType
@@ -40,6 +40,11 @@ def schema_of(model: type) -> pa.Schema:
         # A column a row may leave unset is written as the type it holds when set
         if isinstance(kind, UnionType):
             kind = next(one for one in get_args(kind) if one is not NoneType)
+        # A row built out of another row is written as that row's own columns,
+        # so a model composes without the file it writes gaining a level.
+        if is_dataclass(kind):
+            columns.extend(zip(schema_of(kind).names, schema_of(kind).types))
+            continue
         # A column holding many of one type is written as a list of it
         if get_origin(kind) is tuple:
             held = get_args(kind)[0]
@@ -47,6 +52,32 @@ def schema_of(model: type) -> pa.Schema:
             continue
         columns.append((field.name, _ARROW[kind]))
     return pa.schema(columns)
+
+
+def build[Row](model: type[Row], row: Mapping[str, Any]) -> Row:
+    """Return one row model built back from the flat columns it was written as.
+
+    Args:
+        model: The dataclass to build.
+        row: The columns of one written row, keyed as the schema names them.
+
+    Returns:
+        The model, the rows it composes built from the same flat columns.
+    """
+    hints = get_type_hints(model)
+    held: dict[str, Any] = {}
+    for field in fields(model):
+        kind = hints[field.name]
+        if isinstance(kind, UnionType):
+            kind = next(one for one in get_args(kind) if one is not NoneType)
+        if is_dataclass(kind):
+            held[field.name] = build(kind, row)
+        elif get_origin(kind) is tuple:
+            # A field the model holds as a tuple is written as a list.
+            held[field.name] = tuple(row[field.name])
+        else:
+            held[field.name] = row[field.name]
+    return model(**held)
 
 
 def write(
@@ -62,11 +93,20 @@ def write(
     Returns:
         None.
     """
-    columns = (
-        data
-        if isinstance(data, Mapping)
-        else {name: [getattr(row, name) for row in data] for name in schema.names}
-    )
-    table = pa.Table.from_pydict(dict(columns), schema=schema)
+    if isinstance(data, Mapping):
+        columns = dict(data)
+    else:
+        columns = {name: [] for name in schema.names}
+        for row in data:
+            for field in fields(row):
+                held = getattr(row, field.name)
+                # A row built out of another row is written as that row's own
+                # columns, so what it composes is read as its own fields are.
+                if is_dataclass(held):
+                    for one in fields(held):
+                        columns[one.name].append(getattr(held, one.name))
+                else:
+                    columns[field.name].append(held)
+    table = pa.Table.from_pydict(columns, schema=schema)
     with atomic_path(path) as tmp:
         pq.write_table(table, tmp, compression="zstd")

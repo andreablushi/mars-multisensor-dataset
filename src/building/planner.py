@@ -15,8 +15,8 @@ import utils.disk.paths as paths
 from analysis import dataset_list
 from analysis.selector.models.selection import Selection
 from building.dispatcher import INSTRUMENTS
-from building.metadata import frame as frames
-from building.metadata.models.feature import FeatureFrame
+from building.metadata.feature import feature_metadata
+from building.models.feature import FeatureFrame
 from building.models.job import Job, Plan
 from building.models.settings import Settings
 from building.preprocessing.common.store import sample_path
@@ -45,24 +45,17 @@ def build_plan(
         FileNotFoundError: When no selection has been written to build from.
     """
     picked = _sampled(dataset_list.read_dataset_list(), settings)
-    catalogued = {
-        (feature.feature_class, feature.name): feature
-        for feature in dataset_list.kept_features(picked)
-    }
-    built = {key: frames.feature_frame(feature) for key, feature in catalogued.items()}
+    features = [feature_metadata(one.feature) for one in picked]
     wanted: dict[tuple[str, str], list[FeatureFrame]] = defaultdict(list)
     taken: dict[tuple[str, str], datetime] = {}
-    for one in picked:
-        key = (one.feature.feature_class, one.feature.feature_name)
-        if key not in built:
-            continue
+    for one, feature in zip(picked, features, strict=True):
         for kept in _observations(one, settings):
             named = INSTRUMENTS.get(kept.iid)
             # Skip a product no instrument here builds, and one whose id names
             # no observation its instrument can be asked for.
             read = named.observation_id if named else None
             if read and (held := read(kept.pdsid)):
-                wanted[(kept.iid, held)].append(built[key])
+                wanted[(kept.iid, held)].append(feature.frame)
                 taken.setdefault((kept.iid, held), kept.t_start)
     if ode is not None:
         # An instrument the selection can never name is asked which of its
@@ -71,31 +64,25 @@ def build_plan(
             named = INSTRUMENTS.get(name)
             if not named or not named.identifiers:
                 continue
-            for key, frame in built.items():
-                for held in named.identifiers(catalogued[key], ode):
-                    wanted[(name, held)].append(frame)
+            for feature in features:
+                for held in named.identifiers(feature.frame, ode):
+                    wanted[(name, held)].append(feature.frame)
 
     jobs, skipped = [], 0
     for (instrument, identifier), held in wanted.items():
-        left = [
+        left = tuple(
             frame
             for frame in held
             if force or not sample_path(frame, instrument, identifier, root).exists()
-        ]
+        )
         skipped += len(held) - len(left)
         if left:
-            jobs.append(
-                Job(
-                    instrument,
-                    identifier,
-                    tuple(left),
-                    taken.get((instrument, identifier)),
-                )
-            )
+            when = taken.get((instrument, identifier))
+            jobs.append(Job(instrument, identifier, left, when))
     return Plan(
         # The heaviest first, so a long job is never the one left running alone.
         jobs=tuple(sorted(jobs, key=lambda job: -len(job.frames))),
-        frames=tuple(built.values()),
+        features=tuple(features),
         skipped_existing=skipped,
     )
 

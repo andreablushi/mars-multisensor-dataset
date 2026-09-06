@@ -17,10 +17,16 @@ class Sample:
         identifier: What the instrument was asked for, its observation or tile.
         position: Where the samples that are left sit, in degrees from the
             feature's own centre.
+        label: What every product the observation was published as says about
+            it, merged into one.
         inside: Which of them truly falls in the feature's box, or None where
             every one of them does.
+        valid: Which of them is a measurement rather than a filled cell, or
+            None where every one of them is.
     """
 
     identifier: str
     position: RelativePosition
+    label: dict[str, str]
     inside: np.ndarray | None = None
+    valid: np.ndarray | None = None

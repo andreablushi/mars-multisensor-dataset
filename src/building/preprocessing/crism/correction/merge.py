@@ -16,7 +16,10 @@ HALVES = (VISIBLE, INFRARED)
 
 
 def merge_detectors(
-    identifier: str, detectors: dict[str, Detector], geometry: np.ndarray
+    identifier: str,
+    detectors: dict[str, Detector],
+    geometry: np.ndarray,
+    label: dict[str, str],
 ) -> CrismObservation:
     """Join both detectors of a cleaned observation into one cube.
 
@@ -25,6 +28,7 @@ def merge_detectors(
         detectors: Both halves, already through `preprocess.clean_detectors`,
             so each carries the mask saying what it kept.
         geometry: The backplanes that place every pixel, on the same grid.
+        label: What every product the observation was published as says of it.
 
     Returns:
         The joined observation, its bands ascending in wavelength.
@@ -63,8 +67,11 @@ def merge_detectors(
         at += live.size
     return CrismObservation(
         identifier,
+        label,
         joined,
         table[:, order],
         geometry[:, columns],
         kept,
+        # A pixel either detector could not read is no measurement of either.
+        ~(visible.mask.pixels | infrared.mask.pixels)[:, columns],
     )

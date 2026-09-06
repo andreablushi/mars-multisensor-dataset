@@ -12,6 +12,7 @@ class MolaObservation:
     """One tile with its two planes joined onto one grid.
 
     Attributes:
+        label: What every product it was published as says about it, merged.
         identifier: The tile id.
         topography: The height of the ground above the areoid in metres, as
             lines by samples.
@@ -22,6 +23,7 @@ class MolaObservation:
     """
 
     identifier: str
+    label: dict[str, str]
     topography: np.ndarray
     counts: np.ndarray
     latitude: np.ndarray

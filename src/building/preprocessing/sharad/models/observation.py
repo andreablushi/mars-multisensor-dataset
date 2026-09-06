@@ -19,6 +19,7 @@ class SharadObservation:
     """One track holding only the traces its geometry places.
 
     Attributes:
+        label: What every product it was published as says about it, merged.
         identifier: The observation id.
         power: Delay samples by traces, holding only the placed traces.
         geometry: One row per kept trace, in the same order.
@@ -27,6 +28,7 @@ class SharadObservation:
     """
 
     identifier: str
+    label: dict[str, str]
     power: np.ndarray
     geometry: np.recarray
     traces: np.ndarray

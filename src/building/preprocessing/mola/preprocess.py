@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from building.common.pds import images
+from building.common.pds import images, labels
 from building.configs import mola as configs
-from building.metadata.models.feature import FeatureFrame
+from building.models.feature import FeatureFrame
 from building.preprocessing.common.crop import overlap, taken
 from building.preprocessing.mola import projection
 from building.preprocessing.mola.models.observation import MolaObservation
@@ -36,7 +36,11 @@ def read_observation(identifier: str) -> MolaObservation:
     # Both planes are written on the one grid, so the height's places them all.
     height, label = planes[configs.TOPOGRAPHY]
     return MolaObservation(
-        identifier, height, planes[configs.COUNTS][0], *projection.load(label)
+        identifier,
+        labels.merge(label, planes[configs.COUNTS][1]),
+        height,
+        planes[configs.COUNTS][0],
+        *projection.load(label),
     )
 
 
@@ -56,6 +60,7 @@ def crop(observation: MolaObservation, frame: FeatureFrame) -> MolaSample | None
     return MolaSample(
         identifier=observation.identifier,
         position=held.position,
+        label=observation.label,
         inside=held.inside,
         topography=taken(observation.topography, held.bounds),
         counts=taken(observation.counts, held.bounds),
