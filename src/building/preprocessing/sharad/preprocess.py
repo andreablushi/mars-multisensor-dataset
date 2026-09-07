@@ -68,7 +68,9 @@ def crop(observation: SharadObservation, frame: FeatureFrame) -> SharadSample | 
     Returns:
         The track cut to that feature, or None where it reaches none of it.
     """
-    held = overlap(observation, frame)
+    held = overlap(
+        observation.latitude, observation.longitude, observation.separable, frame
+    )
     if held is None:
         return None
     # The traces are the radargram's second axis, and the delay is left whole.

@@ -71,8 +71,17 @@ def grids(feature: FeatureFrame, client: httpx.Client) -> list[str]:
         client: The client whose connections a query would be asked over.
 
     Returns:
-        The one grid that covers it, since a mosaic is never joined across two.
+        The one grid that covers it, since a merge is never joined across two.
+        A feature reaching past what the tiles hold is taken from the cap of
+        its own pole, and from the coarser tiled grid where it reaches too far
+        down the cap for every longitude of it to be held.
     """
+    if feature.max_lat > configs.TILED_REACH:
+        held = feature.min_lat >= configs.CAP_FLOOR
+        return [configs.NORTH_CAP if held else configs.COARSE]
+    if feature.min_lat < -configs.TILED_REACH:
+        held = feature.max_lat <= -configs.CAP_FLOOR
+        return [configs.SOUTH_CAP if held else configs.COARSE]
     return [configs.CYLINDRICAL]
 
 
@@ -84,9 +93,13 @@ def tiles(grid: str, client: httpx.Client) -> list[str]:
         client: The client whose connections the query is asked over.
 
     Returns:
-        The tile ids the height is published for, sorted and without repeats.
+        The tile ids the height is published for, sorted and without repeats,
+        and none at all for a grid published as a single product.
     """
-    resolution = configs.GRIDS[grid]
+    held = configs.GRIDS[grid]
+    if held.product:
+        return []
+    resolution = held.resolution
     found = set()
     for name in record(client):
         if not name.endswith(ODE_SUFFIX):
@@ -99,7 +112,7 @@ def tiles(grid: str, client: httpx.Client) -> list[str]:
 
 
 def fetch(grid: str, client: httpx.Client) -> None:
-    """Bring down every tile of one grid, or leave what is here.
+    """Bring down everything one grid is published as, or leave what is here.
 
     Args:
         grid: The grid to fetch, as `configs.GRIDS` names it.
@@ -109,22 +122,31 @@ def fetch(grid: str, client: httpx.Client) -> None:
         None.
 
     Raises:
-        FileNotFoundError: When ODE offers no download for a tile.
+        FileNotFoundError: When ODE offers no download for one of them.
     """
-    for tile in tiles(grid, client):
-        product = configs.NAMING.product(tile, configs.TOPOGRAPHY)
-        wanted = configs.CACHE.files(tile, product, configs.TOPOGRAPHY)
-        if all(path.exists() for path in wanted.values()):
+    held = configs.GRIDS[grid]
+    # A cap is a single product, so the grid's own name is the directory it lands in.
+    wanted = (
+        [(grid, held.product)]
+        if held.product
+        else [
+            (tile, configs.NAMING.product(tile, configs.TOPOGRAPHY))
+            for tile in tiles(grid, client)
+        ]
+    )
+    for directory, product in wanted:
+        files = configs.CACHE.files(directory, product, configs.TOPOGRAPHY)
+        if all(path.exists() for path in files.values()):
             continue
-        # One tile carries many features, so only the first to want it fetches.
+        # One product carries many features, so only the first to want it fetches.
         with _GUARD:
-            held = _FETCHING.setdefault(tile, threading.Lock())
-        with held:
-            if all(path.exists() for path in wanted.values()):
+            fetching = _FETCHING.setdefault(product, threading.Lock())
+        with fetching:
+            if all(path.exists() for path in files.values()):
                 continue
             offered = record(client)
             archive.bring(
-                wanted,
+                files,
                 {
                     Path(name).suffix: url
                     for name, (url, _) in offered.items()

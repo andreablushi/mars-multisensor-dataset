@@ -2,66 +2,39 @@
 
 from __future__ import annotations
 
-from typing import Protocol
-
 import numpy as np
 
 from building.models.feature import FeatureFrame
-from building.preprocessing.common.models.relative_position import (
-    PolarGrid,
-    RelativePosition,
-)
+from building.preprocessing.common.models.relative_position import RelativePosition
 from utils.geometry import geodesy
 
 # How many neighbouring pairs of one axis to measure a ground sample over.
 MEASURED = 512
 
 
-class Positioned(Protocol):
-    """What every instrument's observation says about where its own samples sit.
-
-    Attributes:
-        latitude: The latitude of every sample, or of every line where the grid
-            is separable.
-        longitude: The longitude of every sample, or of every sample of a line.
-        separable: Whether those two hold one axis each rather than a value for
-            every sample.
-    """
-
-    latitude: np.ndarray
-    longitude: np.ndarray
-    separable: bool
-
-
-class Projected(Protocol):
-    """What an observation on a polar grid says about where its own samples sit.
-
-    Attributes:
-        down: The northing of every line, in the projection's own metres.
-        across: The easting of every sample, in the same metres.
-        polar: The grid the two are measured on.
-    """
-
-    down: np.ndarray
-    across: np.ndarray
-    polar: PolarGrid
-
-
-def relative_position(observation: Positioned, frame: FeatureFrame) -> RelativePosition:
+def relative_position(
+    latitude: np.ndarray,
+    longitude: np.ndarray,
+    separable: bool,
+    frame: FeatureFrame,
+) -> RelativePosition:
     """Return where every sample of one observation sits on its feature.
 
     Args:
-        observation: The observation as it was read off disk, saying where its
-            own samples were measured.
+        latitude: The latitude of every sample in degrees, or of every line
+            where the grid is separable.
+        longitude: The longitude of every sample, or of every sample of a line.
+        separable: Whether those two hold one axis each rather than a value for
+            every sample.
         frame: The local frame of the feature it was kept for.
 
     Returns:
         The position, in degrees from that feature's own centre.
     """
     return RelativePosition(
-        north=observation.latitude - frame.centre_lat,
-        east=geodesy.normalise_longitude(observation.longitude - frame.centre_lon),
-        separable=observation.separable,
+        north=latitude - frame.centre_lat,
+        east=geodesy.normalise_longitude(longitude - frame.centre_lon),
+        separable=separable,
     )
 
 

@@ -6,12 +6,11 @@ import numpy as np
 
 from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.overlap import Box, Overlap
-from building.preprocessing.common.models.relative_position import RelativePosition
-from building.preprocessing.common.relative_positioning import (
-    Positioned,
-    Projected,
-    relative_position,
+from building.preprocessing.common.models.relative_position import (
+    PolarGrid,
+    RelativePosition,
 )
+from building.preprocessing.common.relative_positioning import relative_position
 from utils.geometry import geodesy
 
 # The whole turn, which a longitude offset is measured round.
@@ -24,19 +23,27 @@ STEP = 0.1
 BLOCK = 4_000_000
 
 
-def overlap(observation: Positioned, frame: FeatureFrame) -> Overlap | None:
+def overlap(
+    latitude: np.ndarray,
+    longitude: np.ndarray,
+    separable: bool,
+    frame: FeatureFrame,
+) -> Overlap | None:
     """Return what one feature's box keeps of one observation.
 
     Args:
-        observation: The observation as it was read off disk, saying where its
-            own samples were measured.
+        latitude: The latitude of every sample in degrees, or of every line
+            where the grid is separable.
+        longitude: The longitude of every sample, or of every sample of a line.
+        separable: Whether those two hold one axis each rather than a value for
+            every sample.
         frame: The feature's local frame, carrying the box the catalogue gives
             it, which is read as the same degrees from that centre.
 
     Returns:
         What the box keeps, or None where the observation reaches none of it.
     """
-    position = relative_position(observation, frame)
+    position = relative_position(latitude, longitude, separable, frame)
     box = Box(
         south=frame.min_lat - frame.centre_lat,
         north=frame.max_lat - frame.centre_lat,
@@ -111,19 +118,21 @@ def taken(array: np.ndarray, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     return array[np.ix_(*bounds)] if len(bounds) > 1 else array[bounds[0]]
 
 
-def polar_overlap(observation: Projected, frame: FeatureFrame) -> Overlap | None:
+def polar_overlap(
+    down: np.ndarray, across: np.ndarray, grid: PolarGrid, frame: FeatureFrame
+) -> Overlap | None:
     """Return what one feature's box keeps of one grid projected onto a pole.
 
     Args:
-        observation: The grid as its label projects it, in the projection's own
-            metres.
+        down: The northing of every line, in the projection's own metres.
+        across: The easting of every sample, in the same metres.
+        grid: The pole the two are measured on.
         frame: The feature's local frame, carrying the box the catalogue gives
             it.
 
     Returns:
         What the box keeps, or None where the grid reaches none of it.
     """
-    grid = observation.polar
     ring = geodesy.stereographic_forward(
         *geodesy.bbox_ring(
             frame.min_lat, frame.max_lat, frame.west_lon, frame.east_lon, STEP
@@ -131,23 +140,19 @@ def polar_overlap(observation: Projected, frame: FeatureFrame) -> Overlap | None
         *grid,
     )
     # The box projects to a sector, and the ring its edge traces bounds it.
-    lines = np.flatnonzero(
-        (observation.down >= ring[1].min()) & (observation.down <= ring[1].max())
-    )
-    samples = np.flatnonzero(
-        (observation.across >= ring[0].min()) & (observation.across <= ring[0].max())
-    )
+    lines = np.flatnonzero((down >= ring[1].min()) & (down <= ring[1].max()))
+    samples = np.flatnonzero((across >= ring[0].min()) & (across <= ring[0].max()))
     if not lines.size or not samples.size:
         return None
     # Only the sector's rectangle is crossed back, a block of its lines at a time.
     span = geodesy.longitude_span(frame.west_lon, frame.east_lon)
-    across = observation.across[samples][None, :]
+    held = across[samples][None, :]
     inside = np.empty((lines.size, samples.size), dtype=bool)
     reach = max(1, BLOCK // samples.size)
     for start in range(0, lines.size, reach):
         block = slice(start, start + reach)
         lon, lat = geodesy.stereographic_inverse(
-            across, observation.down[lines[block]][:, None], *grid
+            held, down[lines[block]][:, None], *grid
         )
         inside[block] = (
             (lat >= frame.min_lat)
@@ -163,8 +168,8 @@ def polar_overlap(observation: Projected, frame: FeatureFrame) -> Overlap | None
         (lines, samples),
         marked(inside),
         RelativePosition(
-            observation.down[lines] - float(centre_y),
-            observation.across[samples] - float(centre_x),
+            down[lines] - float(centre_y),
+            across[samples] - float(centre_x),
             True,
             grid,
         ),

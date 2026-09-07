@@ -89,9 +89,9 @@ def crop(observation: CtxObservation, frame: FeatureFrame) -> CtxSample | None:
         The scan cut to that feature, or None where it reaches none of it.
     """
     held = (
-        polar_overlap(observation, frame)
+        polar_overlap(observation.down, observation.across, observation.polar, frame)
         if observation.polar
-        else overlap(observation, frame)
+        else overlap(observation.down, observation.across, observation.separable, frame)
     )
     if held is None:
         return None

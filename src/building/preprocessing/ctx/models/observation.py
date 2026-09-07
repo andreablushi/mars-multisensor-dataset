@@ -34,23 +34,3 @@ class CtxObservation:
 
     # Either projection is regular on both axes, so one axis places each side.
     separable = True
-
-    @property
-    def latitude(self) -> np.ndarray:
-        """Return the centre latitude of every line of a cylindrical scan.
-
-        Returns:
-            One per line, in degrees, which is what `down` holds on the only
-            grid this is read on.
-        """
-        return self.down
-
-    @property
-    def longitude(self) -> np.ndarray:
-        """Return the centre longitude of every sample of a cylindrical scan.
-
-        Returns:
-            One per sample, in degrees, which is what `across` holds on the
-            only grid this is read on.
-        """
-        return self.across

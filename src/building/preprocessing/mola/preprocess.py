@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from building.configs import mola as configs
 from building.models.feature import FeatureFrame
-from building.preprocessing.common.crop import overlap, taken
+from building.preprocessing.common.crop import overlap, polar_overlap, taken
 from building.preprocessing.mola.merge_tiles import merge_tiles
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
+from building.preprocessing.mola.read_cap import read_cap
 
 
 def read_observation(grid: str) -> MolaGrid:
@@ -21,20 +22,25 @@ def read_observation(grid: str) -> MolaGrid:
         The tiles of it that landed, which no more than a label of is read
         until a feature's own box says which bins of them to take.
     """
-    resolution = configs.GRIDS[grid]
+    held = configs.GRIDS[grid]
     files = {}
-    for directory in sorted(configs.CACHE.root.iterdir()):
-        parts = configs.NAMING.parts(directory.name) if directory.is_dir() else None
-        if not parts or configs.RESOLUTIONS[parts["step"]] != resolution:
-            continue
-        image = configs.CACHE.files(
-            directory.name,
-            configs.NAMING.product(directory.name, configs.TOPOGRAPHY),
-            configs.TOPOGRAPHY,
-        )[".img"]
+    if held.product:
+        image = configs.CACHE.files(grid, held.product, configs.TOPOGRAPHY)[".img"]
         if image.exists():
-            files[directory.name] = image
-    return MolaGrid(grid, resolution, files)
+            files[held.product] = image
+    else:
+        for directory in sorted(configs.CACHE.root.iterdir()):
+            parts = configs.NAMING.parts(directory.name) if directory.is_dir() else None
+            if not parts or configs.RESOLUTIONS[parts["step"]] != held.resolution:
+                continue
+            image = configs.CACHE.files(
+                directory.name,
+                configs.NAMING.product(directory.name, configs.TOPOGRAPHY),
+                configs.TOPOGRAPHY,
+            )[".img"]
+            if image.exists():
+                files[directory.name] = image
+    return MolaGrid(grid, held.resolution, files, held.polar)
 
 
 def crop(grid: MolaGrid, frame: FeatureFrame) -> MolaSample | None:
@@ -50,8 +56,14 @@ def crop(grid: MolaGrid, frame: FeatureFrame) -> MolaSample | None:
     Raises:
         ValueError: When the tiles that landed leave part of its box unwritten.
     """
-    observation = merge_tiles(grid, frame)
-    held = overlap(observation, frame)
+    observation = read_cap(grid, frame) if grid.polar else merge_tiles(grid, frame)
+    if observation is None:
+        return None
+    held = (
+        polar_overlap(observation.down, observation.across, observation.polar, frame)
+        if observation.polar
+        else overlap(observation.down, observation.across, observation.separable, frame)
+    )
     if held is None:
         return None
     return MolaSample(

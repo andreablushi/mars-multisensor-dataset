@@ -235,7 +235,9 @@ def crop(observation: CrismObservation, frame: FeatureFrame) -> CrismSample | No
         The observation cut to that feature, its bands left whole, or None
         where it reaches none of it.
     """
-    held = overlap(observation, frame)
+    held = overlap(
+        observation.latitude, observation.longitude, observation.separable, frame
+    )
     if held is None:
         return None
     # Calibrated column by column, so only that axis cuts and the bands stay whole.

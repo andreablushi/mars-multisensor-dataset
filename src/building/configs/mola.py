@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 from building.common.layout import GROUND, Layout
 from building.common.naming import Naming
@@ -36,9 +37,54 @@ CACHE = ProductCache(paths.MOLA_ROOT, {None: (".lbl", ".img")})
 # How fine a grid each resolution letter stands for, in pixels per degree.
 RESOLUTIONS = {"c": 4, "e": 16, "f": 32, "g": 64, "h": 128}
 
-# The grid a feature is mosaicked on, named for the record and how fine it is.
+# The latitude the tiled grid reaches, past which only a cap is published fine.
+TILED_REACH = 88.0
+
+# The latitude a cap holds at every longitude, its corners alone reaching lower.
+CAP_FLOOR = 51.55
+
+
+@dataclass(frozen=True, slots=True)
+class Grid:
+    """One grid of the gridded record, and what it is published as.
+
+    Attributes:
+        name: What the grid is called, which is also what every crop merged
+            from it is stored under.
+        resolution: How many bins of it one degree holds.
+        product: The single product it is published as, and None for a grid
+            published as the tiles that cover it.
+        north: Whether it is centred on the north pole, and None where it is
+            cylindrical and centred on no pole at all.
+    """
+
+    name: str
+    resolution: int
+    product: str | None = None
+    north: bool | None = None
+
+    @property
+    def polar(self) -> bool:
+        """Say whether the grid is projected onto a pole.
+
+        Returns:
+            True where it is a cap, and False where it is cylindrical.
+        """
+        return self.north is not None
+
+
+# The grid a feature is merged from, named for the record and how fine it is.
 CYLINDRICAL = "megdr128"
-GRIDS = {CYLINDRICAL: 128}
+COARSE = "megdr64"
+NORTH_CAP = "megdr128n"
+SOUTH_CAP = "megdr128s"
+
+GRIDS = {
+    CYLINDRICAL: Grid(CYLINDRICAL, 128),
+    COARSE: Grid(COARSE, 64),
+    NORTH_CAP: Grid(NORTH_CAP, 128, "megt_n_128_1", north=True),
+    SOUTH_CAP: Grid(SOUTH_CAP, 128, "megt_s_128_1", north=False),
+}
 
 
 def resolution(tile: str) -> int:

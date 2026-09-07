@@ -66,7 +66,7 @@ def merge_tiles(grid: MolaGrid, frame: FeatureFrame) -> MolaObservation:
             The line and the sample of the whole planet's grid that the tile's
             own first line and first sample are.
         """
-        latitude, longitude = projection.load(label)
+        latitude, longitude, _ = projection.load(label)
         return (
             round((90.0 - float(latitude[0])) * resolution - 0.5),
             round(float(longitude[0]) * resolution - 0.5) % (round(TURN) * resolution),
