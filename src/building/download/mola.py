@@ -74,7 +74,7 @@ def tiles(feature: FeatureFrame, client: httpx.Client) -> list[str]:
         client: The client whose connections the query is asked over.
 
     Returns:
-        The tile ids both planes are published for, sorted and without repeats.
+        The tile ids the height is published for, sorted and without repeats.
     """
     # A feature at a pole reaches every longitude, one over the meridian is two runs.
     if feature.west_lon == feature.east_lon:
@@ -104,7 +104,7 @@ def tiles(feature: FeatureFrame, client: httpx.Client) -> list[str]:
 
 
 def fetch(tile: str, client: httpx.Client) -> None:
-    """Bring both planes of one tile down, or leave what is here.
+    """Bring one tile down, or leave what is here.
 
     Args:
         tile: The tile to fetch, such as 00n180hb.
@@ -114,7 +114,7 @@ def fetch(tile: str, client: httpx.Client) -> None:
         None.
 
     Raises:
-        FileNotFoundError: When ODE offers no download for a plane.
+        FileNotFoundError: When ODE offers no download for the plane.
     """
     wanted = {
         kind: configs.CACHE.files(tile, configs.NAMING.product(tile, kind), kind)

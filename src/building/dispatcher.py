@@ -35,9 +35,11 @@ class Instrument:
         layout: What its arrays hold, and which of them it is stored for.
         fetch: What brings one product of it down into the cache.
         read_observation: What reads a fetched product off disk, whole.
-        discard: What deletes the product from the cache once it is built.
         crop: What cuts that observation to one feature's box, handing back the
             sample to store or None where it reaches none of it.
+        discard: What deletes the product from the cache once it is built, and
+            None for an archive small enough to be held for the whole run,
+            which is what a product shared by many features asks for.
         observation_id: What reads which observation a product the selection
             kept belongs to, or None for an instrument the selection can never
             name.
@@ -57,8 +59,8 @@ class Instrument:
     layout: Layout
     fetch: Callable[[str, httpx.Client], None]
     read_observation: Callable[[str], Any]
-    discard: Callable[[str], None]
     crop: Callable[..., Any]
+    discard: Callable[[str], None] | None = None
     observation_id: Callable[[str], str | None] | None = None
     identifiers: Callable[[Feature, httpx.Client], list[str]] | None = None
     altitude: Callable[[Any], tuple[float, float]] | None = None
@@ -84,8 +86,8 @@ INSTRUMENTS = {
         crism_configs.LAYOUT,
         crism_download.fetch,
         crism.read_observation,
-        crism_configs.CACHE.discard,
         crism.crop,
+        discard=crism_configs.CACHE.discard,
         observation_id=crism_configs.NAMING.parse,
         # A cleaned observation measured 203 MB, both detectors and the chain.
         worker_bytes=512 * 1024**2,
@@ -94,8 +96,8 @@ INSTRUMENTS = {
         ctx_configs.LAYOUT,
         ctx_download.fetch,
         ctx.read_observation,
-        ctx_configs.CACHE.discard,
         ctx.crop,
+        discard=ctx_configs.CACHE.discard,
         observation_id=ctx_configs.NAMING.parse,
         # A 2.6 GB scan, held with its crop and two masks; 829 MB measured 2.0 GB.
         worker_bytes=9 * 1024**3,
@@ -105,18 +107,17 @@ INSTRUMENTS = {
         mola_configs.LAYOUT,
         mola_download.fetch,
         mola.read_observation,
-        mola_configs.CACHE.discard,
         mola.crop,
         identifiers=mola_download.tiles,
-        # A tile and its shot counts measured 214 MB.
-        worker_bytes=512 * 1024**2,
+        # The whole gridded record is 2 GB, so a tile is held for the run.
+        worker_bytes=256 * 1024**2,
     ),
     sharad_configs.LAYOUT.instrument: Instrument(
         sharad_configs.LAYOUT,
         sharad_download.fetch,
         sharad.read_observation,
-        sharad_configs.CACHE.discard,
         sharad.crop,
+        discard=sharad_configs.CACHE.discard,
         observation_id=sharad_configs.NAMING.parse,
         altitude=altitude.altitude_m,
         # A radargram and its geometry measured 135 MB.

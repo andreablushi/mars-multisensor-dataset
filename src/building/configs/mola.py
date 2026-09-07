@@ -9,10 +9,9 @@ from building.common.naming import Naming
 from building.common.product_cache import ProductCache
 from utils.disk import paths
 
-# The two planes of one tile that are read, the height and how it was measured.
+# The one plane of a tile that is read, the height of its ground.
 TOPOGRAPHY = "topography"
-COUNTS = "counts"
-KINDS = (TOPOGRAPHY, COUNTS)
+KINDS = (TOPOGRAPHY,)
 
 # How a plane is spelled, named for its corner and step. Its kind drops polar tiles.
 NAMING = Naming(
@@ -20,7 +19,7 @@ NAMING = Naming(
     identity="{tile}",
     marks=("marker",),
     template="meg{marker}{tile}",
-    fields={TOPOGRAPHY: {"marker": "t"}, COUNTS: {"marker": "c"}},
+    fields={TOPOGRAPHY: {"marker": "t"}},
 )
 
 # What the arrays of one tile hold, and which of them is stored for.
@@ -29,10 +28,9 @@ LAYOUT = Layout(
     dims=("line", "sample"),
     axes=(GROUND, GROUND),
     measurement="topography",
-    beside={"counts": ("line", "sample")},
 )
 
-# Where both planes of a tile are kept, in the one directory of the tile.
+# Where a tile is kept, in the one directory of the tile.
 CACHE = ProductCache(paths.MOLA_ROOT, {None: (".lbl", ".img")})
 
 # How fine a grid each resolution letter stands for, in pixels per degree.

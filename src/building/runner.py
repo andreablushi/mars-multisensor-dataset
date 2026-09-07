@@ -289,7 +289,8 @@ def build_product(job: Job, root: Path) -> Outcome:
             )
     finally:
         # A product goes once every feature that wanted it is cut; it is a cache.
-        steps.discard(job.identifier)
+        if steps.discard:
+            steps.discard(job.identifier)
     return Outcome(job, records=tuple(written), missed=missed)
 
 

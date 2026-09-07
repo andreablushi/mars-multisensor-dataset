@@ -1,4 +1,4 @@
-"""Both planes of one MOLA tile on a single grid."""
+"""One MOLA tile on the grid its label projects it onto."""
 
 from __future__ import annotations
 
@@ -9,15 +9,13 @@ import numpy as np
 
 @dataclass(frozen=True, slots=True)
 class MolaObservation:
-    """One tile with its two planes joined onto one grid.
+    """One tile, its height on the grid its own label places it on.
 
     Attributes:
-        label: What every product it was published as says about it, merged.
+        label: What the product it was published as says about it.
         identifier: The tile id.
         topography: The height of the ground above the areoid in metres, as
-            lines by samples.
-        counts: How many shots each bin was measured with, on the same grid,
-            zero where the height was interpolated rather than observed.
+            lines by samples, interpolated where no shot fell in the bin.
         latitude: The centre latitude in degrees of every line.
         longitude: The centre longitude in degrees of every sample.
     """
@@ -25,7 +23,6 @@ class MolaObservation:
     identifier: str
     label: dict[str, str]
     topography: np.ndarray
-    counts: np.ndarray
     latitude: np.ndarray
     longitude: np.ndarray
 

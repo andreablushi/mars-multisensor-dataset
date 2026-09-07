@@ -5,42 +5,33 @@ from __future__ import annotations
 from building.common.pds import images, labels
 from building.configs import mola as configs
 from building.models.feature import FeatureFrame
-from building.preprocessing.common.crop import marked, overlap, taken
+from building.preprocessing.common.crop import overlap, taken
 from building.preprocessing.mola import projection
 from building.preprocessing.mola.models.observation import MolaObservation
 from building.preprocessing.mola.models.sample import MolaSample
 
 
 def read_observation(identifier: str) -> MolaObservation:
-    """Read every plane one tile was downloaded as onto the grid they share.
+    """Read one tile onto the grid its own label projects it onto.
 
     Args:
         identifier: The tile, whose files must already be in the cache that
             `download.fetch` puts them in.
 
     Returns:
-        The observation, its two planes on the one grid their labels project
-        them onto.
+        The observation, its height on the grid its label places it on.
 
     Raises:
-        FileNotFoundError: When either plane or its label is missing.
-        KeyError: When a label names a sample type this cannot read.
-        ValueError: When a label names a projection this cannot read.
+        FileNotFoundError: When the plane or its label is missing.
+        KeyError: When the label names a sample type this cannot read.
+        ValueError: When it names a projection this cannot read.
     """
-    planes = {}
-    for kind in configs.KINDS:
-        product = configs.NAMING.product(identifier, kind)
-        planes[kind] = images.load_plane(
-            configs.CACHE.files(identifier, product, kind)[".img"]
-        )
-    # Both planes are written on the one grid, so the height's places them all.
-    height, label = planes[configs.TOPOGRAPHY]
+    product = configs.NAMING.product(identifier, configs.TOPOGRAPHY)
+    height, label = images.load_plane(
+        configs.CACHE.files(identifier, product, configs.TOPOGRAPHY)[".img"]
+    )
     return MolaObservation(
-        identifier,
-        labels.merge(label, planes[configs.COUNTS][1]),
-        height,
-        planes[configs.COUNTS][0],
-        *projection.load(label),
+        identifier, labels.merge(label), height, *projection.load(label)
     )
 
 
@@ -57,13 +48,10 @@ def crop(observation: MolaObservation, frame: FeatureFrame) -> MolaSample | None
     held = overlap(observation, frame)
     if held is None:
         return None
-    counts = taken(observation.counts, held.bounds)
     return MolaSample(
         identifier=observation.identifier,
         position=held.position,
         label=observation.label,
         inside=held.inside,
-        valid=marked(counts != 0),
         topography=taken(observation.topography, held.bounds),
-        counts=counts,
     )
