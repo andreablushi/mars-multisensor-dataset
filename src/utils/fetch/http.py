@@ -19,6 +19,11 @@ BACKOFF_BASE = 0.5
 # Ceiling on one backoff sleep, so many retries stay minutes rather than days
 BACKOFF_MAX = 30.0
 RETRYABLE_STATUS = frozenset({403, 429, 500, 502, 503, 504})
+# Which of those mean the caller is asking too often, as against a server that is
+# merely broken or has nothing to give. Only these hold every other thread back:
+# an archive answering for a file it does not have with a 500 would otherwise
+# brake a whole run for asking it a question it invited.
+CROWDED_STATUS = frozenset({403, 429})
 # Fewer tries for a transfer than for a query, since one runs for minutes and
 # a job retrying every one of them would hang for hours
 STREAM_RETRIES = 5
@@ -102,7 +107,8 @@ def fetched_json(
             continue
         if reply.status_code in RETRYABLE_STATUS:
             # One refusal slows every thread, so a run stops asking to be blocked.
-            ARCHIVE.refused()
+            if reply.status_code in CROWDED_STATUS:
+                ARCHIVE.refused()
             last = FetchError(f"HTTP {reply.status_code}")
             continue
         ARCHIVE.answered()
@@ -157,7 +163,8 @@ def streamed(
         try:
             with httpx.stream("GET", url, timeout=timeout) as reply:
                 if reply.status_code in RETRYABLE_STATUS:
-                    ARCHIVE.refused()
+                    if reply.status_code in CROWDED_STATUS:
+                        ARCHIVE.refused()
                     last = FetchError(f"HTTP {reply.status_code}")
                     continue
                 if reply.status_code >= 400:

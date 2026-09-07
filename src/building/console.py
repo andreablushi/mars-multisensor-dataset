@@ -58,10 +58,11 @@ def describe(
     building, fetching, ready = pools
     console.print(
         f"building {plan.feature_count} features from {len(plan.jobs)} products, "
-        f"{crops} crops to write, {plan.skipped_existing} already written"
+        f"{crops} crops to write, {plan.skipped_existing} already written, "
+        f"{plan.unread} kept observations no instrument here reads"
     )
     console.print(
-        f"instruments: {', '.join(settings.instruments)}; "
+        f"instruments: {', '.join(plan.instruments)}; "
         f"share {settings.share:.0%}, seed {settings.seed}; "
         f"build pool {building}, download pool {fetching}, "
         f"{ready} products may wait, {budget.total / GIB:.0f} GiB between them"

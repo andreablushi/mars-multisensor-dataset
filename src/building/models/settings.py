@@ -17,7 +17,6 @@ class Settings:
             above zero to one, drawn evenly across their classes. A feature is
             built whole or not at all, with every observation the selection
             left it.
-        instruments: Which instruments to build, as ODE names them.
         seed: The number every draw is made with, so a smaller build is a
             reproducible subset of the full one.
         version: Which layout the arrays and the index are written in, raised
@@ -31,7 +30,6 @@ class Settings:
 
     name: str
     share: float
-    instruments: tuple[str, ...]
     seed: int
     version: int
     cores: int | None = None

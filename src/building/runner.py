@@ -289,7 +289,7 @@ def _indexed(
     Args:
         plan: What the build set out to do, whose features this run covers.
         collected: What every job of this run left.
-        settings: The settled choices for the build, which name its instruments.
+        settings: The settled choices for the build, which name its version.
         root: The dataset's own root directory.
 
     Returns:
@@ -313,6 +313,8 @@ def _indexed(
     for one in records:
         if one.feature not in features and one.feature in earlier:
             features[one.feature] = earlier[one.feature]
+    # What the dataset holds, which is every instrument in it and not a wish.
+    held = tuple(sorted({one.instrument for one in records}))
     metadata.write_metadata(
-        list(features.values()), records, settings.instruments, settings.version, root
+        list(features.values()), records, held, settings.version, root
     )

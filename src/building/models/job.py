@@ -93,11 +93,24 @@ class Plan:
         features: What the dataset holds about every feature the build covers.
         skipped_existing: Products left alone because every crop of them is
             already written.
+        unread: Observations the selection kept that no instrument here could
+            read, whether it builds none of that instrument or the id names no
+            observation of it, and which were therefore never planned.
     """
 
     jobs: tuple[Job, ...]
     features: tuple[FeatureMetadata, ...] = ()
     skipped_existing: int = 0
+    unread: int = 0
+
+    @property
+    def instruments(self) -> tuple[str, ...]:
+        """Return which instruments the build has products of.
+
+        Returns:
+            Each instrument named once, in name order.
+        """
+        return tuple(sorted({job.instrument for job in self.jobs}))
 
     @property
     def feature_count(self) -> int:
