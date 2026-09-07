@@ -36,8 +36,13 @@ CGROUP_LIMITS = (
 )
 
 # How many downloads run per build and at all; they wait on an archive, not on cores.
+# An archive serves one connection at about two megabytes a second however fast
+# the link is, and answers as many at once: sixteen of them measured thirty
+# megabytes a second together. So downloads are what a run is made faster by, up
+# to what the archives will take, which one refusal now backs the whole run off
+# from rather than each thread asking again on its own.
 FETCHING_PER_BUILD = 4
-MOST_FETCHING = 32
+MOST_FETCHING = 48
 
 
 def _room() -> int:
