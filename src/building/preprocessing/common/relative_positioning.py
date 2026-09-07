@@ -30,12 +30,7 @@ def degrees(
         the position is separable degrees, and are crossed over both axes where
         it is separable metres on a projection.
     """
-    if position.separable:
-        down = position.north[taken[0]] if taken else position.north
-        across = position.east[taken[1]] if taken else position.east
-    else:
-        down = position.north[taken] if taken else position.north
-        across = position.east[taken] if taken else position.east
+    down, across = position.offsets(taken)
     if position.polar is None:
         return (
             geodesy.normalise_longitude(frame.centre_lon + across),
@@ -84,11 +79,7 @@ def ground_sample_m(
         return slice(start, start + kept)
 
     plain = position.separable and position.polar is None
-    sizes = (
-        (position.north.size, position.east.size)
-        if position.separable
-        else position.north.shape
-    )
+    sizes = position.ground_sizes
     steps: list[float] = []
     for axis in range(len(sizes)):
         if plain:

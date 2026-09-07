@@ -76,9 +76,7 @@ def write_sample(
         if holds == GROUND
     )
     # A separable position holds one ground axis each, any other a value per sample.
-    north, east = (
-        (ground[:1], ground[1:]) if held.position.separable else (ground, ground)
-    )
+    north, east = held.position.dims_along(ground)
     along = {
         layout.measurement: layout.dims,
         NORTH: north,

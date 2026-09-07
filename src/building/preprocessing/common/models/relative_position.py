@@ -34,3 +34,47 @@ class RelativePosition:
     east: np.ndarray
     separable: bool
     polar: PolarGrid | None = None
+
+    @property
+    def ground_sizes(self) -> tuple[int, ...]:
+        """Return how many samples each ground axis holds.
+
+        Returns:
+            One count per ground axis, in the order those axes run.
+        """
+        if self.separable:
+            return (self.north.size, self.east.size)
+        return self.north.shape
+
+    def offsets(self, taken: tuple = ()) -> tuple[np.ndarray, np.ndarray]:
+        """Return the northings and the eastings of the samples a cut keeps.
+
+        Args:
+            taken: Which of each ground axis to read, outermost first, and
+                empty for all of them.
+
+        Returns:
+            The northings and the eastings, holding one axis each where the
+            position is separable and a value per sample where it is not.
+        """
+        if not taken:
+            return self.north, self.east
+        if self.separable:
+            return self.north[taken[0]], self.east[taken[1]]
+        return self.north[taken], self.east[taken]
+
+    def dims_along(
+        self, ground: tuple[str, ...]
+    ) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        """Return which ground axes the northing and the easting each run along.
+
+        Args:
+            ground: The instrument's ground axes, in the order they run.
+
+        Returns:
+            The axes of the northing and those of the easting, one each where
+            the position is separable and every ground axis where it is not.
+        """
+        if self.separable:
+            return ground[:1], ground[1:]
+        return ground, ground

@@ -8,7 +8,6 @@ from datetime import datetime
 from analysis.selector.models.selection import SelectedFeature
 from building.models.feature import FeatureFrame
 from utils.disk import parquet
-from utils.geometry import geodesy
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,17 +54,12 @@ def feature_metadata(feature: SelectedFeature) -> FeatureMetadata:
         feature: The feature's own row, as the selection wrote it.
 
     Returns:
-        The metadata, its frame centred on the catalogue box.
+        The metadata, its frame carrying the catalogue box.
     """
-    centre_lon, centre_lat = geodesy.bbox_centre(
-        feature.min_lat, feature.max_lat, feature.west_lon, feature.east_lon
-    )
     return FeatureMetadata(
         frame=FeatureFrame(
             feature_class=feature.feature_class,
             feature_name=feature.feature_name,
-            centre_lon=centre_lon,
-            centre_lat=centre_lat,
             min_lat=feature.min_lat,
             max_lat=feature.max_lat,
             west_lon=feature.west_lon,

@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from building.models.feature import FeatureFrame
-from building.preprocessing.common.models.overlap import Box, Overlap
+from building.preprocessing.common.models.overlap import Overlap
 from building.preprocessing.common.models.relative_position import (
     PolarGrid,
     RelativePosition,
@@ -47,21 +47,19 @@ def overlap(
         east=geodesy.normalise_longitude(longitude - frame.centre_lon),
         separable=separable,
     )
-    box = Box(
-        south=frame.min_lat - frame.centre_lat,
-        north=frame.max_lat - frame.centre_lat,
-        west=geodesy.normalise_longitude(frame.west_lon - frame.centre_lon),
-        span=geodesy.longitude_span(frame.west_lon, frame.east_lon),
-    )
+    south = frame.min_lat - frame.centre_lat
+    north = frame.max_lat - frame.centre_lat
+    west = geodesy.normalise_longitude(frame.west_lon - frame.centre_lon)
+    span = geodesy.longitude_span(frame.west_lon, frame.east_lon)
     # How far north and east of the box's own edges every sample lies.
-    upward = (position.north >= box.south) & (position.north <= box.north)
+    upward = (position.north >= south) & (position.north <= north)
     # Measured round the turn, so the meridian the box may run over is no edge.
-    eastward = (position.east - box.west) % TURN
+    eastward = (position.east - west) % TURN
     if position.separable:
         # The box is a rectangle here, so each axis is asked alone and keeps exactly it.
         lines = np.flatnonzero(upward)
         # A box over the meridian keeps two ends of one strip, joined by ordering east.
-        held = np.flatnonzero(eastward <= box.span)
+        held = np.flatnonzero(eastward <= span)
         samples = held[np.argsort(eastward[held], kind="stable")]
         if not lines.size or not samples.size:
             return None
@@ -70,7 +68,7 @@ def overlap(
             None,
             RelativePosition(position.north[lines], position.east[samples], True),
         )
-    inside = upward & (eastward <= box.span)
+    inside = upward & (eastward <= span)
     if not inside.any():
         return None
     where = np.argwhere(inside)
