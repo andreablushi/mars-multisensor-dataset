@@ -6,6 +6,9 @@ import math
 
 import numpy as np
 
+# The whole turn, which every longitude here is measured round.
+TURN = 360.0
+
 # IAU mean radius for Mars, which the equal-area projection is built on and
 # which an orbit is measured from the centre of.
 RADIUS_M = 3_389_500.0
@@ -59,11 +62,11 @@ def longitude_span(west_lon: float, east_lon: float) -> float:
         The eastward span in degrees, above zero and up to 360.
     """
     raw = east_lon - west_lon
-    if raw >= 360.0 or raw == 0.0:
-        return 360.0
+    if raw >= TURN or raw == 0.0:
+        return TURN
     if raw > 0.0:
         return raw
-    return raw % 360.0
+    return raw % TURN
 
 
 def bbox_centre(

@@ -80,11 +80,12 @@ def ground_sample_m(
 
     plain = position.separable and position.polar is None
     sizes = position.ground_sizes
+    held = degrees(position, frame) if plain else None
     steps: list[float] = []
     for axis in range(len(sizes)):
         if plain:
             # One axis holds latitude, the other longitude, walked at the middle.
-            lon, lat = degrees(position, frame)
+            lon, lat = held
             if axis == 0:
                 walked = lat[middle(lat.size)]
                 line = (np.full(walked.size, lon[lon.size // 2]), walked)

@@ -11,9 +11,7 @@ from building.preprocessing.common.models.relative_position import (
     RelativePosition,
 )
 from utils.geometry import geodesy
-
-# The whole turn, which a longitude offset is measured round.
-TURN = 360.0
+from utils.geometry.geodesy import TURN
 
 # The longest segment the box is walked in, a chord leaving its arc by under a pixel.
 STEP = 0.1

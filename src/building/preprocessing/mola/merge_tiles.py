@@ -12,8 +12,7 @@ from building.preprocessing.mola import projection
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.observation import MolaObservation
 from utils.geometry import geodesy
-
-TURN = 360.0
+from utils.geometry.geodesy import TURN
 
 
 def merge_tiles(grid: MolaGrid, frame: FeatureFrame) -> MolaObservation:

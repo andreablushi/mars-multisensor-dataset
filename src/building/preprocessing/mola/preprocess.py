@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from building.configs import mola as configs
 from building.models.feature import FeatureFrame
-from building.preprocessing.common.crop import overlap, taken
+from building.preprocessing.common.models.relative_position import RelativePosition
 from building.preprocessing.mola import projection
 from building.preprocessing.mola.merge_tiles import merge_tiles
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
+from utils.geometry import geodesy
 
 
 def read_observation(grid: str) -> MolaGrid:
@@ -51,7 +52,8 @@ def crop(grid: MolaGrid, frame: FeatureFrame) -> MolaSample | None:
         frame: The local frame of the feature they are merged for.
 
     Returns:
-        The height over that feature, or None where the grid reaches none of it.
+        The height over that feature, or None where a cap reaches none of it.
+        A tiled grid is merged to the box itself, so it is never cut again.
 
     Raises:
         ValueError: When the tiles that landed leave part of its box unwritten.
@@ -59,13 +61,13 @@ def crop(grid: MolaGrid, frame: FeatureFrame) -> MolaSample | None:
     if grid.polar:
         return projection.crop_cap(grid, frame)
     observation = merge_tiles(grid, frame)
-    held = overlap(observation.down, observation.across, observation.separable, frame)
-    if held is None:
-        return None
     return MolaSample(
         identifier=observation.identifier,
-        position=held.position,
+        position=RelativePosition(
+            observation.down - frame.centre_lat,
+            geodesy.normalise_longitude(observation.across - frame.centre_lon),
+            observation.separable,
+        ),
         label=observation.label,
-        inside=held.inside,
-        topography=taken(observation.topography, held.bounds),
+        topography=observation.topography,
     )

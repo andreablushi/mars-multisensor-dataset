@@ -49,7 +49,7 @@ def merge_detectors(
 
     # Every half is read out from the first frame, so the shortest ends the strip.
     lines = min(geometry.shape[0], *(detectors[name].cube.shape[0] for name in halves))
-    # Only the samples no half refused, which is one unbroken run.
+    # Only the samples no half refused.
     columns = ~np.logical_or.reduce([detectors[name].mask.columns for name in halves])
 
     kept = np.flatnonzero(columns)
