@@ -52,6 +52,21 @@ def sample_path(
     )
 
 
+def native(values: np.ndarray) -> np.ndarray:
+    """Return one array in the byte order the machine reads.
+
+    Args:
+        values: The values to store, which a PDS archive publishes most
+            significant byte first whatever the machine reading it is.
+
+    Returns:
+        The same values in the machine's own order, so what is stored can be
+        handed to a tensor rather than swapped by whoever reads it.
+    """
+    held = np.asarray(values)
+    return held.astype(held.dtype.newbyteorder("="), copy=False)
+
+
 def write_sample(
     held: Sample,
     layout: Layout,
@@ -83,14 +98,14 @@ def write_sample(
         EAST: east,
         **layout.beside,
     }
-    arrays = {name: np.asarray(getattr(held, name)) for name in layout.beside}
-    arrays[layout.measurement] = np.asarray(getattr(held, layout.measurement))
-    arrays[NORTH] = np.asarray(held.position.north)
-    arrays[EAST] = np.asarray(held.position.east)
+    arrays = {name: native(getattr(held, name)) for name in layout.beside}
+    arrays[layout.measurement] = native(getattr(held, layout.measurement))
+    arrays[NORTH] = native(held.position.north)
+    arrays[EAST] = native(held.position.east)
     for name, mask in ((INSIDE, held.inside), (VALID, held.valid)):
         # A mask marking every sample was never stored, so it is never read.
         if mask is not None:
-            arrays[name] = np.asarray(mask)
+            arrays[name] = native(mask)
             along[name] = ground
 
     path = sample_path(frame, layout.instrument, held.identifier, root)
