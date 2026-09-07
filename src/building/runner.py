@@ -16,11 +16,11 @@ from rich.console import Console
 
 from building import console as printing
 from building import planner
-from building.budget import Budget
 from building.dispatcher import INSTRUMENTS
 from building.metadata import read as metadata_read
 from building.metadata import write as metadata
 from building.metadata.observation import ObservationMetadata, observation_metadata
+from building.models.budget import Budget
 from building.models.job import Job, Outcome, Plan
 from building.models.progress import BUILDING, FETCHING, HOLDING, QUEUED, Progress
 from building.models.settings import Settings
@@ -92,7 +92,7 @@ def run_build(
     """Fetch every product a build needs and cut each to the features that kept it.
 
     Args:
-        settings: The settled choices for the build.
+        settings: The settled choices for the build, which name its version.
         console: The console to render on.
         root: The directory this build of the dataset is written in.
         force: Whether to rebuild crops that are already written.

@@ -11,7 +11,7 @@ from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn
 from rich.progress import Progress as Bar
 
-from building.budget import Budget
+from building.models.budget import Budget
 from building.models.job import Outcome, Plan
 from building.models.progress import Progress
 from building.models.settings import Settings

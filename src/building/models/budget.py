@@ -9,11 +9,6 @@ from collections import deque
 class Budget:
     """The memory a run hands out to its builds, in the order they ask for it.
 
-    A build holds a whole product, and the largest of them is many times the
-    size of the smallest, so what may run at once is settled by what each one
-    holds rather than by a count. Asking in order keeps a large build from
-    waiting for ever behind an unbroken run of small ones.
-
     Attributes:
         total: How many bytes every build running at once may hold together,
             which is also the most any single one of them is given.
