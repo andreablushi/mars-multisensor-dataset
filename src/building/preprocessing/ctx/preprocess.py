@@ -4,30 +4,20 @@ from __future__ import annotations
 
 import logging
 
-import numpy as np
 import tifffile
 
 from building.common.pds import labels
 from building.configs import ctx as configs
 from building.models.feature import FeatureFrame
-from building.preprocessing.common.crop import TURN, marked, overlap, taken
-from building.preprocessing.common.models.overlap import Overlap
-from building.preprocessing.common.models.relative_position import RelativePosition
+from building.preprocessing.common.crop import marked, overlap, polar_overlap, taken
 from building.preprocessing.ctx import projection
 from building.preprocessing.ctx.models.observation import CtxObservation
 from building.preprocessing.ctx.models.sample import BLANK, CtxSample
-from utils.geometry import geodesy
 
 # ASU writes the no-data value into a tag as a float where tifffile reads an
 # integer, and says so of every page of every scan it serves. Nothing here reads
 # that tag: what a scan left blank is `BLANK`, which the sample model names.
 logging.getLogger("tifffile").setLevel(logging.ERROR)
-
-# The longest segment the box is walked in, a chord leaving its arc by under a pixel.
-STEP = 0.1
-
-# How many pixels of a polar cut become degrees at once, since a scan can be huge.
-BLOCK = 4_000_000
 
 # What one build holds for every byte of the scan: the scan, the crop cut from
 # it and the masks beside it. Cached scans of 51 MB and 829 MB peaked at 3.2 and
@@ -113,68 +103,4 @@ def crop(observation: CtxObservation, frame: FeatureFrame) -> CtxSample | None:
         inside=held.inside,
         valid=marked(image != BLANK),
         image=image,
-    )
-
-
-def polar_overlap(observation: CtxObservation, frame: FeatureFrame) -> Overlap | None:
-    """Return what one feature's box keeps of one scan placed on a polar grid.
-
-    The box is walked and projected rather than the grid being turned back into
-    degrees, so a scan of a thousand million pixels is never held as degrees to
-    find out which handful of them a feature wants.
-
-    Args:
-        observation: The scan as it was read off disk, on the polar grid its
-            label projects it onto.
-        frame: The feature's local frame, carrying the box the catalogue gives
-            it.
-
-    Returns:
-        What the box keeps, or None where the scan reaches none of it.
-    """
-    grid = observation.polar
-    ring = geodesy.stereographic_forward(
-        *geodesy.bbox_ring(
-            frame.min_lat, frame.max_lat, frame.west_lon, frame.east_lon, STEP
-        ),
-        *grid,
-    )
-    # The box projects to a sector, and the ring its edge traces bounds it.
-    lines = np.flatnonzero(
-        (observation.down >= ring[1].min()) & (observation.down <= ring[1].max())
-    )
-    samples = np.flatnonzero(
-        (observation.across >= ring[0].min()) & (observation.across <= ring[0].max())
-    )
-    if not lines.size or not samples.size:
-        return None
-    # Only the sector's rectangle is crossed back, a block of its lines at a time.
-    span = geodesy.longitude_span(frame.west_lon, frame.east_lon)
-    across = observation.across[samples][None, :]
-    inside = np.empty((lines.size, samples.size), dtype=bool)
-    reach = max(1, BLOCK // samples.size)
-    for start in range(0, lines.size, reach):
-        block = slice(start, start + reach)
-        lon, lat = geodesy.stereographic_inverse(
-            across, observation.down[lines[block]][:, None], *grid
-        )
-        inside[block] = (
-            (lat >= frame.min_lat)
-            & (lat <= frame.max_lat)
-            & ((lon - frame.west_lon) % TURN <= span)
-        )
-    if not inside.any():
-        return None
-    centre_x, centre_y = geodesy.stereographic_forward(
-        frame.centre_lon, frame.centre_lat, *grid
-    )
-    return Overlap(
-        (lines, samples),
-        marked(inside),
-        RelativePosition(
-            observation.down[lines] - float(centre_y),
-            observation.across[samples] - float(centre_x),
-            True,
-            grid,
-        ),
     )

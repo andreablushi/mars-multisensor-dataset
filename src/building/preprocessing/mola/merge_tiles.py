@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-from pathlib import Path
 
 import numpy as np
 
@@ -73,38 +72,6 @@ def merge_tiles(grid: MolaGrid, frame: FeatureFrame) -> MolaObservation:
             round(float(longitude[0]) * resolution - 0.5) % (round(TURN) * resolution),
         )
 
-    def window(
-        image: Path,
-        label: dict[str, str],
-        lines: tuple[int, int],
-        samples: tuple[int, int],
-    ) -> np.ndarray:
-        """Read only the rectangle of one tile the bounds ask for.
-
-        Args:
-            image: The `.img` file holding the values.
-            label: The parsed label describing it.
-            lines: The first line to read, and the line after the last.
-            samples: The first sample to read, and the sample after the last.
-
-        Returns:
-            The values inside those bounds, as lines by samples, in the unit
-            the label says they stand for.
-
-        Raises:
-            ValueError: When the tile holds more than the one band this reads.
-        """
-        down, across, bands, _, dtype = labels.layout(label)
-        if bands != 1:
-            raise ValueError(f"{image.name} holds {bands} bands rather than one.")
-        with image.open("rb") as handle:
-            handle.seek(lines[0] * across * np.dtype(dtype).itemsize)
-            flat = np.fromfile(
-                handle, dtype=dtype, count=(lines[1] - lines[0]) * across
-            )
-        held = flat.reshape(lines[1] - lines[0], across)[:, samples[0] : samples[1]]
-        return images.measured(held, label)
-
     down, across = covered()
     whole = round(TURN) * resolution
     height: np.ndarray | None = None
@@ -122,7 +89,7 @@ def merge_tiles(grid: MolaGrid, frame: FeatureFrame) -> MolaObservation:
             stops = min(across.stop, sample + shift + samples)
             if first >= last or starts >= stops:
                 continue
-            part = window(
+            part = images.load_window(
                 image,
                 label,
                 (first - line, last - line),

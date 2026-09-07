@@ -9,12 +9,19 @@ from building.preprocessing.common.models.overlap import Box, Overlap
 from building.preprocessing.common.models.relative_position import RelativePosition
 from building.preprocessing.common.relative_positioning import (
     Positioned,
+    Projected,
     relative_position,
 )
 from utils.geometry import geodesy
 
 # The whole turn, which a longitude offset is measured round.
 TURN = 360.0
+
+# The longest segment the box is walked in, a chord leaving its arc by under a pixel.
+STEP = 0.1
+
+# How many pixels of a polar cut become degrees at once, since a grid can be huge.
+BLOCK = 4_000_000
 
 
 def overlap(observation: Positioned, frame: FeatureFrame) -> Overlap | None:
@@ -102,3 +109,63 @@ def taken(array: np.ndarray, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     if len(runs) == len(bounds):
         return array[runs]
     return array[np.ix_(*bounds)] if len(bounds) > 1 else array[bounds[0]]
+
+
+def polar_overlap(observation: Projected, frame: FeatureFrame) -> Overlap | None:
+    """Return what one feature's box keeps of one grid projected onto a pole.
+
+    Args:
+        observation: The grid as its label projects it, in the projection's own
+            metres.
+        frame: The feature's local frame, carrying the box the catalogue gives
+            it.
+
+    Returns:
+        What the box keeps, or None where the grid reaches none of it.
+    """
+    grid = observation.polar
+    ring = geodesy.stereographic_forward(
+        *geodesy.bbox_ring(
+            frame.min_lat, frame.max_lat, frame.west_lon, frame.east_lon, STEP
+        ),
+        *grid,
+    )
+    # The box projects to a sector, and the ring its edge traces bounds it.
+    lines = np.flatnonzero(
+        (observation.down >= ring[1].min()) & (observation.down <= ring[1].max())
+    )
+    samples = np.flatnonzero(
+        (observation.across >= ring[0].min()) & (observation.across <= ring[0].max())
+    )
+    if not lines.size or not samples.size:
+        return None
+    # Only the sector's rectangle is crossed back, a block of its lines at a time.
+    span = geodesy.longitude_span(frame.west_lon, frame.east_lon)
+    across = observation.across[samples][None, :]
+    inside = np.empty((lines.size, samples.size), dtype=bool)
+    reach = max(1, BLOCK // samples.size)
+    for start in range(0, lines.size, reach):
+        block = slice(start, start + reach)
+        lon, lat = geodesy.stereographic_inverse(
+            across, observation.down[lines[block]][:, None], *grid
+        )
+        inside[block] = (
+            (lat >= frame.min_lat)
+            & (lat <= frame.max_lat)
+            & ((lon - frame.west_lon) % TURN <= span)
+        )
+    if not inside.any():
+        return None
+    centre_x, centre_y = geodesy.stereographic_forward(
+        frame.centre_lon, frame.centre_lat, *grid
+    )
+    return Overlap(
+        (lines, samples),
+        marked(inside),
+        RelativePosition(
+            observation.down[lines] - float(centre_y),
+            observation.across[samples] - float(centre_x),
+            True,
+            grid,
+        ),
+    )

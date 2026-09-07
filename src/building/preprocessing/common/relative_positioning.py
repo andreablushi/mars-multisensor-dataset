@@ -7,7 +7,10 @@ from typing import Protocol
 import numpy as np
 
 from building.models.feature import FeatureFrame
-from building.preprocessing.common.models.relative_position import RelativePosition
+from building.preprocessing.common.models.relative_position import (
+    PolarGrid,
+    RelativePosition,
+)
 from utils.geometry import geodesy
 
 # How many neighbouring pairs of one axis to measure a ground sample over.
@@ -28,6 +31,20 @@ class Positioned(Protocol):
     latitude: np.ndarray
     longitude: np.ndarray
     separable: bool
+
+
+class Projected(Protocol):
+    """What an observation on a polar grid says about where its own samples sit.
+
+    Attributes:
+        down: The northing of every line, in the projection's own metres.
+        across: The easting of every sample, in the same metres.
+        polar: The grid the two are measured on.
+    """
+
+    down: np.ndarray
+    across: np.ndarray
+    polar: PolarGrid
 
 
 def relative_position(observation: Positioned, frame: FeatureFrame) -> RelativePosition:
