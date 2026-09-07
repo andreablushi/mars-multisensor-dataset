@@ -1,10 +1,10 @@
 # What a build of the dataset holds, and how much of it to build.
 
 # The directory it is written in and the name it is published under.
-name: half
+name: small
 
 # What share of the features the selection kept to build, above zero and up to one.
-share: 0.5
+share: 0.25
 
 # Which instruments to build. MOLA is placed by the feature's box, not the selection.
 instruments:
