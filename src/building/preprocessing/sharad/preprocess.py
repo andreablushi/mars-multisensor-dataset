@@ -6,6 +6,7 @@ from building.common.pds import images, labels, tables
 from building.configs import sharad as configs
 from building.models.feature import FeatureFrame
 from building.preprocessing.common.crop import overlap
+from building.preprocessing.sharad import elevation
 from building.preprocessing.sharad.models.observation import SharadObservation
 from building.preprocessing.sharad.models.sample import SharadSample
 
@@ -22,7 +23,8 @@ def read_observation(identifier: str) -> SharadObservation:
 
     Returns:
         The observation holding only the traces the geometry places, in the
-        order the radargram stores them.
+        order the radargram stores them, on the elevation its window is posted
+        against.
 
     Raises:
         FileNotFoundError: When either product or its label is missing.
@@ -52,6 +54,7 @@ def read_observation(identifier: str) -> SharadObservation:
         power[:, traces],
         geometry,
         traces,
+        elevation.elevation_m(power.shape[0]),
     )
 
 
@@ -78,4 +81,5 @@ def crop(observation: SharadObservation, frame: FeatureFrame) -> SharadSample | 
         power=observation.power[:, traces],
         geometry=observation.geometry[traces],
         traces=observation.traces[traces],
+        elevation=observation.elevation,
     )

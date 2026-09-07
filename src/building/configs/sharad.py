@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from building.common.layout import DELAY, GROUND, Layout
+from building.common.layout import ELEVATION, GROUND, Layout
 from building.common.naming import Naming
 from building.common.product_cache import ProductCache
 from utils.disk import paths
@@ -27,9 +27,9 @@ NAMING = Naming(
 LAYOUT = Layout(
     instrument="SHARAD",
     dims=("delay", "trace"),
-    axes=(DELAY, GROUND),
+    axes=(ELEVATION, GROUND),
     measurement="power",
-    beside={"traces": ("trace",)},
+    beside={"traces": ("trace",), "elevation": ("delay",)},
 )
 
 # Where each product is kept. The geometry is a table, in a subdirectory of its own.

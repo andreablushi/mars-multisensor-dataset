@@ -19,8 +19,11 @@ class SharadSample(Sample):
             the delay axis is read through is measured off.
         traces: Which of the original radargram columns these traces are,
             counted from zero.
+        elevation: How high above the areoid every delay sample stands, in
+            metres, which the track keeps whole since only its traces are cut.
     """
 
     power: np.ndarray
     geometry: np.recarray
     traces: np.ndarray
+    elevation: np.ndarray

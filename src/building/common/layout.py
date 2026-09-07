@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 # What an axis holds. A ground axis is placed; the others are the instrument's own.
 GROUND = "ground"
 WAVELENGTH = "wavelength"
-DELAY = "delay"
+ELEVATION = "elevation"
 
 
 @dataclass(frozen=True, slots=True)

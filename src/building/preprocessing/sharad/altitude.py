@@ -12,10 +12,11 @@ KM = 1000.0
 def altitude_m(sample: SharadSample) -> tuple[float, float]:
     """Return how low and how high the spacecraft was above the ground.
 
-    The delay axis is not turned into a depth here, since that needs a
+    The crop places its own samples above the areoid already, so this says
+    where the sounder flew and not where its echoes came from. Turning an echo
+    into a depth below the surface is left to the reader, since it needs a
     dielectric constant the subsurface is assumed to have, which is a choice
-    about the ground rather than about where the track ran. This keeps what
-    that conversion needs beside the track that would be converted.
+    about the ground rather than about where the track ran.
 
     Args:
         sample: The track cut to the feature it was kept for.
