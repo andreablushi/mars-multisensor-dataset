@@ -40,8 +40,10 @@ def search(track: Track, criteria: Filter) -> Survey | None:
     picked = _best(track, windowed, criteria)
     if picked is None:
         return None
+    # What a look has to bring the feature, which its own size is read for
+    gain = max(1, round(configs.GAIN_SHARE * len(track.grid.inside)))
     # Clean up the record to only what is worth keeping, and report reached
-    kept, reached = redundancy.trimmed(track, picked, windowed, configs.GAIN)
+    kept, reached = redundancy.trimmed(track, picked, windowed, gain)
     return Survey(
         area_km2=track.grid.area_km2,
         start=track.observations[kept[0]].t_start,
@@ -49,7 +51,7 @@ def search(track: Track, criteria: Filter) -> Survey | None:
         days=track.times[kept[-1]] - track.times[kept[0]],
         geo_mean=_scored(track, reached),
         kept=tuple(kept),
-        standing=timeless.fresh_looks(track, criteria.timeless),
+        standing=timeless.fresh_looks(track, criteria.timeless, gain),
     )
 
 
