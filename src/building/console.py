@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterable, Sequence
+import threading
+from collections.abc import Iterable, Iterator, Sequence
+from contextlib import contextmanager
 
 from rich.console import Console
-from rich.progress import BarColumn, MofNCompleteColumn, Progress
+from rich.progress import BarColumn, MofNCompleteColumn
+from rich.progress import Progress as Bar
 
+from building.budget import Budget
 from building.models.job import Outcome, Plan
+from building.models.progress import Progress
 from building.models.settings import Settings
 
 # How many items are named before the rest are counted
@@ -20,11 +25,19 @@ PLAIN_LOG_ENV = "PIPELINE_PLAIN_LOG"
 # How many progress lines a stage prints where no cursor can be moved
 LOGGED_LINES = 2000
 
+# How often a run says what it is doing, so a build that has stopped moving
+# says so rather than looking the same as one that is merely slow
+WATCHED_SECONDS = 300.0
+
+# What one gibibyte is, which the memory a run holds is said in
+GIB = 1024**3
+
 
 def describe(
     plan: Plan,
     settings: Settings,
     pools: tuple[int, int, int],
+    budget: Budget,
     console: Console,
 ) -> None:
     """Print what a build has to do before it starts.
@@ -32,8 +45,10 @@ def describe(
     Args:
         plan: What the planner worked out.
         settings: The settled choices for the build, which size it.
-        pools: The builds, the downloads, the products that may wait and the
-            memory they share, as the runner worked them out from the machine.
+        pools: The builds, the downloads and the products that may wait, as the
+            runner worked them out from the machine.
+        budget: The memory those builds share, which settles how many of the
+            heaviest products run at once.
         console: The console to print on.
 
     Returns:
@@ -49,8 +64,42 @@ def describe(
         f"instruments: {', '.join(settings.instruments)}; "
         f"share {settings.share:.0%}, seed {settings.seed}; "
         f"build pool {building}, download pool {fetching}, "
-        f"{ready} products may wait"
+        f"{ready} products may wait, {budget.total / GIB:.0f} GiB between them"
     )
+
+
+@contextmanager
+def watch(progress: Progress) -> Iterator[None]:
+    """Say what the build is doing every so often while it runs.
+
+    Args:
+        progress: What every product still in the build is doing.
+
+    Yields:
+        None, for as long as the build runs.
+    """
+    # A moving bar already says a run is alive; only a flat log needs telling.
+    if not os.environ.get(PLAIN_LOG_ENV):
+        yield
+        return
+    done = threading.Event()
+
+    def said() -> None:
+        """Print what the build is doing until it is over.
+
+        Returns:
+            None.
+        """
+        while not done.wait(WATCHED_SECONDS):
+            print(progress.standing, flush=True)
+
+    watcher = threading.Thread(target=said, daemon=True)
+    watcher.start()
+    try:
+        yield
+    finally:
+        done.set()
+        watcher.join()
 
 
 def render(
@@ -83,7 +132,7 @@ def render(
                     flush=True,
                 )
         return collected
-    with Progress(
+    with Bar(
         BarColumn(bar_width=None), MofNCompleteColumn(), console=console
     ) as progress:
         task = progress.add_task(description, total=total)

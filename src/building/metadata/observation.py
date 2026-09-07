@@ -39,10 +39,11 @@ class ObservationMetadata:
         valid_count: How many of the stored values are measurements, which is
             what the statistics beside it were measured over and what lets them
             be pooled with another observation's.
-        value_min: The smallest of those values.
-        value_max: The largest of them.
-        value_mean: Their mean.
-        value_std: Their standard deviation.
+        value_min: The smallest of those values, or None where the crop holds
+            no measurement to say anything about.
+        value_max: The largest of them, or None for the same reason.
+        value_mean: Their mean, or None for the same reason.
+        value_std: Their standard deviation, or None for the same reason.
         t_start: When the observation started, or None where the archive
             publishes no time for it.
         t_end: When it ended, or None for the same reason.
@@ -61,10 +62,10 @@ class ObservationMetadata:
     ground_sample_m: tuple[float, ...]
     separable: bool
     valid_count: int
-    value_min: float
-    value_max: float
-    value_mean: float
-    value_std: float
+    value_min: float | None
+    value_max: float | None
+    value_mean: float | None
+    value_std: float | None
     t_start: datetime | None = None
     t_end: datetime | None = None
     altitude_min_m: float | None = None
@@ -111,7 +112,7 @@ def observation_metadata(
 
     Returns:
         The metadata, its ground sample and its statistics measured rather than
-        claimed.
+        claimed, and those statistics unset where it holds no measurement.
     """
     values = getattr(held, layout.measurement)
     # A ground mask reaches every value on it, so it spreads over the instrument's axes.
@@ -130,6 +131,19 @@ def observation_metadata(
         if np.issubdtype(values.dtype, np.integer)
         else np.finfo(values.dtype)
     )
+    counted = int(measured.sum()) * int(np.prod(values.shape) // measured.size)
+    # A crop can reach a feature's box and hold no measurement on it at all, and
+    # there is nothing to say of values that were never taken.
+    smallest, largest, mean, deviation = (
+        (
+            float(np.min(values, where=measured, initial=limits.max)),
+            float(np.max(values, where=measured, initial=limits.min)),
+            float(np.mean(values, where=measured)),
+            float(np.std(values, where=measured)),
+        )
+        if counted
+        else (None, None, None, None)
+    )
     return ObservationMetadata(
         feature_class=frame.feature_class,
         feature_name=frame.feature_name,
@@ -140,11 +154,11 @@ def observation_metadata(
         shape=tuple(values.shape),
         ground_sample_m=relative_positioning.ground_sample_m(held.position, frame),
         separable=held.position.separable,
-        valid_count=int(measured.sum()) * int(np.prod(values.shape) // measured.size),
-        value_min=float(np.min(values, where=measured, initial=limits.max)),
-        value_max=float(np.max(values, where=measured, initial=limits.min)),
-        value_mean=float(np.mean(values, where=measured)),
-        value_std=float(np.std(values, where=measured)),
+        valid_count=counted,
+        value_min=smallest,
+        value_max=largest,
+        value_mean=mean,
+        value_std=deviation,
         t_start=_moment(held.label, STARTED) or t_start,
         t_end=_moment(held.label, STOPPED),
         altitude_min_m=low,

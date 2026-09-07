@@ -16,11 +16,13 @@ from rich.console import Console
 
 from building import console as printing
 from building import planner
+from building.budget import Budget
 from building.dispatcher import INSTRUMENTS
 from building.metadata import read as metadata_read
 from building.metadata import write as metadata
 from building.metadata.observation import ObservationMetadata, observation_metadata
 from building.models.job import Job, Outcome, Plan
+from building.models.progress import BUILDING, FETCHING, HOLDING, Progress
 from building.models.settings import Settings
 from building.preprocessing.common import store
 
@@ -35,10 +37,7 @@ CGROUP_LIMITS = (
 
 # How many downloads run per build and at all; they wait on an archive, not on cores.
 FETCHING_PER_BUILD = 4
-MOST_FETCHING = 16
-
-# How many products may wait per build, well above one or a build waits on the network.
-READY_PER_BUILD = 4
+MOST_FETCHING = 32
 
 
 def _room() -> int:
@@ -57,31 +56,25 @@ def _room() -> int:
     return int(free * MEMORY_SHARE)
 
 
-def pools(instruments: tuple[str, ...], cores: int | None) -> tuple[int, int, int]:
+def pools(cores: int | None) -> tuple[int, int, int]:
     """Return how many builds run, how many downloads, and how many may wait.
 
-    A build holds a whole product in memory, and the largest of them is a CTX
-    scan many times the size of anything else, so what the machine has room for
-    and not what it has cores for is what sizes the pool.
+    Every core builds. A build holds a whole product, and the largest of them is
+    a CTX scan many times the size of anything else, but what each one holds is
+    measured as it lands and taken out of the run's memory, so the pool is no
+    longer cut down to what the heaviest product alone would leave room for.
 
     Args:
-        instruments: The instruments the build covers, which say how much one
-            build of it holds.
         cores: How many cores the run was given, or None for the machine's.
 
     Returns:
         The builds to run at once, the downloads to run at once, and how many
         downloaded products may wait for a build to reach them.
     """
-    held = max(
-        INSTRUMENTS[name].worker_bytes for name in instruments if name in INSTRUMENTS
-    )
-    building = max(1, min(cores or os.cpu_count() or 1, _room() // held))
-    return (
-        building,
-        min(MOST_FETCHING, building * FETCHING_PER_BUILD),
-        (building * READY_PER_BUILD),
-    )
+    building = max(1, cores or os.cpu_count() or 1)
+    fetching = max(1, min(MOST_FETCHING, building * FETCHING_PER_BUILD))
+    # Enough waiting to feed every builder while every download is still in flight.
+    return building, fetching, building + fetching
 
 
 def run_build(
@@ -105,18 +98,32 @@ def run_build(
     Raises:
         FileNotFoundError: When no selection has been written to build from.
     """
-    building_count, fetching_count, ready = pools(settings.instruments, settings.cores)
+    building_count, fetching_count, ready = pools(settings.cores)
+    budget = Budget(_room())
     with httpx.Client() as ode:
         plan = planner.build_plan(settings, root, ode, force=force)
         printing.describe(
-            plan, settings, (building_count, fetching_count, ready), console
+            plan, settings, (building_count, fetching_count, ready), budget, console
         )
+        progress = Progress(len(plan.jobs))
         # A download waits on the network and a build on the cores, so the pools differ.
         with (
             ProcessPoolExecutor(max_workers=building_count) as building,
-            ThreadPoolExecutor(max_workers=fetching_count) as fetching,
+            # A thread waiting on memory is holding no download back, so the pool
+            # carries every product that may wait rather than every download.
+            ThreadPoolExecutor(max_workers=ready) as fetching,
+            printing.watch(progress),
         ):
-            held = _outcomes(plan.jobs, ode, fetching, building, root, ready)
+            held = _outcomes(
+                plan.jobs,
+                ode,
+                fetching,
+                building,
+                root,
+                (fetching_count, ready),
+                budget,
+                progress,
+            )
             with closing(held) as outcomes:
                 collected = printing.render(
                     outcomes, len(plan.jobs), "building", console
@@ -131,9 +138,11 @@ def _outcomes(
     fetching: ThreadPoolExecutor,
     building: ProcessPoolExecutor,
     root: Path,
-    ready: int,
+    counts: tuple[int, int],
+    budget: Budget,
+    progress: Progress,
 ) -> Iterator[Outcome]:
-    """Fetch every product and build it the moment it lands, in whatever order.
+    """Fetch every product and build it the moment there is room, in whatever order.
 
     Args:
         jobs: The products to fetch and build, heaviest first.
@@ -141,28 +150,37 @@ def _outcomes(
         fetching: The threads the downloads run on.
         building: The processes the builds run on.
         root: The dataset's own root directory.
-        ready: How many downloaded products may wait at once to be built.
+        counts: How many downloads may run at once, and how many downloaded
+            products may wait at once to be built.
+        budget: The memory the builds running at once share between them.
+        progress: What every product still in the build is doing.
 
     Yields:
         One outcome per job, in the order they finish.
     """
+    fetching_count, ready = counts
     finished: queue.Queue[Outcome] = queue.Queue()
+    # A place to land in, and a turn on the network, since neither bounds the other.
     waiting = threading.Semaphore(ready)
+    downloading = threading.Semaphore(fetching_count)
 
-    def finish(outcome: Outcome) -> None:
-        """Record what one job left and give back the place it took.
+    def finish(outcome: Outcome, held: int) -> None:
+        """Record what one job left and give back everything it took.
 
         Args:
             outcome: What the job left, whether it was built or failed.
+            held: How much memory it was holding, and zero where it held none.
 
         Returns:
             None.
         """
+        if held:
+            budget.release(held)
         finished.put(outcome)
         waiting.release()
 
     def fetched(job: Job) -> None:
-        """Bring one product down and hand it to the pool that builds it.
+        """Bring one product down, take the memory it needs, and hand it on.
 
         Args:
             job: The product to fetch.
@@ -172,20 +190,29 @@ def _outcomes(
         """
         # The place is taken before the download, so the room is never given elsewhere.
         waiting.acquire()
+        steps = INSTRUMENTS[job.instrument]
+        stage, held = progress.entered(FETCHING), 0
         try:
-            INSTRUMENTS[job.instrument].fetch(job.identifier, ode)
+            with downloading:
+                steps.fetch(job.identifier, ode)
+            # Only now is there a product to measure, and so a share to ask for.
+            stage = progress.moved(stage, HOLDING)
+            held = budget.acquire(steps.holds(job.identifier))
+            stage = progress.moved(stage, BUILDING)
             building.submit(build_product, job, root).add_done_callback(
-                partial(built, job)
+                partial(built, job, held)
             )
         except Exception as error:  # noqa: BLE001
             # The download failed or the pool is closing, so this builds nowhere.
-            finish(Outcome(job, error=error))
+            progress.left(stage, finished=True)
+            finish(Outcome(job, error=error), held)
 
-    def built(job: Job, done: Future[Outcome]) -> None:
+    def built(job: Job, held: int, done: Future[Outcome]) -> None:
         """Record what one job's build left, a worker the pool lost included.
 
         Args:
             job: The job that was built.
+            held: How much memory it was holding while it built.
             done: What the build pool left.
 
         Returns:
@@ -195,7 +222,8 @@ def _outcomes(
             outcome = done.result()
         except Exception as error:  # noqa: BLE001
             outcome = Outcome(job, error=error)
-        finish(outcome)
+        progress.left(BUILDING, finished=True)
+        finish(outcome, held)
 
     # Every path leaves one outcome and gives its place back, or it waits for ever.
     for job in jobs:

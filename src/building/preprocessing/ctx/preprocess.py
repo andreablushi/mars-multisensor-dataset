@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 import tifffile
 
@@ -16,11 +18,48 @@ from building.preprocessing.ctx.models.observation import CtxObservation
 from building.preprocessing.ctx.models.sample import BLANK, CtxSample
 from utils.geometry import geodesy
 
+# ASU writes the no-data value into a tag as a float where tifffile reads an
+# integer, and says so of every page of every scan it serves. Nothing here reads
+# that tag: what a scan left blank is `BLANK`, which the sample model names.
+logging.getLogger("tifffile").setLevel(logging.ERROR)
+
 # The longest segment the box is walked in, a chord leaving its arc by under a pixel.
 STEP = 0.1
 
 # How many pixels of a polar cut become degrees at once, since a scan can be huge.
 BLOCK = 4_000_000
+
+# What one build holds for every byte of the scan: the scan, the crop cut from
+# it and the masks beside it. Cached scans of 51 MB and 829 MB peaked at 3.2 and
+# 2.4 times their own size, so three carries the larger with room over it.
+HELD_PER_BYTE = 3
+
+# What the reader, the label and the grids cost whatever size the scan is.
+HELD_FLOOR = 512 * 1024**2
+
+
+def held_bytes(identifier: str) -> int:
+    """Return how much memory one build of this scan holds at its peak.
+
+    A projected scan runs from tens of megabytes to a few gigabytes, so what one
+    build of it holds is read off the scan that landed rather than guessed for
+    the whole instrument.
+
+    Args:
+        identifier: The observation, whose files must already be in the cache
+            that `download.fetch` puts them in.
+
+    Returns:
+        How many bytes to hold for it, floor included.
+
+    Raises:
+        FileNotFoundError: When the image is missing.
+        tifffile.TiffFileError: When it is not a TIFF this can read.
+    """
+    files = configs.CACHE.files(identifier, identifier)
+    with tifffile.TiffFile(files[configs.SUFFIXES[configs.IMAGE]]) as scan:
+        held = scan.pages[0].nbytes
+    return HELD_FLOOR + HELD_PER_BYTE * held
 
 
 def read_observation(identifier: str) -> CtxObservation:

@@ -48,7 +48,10 @@ class Instrument:
             delay axis is read through it, and None for every other instrument.
         worker_bytes: What one build holds of its largest product at once, the
             product itself and the crop and masks that stand beside it, which
-            is what says how many builds a machine has room to run.
+            is what a build is given where nothing measures the product itself.
+        held_bytes: What reads how much one downloaded product holds, off the
+            files it landed as, for an instrument whose products differ in size
+            by more than the memory a run can spare, and None for the rest.
     """
 
     layout: Layout
@@ -60,6 +63,20 @@ class Instrument:
     identifiers: Callable[[Feature, httpx.Client], list[str]] | None = None
     altitude: Callable[[Any], tuple[float, float]] | None = None
     worker_bytes: int = 512 * 1024**2
+    held_bytes: Callable[[str], int] | None = None
+
+    def holds(self, identifier: str) -> int:
+        """Return how much memory one build of one product of this holds.
+
+        Args:
+            identifier: The product, already downloaded, since what it holds is
+                measured off the files it landed as.
+
+        Returns:
+            How many bytes to hold for it, which is what it was declared to
+            hold where its own size is not read.
+        """
+        return self.held_bytes(identifier) if self.held_bytes else self.worker_bytes
 
 
 INSTRUMENTS = {
@@ -80,8 +97,9 @@ INSTRUMENTS = {
         ctx_configs.CACHE.discard,
         ctx.crop,
         observation_id=ctx_configs.NAMING.parse,
-        # A 2.6 GB scan, held with its crop and two masks; 829 MB measured 2.77 GB.
+        # A 2.6 GB scan, held with its crop and two masks; 829 MB measured 2.0 GB.
         worker_bytes=9 * 1024**3,
+        held_bytes=ctx.held_bytes,
     ),
     mola_configs.LAYOUT.instrument: Instrument(
         mola_configs.LAYOUT,
