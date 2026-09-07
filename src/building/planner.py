@@ -105,6 +105,20 @@ def build_plan(
     )
 
 
+def buildable(picked: Sequence[Selection], cap: int) -> list[Selection]:
+    """Keep the features one build may cover, the ones seen too often left out.
+
+    Args:
+        picked: What the search left of every feature it searched.
+        cap: The observations a feature may keep and still be built.
+
+    Returns:
+        The features the filter passed that no more observations than the cap
+        were kept for, in the order the selection was written.
+    """
+    return [one for one in picked if one.feature.kept and len(one.observations) <= cap]
+
+
 def _sampled(
     picked: Sequence[Selection], settings: Settings
 ) -> tuple[list[Selection], int]:
@@ -120,9 +134,8 @@ def _sampled(
         The selections to build, in the order the selection was written, and
         how many features were left out for holding too many observations.
     """
-    passed = [one for one in picked if one.feature.kept]
-    kept = [one for one in passed if len(one.observations) <= settings.max_observations]
-    crowded = len(passed) - len(kept)
+    kept = buildable(picked, settings.max_observations)
+    crowded = sum(1 for one in picked if one.feature.kept) - len(kept)
     wanted = round(settings.share * len(kept))
     if wanted >= len(kept):
         return kept, crowded
