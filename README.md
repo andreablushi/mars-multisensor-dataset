@@ -96,6 +96,12 @@ side. A feature is built whole, with every observation the selection left it.
 The same seed and a larger share gives a superset, so a small build is always
 part of the larger one.
 
+`max_observations` is the observations a feature may keep and still be built. A
+handful of polar landforms are seen thousands of times and carry half the
+dataset between them, so one over the cap is left out whole rather than built in
+part, which would leave it holding less than the filter passed it on. The share
+is drawn from what is left, so it is a share of what a build may cover.
+
 A product is deleted once every feature that wanted it has been cut, so a build
 needs room for what it holds at once and never for everything it ever fetched.
 How many downloads and builds run at once is worked out from the cores and the
@@ -105,6 +111,10 @@ free memory the run finds, so neither is a setting a config carries.
 
 The dataset is one directory: a crop per observation of a feature, and beside
 them the index that says what each is. Nothing outside it is needed to read it.
+It is published a file at a time rather than as one archive, so every crop is
+its own object under the artifact's own path, keyed by the path the index names
+it by. A training run reads the index and asks the store for the crops it drew,
+and never brings the rest of the dataset down at all.
 
 ```
 dataset/
@@ -132,6 +142,19 @@ rows = pq.read_table(root / "observations.parquet").to_pylist()
 held = np.load(root / rows[0]["path"], allow_pickle=False)
 meta = json.loads(str(held["meta"]))
 values = held[meta["measurement"]]  # what the instrument measured
+```
+
+Inside DigitalHub the same rows are read against the store instead of the disk,
+so nothing is downloaded but the index and the crops a batch asks for:
+
+```python
+import digitalhub as dh
+
+published = dh.get_or_create_project("mars-multisensor-features").get_artifact(
+    "dataset-small"
+)
+root = published.spec.path  # s3://.../dataset-small/<id>/
+crop = f"{root}{rows[0]['path']}"
 ```
 
 The index is read on its own, so a count, a filter or a split opens no array at

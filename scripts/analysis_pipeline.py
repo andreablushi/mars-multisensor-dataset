@@ -110,7 +110,7 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
     os.environ[console.PLAIN_LOG_ENV] = "1"
     print("measuring coverage", flush=True)
     failed = survey(force, workers)
-    coverage = archives.logged(
+    coverage = archives.logged_archive(
         project,
         paths.COVERAGE_ROOT,
         _COVERAGE,
@@ -123,14 +123,14 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
         description="One row per feature and instrument set.",
     )
     if any(paths.CATALOG_ROOT.glob("*.jsonl")):
-        archives.logged(
+        archives.logged_archive(
             project,
             paths.CATALOG_ROOT,
             _CATALOG,
             "The ODE feature and instrument sets; unpack under data/.",
         )
     if any(paths.METADATA_ROOT.rglob("*.jsonl")):
-        archives.logged(
+        archives.logged_archive(
             project,
             paths.METADATA_ROOT,
             _METADATA,
@@ -187,14 +187,14 @@ def _published_selection(project):
         The uploaded archive of the selection, then the one of the stats.
     """
     return (
-        archives.logged(
+        archives.logged_archive(
             project,
             paths.SELECTION_ROOT,
             _SELECTION,
             "The features and observations the filter keeps; "
             "unpack under data/analysis/.",
         ),
-        archives.logged(
+        archives.logged_archive(
             project,
             paths.STATS_ROOT,
             _STATS,

@@ -9,8 +9,8 @@ from pathlib import Path
 import utils.disk.paths as paths
 
 
-def logged(project, root: Path, name: str, description: str):
-    """Pack one tree and publish it, saying how big it went up.
+def logged_archive(project, root: Path, name: str, description: str):
+    """Pack one tree and publish it as a single archive, saying how big it went up.
 
     Args:
         project: The DigitalHub project to log the archive into.
@@ -38,6 +38,27 @@ def logged(project, root: Path, name: str, description: str):
         # The platform holds the archive now, so the job keeps neither the file
         # nor the pages it left charged against the memory the job is given
         packed.unlink(missing_ok=True)
+
+
+def logged_folder(project, root: Path, name: str, description: str):
+    """Publish one tree file by file, each addressable where it lands.
+
+    Args:
+        project: The DigitalHub project to log the folder into.
+        root: The directory to publish, whose files keep the paths they hold
+            inside it, which is what the index names them by.
+        name: The name the folder is published under.
+        description: What the folder holds, and how it is read.
+
+    Returns:
+        The logged artifact.
+    """
+    files = [one for one in root.rglob("*") if one.is_file()]
+    held = sum(one.stat().st_size for one in files)
+    print(f"uploading {name}, {len(files):,} files, {held / 1e6:.0f} MB", flush=True)
+    return project.log_artifact(
+        name=name, kind="artifact", source=str(root), description=description
+    )
 
 
 def unpacked(downloaded: str, into: Path) -> None:

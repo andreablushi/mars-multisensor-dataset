@@ -67,12 +67,12 @@ def run_build(project, force: bool = False, cores: int | None = None):
     """Build the dataset on DigitalHub and publish what it left on disk.
 
     Args:
-        project: The DigitalHub project the archive is logged into.
+        project: The DigitalHub project the dataset is logged into.
         force: Whether to rebuild crops that are already written.
         cores: How many cores the run was given, as the job was sized.
 
     Returns:
-        The uploaded archive of the dataset.
+        The published dataset, one object per crop.
 
     Raises:
         RuntimeError: When a product failed, which leaves the dataset short of
@@ -88,15 +88,17 @@ def run_build(project, force: bool = False, cores: int | None = None):
     )
     print(f"building {choices.share:.0%} of the dataset as {choices.name}", flush=True)
     failed = build(force, cores)
-    published = archives.logged(
+    published = archives.logged_folder(
         project,
         paths.dataset_root(choices.name),
         _published(choices.name),
-        "The cropped observations and their index; unpack under "
-        "data/building/dataset/.",
+        "The cropped observations and their index, one object per crop; read "
+        "observations.parquet and ask the store for the crops it names.",
     )
     if failed:
-        raise RuntimeError("the build had failures; the archive holds what finished")
+        raise RuntimeError(
+            "the build had failures; what was published holds what finished"
+        )
     print("done", flush=True)
     return published
 
