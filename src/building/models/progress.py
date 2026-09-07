@@ -8,20 +8,23 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 # What a product is doing between being planned and being finished, in order.
+QUEUED = "queued"
 FETCHING = "fetching"
 HOLDING = "holding"
 BUILDING = "building"
-STAGES = (FETCHING, HOLDING, BUILDING)
+STAGES = (QUEUED, FETCHING, HOLDING, BUILDING)
 
 
 @dataclass(slots=True)
 class Progress:
     """How far a build has got, and what each product still in it is doing.
 
-    A build waits on an archive, on memory and on its cores in turn, and a run
-    that stops moving looks the same from outside whichever of them it stopped
-    on. Counting the products at each stage says which, and when one last moved
-    says whether it is slow or stopped.
+    A build waits for a turn on the network, on the archive that answers, on
+    memory and on its cores in turn, and a run that stops moving looks the same
+    from outside whichever of them it stopped on. Counting the products at each
+    stage says which, and when one last moved says whether it is slow or
+    stopped. Waiting for a turn is counted apart from being answered, so the
+    line never reads as more downloads than a run is allowed to run.
 
     Attributes:
         total: How many products the build has to get through.

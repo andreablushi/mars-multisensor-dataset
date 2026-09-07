@@ -22,7 +22,7 @@ from building.metadata import read as metadata_read
 from building.metadata import write as metadata
 from building.metadata.observation import ObservationMetadata, observation_metadata
 from building.models.job import Job, Outcome, Plan
-from building.models.progress import BUILDING, FETCHING, HOLDING, Progress
+from building.models.progress import BUILDING, FETCHING, HOLDING, QUEUED, Progress
 from building.models.settings import Settings
 from building.preprocessing.common import store
 
@@ -191,9 +191,10 @@ def _outcomes(
         # The place is taken before the download, so the room is never given elsewhere.
         waiting.acquire()
         steps = INSTRUMENTS[job.instrument]
-        stage, held = progress.entered(FETCHING), 0
+        stage, held = progress.entered(QUEUED), 0
         try:
             with downloading:
+                stage = progress.moved(stage, FETCHING)
                 steps.fetch(job.identifier, ode)
             # Only now is there a product to measure, and so a share to ask for.
             stage = progress.moved(stage, HOLDING)
