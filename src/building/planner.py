@@ -56,7 +56,9 @@ def build_plan(
             # Skip a product no instrument builds, and an id naming no observation.
             read = named.observation_id if named else None
             if read and (held := read(kept.pdsid)):
-                wanted[(kept.iid, held)].append(feature.frame)
+                # Both detectors name one observation, so it is cut from once
+                if feature.frame not in wanted[(kept.iid, held)]:
+                    wanted[(kept.iid, held)].append(feature.frame)
                 taken.setdefault((kept.iid, held), kept.t_start)
             else:
                 unread += 1
