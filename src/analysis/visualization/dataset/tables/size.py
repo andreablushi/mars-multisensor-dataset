@@ -36,11 +36,10 @@ def final(read: DatasetStats) -> widgets.Widget:
     return tables.written("The dataset the filter leaves", _HEADINGS, rows)
 
 
-def built(
-    picked: Sequence[Selection], buildable: Sequence[Selection], cap: int
-) -> widgets.Widget:
+def built(picked: Sequence[Selection], cap: int) -> widgets.Widget:
     """Tabulate what a build takes of the dataset once the crowded features are out."""
     kept = [one for one in picked if one.feature.kept]
+    buildable = [one for one in kept if len(one.observations) <= cap]
     left, taken = (
         Counter(held.iid for one in group for held in one.observations)
         for group in (kept, buildable)

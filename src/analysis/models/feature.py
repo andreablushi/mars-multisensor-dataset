@@ -30,7 +30,7 @@ class Feature:
         """Return whether the catalogue gives the feature a latitude span.
 
         Returns:
-            True when the maximum latitude is strictly the larger.
+            spans: True when the maximum latitude is strictly the larger.
         """
         return self.max_lat > self.min_lat
 
@@ -39,7 +39,7 @@ class Feature:
         """Return whether the catalogue bounds the feature in longitude.
 
         Returns:
-            True when the west and east longitudes differ.
+            spans: True when the west and east longitudes differ.
         """
         return self.west_lon != self.east_lon
 
@@ -48,7 +48,7 @@ class Feature:
         """Return whether the catalogue gives the feature no extent at all.
 
         Returns:
-            True when the feature has neither a latitude nor a longitude span.
+            point: True when the feature has neither a latitude nor a longitude span.
         """
         return not self.has_latitude_extent and not self.has_longitude_extent
 
@@ -57,6 +57,6 @@ class Feature:
         """Return whether the feature runs through every longitude.
 
         Returns:
-            True when the feature has a latitude span but no longitude one.
+            circles: True when the feature has a latitude span but no longitude one.
         """
         return self.has_latitude_extent and not self.has_longitude_extent

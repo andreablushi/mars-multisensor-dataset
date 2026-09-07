@@ -37,7 +37,7 @@ class Observation:
         """Report whether the footprint is a ground track rather than an area.
 
         Returns:
-            True when the footprint carries no polygon and must be buffered.
+            track: True when the footprint carries no polygon and must be buffered.
         """
         return self.wkt.startswith(("LINESTRING", "MULTILINESTRING"))
 
@@ -46,7 +46,7 @@ class Observation:
         """Return how long the observation lasted.
 
         Returns:
-            The elapsed seconds, or zero when no stop was published.
+            seconds: The elapsed seconds, or zero when no stop was published.
         """
         return (self.stop - self.start).total_seconds() if self.stop else 0.0
 

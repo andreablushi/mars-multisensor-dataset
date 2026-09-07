@@ -34,7 +34,8 @@ class Job:
         """Return a short human readable name for this job.
 
         Returns:
-            The feature and instrument set, named as the job's own stage spells them.
+            label: The feature and instrument set, named as the job's own stage spells
+                them.
         """
         if self.feature is not None and self.instrument_set is not None:
             return f"{self.feature.name} [{self.instrument_set.key}]"
@@ -62,7 +63,7 @@ class Outcome:
         """Return a short human readable name for the job that was run.
 
         Returns:
-            The label of the underlying job.
+            label: The label of the underlying job.
         """
         return self.job.label
 
@@ -71,7 +72,7 @@ class Outcome:
         """Return whether the job raised an error.
 
         Returns:
-            True when an error was recorded.
+            failed: True when an error was recorded.
         """
         return self.error is not None
 
@@ -80,7 +81,7 @@ class Outcome:
         """Return whether the job finished having measured nothing.
 
         Returns:
-            True when the set produced no observation rows.
+            empty: True when the set produced no observation rows.
         """
         return self.error is None and self.events == 0
 

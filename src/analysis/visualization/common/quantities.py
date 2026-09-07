@@ -12,7 +12,7 @@ def compact(value: float) -> str:
         value: The count.
 
     Returns:
-        The count itself when small, and otherwise in thousands and up.
+        written: The count itself when small, and otherwise in thousands and up.
     """
     for limit, suffix in _STEPS:
         if value >= limit:
@@ -27,7 +27,8 @@ def area(km2: float) -> str:
         km2: The area in square kilometres.
 
     Returns:
-        The area, to a hundredth below ten square kilometres and whole above it.
+        written: The area, to a hundredth below ten square kilometres and whole above
+            it.
     """
     return f"{km2:,.0f} km2" if km2 >= 10.0 else f"{km2:,.2f} km2"
 
@@ -39,7 +40,7 @@ def duration(days: float) -> str:
         days: The length in days.
 
     Returns:
-        The length as a phrase, such as "18 hours" or "47 days".
+        written: The length as a phrase, such as "18 hours" or "47 days".
     """
     if days < 1.0:
         return f"{days * 24.0:.0f} hours"

@@ -126,8 +126,8 @@ def _kept_features() -> dict[tuple[str, str], bool]:
     """Say which searched features earned a window.
 
     Returns:
-        Whether each searched feature was kept, by class and name, and nothing
-        at all where no selection has been written to read it off.
+        kept: Whether each searched feature was kept, by class and name, and nothing at
+            all where no selection has been written to read it off.
     """
     try:
         picked = selection.selection_by_feature()

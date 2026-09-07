@@ -24,7 +24,7 @@ def remove_atmospheric_bands(
         detector: Which detector, `l` or `s`, which picks the windows.
 
     Returns:
-        The mask with those bands recorded.
+        mask: The mask with those bands recorded.
     """
     centre = bands_calibration.centres(table)
     caught = np.zeros(centre.shape, dtype=bool)

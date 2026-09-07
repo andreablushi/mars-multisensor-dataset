@@ -26,7 +26,7 @@ def new_ground(
         threads: How many cells to accumulate at once, this job's share of the machine.
 
     Returns:
-        The ground in square metres each observation covered first, as it was given.
+        ground: The ground in square metres each observation covered first.
     """
     indexed = np.asarray(shapes, dtype=object)
     grid = coarse_split.grid_over(region, indexed)
@@ -56,7 +56,7 @@ def _cell_contributions(
         reaching: The indices of the observations reaching it, in order.
 
     Returns:
-        The ground in square metres this cell saw each observation cover first.
+        ground: The ground in square metres this cell saw each observation cover first.
     """
     covered: BaseGeometry = Polygon()
     arrived: list[BaseGeometry] = []
@@ -94,9 +94,6 @@ def _record_first_cover(
         pieces: The footprints clipped to the cell, in the same order.
         covered: The cell's union before this chunk, empty for the first.
         share: The cell's contributions so far, appended to in place.
-
-    Returns:
-        None.
     """
     running = covered
     for index, piece in zip(indices, pieces, strict=True):

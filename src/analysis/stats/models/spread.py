@@ -35,7 +35,7 @@ class Spread:
             values: The measurement, one per feature, in any order.
 
         Returns:
-            The spread, empty at nought where no feature took it.
+            spread: The spread, empty at nought where no feature took it.
         """
         if not values:
             return cls(0.0, 0.0, 0.0, 0.0, 0.0, 0)
@@ -53,6 +53,6 @@ class Spread:
         """Report whether the features all read the same.
 
         Returns:
-            True when there is nothing to spread, so the average says it all.
+            agreed: True when there is nothing to spread, so the average says it all.
         """
         return self.low == self.high

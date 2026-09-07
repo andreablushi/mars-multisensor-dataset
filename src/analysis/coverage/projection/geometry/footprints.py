@@ -39,7 +39,7 @@ def feature_region(feature: Feature) -> FeatureRegion:
         feature: The feature whose box the coverage is measured against.
 
     Returns:
-        The projected box and the two clipping regions built from the same bounds.
+        region: The projected box and the two clipping regions built from its bounds.
     """
     min_lat, max_lat = feature.min_lat, feature.max_lat
     west_lon, east_lon = feature.west_lon, feature.east_lon
@@ -87,7 +87,7 @@ def clip_boxes(
         margin_deg: How far to widen the region, in degrees of latitude.
 
     Returns:
-        The clipping region, as one rectangle or the union of two.
+        region: The clipping region, as one rectangle or the union of two.
     """
     lat_limit = min(max(abs(min_lat), abs(max_lat)), 89.0)
     lon_margin = margin_deg / geodesy.longitude_stretch(lat_limit)
@@ -116,7 +116,8 @@ def projected_footprints(
         swath_widths_m: The cross-track width for each track, ignored for areas.
 
     Returns:
-        One projected, clipped footprint per input, empty where it falls outside.
+        footprints: One projected, clipped footprint per input, empty where it falls
+            outside.
     """
     parts, owners = single_parts(geoms)
     kinds = get_type_id(parts)
@@ -175,7 +176,8 @@ def single_parts(geoms: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         geoms: The geometries to expand, including nested collections.
 
     Returns:
-        The flat single-part geometries and the index of the input each came from.
+        parts: The flat single-part geometries.
+        inputs: The index of the input each came from.
     """
     parts = np.asarray(geoms, dtype=object)
     owners = np.arange(parts.size)

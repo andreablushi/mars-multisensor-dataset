@@ -33,9 +33,6 @@ def describe(
         coverage: The plan produced by the coverage planner.
         settings: The settled choices for the run, which size both halves.
         console: The console to print on.
-
-    Returns:
-        None.
     """
     console.print(
         f"download: {download.feature_count} features x {download.set_count} sets, "
@@ -60,9 +57,6 @@ def render(
         total: The number of units in the run.
         description: The label for the progress task.
         console: The console to render on.
-
-    Returns:
-        None.
     """
     # A platform log takes plain flushed lines, since no cursor can be moved there
     if os.environ.get(PLAIN_LOG_ENV):
@@ -95,7 +89,7 @@ def logged(description: str) -> Callable[[int, int], None]:
         description: The label for the stage, carried on every line printed.
 
     Returns:
-        A callback taking how many units are done and how many there are.
+        progress: A callback taking how many units are done and how many there are.
     """
 
     def moved(done: int, total: int) -> None:
@@ -107,11 +101,7 @@ def logged(description: str) -> Callable[[int, int], None]:
 
 
 def print_interrupted() -> None:
-    """Print the notice shown when a run is stopped with Ctrl-C.
-
-    Returns:
-        None.
-    """
+    """Print the notice shown when a run is stopped with Ctrl-C."""
     Console().print(
         "[yellow]interrupted: pending jobs cancelled, finished files kept. "
         "Re-run to resume.[/yellow]"
@@ -133,9 +123,6 @@ def print_summary(
         indexed: Summary rows gathered into the catalogue index.
         missing: The instrument sets that still have no artifact on disk.
         console: The console to print on.
-
-    Returns:
-        None.
     """
     console.print(
         f"downloaded {download.ran} sets, {download.failed} failed, "
@@ -169,9 +156,6 @@ def _reached(description: str, completed: int, total: int, label: str = "") -> N
         completed: How many units are finished.
         total: How many there are.
         label: What just finished, where the stage names its units.
-
-    Returns:
-        None.
     """
     share = completed / total
     print(

@@ -18,17 +18,12 @@ _NONE = np.empty(0, dtype=np.int64)
 def grid_over(region: FeatureRegion, grid_cells: int) -> Grid:
     """Give one feature a grid fine enough for the ground it covers.
 
-    A feature is given a block of cells for every block of ground it spans, so a
-    large feature is measured on a finer grid rather than a coarser one. These
-    cells are written into the artifacts and read back by the selector, so their
-    size is the resolution every later stage reasons about the feature at.
-
     Args:
         region: The feature the footprints were cut to.
         grid_cells: How many cells one block of the grid holds along each axis.
 
     Returns:
-        The grid the feature is measured on.
+        grid: The grid the feature is measured on.
     """
     west, south, east, north = region.shape.bounds
     span_km = math.sqrt((east - west) * (north - south)) / 1000.0
@@ -49,7 +44,7 @@ def filled(grid: Grid, shape: BaseGeometry) -> np.ndarray:
         shape: The projected shape to burn, already cut to the feature.
 
     Returns:
-        The indices of the cells it fills, in ascending order.
+        cells: The indices of the cells it fills, in ascending order.
     """
     if shape.is_empty:
         return _NONE

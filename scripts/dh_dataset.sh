@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# The dataset is the one publication big enough to be worth asking for on its
-# own, so it is not among the names dh_download.sh brings down together.
+# The dataset is big enough to ask for on its own, so dh_download.sh leaves it
 here="$(dirname "$0")"
 platform="$here/../configs/digitalhub.yaml"
 building="$here/../configs/building_runner.yaml"
@@ -29,8 +28,7 @@ if [[ ${1-} == -h || ${1-} == --help ]]; then
 fi
 
 dest="data/building/dataset/$name"
-# Everything lands beside the destination first, so a download that fails or is
-# interrupted leaves what is already on disk untouched.
+# Everything lands beside the destination first, so a failure touches nothing
 staged="$dest.incoming"
 rm -rf "$staged"
 mkdir -p "$staged"
@@ -44,8 +42,7 @@ if [[ -z $(ls -A "$staged" 2>/dev/null) ]]; then
     exit 1
 fi
 
-# The build owns the directory it fills, so it replaces what is there rather
-# than merging into it.
+# The build owns the directory it fills, so it replaces rather than merges
 rm -rf "$dest"
 mkdir -p "$dest"
 cp -a "$staged"/. "$dest"/

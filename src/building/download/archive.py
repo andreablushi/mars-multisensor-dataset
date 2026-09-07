@@ -22,7 +22,7 @@ def query(client: httpx.Client, **params: str) -> list[dict]:
             the product type, and a product id or a page size.
 
     Returns:
-        One entry per product ODE answers with, empty when it matched none.
+        entries: One entry per product ODE answers with, empty when it matched none.
 
     Raises:
         ODEError: When ODE reports an error of its own.
@@ -36,7 +36,7 @@ def query(client: httpx.Client, **params: str) -> list[dict]:
             payload: The parsed response body.
 
         Returns:
-            The ODEResults object, or None when the reply holds none.
+            results: The ODEResults object, or None when the reply holds none.
 
         Raises:
             ODEError: When ODE reports an error of its own.
@@ -73,7 +73,7 @@ def published(entry: dict) -> dict[str, str]:
         entry: One product, as `query` returns it.
 
     Returns:
-        The download URL of each file, keyed by its lowercase filename.
+        urls: The download URL of each file, keyed by its lowercase filename.
     """
     offered = entry.get("Product_files", {}).get("Product_file", [])
     return {
@@ -92,8 +92,7 @@ def offers(client: httpx.Client, product_id: str, **params: str) -> dict[str, st
         params: What else names it, such as the instrument and its type.
 
     Returns:
-        The download URL of each file suffix the product is published as, the
-        first offer of a suffix winning.
+        urls: The download URL of each file suffix, the first offer of a suffix winning.
     """
     entries = query(client, productid=product_id, **params)
     found: dict[str, str] = {}
@@ -117,9 +116,6 @@ def collect(
         params: What names the product to ODE, such as the instrument host, the
             instrument and the product type.
 
-    Returns:
-        None.
-
     Raises:
         FileNotFoundError: When ODE offers no download for a missing half.
     """
@@ -142,9 +138,6 @@ def bring(
         timeout: How long to wait on each transfer.
         client: A client whose connections to reuse, or None to open one per
             transfer.
-
-    Returns:
-        None.
 
     Raises:
         FileNotFoundError: When a missing half is served from nowhere.

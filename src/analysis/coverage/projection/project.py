@@ -17,7 +17,8 @@ def project(loaded: ObservationSet) -> ProjectedSet:
         loaded: The set's stored observations, in chronological order.
 
     Returns:
-        The observations that landed on the feature, and the region they were cut to.
+        projected: The observations that landed on the feature, and the region they were
+            cut to.
     """
     region = footprints.feature_region(loaded.feature)
     widths = sizing.track_widths(loaded.observations)

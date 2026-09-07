@@ -23,9 +23,7 @@ def arcs(when: Sequence[datetime]) -> list[float]:
         when: The moments to place, each read as UTC.
 
     Returns:
-        The angle Mars had swept by each, in degrees, one to each moment given.
-        The angles run on past 360 rather than turning over, so the arc between
-        any two of them is what one subtracted from the other leaves.
+        arcs: The angle Mars had swept by each, in degrees, one to each moment given.
     """
     return [
         _swept(moment.timestamp() / _DAY_SECONDS + _JD_UNIX_EPOCH - _J2000)
@@ -36,19 +34,13 @@ def arcs(when: Sequence[datetime]) -> list[float]:
 def _swept(offset: float) -> float:
     """Work out the angle Mars has swept since J2000, without turning it over.
 
-    The series follows Allison and McEwen (1997), the one the Mars24 algorithm is
-    written from, less its seven small perturbers and the offset terrestrial time
-    carries. Together those move the angle by under a thirtieth of a degree,
-    which neither the width a window is held to nor the price it pays can feel.
-
     Args:
         offset: The days the moment stands after the J2000 epoch.
 
     Returns:
-        The angle swept, in degrees, counted from a zero of no meaning. It only
-        ever climbs: the mean sun runs at 0.524 degrees a day and the correction
-        below moves at most 0.11, so the difference of any two is a true arc.
+        swept: The angle swept, in degrees, counted from a zero of no meaning.
     """
+    # Allison and McEwen (1997), less its perturbers and terrestrial time
     anomaly = math.radians(19.3871 + 0.52402073 * offset)
     # Where the true sun stands against the mean one, on Mars' eccentric orbit
     centre = (

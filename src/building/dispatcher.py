@@ -38,24 +38,18 @@ class Instrument:
             product merged to a box is only what says where its parts are.
         crop: What cuts that observation to one feature's box, handing back the
             sample to store or None where it reaches none of it.
-        discard: What deletes the product from the cache once it is built, and
-            None for an archive small enough to be held for the whole run,
-            which is what a product shared by many features asks for.
-        observation_id: What reads which observation a product the selection
-            kept belongs to, or None for an instrument the selection can never
-            name.
-        identifiers: What asks an archive what covers one feature's ground, for
-            the instrument the selection cannot name, and None for every
-            instrument named by a product id. What it names is merged to one
-            feature's own box, so it is asked for one feature at a time.
+        discard: What deletes the product from the cache once it is built, and None
+            for an archive small enough to be held for the whole run.
+        observation_id: What reads which observation a product the selection kept
+            belongs to, or None for an instrument the selection can never name.
+        identifiers: What asks an archive what covers one feature's ground, and
+            None for every instrument named by a product id.
         altitude: What reads how high the spacecraft flew, for a sounder whose
             delay axis is read through it, and None for every other instrument.
-        worker_bytes: What one build holds of its largest product at once, the
-            product itself and the crop and masks that stand beside it, which
-            is what a build is given where nothing measures the product itself.
-        held_bytes: What reads how much one downloaded product holds, off the
-            files it landed as, for an instrument whose products differ in size
-            by more than the memory a run can spare, and None for the rest.
+        worker_bytes: What one build holds of its largest product at once, given
+            where nothing measures the product itself.
+        held_bytes: What reads how much one downloaded product holds, for an
+            instrument whose products differ widely in size, and None for the rest.
     """
 
     layout: Layout

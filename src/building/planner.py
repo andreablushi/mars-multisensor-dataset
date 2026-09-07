@@ -32,16 +32,14 @@ def build_plan(
 
     Args:
         settings: The settled choices for the build, which size it. Which
-            instruments it covers is not among them: the build takes every
-            instrument the selection names and that this half can read, and
-            every instrument matched by ground rather than named at all.
+            instruments it covers is not among them.
         root: The directory this build of the dataset is written in.
         ode: The client an instrument searched by ground is looked up through,
             or None to leave those instruments out of the plan.
         force: When True, plan products every crop of which is already written.
 
     Returns:
-        The plan, its jobs heaviest first so no long one is picked up last.
+        plan: The plan, its jobs heaviest first so no long one is picked up last.
 
     Raises:
         FileNotFoundError: When no selection has been written to build from.
@@ -105,20 +103,6 @@ def build_plan(
     )
 
 
-def buildable(picked: Sequence[Selection], cap: int) -> list[Selection]:
-    """Keep the features one build may cover, the ones seen too often left out.
-
-    Args:
-        picked: What the search left of every feature it searched.
-        cap: The observations a feature may keep and still be built.
-
-    Returns:
-        The features the filter passed that no more observations than the cap
-        were kept for, in the order the selection was written.
-    """
-    return [one for one in picked if one.feature.kept and len(one.observations) <= cap]
-
-
 def _sampled(
     picked: Sequence[Selection], settings: Settings
 ) -> tuple[list[Selection], int]:
@@ -126,16 +110,17 @@ def _sampled(
 
     Args:
         picked: What the search left of every feature it searched.
-        settings: The settled choices for the build, whose cap is read before
-            the draw, so a share is a share of what a build may cover rather
-            than of what the filter passed.
+        settings: The settled choices for the build, whose cap is read before the
+            draw, so a share is a share of what a build may cover.
 
     Returns:
-        The selections to build, in the order the selection was written, and
-        how many features were left out for holding too many observations.
+        kept: The selections to build, in the order the selection was written.
+        crowded: How many features were left out for holding too many observations.
     """
-    kept = buildable(picked, settings.max_observations)
-    crowded = sum(1 for one in picked if one.feature.kept) - len(kept)
+    passed = [one for one in picked if one.feature.kept]
+    cap = settings.max_observations
+    kept = [one for one in passed if len(one.observations) <= cap]
+    crowded = len(passed) - len(kept)
     wanted = round(settings.share * len(kept))
     if wanted >= len(kept):
         return kept, crowded

@@ -16,9 +16,6 @@ def remove_spikes(pixspec: np.ndarray, centre: np.ndarray) -> None:
         pixspec: The ratioed values as lines by samples by bands, changed in
             place.
         centre: The centre wavelength of every band it holds.
-
-    Returns:
-        None.
     """
     # The median, the distance from it and what that catches, refilled each pass.
     pixmed = np.empty_like(pixspec)

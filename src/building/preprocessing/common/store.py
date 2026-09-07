@@ -41,7 +41,7 @@ def sample_path(
         root: The dataset's own root directory.
 
     Returns:
-        The file it is written as, which need not exist.
+        path: The file it is written as, which need not exist.
     """
     return (
         root
@@ -60,8 +60,7 @@ def native(values: np.ndarray) -> np.ndarray:
             significant byte first whatever the machine reading it is.
 
     Returns:
-        The same values in the machine's own order, so what is stored can be
-        handed to a tensor rather than swapped by whoever reads it.
+        values: The same values in the machine's own order, ready to hand to a tensor.
     """
     held = np.asarray(values)
     return held.astype(held.dtype.newbyteorder("="), copy=False)
@@ -83,7 +82,7 @@ def write_sample(
         root: The dataset's own root directory.
 
     Returns:
-        The file it was written as.
+        path: The file it was written as.
     """
     ground = tuple(
         name

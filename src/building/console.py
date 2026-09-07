@@ -22,16 +22,13 @@ LISTED = 5
 # Set by a platform run, whose log takes plain flushed lines rather than a bar.
 PLAIN_LOG_ENV = "PIPELINE_PLAIN_LOG"
 
-# How many progress lines a stage prints where no cursor can be moved. The
-# platform keeps the first hundred kilobytes of a run's log and drops the rest,
-# so a build printing a line a product loses its own ending to its middle.
+# Progress lines where no cursor moves; the platform keeps a run's first 100 kB
 LOGGED_LINES = 100
 
 # How many failures a run names as it hits them, the summary counting them all.
 LOGGED_ERRORS = 50
 
-# How often a run says what it is doing, so a build that has stopped moving
-# says so rather than looking the same as one that is merely slow
+# How often a run says what it is doing, so a stalled build does not look slow
 WATCHED_SECONDS = 300.0
 
 # What one gibibyte is, which the memory a run holds is said in
@@ -55,9 +52,6 @@ def describe(
         budget: The memory those builds share, which settles how many of the
             heaviest products run at once.
         console: The console to print on.
-
-    Returns:
-        None.
     """
     crops = sum(len(job.frames) for job in plan.jobs)
     building, fetching, ready = pools
@@ -82,9 +76,6 @@ def watch(progress: Progress) -> Iterator[None]:
 
     Args:
         progress: What every product still in the build is doing.
-
-    Yields:
-        None, for as long as the build runs.
     """
     # A moving bar already says a run is alive; only a flat log needs telling.
     if not os.environ.get(PLAIN_LOG_ENV):
@@ -93,11 +84,7 @@ def watch(progress: Progress) -> Iterator[None]:
     done = threading.Event()
 
     def said() -> None:
-        """Print what the build is doing until it is over.
-
-        Returns:
-            None.
-        """
+        """Print what the build is doing until it is over."""
         while not done.wait(WATCHED_SECONDS):
             print(progress.standing, flush=True)
 
@@ -122,7 +109,7 @@ def render(
         console: The console to render on.
 
     Returns:
-        Every outcome collected, in completion order.
+        collected: Every outcome collected, in completion order.
     """
     collected: list[Outcome] = []
     # A platform log takes plain flushed lines, since no cursor can be moved there
@@ -166,9 +153,6 @@ def print_summary(
         outcomes: What every job left.
         elapsed: How long the build took, in seconds.
         console: The console to print on.
-
-    Returns:
-        None.
     """
     written = sum(len(one.records) for one in outcomes)
     missed = sum(one.missed for one in outcomes)
@@ -192,11 +176,7 @@ def print_summary(
 
 
 def print_interrupted() -> None:
-    """Print the notice shown when a build is stopped with Ctrl-C.
-
-    Returns:
-        None.
-    """
+    """Print the notice shown when a build is stopped with Ctrl-C."""
     Console().print(
         "[yellow]interrupted: pending jobs cancelled, written crops kept. "
         "Re-run to resume.[/yellow]"

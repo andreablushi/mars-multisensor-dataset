@@ -26,8 +26,8 @@ def measure_every_feature(
         progress: Called with how many features are done and how many there are.
 
     Returns:
-        One entry per feature holding something to measure, in the order they
-        came in, leaving out a feature with no measured set on disk.
+        measured: One entry per feature holding something to measure, in the order they
+            came in, leaving out a feature with no measured set on disk.
     """
     found: list[FeatureStats] = []
     with ProcessPoolExecutor(max_workers=workers) as pool:
@@ -48,8 +48,8 @@ def _measure_one_feature(picked: Selection) -> FeatureStats | None:
         picked: What the search left of it, and the observations it keeps.
 
     Returns:
-        What those looks leave on it, and None where it has no measured set on
-        disk or holds nothing measurable.
+        measured: What those looks leave on it, and None where it has no measured set on
+            disk or holds nothing measurable.
     """
     coverage = index.load_feature(
         picked.feature.feature_class, picked.feature.feature_name

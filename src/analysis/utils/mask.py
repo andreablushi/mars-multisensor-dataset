@@ -18,7 +18,7 @@ def encode(cells: np.ndarray, total: int) -> bytes:
         total: How many cells the grid holds in all.
 
     Returns:
-        The tag byte followed by the packed cells.
+        packed: The tag byte followed by the packed cells.
     """
     packed = cells.astype(_INDEX)
     if packed.nbytes < (total + 7) // 8:
@@ -35,7 +35,7 @@ def cells_of(mask: bytes) -> np.ndarray:
         mask: One footprint's mask, as encode wrote it.
 
     Returns:
-        The indices of the filled cells, in ascending order.
+        cells: The indices of the filled cells, in ascending order.
     """
     if mask[0] == SPARSE:
         return np.frombuffer(mask, dtype=_INDEX, offset=1)

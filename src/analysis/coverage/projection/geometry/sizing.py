@@ -21,7 +21,7 @@ def track_widths(observations: Sequence[Observation]) -> list[float | None]:
         observations: The observations to inspect.
 
     Returns:
-        One width in metres per observation, and None where the footprint has area.
+        widths: One width in metres per observation, None where the footprint has area.
     """
     widths: list[float | None] = [None] * len(observations)
     for position, observation in enumerate(observations):
@@ -53,7 +53,7 @@ def ground_pixel_km2(
         width_km: The swath width, set only for a sounder's track.
 
     Returns:
-        The ground one pixel covers in square kilometres.
+        km2: The ground one pixel covers in square kilometres.
 
     Raises:
         KeyError: When a set publishes no scale and none is configured for it.

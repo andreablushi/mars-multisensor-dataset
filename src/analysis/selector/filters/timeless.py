@@ -18,7 +18,8 @@ def fresh_looks(
         gain: The cells a look has to bring that its own set has not reached.
 
     Returns:
-        Where they sit on the axis, oldest first, keeping only what brings new ground.
+        standing: Where they sit on the axis, oldest first, keeping only what brings new
+            ground.
     """
     answering = {owner for owner, iid in enumerate(track.iids) if iid in instruments}
     reached: dict[int, set[int]] = {}

@@ -14,7 +14,7 @@ def landed_per_set(looks: FeatureLooks) -> list[Landed]:
         looks: Its timeline and the filter it was read under.
 
     Returns:
-        One entry per instrument set, in the order the track indexes them.
+        landed: One entry per instrument set, in the order the track indexes them.
     """
     track = looks.track
     least = looks.criteria.least
@@ -49,7 +49,7 @@ def _pixels(observation: Event, cells: int, cell_km2: float) -> float:
         cell_km2: How much ground one of those cells covers.
 
     Returns:
-        Its pixels, scaled to the part of its footprint the feature holds.
+        pixels: Its pixels, scaled to the part of its footprint the feature holds.
     """
     if not observation.own_km2:
         return 0.0

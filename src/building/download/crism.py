@@ -23,16 +23,9 @@ WAVELENGTH_TYPE = "CDR"
 def fetch(observation_id: str, client: httpx.Client) -> None:
     """Bring down whichever detectors of one observation ODE holds, or leave them.
 
-    Both detectors are read out together, but a small share of the survey was
-    archived as one half alone, so each is asked for and the observation is
-    built from whichever answered rather than being dropped for the other.
-
     Args:
         observation_id: The observation to fetch.
         client: The client whose connections every query is asked over.
-
-    Returns:
-        None.
 
     Raises:
         FileNotFoundError: When ODE publishes neither detector, or publishes one
@@ -47,8 +40,8 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
             detector: Which detector to ask ODE for.
 
         Returns:
-            True when it landed, and False when ODE publishes no observation
-            under that detector.
+            brought: True when it landed, False when ODE publishes no observation under
+                that detector.
 
         Raises:
             FileNotFoundError: When the observation is published but the
@@ -70,6 +63,7 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
                 return False
         return True
 
+    # A small share of the survey was archived as one half alone
     found = [name for name in configs.DETECTORS if brought(name)]
     if not found:
         raise FileNotFoundError(f"ODE publishes no detector of {observation_id}.")

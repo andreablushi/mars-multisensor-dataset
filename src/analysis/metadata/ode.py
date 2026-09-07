@@ -13,11 +13,7 @@ class ODEClient:
     """A retrying reader of the ODE REST GET interface."""
 
     def __init__(self) -> None:
-        """Open the client ODE is asked through.
-
-        Returns:
-            None.
-        """
+        """Open the client ODE is asked through."""
         self._client = httpx.Client()
 
     def query(self, params: dict[str, str]) -> dict[str, Any]:
@@ -27,7 +23,7 @@ class ODEClient:
             params: Query parameters excluding the output format.
 
         Returns:
-            The ODEResults object from the response body.
+            results: The ODEResults object from the response body.
 
         Raises:
             ODEError: If ODE reports an error of its own.
@@ -41,7 +37,7 @@ class ODEClient:
                 payload: The parsed response body.
 
             Returns:
-                The ODEResults object, or None when the reply holds none.
+                results: The ODEResults object, or None when the reply holds none.
 
             Raises:
                 ODEError: When ODE reports an error of its own.
@@ -63,18 +59,14 @@ class ODEClient:
         )
 
     def close(self) -> None:
-        """Close the underlying httpx client.
-
-        Returns:
-            None.
-        """
+        """Close the underlying httpx client."""
         self._client.close()
 
     def __enter__(self) -> ODEClient:
         """Enter a context manager.
 
         Returns:
-            This client.
+            client: This client.
         """
         return self
 
@@ -83,8 +75,5 @@ class ODEClient:
 
         Args:
             exc: Unused exception information.
-
-        Returns:
-            None.
         """
         self.close()

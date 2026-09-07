@@ -45,9 +45,6 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
         observation_id: The observation to fetch.
         client: The client whose connections every query is asked over.
 
-    Returns:
-        None.
-
     Raises:
         FileNotFoundError: When ODE carries no raw scan to read the volume off.
         FetchError: When ASU serves the scan in none of the projections.
@@ -87,7 +84,7 @@ def _asu(observation_id: str, volume_id: str, label: str) -> dict[str, str]:
             scan was written in.
 
     Returns:
-        The URL each product is streamed from, keyed by its suffix on disk.
+        urls: The URL each product is streamed from, keyed by its suffix on disk.
     """
     # ODE spells a scan in lower case, and ASU serves it in upper.
     scan = observation_id.upper()

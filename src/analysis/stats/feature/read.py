@@ -23,8 +23,8 @@ def read_feature(coverage: Sequence[SetCoverage]) -> FeatureLooks | None:
         coverage: The feature's instrument sets, in the order they are drawn.
 
     Returns:
-        Its timeline and the looks the selection keeps, or None where the
-        selection never searched it or it holds nothing measurable.
+        looks: Its timeline and the looks the selection keeps, or None where the
+            selection never searched it or it holds nothing measurable.
 
     Raises:
         FileNotFoundError: When no selection has been written to read it off.
@@ -49,8 +49,8 @@ def place_kept_looks(
         picked: What the selection left of it, and the observations it keeps.
 
     Returns:
-        Its timeline and where those looks sit on it, or None where the feature
-        holds nothing measurable.
+        looks: Its timeline and where those looks sit on it, or None where the feature
+            holds nothing measurable.
     """
     criteria, track = timeline.over(coverage, filtering.FILTER)
     if track is None:

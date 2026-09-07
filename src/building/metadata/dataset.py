@@ -33,7 +33,8 @@ def dataset_manifest(instruments: tuple[str, ...]) -> DatasetManifest:
         instruments: The instruments the build covered.
 
     Returns:
-        The manifest, its revision unset where the build ran outside a checkout.
+        manifest: The manifest, its revision unset where the build ran outside a
+            checkout.
     """
     try:
         revision = subprocess.run(

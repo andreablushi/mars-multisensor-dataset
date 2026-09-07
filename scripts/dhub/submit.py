@@ -27,7 +27,7 @@ def submitted(
         **parameters: What the handler is called with on the platform.
 
     Returns:
-        A process exit code, non zero when the image did not build.
+        code: A process exit code, non zero when the image did not build.
     """
     platform = configs.load()
     # The image is built from the repo's own dependencies, so it cannot drift
@@ -50,8 +50,7 @@ def submitted(
         return 1
     function.refresh()
 
-    # Start the job on the built image, telling it where the clone lands and
-    # how many cores it was given to size itself by.
+    # Start the job, told where the clone lands and how many cores it has
     asked = platform.resources[half]
     root = platform.source_root
     run = function.run(

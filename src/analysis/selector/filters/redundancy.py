@@ -23,8 +23,8 @@ def trimmed(
         gain: The cells an observation has to bring that its own set does not reach.
 
     Returns:
-        The observations worth keeping, oldest first, and the cells each
-        constraint still reaches once the rest are gone.
+        kept: The observations worth keeping, oldest first.
+        reached: The cells each constraint still reaches once the rest are gone.
     """
     # List of the observations that are kept
     kept = list(range(window.first, window.last + 1))
@@ -54,7 +54,7 @@ def _without(
         gain: The cells it has to bring that its own set does not already reach.
 
     Returns:
-        The cells each constraint reaches without it, or None when it is needed.
+        counts: The cells each constraint reaches without it, or None when it is needed.
     """
     owner, cells = track.owners[index], track.cells[index]
     filled = counter.observations_per_cell[owner]

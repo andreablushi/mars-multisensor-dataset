@@ -56,7 +56,7 @@ def build(
         criteria: The filter read against the feature, read once.
 
     Returns:
-        The timeline, or None when the feature holds nothing measurable.
+        track: The timeline, or None when the feature holds nothing measurable.
     """
     held, refused = admissible.admit_observation(coverage, grid, criteria)
     if not held:
@@ -88,8 +88,8 @@ def over(
         criteria: Which instruments a window has to hold, and how much ground each.
 
     Returns:
-        The filter as it was read against the feature, and the timeline it is
-        searched on, which is None where it holds nothing measurable.
+        criteria: The filter as it was read against the feature.
+        track: The timeline it is searched on, None where it holds nothing measurable.
     """
     summary = coverage[0].summary
     inside = packing.cells_of(summary.grid_mask).tolist()

@@ -19,9 +19,6 @@ class Budget:
 
         Args:
             total: How many bytes the builds may hold between them.
-
-        Returns:
-            None.
         """
         self.total = max(1, total)
         self._free = self.total
@@ -36,7 +33,7 @@ class Budget:
                 budget where it asks for more than a run ever has.
 
         Returns:
-            How many bytes were taken, which is what has to be given back.
+            taken: How many bytes were taken, which is what has to be given back.
         """
         taken = min(max(wanted, 1), self.total)
         ticket = object()
@@ -54,9 +51,6 @@ class Budget:
 
         Args:
             taken: How many bytes that build held, as `acquire` handed them out.
-
-        Returns:
-            None.
         """
         with self._changed:
             self._free = min(self.total, self._free + taken)

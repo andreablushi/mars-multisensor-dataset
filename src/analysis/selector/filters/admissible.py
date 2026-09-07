@@ -24,8 +24,9 @@ def admit_observation(
         criteria: The filter read against the feature, holding the pixel floors.
 
     Returns:
-        What the feature keeps and what it turned away, both carrying the set
-        each observation belongs to and the cells it fills.
+        held: What the feature keeps, with the set each belongs to and the cells it
+            fills.
+        refused: What it turned away, carrying the same.
     """
     held: Held = []
     refused: Held = []

@@ -44,7 +44,7 @@ def load(path: Path = paths.PLATFORM_CONFIG_PATH) -> Platform:
         path: The config file, which carries every setting a run is submitted with.
 
     Returns:
-        The settled choices for the submission.
+        platform: The settled choices for the submission.
     """
     config = yaml.safe_load(path.read_text(encoding="utf-8"))
     asked = {

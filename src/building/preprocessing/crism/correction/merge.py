@@ -22,21 +22,15 @@ def merge_detectors(
 ) -> CrismObservation:
     """Join the detectors of a cleaned observation into one cube.
 
-    The two are read out together, so they share a grid, but one of them can
-    lose the last frames of a strip the other kept and a small share of the
-    survey was archived as a single half. Both are met by taking the lines every
-    half and the geometry all carry, and by joining whichever halves landed.
-
     Args:
         identifier: The observation the detectors are halves of.
         detectors: The halves that landed, already through
-            `preprocess.clean_detectors`, so each carries the mask saying what
-            it kept.
+            `preprocess.clean_detectors`, so each carries its own mask.
         geometry: The backplanes that place every pixel, on the same grid.
         label: What every product the observation was published as says of it.
 
     Returns:
-        The joined observation, its bands ascending in wavelength.
+        observation: The joined observation, its bands ascending in wavelength.
 
     Raises:
         ValueError: When no half was delivered, or one has not been cleaned.

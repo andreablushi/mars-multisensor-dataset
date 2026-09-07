@@ -38,7 +38,7 @@ def overlap(
             it, which is read as the same degrees from that centre.
 
     Returns:
-        What the box keeps, or None where the observation reaches none of it.
+        held: What the box keeps, or None where the observation reaches none of it.
     """
     position = RelativePosition(
         north=latitude - frame.centre_lat,
@@ -90,8 +90,8 @@ def marked(held: np.ndarray) -> np.ndarray | None:
         held: The mask over the samples a crop keeps.
 
     Returns:
-        The mask, or None where every sample of it is true and so it says
-        nothing the shape does not already.
+        mask: The mask, or None where every sample is true and it says nothing the shape
+            does not.
     """
     return None if held.all() else held
 
@@ -104,7 +104,7 @@ def taken(array: np.ndarray, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
         bounds: The samples to keep of each of those axes.
 
     Returns:
-        The part that is left, every axis past the ground's kept whole.
+        held: The part that is left, every axis past the ground's kept whole.
     """
     # Neighbouring bounds are sliced rather than gathered, which costs nothing to take.
     runs = tuple(
@@ -130,7 +130,7 @@ def polar_overlap(
             it.
 
     Returns:
-        What the box keeps, or None where the grid reaches none of it.
+        held: What the box keeps, or None where the grid reaches none of it.
     """
     ring = geodesy.stereographic_forward(
         *geodesy.bbox_ring(

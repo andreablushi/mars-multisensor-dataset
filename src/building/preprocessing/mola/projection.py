@@ -28,12 +28,9 @@ def grid_axes(
         label: The parsed label of one product.
 
     Returns:
-        What every line holds and what every sample holds, and the pole the two
-        are measured on. A cylindrical grid gives the latitude of every line,
-        falling southward, and the longitude of every sample, rising eastward,
-        both in degrees, and no pole beside them. A cap gives the northing and
-        the easting in the projection's own metres, and the pole that turns
-        them back into degrees.
+        down: What every line holds, the latitude of it or its northing.
+        across: What every sample holds, the longitude of it or its easting.
+        polar: The pole the two are measured on, and None for a cylindrical grid.
 
     Raises:
         ValueError: When the label names a projection this cannot read.
@@ -43,8 +40,7 @@ def grid_axes(
     resolution = float(label["MAP_RESOLUTION"])
     lines, samples = int(label["LINES"]), int(label["LINE_SAMPLES"])
     if named == POLAR:
-        # A cap is placed from its own middle, and its degrees of arc are the
-        # projection's metres on the sphere the archive built it on.
+        # A cap is placed from its middle, its arc the projection's own metres
         radius = float(label["A_AXIS_RADIUS"]) * KM
         down = np.radians((lines / 2.0 - 0.5 - np.arange(lines)) / resolution) * radius
         across = (
@@ -79,9 +75,7 @@ def crop_cap(grid: MolaGrid, frame: FeatureFrame) -> MolaSample | None:
         frame: The local frame of the feature it is read for.
 
     Returns:
-        The height over that feature, or None where the cap reaches none of it.
-        The sector the box stands on is worked out off the axes alone and then
-        read straight off disk, so a cap is never held whole.
+        sample: The height over that feature, or None where the cap reaches none of it.
 
     Raises:
         FileNotFoundError: When the cap or its label is missing.

@@ -19,13 +19,6 @@ STAGES = (QUEUED, FETCHING, HOLDING, BUILDING)
 class Progress:
     """How far a build has got, and what each product still in it is doing.
 
-    A build waits for a turn on the network, on the archive that answers, on
-    memory and on its cores in turn, and a run that stops moving looks the same
-    from outside whichever of them it stopped on. Counting the products at each
-    stage says which, and when one last moved says whether it is slow or
-    stopped. Waiting for a turn is counted apart from being answered, so the
-    line never reads as more downloads than a run is allowed to run.
-
     Attributes:
         total: How many products the build has to get through.
         finished: How many are done, whether they were built or failed.
@@ -45,7 +38,7 @@ class Progress:
             stage: The stage it has reached.
 
         Returns:
-            That stage, so a caller can hold it as where the product now is.
+            stage: That stage, so a caller can hold it as where the product now is.
         """
         with self._lock:
             self._at[stage] += 1
@@ -58,9 +51,6 @@ class Progress:
         Args:
             stage: The stage it has left.
             finished: Whether it left the build altogether rather than moving on.
-
-        Returns:
-            None.
         """
         with self._lock:
             self._at[stage] -= 1
@@ -75,7 +65,7 @@ class Progress:
             onto: The stage it has reached.
 
         Returns:
-            The stage it has reached.
+            stage: The stage it has reached.
         """
         self.left(stage)
         return self.entered(onto)
@@ -85,8 +75,8 @@ class Progress:
         """Return one line saying what the build is doing right now.
 
         Returns:
-            How many products are at each stage, how many are done, and how
-            long it has been since any of them moved.
+            written: How many products are at each stage, how many are done, and how
+                long since any moved.
         """
         with self._lock:
             at = {stage: self._at[stage] for stage in STAGES}

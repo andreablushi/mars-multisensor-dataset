@@ -22,9 +22,8 @@ def read_observation(identifier: str) -> SharadObservation:
             that `download.fetch` puts them in.
 
     Returns:
-        The observation holding only the traces the geometry places, in the
-        order the radargram stores them, on the elevation its window is posted
-        against.
+        observation: The observation holding only the traces the geometry places, in the
+            radargram's own order.
 
     Raises:
         FileNotFoundError: When either product or its label is missing.
@@ -60,7 +59,7 @@ def crop(observation: SharadObservation, frame: FeatureFrame) -> SharadSample | 
         frame: The local frame of the feature it was kept for.
 
     Returns:
-        The track cut to that feature, or None where it reaches none of it.
+        sample: The track cut to that feature, or None where it reaches none of it.
     """
     held = overlap(
         observation.latitude, observation.longitude, observation.separable, frame

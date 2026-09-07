@@ -23,9 +23,8 @@ def merge_tiles(grid: MolaGrid, frame: FeatureFrame) -> MolaObservation:
         frame: The local frame of the feature the tiles are merged for.
 
     Returns:
-        The observation holding that feature's own box and no more of the grid,
-        its longitudes running past a whole turn where the box crosses the
-        meridian.
+        observation: The observation holding that feature's own box and no more of the
+            grid.
 
     Raises:
         FileNotFoundError: When a tile's label is missing.
@@ -35,9 +34,7 @@ def merge_tiles(grid: MolaGrid, frame: FeatureFrame) -> MolaObservation:
     """
     resolution = grid.resolution
     whole = round(TURN) * resolution
-    # Which bins of the whole planet's grid the box covers: the lines counted
-    # south from the north pole, and the samples east from the meridian, running
-    # past a whole turn where the box crosses it.
+    # Which bins the box covers: lines south from the pole, samples east of it
     span = geodesy.longitude_span(frame.west_lon, frame.east_lon)
     down = range(
         math.ceil((90.0 - frame.max_lat) * resolution - 0.5),

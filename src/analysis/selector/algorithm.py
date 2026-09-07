@@ -27,7 +27,7 @@ def search(track: Track, criteria: Filter) -> Survey | None:
         criteria: The filter read against the feature, holding what it is asked.
 
     Returns:
-        The chosen window, or None when no window is worth keeping.
+        survey: The chosen window, or None when no window is worth keeping.
     """
     # What the filter asks of this feature, worked out once when it was read
     windowed, standing = criteria.windowed, criteria.standing
@@ -64,7 +64,7 @@ def _best(track: Track, windowed: Constraints, criteria: Filter) -> Window | Non
         criteria: What the window is asked for, which caps how far it turns.
 
     Returns:
-        The window worth the most, or None when no window is worth keeping.
+        window: The window worth the most, or None when no window is worth keeping.
     """
     span_ls = criteria.span_ls
     looked = _looked_before(track)
@@ -100,8 +100,8 @@ def _looked_before(track: Track) -> list[list[int]]:
         track: The admissible observations on one time axis.
 
     Returns:
-        For each observation, where on the axis its own set last reached each of
-        its cells, or -1 for a cell that set had never reached, in order.
+        looked: For each observation, where its own set last reached each of its cells,
+            or -1 for a cell it had never reached.
     """
     seen: list[dict[int, int]] = [{} for _ in track.iids]
     looked: list[list[int]] = []
@@ -125,7 +125,8 @@ def _scored(track: Track, counts: Sequence[int], arc: float = 0.0) -> float:
         arc: How far Mars turns inside the window, charged against its ground.
 
     Returns:
-        The constraints rooted together as a share of the feature, less their arc.
+        worth: The constraints rooted together as a share of the feature, less their
+            arc.
     """
     rooted = math.prod(counts) ** (1.0 / len(counts))
     geo_mean = ground.share(rooted, track.grid.cell_km2, track.grid.area_km2)

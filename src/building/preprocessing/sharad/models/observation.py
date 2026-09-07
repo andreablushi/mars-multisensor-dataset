@@ -45,7 +45,7 @@ class SharadObservation:
         """Return the latitude every kept trace was sounded at.
 
         Returns:
-            One per trace, in degrees.
+            latitude: One per trace, in degrees.
         """
         return self.geometry[LATITUDE_FIELD]
 
@@ -54,6 +54,6 @@ class SharadObservation:
         """Return the longitude every kept trace was sounded at.
 
         Returns:
-            One per trace, in degrees.
+            longitude: One per trace, in degrees.
         """
         return self.geometry[LONGITUDE_FIELD]

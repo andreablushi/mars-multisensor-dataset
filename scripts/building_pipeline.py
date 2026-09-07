@@ -36,8 +36,8 @@ def _published(name: str) -> str:
         name: What the build is called, as its config names it.
 
     Returns:
-        The artifact name, which carries the build's own so one never
-        overwrites another.
+        name: The artifact name, carrying the build's own so one never overwrites
+            another.
     """
     return f"{_DATASET}-{name}"
 
@@ -50,7 +50,7 @@ def build(force: bool = False, cores: int | None = None) -> int:
         cores: How many cores the run was given, or None for the machine's.
 
     Returns:
-        A process exit code, non zero when any product failed to build.
+        code: A process exit code, non zero when any product failed to build.
     """
     choices = settings.load(cores=cores)
     printing = Console()
@@ -72,7 +72,7 @@ def run_build(project, force: bool = False, cores: int | None = None):
         cores: How many cores the run was given, as the job was sized.
 
     Returns:
-        The published dataset, one object per crop.
+        dataset: The published dataset, one object per crop.
 
     Raises:
         RuntimeError: When a product failed, which leaves the dataset short of
@@ -80,8 +80,7 @@ def run_build(project, force: bool = False, cores: int | None = None):
     """
     os.environ[console.PLAIN_LOG_ENV] = "1"
     choices = settings.load(cores=cores)
-    # The platform clones the repository alone, and the tree it reads is no part
-    # of it, so what the selection left is read back off the archive it published.
+    # The platform clones the repo alone, so the selection comes off its archive
     print("fetching the selection", flush=True)
     archives.unpacked(
         project.get_artifact(_SELECTION).download(overwrite=True), paths.SELECTION_ROOT
@@ -107,8 +106,8 @@ def main() -> int:
     """Run the build where it was asked for, over as much as it was asked for.
 
     Returns:
-        A process exit code, non zero when a product failed or an image did not
-        build.
+        code: A process exit code, non zero when a product failed or an image did not
+            build.
     """
     parsed = argparse.ArgumentParser(description=__doc__)
     parsed.add_argument(

@@ -16,7 +16,7 @@ def read_catalogue() -> CatalogueStats:
     """Read the catalogue index as one dataset.
 
     Returns:
-        What it holds, and nothing at all when no feature was measured.
+        stats: What it holds, and nothing at all when no feature was measured.
     """
     catalogued = load_features()
     # One row per feature carries the grid, which every set of it shares
@@ -49,7 +49,7 @@ def _instrument(iid: str, rows: Sequence[Summary]) -> InstrumentStats:
         rows: Its rows, one per feature and instrument set it measured.
 
     Returns:
-        What it holds.
+        stats: What it holds.
     """
     reached = {(row.feature_class, row.feature_name) for row in rows}
     return InstrumentStats(

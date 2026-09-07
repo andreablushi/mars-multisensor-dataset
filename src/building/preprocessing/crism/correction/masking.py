@@ -20,7 +20,7 @@ def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: str) -> Mask:
             picks the window.
 
     Returns:
-        The mask saying where the cube was filled rather than measured.
+        mask: The mask saying where the cube was filled rather than measured.
 
     Raises:
         KeyError: When no window is configured for that detector.

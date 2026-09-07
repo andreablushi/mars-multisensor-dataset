@@ -19,7 +19,7 @@ def atomic_path(path: Path) -> Iterator[Path]:
         path: The destination the temporary file is renamed to.
 
     Yields:
-        The temporary path to write to.
+        path: The temporary path to write to.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     handle, raw = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
@@ -41,7 +41,7 @@ def write_jsonl(path: Path, rows: Iterable[Mapping[str, Any]]) -> int:
         rows: An iterable of JSON serialisable mappings.
 
     Returns:
-        The number of rows written.
+        rows: The number of rows written.
     """
     count = 0
     with atomic_path(path) as tmp, tmp.open("w", encoding="utf-8") as handle:
@@ -59,7 +59,7 @@ def read_jsonl(path: Path) -> Iterator[dict[str, Any]]:
         path: The JSONL file to read.
 
     Yields:
-        One decoded object per line.
+        held: One decoded object per line.
     """
     with path.open(encoding="utf-8") as handle:
         for line in handle:

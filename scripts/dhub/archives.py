@@ -19,7 +19,7 @@ def logged_archive(project, root: Path, name: str, description: str):
         description: What the archive holds, and where it unpacks.
 
     Returns:
-        The logged artifact.
+        artifact: The logged artifact.
     """
     packed = Path(
         shutil.make_archive(
@@ -35,8 +35,7 @@ def logged_archive(project, root: Path, name: str, description: str):
             name=name, kind="artifact", source=str(packed), description=description
         )
     finally:
-        # The platform holds the archive now, so the job keeps neither the file
-        # nor the pages it left charged against the memory the job is given
+        # The platform holds it now, so the job keeps neither file nor pages
         packed.unlink(missing_ok=True)
 
 
@@ -51,7 +50,7 @@ def logged_folder(project, root: Path, name: str, description: str):
         description: What the folder holds, and how it is read.
 
     Returns:
-        The logged artifact.
+        artifact: The logged artifact.
     """
     files = [one for one in root.rglob("*") if one.is_file()]
     held = sum(one.stat().st_size for one in files)
@@ -68,9 +67,6 @@ def unpacked(downloaded: str, into: Path) -> None:
         downloaded: The archive the platform left, or the directory holding it.
         into: The directory the archive fills, emptied first so that what it
             holds afterwards is what was published and only that.
-
-    Returns:
-        None.
 
     Raises:
         RuntimeError: When the download left no archive to unpack.

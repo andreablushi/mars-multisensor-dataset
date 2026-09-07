@@ -8,8 +8,7 @@ UNCALIBRATED = 65535.0
 # What a label says about the calibration software, the same in every product.
 GROUND_SOFTWARE = ("MRO:IKF_", "MRO:RSC_", "MRO:REFZ_", "MRO:FRAM_STAT_")
 
-# Which detector places a merged observation, both halves being on the one grid,
-# taken in this order so one delivered as a single half is placed by that half.
+# Which detector places a merged observation, in order so a lone half places itself
 PLACING_ORDER = ("l", "s")
 
 # The nm window each detector is trusted over, outside which the reading is noise.

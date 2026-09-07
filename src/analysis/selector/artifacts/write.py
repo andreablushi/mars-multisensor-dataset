@@ -27,7 +27,8 @@ def write_selection(
         root: The directory the two files are written in, made when it is missing.
 
     Returns:
-        The features file and the observations file, in that order.
+        features: The file the features were written to.
+        observations: The file the observations were written to.
     """
     features = root / paths.SELECTED_FEATURES_NAME
     observations = root / paths.SELECTED_OBSERVATIONS_NAME

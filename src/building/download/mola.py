@@ -45,8 +45,8 @@ def record(client: httpx.Client) -> dict[str, tuple[str, Box]]:
         client: The client whose connections the query is asked over.
 
     Returns:
-        Where each published file is served from and the ground its product
-        covers, keyed by the file's own lowercase name.
+        published: Where each file is served from and the ground its product covers, by
+            lowercase name.
     """
     if not _RECORD:
         for entry in archive.query(
@@ -71,10 +71,7 @@ def grids(feature: FeatureFrame, client: httpx.Client) -> list[str]:
         client: The client whose connections a query would be asked over.
 
     Returns:
-        The one grid that covers it, since a merge is never joined across two.
-        A feature reaching past what the tiles hold is taken from the cap of
-        its own pole, and from the coarser tiled grid where it reaches too far
-        down the cap for every longitude of it to be held.
+        grids: The one grid that covers it, since a merge is never joined across two.
     """
     if feature.max_lat > configs.TILED_REACH:
         held = feature.min_lat >= configs.CAP_FLOOR
@@ -93,8 +90,8 @@ def tiles(grid: str, client: httpx.Client) -> list[str]:
         client: The client whose connections the query is asked over.
 
     Returns:
-        The tile ids the height is published for, sorted and without repeats,
-        and none at all for a grid published as a single product.
+        tiles: The tile ids the height is published for, sorted and without repeats, and
+            none for a grid published whole.
     """
     held = configs.GRIDS[grid]
     if held.product:
@@ -118,9 +115,6 @@ def fetch(grid: str, client: httpx.Client) -> None:
     Args:
         grid: The grid to fetch, as `configs.GRIDS` names it.
         client: The client whose connections the query is asked over.
-
-    Returns:
-        None.
 
     Raises:
         FileNotFoundError: When ODE offers no download for one of them.

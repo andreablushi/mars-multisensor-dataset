@@ -28,7 +28,8 @@ def _outstanding[T, R](
         force: When True, include candidates that are already finished.
 
     Returns:
-        The results for the candidates outstanding, and how many were skipped.
+        held: The results for the candidates outstanding.
+        skipped: How many were skipped.
     """
     outstanding: list[R] = []
     skipped = 0
@@ -57,7 +58,7 @@ def download_plan(
         force: When True, include jobs whose output file already exists.
 
     Returns:
-        The plan describing the selection and the jobs to run.
+        plan: The plan describing the selection and the jobs to run.
     """
     # Feature selection: a feature the catalogue gives no extent at all is dropped
     usable = [feature for feature in features if not feature.is_point]
@@ -96,7 +97,7 @@ def coverage_plan(
         force: When True, recompute sets that are already done.
 
     Returns:
-        The plan describing the discovery and the jobs to run.
+        plan: The plan describing the discovery and the jobs to run.
     """
     jobs, skipped = _outstanding(
         sorted(sources, key=lambda path: -path.stat().st_size),
@@ -126,7 +127,7 @@ def unfinished(
         features_root: The per-feature coverage root directory.
 
     Returns:
-        The metadata files with no summary beside them, in discovery order.
+        files: The metadata files with no summary beside them, in discovery order.
     """
     sources_left, _ = _outstanding(
         sources,

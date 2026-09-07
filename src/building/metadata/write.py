@@ -29,9 +29,6 @@ def write_metadata(
         taken: One record per feature and observation, in the same manner.
         instruments: The instruments the build covered.
         root: The directory the files are written in, made when missing.
-
-    Returns:
-        None.
     """
     root.mkdir(parents=True, exist_ok=True)
     parquet.write(held, features.SCHEMA, root / paths.FEATURE_METADATA_NAME)

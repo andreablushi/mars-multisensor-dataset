@@ -9,14 +9,10 @@ import numpy as np
 # The whole turn, which every longitude here is measured round.
 TURN = 360.0
 
-# IAU mean radius for Mars, which the equal-area projection is built on and
-# which an orbit is measured from the centre of.
+# IAU mean radius for Mars, which the equal-area projection is built on
 RADIUS_M = 3_389_500.0
 
-# The IAU axes Mars is an oblate spheroid of, which every archive here places a
-# sample against and which a distance along its surface is therefore measured
-# on. A single sphere is right at one latitude alone: the mean radius runs a
-# fifth of a per cent short at the equator and four tenths long at a pole.
+# The IAU axes Mars is an oblate spheroid of, no sphere being right throughout
 EQUATORIAL_RADIUS_M = 3_396_190.0
 POLAR_RADIUS_M = 3_376_200.0
 
@@ -34,7 +30,7 @@ def normalise_longitude(lon: np.ndarray | float) -> np.ndarray:
         lon: One longitude in degrees, or an array of them.
 
     Returns:
-        The wrapped longitudes as a float array.
+        longitudes: The wrapped longitudes as a float array.
     """
     return (np.asarray(lon, dtype=float) + 180.0) % 360.0 - 180.0
 
@@ -46,7 +42,7 @@ def longitude_stretch(lat: float) -> float:
         lat: The latitude in degrees.
 
     Returns:
-        The cosine of the latitude, never below MIN_COSINE.
+        cosine: The cosine of the latitude, never below MIN_COSINE.
     """
     return max(math.cos(math.radians(lat)), MIN_COSINE)
 
@@ -59,7 +55,7 @@ def longitude_span(west_lon: float, east_lon: float) -> float:
         east_lon: The easternmost longitude in degrees.
 
     Returns:
-        The eastward span in degrees, above zero and up to 360.
+        span: The eastward span in degrees, above zero and up to 360.
     """
     raw = east_lon - west_lon
     if raw >= TURN or raw == 0.0:
@@ -81,7 +77,8 @@ def bbox_centre(
         east_lon: The easternmost longitude in degrees.
 
     Returns:
-        The centre longitude in -180 to 180 degrees and the centre latitude.
+        longitude: The centre longitude in -180 to 180 degrees.
+        latitude: The centre latitude in degrees.
     """
     centre_lon = west_lon + longitude_span(west_lon, east_lon) / 2.0
     return float(normalise_longitude(centre_lon)), (min_lat + max_lat) / 2.0
@@ -100,7 +97,8 @@ def bbox_ring(
         step: The longest segment the ring is densified to, in degrees.
 
     Returns:
-        The ring longitudes and latitudes, closed back onto the first point.
+        longitudes: The ring longitudes, closed back onto the first point.
+        latitudes: The ring latitudes, closed the same way.
     """
     span = longitude_span(west_lon, east_lon)
     east = west_lon + span
@@ -131,7 +129,8 @@ def laea_forward(
         centre_lat: The projection centre latitude in degrees.
 
     Returns:
-        The projected eastings and northings in metres.
+        eastings: The projected eastings in metres.
+        northings: The projected northings in metres.
     """
     delta = np.radians(np.asarray(lon, dtype=float) - centre_lon)
     phi = np.radians(np.asarray(lat, dtype=float))
@@ -154,7 +153,7 @@ def local_radius_m(lat: np.ndarray | float) -> np.ndarray:
         lat: The latitude in degrees, or an array of them.
 
     Returns:
-        The radius in metres, falling from the equatorial axis to the polar one.
+        radius: The radius in metres, falling from the equatorial axis to the polar one.
     """
     phi = np.radians(np.asarray(lat, dtype=float))
     return (EQUATORIAL_RADIUS_M * POLAR_RADIUS_M) / np.hypot(
@@ -170,13 +169,12 @@ def haversine_steps(
     Args:
         lon: The point longitudes in degrees.
         lat: The point latitudes in degrees.
-        radius: The sphere each pair is measured on, one radius for all of them
-            or one per pair, which is how a distance is measured on the
-            spheroid rather than on a sphere standing in for it.
+        radius: The sphere each pair is measured on, one radius for all of them or
+            one per pair.
 
     Returns:
-        One distance in metres per neighbouring pair, and nothing at all for
-        fewer than two points.
+        steps: One distance in metres per neighbouring pair, and nothing for fewer than
+            two points.
     """
     lam = np.radians(np.asarray(lon, dtype=float))
     phi = np.radians(np.asarray(lat, dtype=float))
@@ -195,7 +193,7 @@ def haversine_length(lon: np.ndarray, lat: np.ndarray) -> float:
         lat: The point latitudes in degrees.
 
     Returns:
-        The summed length in metres, or 0.0 for fewer than two points.
+        length: The summed length in metres, or 0.0 for fewer than two points.
     """
     return float(haversine_steps(lon, lat).sum())
 
@@ -207,7 +205,7 @@ def northward_m(degrees: float) -> float:
         degrees: The span of latitude in degrees.
 
     Returns:
-        The distance in metres along a meridian.
+        metres: The distance in metres along a meridian.
     """
     return math.radians(degrees) * RADIUS_M
 
@@ -220,7 +218,7 @@ def eastward_m(degrees: float, lat: float) -> float:
         lat: The latitude it is spanned at, in degrees.
 
     Returns:
-        The distance in metres along that parallel.
+        metres: The distance in metres along that parallel.
     """
     return math.radians(degrees) * RADIUS_M * math.cos(math.radians(lat))
 
@@ -240,7 +238,8 @@ def laea_inverse(
         centre_lat: The projection centre latitude in degrees.
 
     Returns:
-        The longitudes and latitudes in degrees, longitudes wrapped to -180 to 180.
+        longitudes: The longitudes in degrees, wrapped to -180 to 180.
+        latitudes: The latitudes in degrees.
     """
     x = np.asarray(x, dtype=float)
     y = np.asarray(y, dtype=float)
@@ -278,7 +277,8 @@ def stereographic_forward(
         radius: The sphere the projection is built on, in metres.
 
     Returns:
-        The projected eastings and northings in metres.
+        eastings: The projected eastings in metres.
+        northings: The projected northings in metres.
     """
     lam = np.radians(np.asarray(lon, dtype=float) - centre_lon)
     phi = np.radians(np.asarray(lat, dtype=float))
@@ -304,7 +304,8 @@ def stereographic_inverse(
         radius: The sphere the projection is built on, in metres.
 
     Returns:
-        The longitudes in -180 to 180 degrees and the latitudes in degrees.
+        longitudes: The longitudes in -180 to 180 degrees.
+        latitudes: The latitudes in degrees.
     """
     x = np.asarray(x, dtype=float)
     y = np.asarray(y, dtype=float)

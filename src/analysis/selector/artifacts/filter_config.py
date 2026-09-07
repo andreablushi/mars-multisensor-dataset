@@ -18,7 +18,7 @@ def load(path: Path = paths.FILTER_CONFIG_PATH) -> Filter:
         path: The filter config, which has to exist and carry every setting.
 
     Returns:
-        The filter every search runs under.
+        criteria: The filter every search runs under.
 
     Raises:
         ValueError: When a setting is missing or is not what it has to be.

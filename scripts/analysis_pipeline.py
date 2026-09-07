@@ -50,7 +50,7 @@ def survey(force: bool = False, workers: int | None = None) -> int:
         workers: How many jobs each half runs at once, or None for the config.
 
     Returns:
-        A process exit code, non zero when either half had a failure.
+        code: A process exit code, non zero when either half had a failure.
     """
     choices = settings.load(workers=workers)
     printing = Console()
@@ -74,16 +74,12 @@ def stats(workers: int | None = None) -> None:
 
     Args:
         workers: How many processes to run on at once, or None for the config.
-
-    Returns:
-        None.
     """
     workers = settings.load(workers=workers).workers
     picked = select.select_dataset(workers, console.logged("selection"))
     kept = sum(1 for one in picked if one.feature.kept)
     print(f"{kept:,} of {len(picked):,} features earned a place", flush=True)
-    # The stats are read off the selection just written, so they never stand
-    # for a filter the selection no longer holds
+    # Read off the selection just written, so they never stand for an old filter
     store.write_stats_file(
         aggregate.dataset_stats(
             read.measure_every_feature(picked, workers, console.logged("stats"))
@@ -101,7 +97,10 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
         workers: How many jobs each stage runs at once, as the job was sized.
 
     Returns:
-        The measurements and the catalogue index, then the selection and the stats.
+        coverage: The archive of the coverage events and summaries.
+        summary: The table of one row per feature and instrument set.
+        selection: The archive of the features and observations kept.
+        stats: The archive of what the filter left of the dataset.
 
     Raises:
         RuntimeError: When the measuring stage reported a failure, which leaves
@@ -136,8 +135,7 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
             _METADATA,
             "The ODE records behind each measurement; unpack under data/analysis/.",
         )
-    # Report a partly failed measurement only once everything is safely uploaded,
-    # and never select a dataset from coverage that is missing what failed
+    # Report a failure only once uploaded, and never select from short coverage
     if failed:
         raise RuntimeError("the run had failures; the archives hold what finished")
     stats(workers)
@@ -155,7 +153,8 @@ def run_stats(project, workers: int | None = None):
         workers: How many processes to run on at once, as the job was sized.
 
     Returns:
-        The uploaded archives of the selection and of the stats.
+        selection: The archive of the features and observations kept.
+        stats: The archive of what the filter left of the dataset.
 
     Raises:
         RuntimeError: When the published measurements hold no feature to search.
@@ -184,7 +183,8 @@ def _published_selection(project):
         project: The DigitalHub project the archives are logged into.
 
     Returns:
-        The uploaded archive of the selection, then the one of the stats.
+        selection: The archive of the features and observations kept.
+        stats: The archive of what the filter left of the dataset.
     """
     return (
         archives.logged_archive(
@@ -207,7 +207,8 @@ def main() -> int:
     """Run the pipeline where it was asked for, over the stages it was asked for.
 
     Returns:
-        A process exit code, non zero when a stage failed or an image did not build.
+        code: A process exit code, non zero when a stage failed or an image did not
+            build.
     """
     parsed = argparse.ArgumentParser(description=__doc__)
     parsed.add_argument(

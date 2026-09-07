@@ -27,7 +27,7 @@ def load_features(
         refresh: When True, re-fetch and overwrite the cache.
 
     Returns:
-        The list of features.
+        features: The list of features.
 
     Raises:
         FileNotFoundError: When nothing is cached and no client was given to fetch with.

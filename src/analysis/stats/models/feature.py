@@ -31,7 +31,8 @@ class FeatureLooks:
         """Return the stretch of time the feature's window is open over.
 
         Returns:
-            The one stretch it earned, and nothing at all when it earned none.
+            stretches: The one stretch it earned, and nothing at all when it earned
+                none.
         """
         if not self.window.kept:
             return []
@@ -57,8 +58,8 @@ class InstrumentReach:
         """Return the pixels one of its observations lands on the feature.
 
         Returns:
-            The mean over the observations the window keeps, or None where any
-            of them carries no pixel count.
+            pixels: The mean over the observations the window keeps, or None where any
+                of them carries no pixel count.
         """
         if self.pixels is None or not self.observations_taken:
             return None

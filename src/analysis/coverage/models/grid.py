@@ -32,7 +32,7 @@ class Grid:
         """Return how much ground one cell of the grid covers.
 
         Returns:
-            The area of one cell in square metres.
+            area: The area of one cell in square metres.
         """
         return (self.east - self.west) * (self.north - self.south) / self.side**2
 
@@ -41,7 +41,8 @@ class Grid:
         """Return where the centre of every cell falls, along each axis.
 
         Returns:
-            The cell centre eastings, then the cell centre northings, in metres.
+            eastings: The cell centre eastings in metres.
+            northings: The cell centre northings in metres.
         """
         steps = np.arange(self.side) + 0.5
         return (
@@ -54,7 +55,7 @@ class Grid:
         """Return every cell of the grid as a rectangle.
 
         Returns:
-            One box per cell, walked row by row from the south west corner.
+            cells: One box per cell, walked row by row from the south west corner.
         """
         step_x = (self.east - self.west) / self.side
         step_y = (self.north - self.south) / self.side

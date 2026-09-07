@@ -23,7 +23,7 @@ def clean_window(
         grid: The grid the feature is searched over.
 
     Returns:
-        The same filter, carrying what it asks of the feature.
+        criteria: The same filter, carrying what it asks of the feature.
     """
     iids = [instrument.summary.iid for instrument in coverage]
     windowed: Constraints = []
@@ -43,8 +43,7 @@ def clean_window(
             else windowed
         )
         held.append(answers)
-    # An instrument's whole-grid bar is scaled down by the ground the feature
-    # actually holds in it, along one axis for a sounder and over both for an imager
+    # The whole-grid bar is scaled by the ground held, by one axis or by both
     covered = grid.area_km2 / (grid.cells * grid.cell_km2)
     return dataclasses.replace(
         criteria,

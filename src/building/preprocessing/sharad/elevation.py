@@ -29,7 +29,7 @@ def elevation_m(samples: int) -> np.ndarray:
             the areoid the whole window is posted from.
 
     Returns:
-        One height in metres per delay sample, falling as the delay grows.
+        elevation: One height in metres per delay sample, falling as the delay grows.
     """
     return -(np.arange(samples) - (samples // 2 - 1)) * SAMPLE_RANGE_M
 
@@ -41,8 +41,9 @@ def altitude_m(sample: SharadSample) -> tuple[float, float]:
         sample: The track cut to the feature it was kept for.
 
     Returns:
-        The lowest and the highest height above the ground in metres, over the
-        traces the track keeps.
+        lowest: The lowest height above the ground in metres, over the traces the track
+            keeps.
+        highest: The highest, over the same traces.
     """
     above = (
         sample.geometry[SPACECRAFT_RADIUS_FIELD] - sample.geometry[GROUND_RADIUS_FIELD]

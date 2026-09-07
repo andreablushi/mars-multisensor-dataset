@@ -58,7 +58,8 @@ class Placed:
         """Trace the whole feature as a closed lon/lat ring.
 
         Returns:
-            The longitudes and latitudes of the ring, closing where it opened.
+            longitudes: The longitudes of the ring, closing where it opened.
+            latitudes: The latitudes of the ring, closing where it opened.
         """
         west, south, east, north = self._bounds
         along = np.linspace(west, east, RING_SAMPLES)
@@ -78,7 +79,7 @@ class Placed:
             lon: The longitudes to bring around, in degrees.
 
         Returns:
-            The same longitudes, on the feature's own turn.
+            longitudes: The same longitudes, on the feature's own turn.
         """
         return self._centre[0] + geodesy.normalise_longitude(lon - self._centre[0])
 
@@ -86,7 +87,7 @@ class Placed:
         """Return the lon/lat box the whole feature falls in, held open to a minimum.
 
         Returns:
-            The box a mosaic crop is asked for over.
+            box: The box a mosaic crop is asked for over.
         """
         lon, lat = self.outline()
         centre_lat = float((lat.min() + lat.max()) / 2.0)
@@ -108,7 +109,8 @@ def _floored(low: float, high: float, minimum: float) -> tuple[float, float]:
         minimum: The width to hold it open to.
 
     Returns:
-        The edges, widened about their middle when they sit closer than the minimum.
+        edges: The edges, widened about their middle when they sit closer than the
+            minimum.
     """
     if high - low >= minimum:
         return low, high

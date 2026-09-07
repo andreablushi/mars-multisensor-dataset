@@ -17,17 +17,12 @@ from analysis.coverage.models.region import FeatureRegion
 def grid_over(region: FeatureRegion, shapes: Sequence[BaseGeometry]) -> Grid:
     """Size a grid to the footprints it will hold, and lay it over the feature.
 
-    A cell is kept near the size of a typical footprint, so each insert into a
-    cell's union touches a small shape. These cells are scratch and never leave
-    the union: cutting the same ground more finely gives the same answer, only
-    far slower, which is what the fine split is for instead.
-
     Args:
         region: The projected feature the cells cover.
         shapes: The projected footprints the grid will hold.
 
     Returns:
-        The grid, its side within the configured bounds.
+        grid: The grid, its side within the configured bounds.
     """
     west, south, east, north = region.shape.bounds
     boxes = bounds(np.asarray(shapes, dtype=object))
@@ -52,7 +47,7 @@ def cells(
         shapes: The projected footprints, in the order they are walked.
 
     Yields:
-        Each cell's rectangle, the ground it holds, and the shapes reaching it.
+        cell: Each cell's rectangle, the ground it holds, and the shapes reaching it.
     """
     rectangles = grid.rectangles
     caps = area(intersection(rectangles, region.shape))
@@ -76,7 +71,8 @@ def clip(
         rectangle: The cell to cut them to.
 
     Returns:
-        The kept indices and their clipped shapes, as a pair of arrays.
+        kept: The indices the box keeps.
+        shapes: Their clipped shapes, one to each.
     """
     pieces = intersection(shapes[reaching], rectangle)
     kept = ~is_empty(pieces)

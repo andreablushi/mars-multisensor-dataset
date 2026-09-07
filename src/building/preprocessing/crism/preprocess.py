@@ -35,7 +35,7 @@ def product_files(identifier: str, detector: str, kind: str) -> dict[str, Path]:
         kind: Which product of that half, the observation or the geometry.
 
     Returns:
-        The path for each suffix it is published as, keyed by suffix.
+        files: The path for each suffix it is published as, keyed by suffix.
     """
     return configs.CACHE.files(
         identifier, configs.NAMING.product(identifier, kind, detector=detector), kind
@@ -45,16 +45,13 @@ def product_files(identifier: str, detector: str, kind: str) -> dict[str, Path]:
 def cached_detectors(identifier: str) -> tuple[str, ...]:
     """Read which detectors of one observation were downloaded whole.
 
-    Both detectors are read out together, but a small share of the survey was
-    archived as one half alone, so what landed says which to build from.
-
     Args:
         identifier: The observation, whose files must already be in the cache
             that `download.fetch` puts them in.
 
     Returns:
-        The detectors whose observation and geometry both landed, in the order
-        the archive names them.
+        detectors: The detectors whose observation and geometry both landed, as the
+            archive names them.
 
     Raises:
         FileNotFoundError: When neither detector landed whole.
@@ -81,7 +78,8 @@ def placing_detector(identifier: str) -> str:
             that `download.fetch` puts them in.
 
     Returns:
-        The first detector that landed, in the order they place an observation.
+        detector: The first detector that landed, in the order they place an
+            observation.
 
     Raises:
         FileNotFoundError: When neither detector landed whole.
@@ -94,13 +92,12 @@ def read_detectors(identifier: str) -> dict[str, Detector]:
     """Read every image one observation was downloaded as, keyed by detector.
 
     Args:
-        identifier: The observation, whose files must already be in the cache
-            that `download.fetch` puts them in, the wavelength file each of its
-            labels names included.
+        identifier: The observation, whose files must already be in the cache that
+            `download.fetch` puts them in, its wavelength files included.
 
     Returns:
-        Every detector that landed, each cube ordered by the wavelength file
-        its own label was calibrated against.
+        detectors: Every detector that landed, each cube ordered by the wavelength file
+            its label names.
 
     Raises:
         FileNotFoundError: When neither detector landed, or a wavelength file
@@ -136,8 +133,8 @@ def read_label(identifier: str) -> dict[str, str]:
             that `download.fetch` puts them in.
 
     Returns:
-        Their labels merged into one, without the tuning of the software that
-        calibrated them.
+        label: Their labels merged into one, without the tuning of the software that
+            calibrated them.
 
     Raises:
         FileNotFoundError: When neither detector landed, or a label is missing.
@@ -166,8 +163,8 @@ def read_geometry(identifier: str) -> np.ndarray:
             that `download.fetch` puts them in.
 
     Returns:
-        The backplanes of the detector that places it, as lines by samples by
-        fourteen.
+        backplanes: The backplanes of the detector that places it, as lines by samples
+            by fourteen.
 
     Raises:
         FileNotFoundError: When the geometry or its label is missing.
@@ -187,8 +184,8 @@ def clean_detectors(identifier: str) -> dict[str, Detector]:
             that `download.fetch` puts them in.
 
     Returns:
-        Every detector that landed, each cube filled where it was not measured
-        and its mask set beside it.
+        detectors: Every detector that landed, each cube filled where it was not
+            measured and its mask beside it.
 
     Raises:
         FileNotFoundError: When any file the observation needs is missing.
@@ -219,7 +216,7 @@ def read_observation(identifier: str) -> CrismObservation:
             that `download.fetch` puts them in.
 
     Returns:
-        The observation, its bands ascending in wavelength.
+        observation: The observation, its bands ascending in wavelength.
 
     Raises:
         FileNotFoundError: When any file the observation needs is missing.
@@ -241,8 +238,8 @@ def crop(observation: CrismObservation, frame: FeatureFrame) -> CrismSample | No
         frame: The local frame of the feature it was kept for.
 
     Returns:
-        The observation cut to that feature, its bands left whole, or None
-        where it reaches none of it.
+        sample: The observation cut to that feature, its bands left whole, or None where
+            it reaches none of it.
     """
     held = overlap(
         observation.latitude, observation.longitude, observation.separable, frame

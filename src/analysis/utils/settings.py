@@ -21,7 +21,7 @@ def load(path: Path = paths.RUNNER_CONFIG_PATH, workers: int | None = None) -> S
             config where a run was given a number of cores of its own.
 
     Returns:
-        The settled choices for the run.
+        choices: The settled choices for the run.
     """
     config = yaml.safe_load(path.read_text(encoding="utf-8"))
     plotted = config.get("plot_instruments")

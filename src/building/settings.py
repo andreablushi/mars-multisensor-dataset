@@ -19,7 +19,7 @@ def load(path: Path = paths.BUILDING_CONFIG_PATH, cores: int | None = None) -> S
             itself, and None to read the machine's own.
 
     Returns:
-        The settled choices for the build.
+        choices: The settled choices for the build.
     """
     config = yaml.safe_load(path.read_text(encoding="utf-8"))
     return Settings(

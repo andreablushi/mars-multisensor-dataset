@@ -12,8 +12,7 @@ from analysis.models.instrument import InstrumentSet
 from utils.fetch import ode_configs
 from utils.fetch.ode_configs import ODEError
 
-# A feature running through every longitude is asked for in two halves, since
-# no single box ODE accepts reaches round every longitude at once.
+# A feature circling the planet is asked in two halves, no ODE box reaching round
 LONGITUDE_HALVES = ((0.0, 180.0), (180.0, 360.0))
 
 PAGE_SIZE = 5000
@@ -45,7 +44,7 @@ def _boxes(feature: Feature) -> tuple[Box, ...]:
         feature: The feature to query.
 
     Returns:
-        One box as (min_lat, max_lat, west_lon, east_lon), or two around a pole.
+        boxes: One box as (min_lat, max_lat, west_lon, east_lon), or two around a pole.
     """
     if feature.circles_a_pole:
         return tuple(
@@ -64,7 +63,7 @@ def _params(box: Box, instrument_set: InstrumentSet, loc: str) -> dict[str, str]
         loc: "f" for every footprint overlapping the box, "o" for only those inside.
 
     Returns:
-        The parameter dictionary without a results selector.
+        params: The parameter dictionary without a results selector.
     """
     min_lat, max_lat, west_lon, east_lon = box
     params = {
@@ -92,7 +91,7 @@ def _pages(client: ODEClient, params: dict[str, str]) -> Iterator[list[Any]]:
         params: The box and instrument parameters to page through.
 
     Yields:
-        Each page's raw product items, until they run out.
+        page: Each page's raw product items, until they run out.
 
     Raises:
         ODEError: When ODE reports no usable count.
@@ -139,7 +138,7 @@ def fetch_products(
         loc: Which products the box returns, recorded with each one.
 
     Returns:
-        One record per distinct product, in the order ODE returned them.
+        products: One record per distinct product, in the order ODE returned them.
     """
     stamped = provenance.stamp(feature, instrument_set, loc)
     records: list[ProductRecord] = []

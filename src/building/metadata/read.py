@@ -23,7 +23,7 @@ def read_feature_metadata(
         root: The directory the metadata was written in.
 
     Returns:
-        Each feature's own row, by class and name.
+        features: Each feature's own row, by class and name.
 
     Raises:
         FileNotFoundError: When no features have been written there.
@@ -44,7 +44,7 @@ def read_observation_metadata(
         root: The directory the metadata was written in.
 
     Returns:
-        One row per feature and observation.
+        records: One row per feature and observation.
 
     Raises:
         FileNotFoundError: When no observations have been written there.

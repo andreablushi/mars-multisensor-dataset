@@ -32,7 +32,7 @@ class Counter:
             grid_cells: How many cells the feature holds.
 
         Returns:
-            The counter, counting nothing.
+            counter: The counter, counting nothing.
         """
         return cls(
             observations_per_cell=np.zeros((len(iids), grid_cells), dtype=np.int32),
@@ -49,7 +49,7 @@ class Counter:
             last: The index of the latest one.
 
         Returns:
-            The counter, counting that stretch.
+            counter: The counter, counting that stretch.
         """
         counter = cls.empty(track.iids, track.grid.cells)
         for index in range(first, last + 1):
@@ -62,9 +62,6 @@ class Counter:
         Args:
             owner: The instrument set the observation belongs to.
             cells: The feature's cells it fills, each of them named once.
-
-        Returns:
-            None.
         """
         filled = self.observations_per_cell[owner]
         held = filled[cells]
@@ -78,9 +75,6 @@ class Counter:
         Args:
             owner: The instrument set the observation belongs to.
             cells: The feature's cells it fills, each of them named once.
-
-        Returns:
-            None.
         """
         filled = self.observations_per_cell[owner]
         left = filled[cells]

@@ -35,8 +35,8 @@ class Naming:
             name: A product id or an identifier.
 
         Returns:
-            The part the pattern names, keyed by name and empty where the id
-            leaves it out, or None when the id is not one this can read.
+            parts: The part the pattern names, keyed by name, or None when the id is not
+                one this can read.
         """
         match = self.pattern.match(name)
         if not match:
@@ -50,8 +50,8 @@ class Naming:
             product_id: The id to read, in whichever case its archive spells it.
 
         Returns:
-            The identifier of the observation it belongs to, or None when the
-            id is not a product this instrument wants.
+            identifier: The observation it belongs to, or None when the id is not a
+                product this instrument wants.
         """
         parts = self.parts(product_id.lower())
         if parts is None or not all(parts.get(mark) for mark in self.marks):
@@ -68,7 +68,7 @@ class Naming:
                 part the observation itself does not carry.
 
         Returns:
-            The product id the archive knows that product by.
+            product: The product id the archive knows that product by.
 
         Raises:
             ValueError: When the identifier is not one this can read.

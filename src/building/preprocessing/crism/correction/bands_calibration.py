@@ -15,9 +15,9 @@ def calibrate(cube: np.ndarray, table: np.ndarray) -> tuple[np.ndarray, np.ndarr
             order, with NaN where nothing was calibrated.
 
     Returns:
-        The cube with its bands ascending in wavelength and its uncalibrated
-        columns and bands NaN, and the centre wavelength of every column and
-        band in that same order.
+        cube: The cube with bands ascending in wavelength, uncalibrated columns and
+            bands NaN.
+        wavelengths: The centre wavelength of every column and band, in that same order.
 
     Raises:
         ValueError: When the table does not describe the cube it is given, or
@@ -53,8 +53,8 @@ def centres(table: np.ndarray) -> np.ndarray:
         table: The centre wavelength of every column and band.
 
     Returns:
-        One centre per band, averaged over the columns that carry one, NaN
-        where no column does.
+        centres: One centre per band, averaged over the columns that carry one, NaN
+            where none does.
     """
     # Bands the detector was calibrated for in at least one column.
     named = ~np.isnan(table).all(axis=0)
@@ -72,8 +72,7 @@ def window(centre: np.ndarray, width: float) -> int:
         width: How far the window should reach, in nm.
 
     Returns:
-        An odd band count whose span fits inside the width, never below three,
-        which is what a single band is given since it has no step to measure.
+        width: An odd band count whose span fits inside the width, never below three.
     """
     if centre.size < 2:
         return 3

@@ -35,15 +35,7 @@ CGROUP_LIMITS = (
     Path("/sys/fs/cgroup/memory/memory.limit_in_bytes"),
 )
 
-# How many downloads run at once. They wait on an archive and not on cores, so
-# this is a count of its own and not a share of the machine: sizing it off the
-# cores would throttle the downloads a run is actually held up by whenever the
-# job was given fewer of them. An archive serves one connection at about two
-# megabytes a second however fast the link is, and answers as many at once:
-# sixteen measured thirty megabytes a second together and forty eight measured
-# no more, so this is where an archive stops answering faster rather than where
-# a run stops asking. One refusal backs the whole run off rather than each
-# thread asking again on its own.
+# How many downloads run at once; they wait on an archive and not on the cores
 DOWNLOADS = 48
 
 
@@ -63,7 +55,7 @@ def run_build(
         force: Whether to rebuild crops that are already written.
 
     Returns:
-        Every finished outcome, in completion order.
+        collected: Every finished outcome, in completion order.
 
     Raises:
         FileNotFoundError: When no selection has been written to build from.
@@ -80,9 +72,7 @@ def run_build(
         except (OSError, ValueError):
             continue
     budget = Budget(int(free * MEMORY_SHARE))
-    # Every download reuses these, so a run of tens of thousands of files pays
-    # for a connection once a host rather than once a file. Room for one to each
-    # archive per thread, since a query and a transfer can be in flight together.
+    # Reused, so a run pays for a connection once a host rather than once a file
     held = httpx.Limits(
         max_connections=fetching_count * 2,
         max_keepalive_connections=fetching_count * 2,
@@ -96,8 +86,7 @@ def run_build(
         # A download waits on the network and a build on the cores, so the pools differ.
         with (
             ProcessPoolExecutor(max_workers=building_count) as building,
-            # A thread waiting on memory is holding no download back, so the pool
-            # carries every product that may wait rather than every download.
+            # A thread waiting on memory holds no download back, so this is wider
             ThreadPoolExecutor(max_workers=ready) as fetching,
             printing.watch(progress),
         ):
@@ -143,7 +132,7 @@ def _outcomes(
         progress: What every product still in the build is doing.
 
     Yields:
-        One outcome per job, in the order they finish.
+        outcome: One outcome per job, in the order they finish.
     """
     fetching_count, ready = counts
     finished: queue.Queue[Outcome] = queue.Queue()
@@ -157,9 +146,6 @@ def _outcomes(
         Args:
             outcome: What the job left, whether it was built or failed.
             held: How much memory it was holding, and zero where it held none.
-
-        Returns:
-            None.
         """
         if held:
             budget.release(held)
@@ -171,9 +157,6 @@ def _outcomes(
 
         Args:
             job: The product to fetch.
-
-        Returns:
-            None.
         """
         # The place is taken before the download, so the room is never given elsewhere.
         waiting.acquire()
@@ -206,9 +189,6 @@ def _outcomes(
             job: The job that was built.
             held: How much memory it was holding while it built.
             done: What the build pool left.
-
-        Returns:
-            None.
         """
         try:
             outcome = done.result()
@@ -232,8 +212,8 @@ def build_product(job: Job, root: Path) -> Outcome:
         root: The dataset's own root directory.
 
     Returns:
-        The outcome, holding the record of every sample written, and the error
-        that stopped it where one did after some were already on disk.
+        outcome: The outcome, holding the record of every sample written, and the error
+            that stopped it where one did after some were already on disk.
 
     Raises:
         Exception: Whatever reading the product off disk raised, which the pool
@@ -283,9 +263,6 @@ def _indexed(
         collected: What every job of this run left.
         settings: The settled choices for the build.
         root: The dataset's own root directory.
-
-    Returns:
-        None.
     """
     written = [held for one in collected for held in one.records]
     rewritten = {one.identity for one in written}

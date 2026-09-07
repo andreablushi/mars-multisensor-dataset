@@ -17,9 +17,8 @@ class CtxObservation:
     Attributes:
         label: What every product it was published as says about it, merged.
         identifier: The observation id.
-        image: The TIFF the brightness was published as, read a window at a
-            time rather than whole, since one feature keeps a small part of a
-            scan that runs to gigabytes.
+        image: The TIFF the brightness was published as, read a window at a time
+            rather than whole, a scan running to gigabytes.
         down: What every line holds, its latitude in degrees on a cylindrical
             grid and its northing in the projection's metres on a polar one.
         across: What every sample holds, its longitude or its easting, read the

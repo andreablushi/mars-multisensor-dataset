@@ -25,7 +25,7 @@ def remove_spike_columns(
         detector: Which detector, `l` or `s`, which picks the threshold.
 
     Returns:
-        The mask with each levelled column and band recorded.
+        mask: The mask with each levelled column and band recorded.
 
     Raises:
         ValueError: When the threshold is further from a column's mean than
@@ -45,8 +45,7 @@ def remove_spike_columns(
     apart = np.abs(averaged - medfilt1(averaged, size))
     # crism_ml judges each column against the spread of its own bands.
     sigma = configs.STRIPE_SIGMA[detector]
-    # One of n bands stands at most (n-1)/sqrt(n) deviations off their own mean,
-    # so a threshold past that leaves the whole stage unable to catch anything.
+    # One of n bands sits at most (n-1)/sqrt(n) off the mean; past that catches none
     reach = (live_bands.size - 1) / np.sqrt(live_bands.size)
     if sigma >= reach:
         raise ValueError(
@@ -82,7 +81,7 @@ def medfilt1(array: np.ndarray, size: int, out: np.ndarray | None = None) -> np.
         out: The array to fill, or None to allocate one.
 
     Returns:
-        The filtered values, the same shape as the input.
+        values: The filtered values, the same shape as the input.
     """
     left, right = size // 2, size - size // 2
     if out is None:

@@ -18,11 +18,10 @@ def dataset_stats(measured: Sequence[FeatureStats]) -> DatasetStats:
         measured: What the looks each feature keeps left on it, in any order.
 
     Returns:
-        What the filter left of them.
+        stats: What the filter left of them.
     """
     iids = list(dict.fromkeys(iid for one in measured for iid in one.iids))
-    # Read once here, since a feature claiming more ground than it holds is no
-    # more readable per class than it is in all
+    # Read once here, a feature claiming too much reading no better per class
     held = [one for one in measured if plausible(one)]
     grounded = [one for one in held if one.window.kept]
     return DatasetStats(
@@ -53,7 +52,7 @@ def aggregate_features(
         iids: The instruments to report on, in the order to report them.
 
     Returns:
-        What they hold between them.
+        held: What they hold between them.
     """
     kept = [one for one in measured if one.window.kept]
     return Aggregate(
@@ -89,7 +88,7 @@ def plausible(feature: FeatureStats) -> bool:
         feature: One feature the search ran over.
 
     Returns:
-        Whether every share it reports sits inside the ceiling.
+        plausible: Whether every share it reports sits inside the ceiling.
     """
     area_km2 = feature.window.area_km2
     shares = [reach.km2 / area_km2 for reach in feature.reached.values()]
@@ -108,7 +107,7 @@ def _stats_per_class(
         iids: The instruments to report on, in the order to report them.
 
     Returns:
-        What it left of each class, by feature class, in the order read.
+        classes: What it left of each class, by feature class, in the order read.
     """
     taken: dict[str, dict[str, list[float]]] = {}
     selected: dict[str, int] = {}
@@ -138,8 +137,8 @@ def _pixels_per_look(kept: Sequence[FeatureStats], iid: str) -> Spread:
         iid: The instrument to read.
 
     Returns:
-        The pixels one of its observations landed, feature by feature, leaving
-        out a feature carrying no pixel count.
+        pixels: The pixels one of its observations landed, feature by feature, leaving
+            out a feature carrying no pixel count.
     """
     per_look: list[float] = []
     for feature in kept:

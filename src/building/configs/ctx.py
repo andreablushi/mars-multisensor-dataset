@@ -17,9 +17,7 @@ KINDS = (LABEL, IMAGE)
 # What each kind is suffixed with once it is on disk.
 SUFFIXES = {LABEL: ".isis.hdr", IMAGE: ".tiff"}
 
-# From this latitude up ASU writes a scan on a polar stereographic grid, and
-# below it on a simple cylindrical one. Measured against ASU over the selection:
-# every scan from 63 to 69 is cylindrical and every one from 70 up is polar.
+# From this latitude up ASU writes a scan polar, below it simple cylindrical
 POLAR_LATITUDE = 70
 
 # Where a scan's own name carries the latitude it was taken at.
@@ -33,8 +31,8 @@ def polar(identifier: str) -> bool:
         identifier: The scan, whose name carries the latitude it was taken at.
 
     Returns:
-        True where ASU projects it stereographically, and False where it does
-        not, which is also the answer for a name carrying no latitude.
+        polar: True where ASU projects it stereographically, which a name carrying no
+            latitude is not.
     """
     found = LATITUDE.search(identifier.lower())
     return bool(found) and int(found[1]) >= POLAR_LATITUDE

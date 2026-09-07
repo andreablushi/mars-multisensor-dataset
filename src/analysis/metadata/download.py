@@ -17,7 +17,7 @@ def download(job: Job, client: ODEClient, loc: str) -> Outcome:
         loc: Which products a feature box returns.
 
     Returns:
-        The outcome, carrying the error when the job failed.
+        outcome: The outcome, carrying the error when the job failed.
     """
     try:
         records = fetch_products(client, job.feature, job.instrument_set, loc)

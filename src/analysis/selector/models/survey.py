@@ -38,8 +38,8 @@ class Survey:
         """Name every observation the feature keeps, in time order.
 
         Returns:
-            The window's own observations and what came from outside it,
-            oldest first, each of them named once.
+            taken: The window's own observations and what came from outside it, oldest
+                first.
         """
         return tuple(sorted(set(self.kept) | set(self.standing)))
 
@@ -72,7 +72,8 @@ class Study:
             criteria: Which instruments a window has to hold, and how much ground each.
 
         Returns:
-            What the search found, the timeline it ran over and the window it earned.
+            study: What the search found, the timeline it ran over and the window it
+                earned.
         """
         # Imported here, since the algorithm hands back the survey defined above
         from analysis.selector import algorithm

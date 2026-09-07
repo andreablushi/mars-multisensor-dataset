@@ -13,7 +13,7 @@ def read_selection() -> list[Selection]:
     """Read what the selection left of every feature it searched, once.
 
     Returns:
-        One entry per feature searched, in the order they were written.
+        selections: One entry per feature searched, in the order they were written.
 
     Raises:
         FileNotFoundError: When no selection has been written.
@@ -28,7 +28,7 @@ def selection_by_feature() -> dict[tuple[str, str], Selection]:
     """Read the same selection keyed by the feature each row belongs to.
 
     Returns:
-        What the selection left of each feature, by class and name.
+        selections: What the selection left of each feature, by class and name.
 
     Raises:
         FileNotFoundError: When no selection has been written.

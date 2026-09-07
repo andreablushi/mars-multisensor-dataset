@@ -42,7 +42,7 @@ class FeatureMetadata:
         """Return what tells this feature from every other.
 
         Returns:
-            Its class and its name.
+            identity: Its class and its name.
         """
         return (self.frame.feature_class, self.frame.feature_name)
 
@@ -54,7 +54,7 @@ def feature_metadata(feature: SelectedFeature) -> FeatureMetadata:
         feature: The feature's own row, as the selection wrote it.
 
     Returns:
-        The metadata, its frame carrying the catalogue box.
+        metadata: The metadata, its frame carrying the catalogue box.
     """
     return FeatureMetadata(
         frame=FeatureFrame(

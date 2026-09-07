@@ -20,7 +20,8 @@ def placed(feature_class: str, name: str) -> Placed | None:
         name: The feature name as ODE spells it.
 
     Returns:
-        Where it falls in lon and lat, or None where no plate carree crop covers it.
+        placed: Where it falls in lon and lat, or None where no plate carree crop covers
+            it.
     """
     grid = Placed(_catalogue()[slugify(feature_class), slugify(name)])
     # A feature wrapping the planet has no lon/lat box a plate carree crop can cover
@@ -33,7 +34,7 @@ def _catalogue() -> dict[tuple[str, str], Feature]:
     """Read the feature catalogue once, keyed by the slugs the trees use.
 
     Returns:
-        Every catalogued feature, by its class and name slug.
+        features: Every catalogued feature, by its class and name slug.
     """
     return {
         (slugify(feature.feature_class), slugify(feature.name)): feature

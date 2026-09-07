@@ -31,12 +31,11 @@ def select_dataset(workers: int, progress: Progress | None = None) -> list[Selec
         progress: Called with how many features are searched and how many there are.
 
     Returns:
-        What the search left of each feature, in catalogue order, leaving out a
-        feature holding no measured set on disk.
+        picked: What the search left of each feature, in catalogue order, leaving out a
+            feature holding no measured set on disk.
     """
     features = index.catalogued_features()
-    # The catalogue is read here so the selection carries each feature's own
-    # ground, and a later run never has to open the catalogue again.
+    # Read here so the selection carries each feature's own ground, once for all
     catalogued = {(one.feature_class, one.name): one for one in load_features()}
     found: list[Selection | None] = [None for _ in features]
     observations = index.catalogued_observations()
@@ -67,7 +66,7 @@ def selected(study: Study, feature: Feature) -> Selection:
             carries so a later run reads it from the selection alone.
 
     Returns:
-        Its own row, and a row for each observation it keeps.
+        selection: Its own row, and a row for each observation it keeps.
     """
     survey, track = study.survey, study.track
     row = SelectedFeature(
@@ -113,7 +112,7 @@ def _searched(feature: Feature) -> Selection | None:
         feature: The feature as the catalogue holds it.
 
     Returns:
-        Its rows, and None where it has no measured set on disk.
+        selection: Its rows, and None where it has no measured set on disk.
     """
     coverage = index.load_feature(feature.feature_class, feature.name)
     if not coverage:

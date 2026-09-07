@@ -17,7 +17,7 @@ def load_observations(path: Path) -> ObservationSet:
         path: The JSONL file holding the set's observations.
 
     Returns:
-        The set as stored, in chronological order.
+        observations: The set as stored, in chronological order.
     """
     stored = read_jsonl(path)
     first = next(stored)

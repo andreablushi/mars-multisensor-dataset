@@ -15,7 +15,7 @@ def fetch_features(client: ODEClient) -> list[Feature]:
         client: The ODE client to query with.
 
     Returns:
-        The list of unique features.
+        features: The list of unique features.
 
     Raises:
         KeyError: When ODE answers without the catalog it always publishes.

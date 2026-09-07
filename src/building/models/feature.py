@@ -11,11 +11,6 @@ from utils.geometry import geodesy
 class FeatureFrame:
     """The local frame one feature's observations are placed in.
 
-    This is the only place a feature's absolute position is written down. Every
-    array the building half stores holds offsets from this frame and nothing
-    else, so an array says how it sits on its feature and never where that
-    feature is on Mars.
-
     Attributes:
         feature_class: The feature class, such as Crater.
         feature_name: The feature name as ODE spells it.
@@ -37,7 +32,7 @@ class FeatureFrame:
         """Return the longitude the local projection is centred on.
 
         Returns:
-            The centre of the catalogue box in degrees, -180 to 180.
+            centre: The centre of the catalogue box in degrees, -180 to 180.
         """
         return geodesy.bbox_centre(
             self.min_lat, self.max_lat, self.west_lon, self.east_lon
@@ -48,7 +43,7 @@ class FeatureFrame:
         """Return the latitude the local projection is centred on.
 
         Returns:
-            The centre of the catalogue box in degrees.
+            centre: The centre of the catalogue box in degrees.
         """
         return geodesy.bbox_centre(
             self.min_lat, self.max_lat, self.west_lon, self.east_lon

@@ -10,23 +10,16 @@ class Settings:
     """The settled choices for a build, read from one flat config file.
 
     Attributes:
-        name: What this build of the dataset is called, which is the directory
-            it is written in and the name it is published under, so one build
-            never overwrites another.
-        share: What share of the features the selection kept to build, from
-            above zero to one, drawn evenly across their classes. A feature is
-            built whole or not at all, with every observation the selection
-            left it.
+        name: What this build is called, the directory it is written in and the
+            name it is published under, so one build never overwrites another.
+        share: What share of the features the selection kept to build, from above
+            zero to one, drawn evenly across their classes.
         seed: The number every draw is made with, so a smaller build is a
             reproducible subset of the full one.
-        max_observations: The observations a feature may keep and still be
-            built. A feature is built whole or not at all, so one seen more
-            often than this is left out rather than built in part, which would
-            leave it holding less than the filter passed it on.
-        cores: How many cores the run was given, for a job a platform sized
-            itself, and None to read the machine's own. How many builds and
-            downloads run at once is worked out from this and from the memory
-            the machine has free, so neither is a setting a run carries.
+        max_observations: The observations a feature may keep and still be built,
+            one seen more often left out whole rather than built in part.
+        cores: How many cores the run was given, for a job a platform sized itself,
+            and None to read the machine's own.
     """
 
     name: str

@@ -21,9 +21,6 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
         observation_id: The observation to fetch.
         client: The client whose connections every query is asked over.
 
-    Returns:
-        None.
-
     Raises:
         FileNotFoundError: When ODE offers no download for a product.
     """

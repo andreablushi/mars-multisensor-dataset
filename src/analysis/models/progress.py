@@ -46,7 +46,7 @@ class DownloadSummary:
             elapsed: How long the half took in seconds.
 
         Returns:
-            The summary.
+            summary: The summary.
         """
         return cls(
             ran=sum(1 for outcome in outcomes if not outcome.failed),
@@ -86,7 +86,7 @@ class CoverageSummary:
             elapsed: How long the run took in seconds.
 
         Returns:
-            The summary.
+            summary: The summary.
         """
         return cls(
             computed=sum(1 for o in outcomes if not o.failed and not o.empty),

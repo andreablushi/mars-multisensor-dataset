@@ -16,10 +16,8 @@ class Overlap:
     Attributes:
         bounds: The samples to keep of each ground axis, in the position's
             order.
-        inside: Which of the samples that survives the cut truly falls in the
-            box, or None where every one of them does. A map raster meets a box
-            in a rectangle and so is left unset, and only a swath crossing the
-            box or a track grazing it has corners to mark.
+        inside: Which of the samples that survives the cut truly falls in the box,
+            or None where every one of them does.
         position: Where the samples that are kept sit, in degrees from the
             feature centre.
     """
