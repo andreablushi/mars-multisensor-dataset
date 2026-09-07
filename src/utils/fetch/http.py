@@ -13,7 +13,9 @@ import httpx
 from utils.disk.files import atomic_path
 from utils.fetch.throttle import Throttle
 
-REQUEST_TIMEOUT = 30.0
+# A box spanning a fifth of the planet takes ODE forty seconds to answer at any
+# page size, the cost being the query and not the payload
+REQUEST_TIMEOUT = 180.0
 MAX_RETRIES = 20
 BACKOFF_BASE = 0.5
 # Ceiling on one backoff sleep, so many retries stay minutes rather than days
@@ -25,7 +27,7 @@ CROWDED_STATUS = frozenset({403, 429})
 STREAM_RETRIES = 5
 
 # How long one query may be asked for in all, an attempt count bounding nothing
-QUERY_DEADLINE = 420.0
+QUERY_DEADLINE = 900.0
 
 # How long one transfer may run in all, so a trickling server is given up on
 STREAM_DEADLINE = 1800.0
