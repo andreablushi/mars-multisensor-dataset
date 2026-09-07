@@ -1,21 +1,20 @@
-"""Where every delay sample of one track stands, above the areoid it is posted from.
-
-The US radargram is posted so that its centre range cell carries the free-space
-round-trip delay of the MOLA defined areoid, and its samples are 0.0375
-microseconds apart, so one sample is a fixed step of free-space range and the
-axis this reads is the same for every trace of every track. That makes it the
-datum MOLA already publishes its topography against, and it costs no assumption
-about the ground: an echo from below the surface stands at the elevation it
-would have in vacuum, which is deeper than the reflector by the square root of
-the dielectric constant the ground is later taken to have.
-"""
+"""How high a sounding stands: above the areoid, and above the ground below it."""
 
 from __future__ import annotations
 
 import numpy as np
 
+from building.preprocessing.sharad.models.observation import RADII
+from building.preprocessing.sharad.models.sample import SharadSample
+
+# The archive writes both radii in kilometres.
+KM = 1000.0
+
+# How far apart the archive posts two delay samples of one echo record.
 SAMPLE_INTERVAL_S = 0.0375e-6
 LIGHT_SPEED_M_S = 299792458.0
+
+# What one sample is worth of free-space range, the centre cell being the areoid.
 SAMPLE_RANGE_M = LIGHT_SPEED_M_S * SAMPLE_INTERVAL_S / 2.0
 
 
@@ -30,3 +29,19 @@ def elevation_m(samples: int) -> np.ndarray:
         One height in metres per delay sample, falling as the delay grows.
     """
     return -(np.arange(samples) - (samples // 2 - 1)) * SAMPLE_RANGE_M
+
+
+def altitude_m(sample: SharadSample) -> tuple[float, float]:
+    """Return how low and how high the spacecraft was above the ground.
+
+    Args:
+        sample: The track cut to the feature it was kept for.
+
+    Returns:
+        The lowest and the highest height above the ground in metres, over the
+        traces the track keeps.
+    """
+    above = (
+        sample.geometry[RADII["spacecraft"]] - sample.geometry[RADII["ground"]]
+    ) * KM
+    return float(above.min()), float(above.max())

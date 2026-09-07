@@ -20,7 +20,7 @@ from building.download import sharad as sharad_download
 from building.preprocessing.crism import preprocess as crism
 from building.preprocessing.ctx import preprocess as ctx
 from building.preprocessing.mola import preprocess as mola
-from building.preprocessing.sharad import altitude
+from building.preprocessing.sharad import elevation
 from building.preprocessing.sharad import preprocess as sharad
 
 if TYPE_CHECKING:
@@ -121,7 +121,7 @@ INSTRUMENTS = {
         sharad.crop,
         discard=sharad_configs.CACHE.discard,
         observation_id=sharad_configs.NAMING.parse,
-        altitude=altitude.altitude_m,
+        altitude=elevation.altitude_m,
         # A radargram and its geometry measured 135 MB.
         worker_bytes=256 * 1024**2,
     ),
