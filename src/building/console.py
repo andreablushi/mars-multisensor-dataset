@@ -22,8 +22,13 @@ LISTED = 5
 # Set by a platform run, whose log takes plain flushed lines rather than a bar.
 PLAIN_LOG_ENV = "PIPELINE_PLAIN_LOG"
 
-# How many progress lines a stage prints where no cursor can be moved
-LOGGED_LINES = 2000
+# How many progress lines a stage prints where no cursor can be moved. The
+# platform keeps the first hundred kilobytes of a run's log and drops the rest,
+# so a build printing a line a product loses its own ending to its middle.
+LOGGED_LINES = 100
+
+# How many failures a run names as it hits them, the summary counting them all.
+LOGGED_ERRORS = 50
 
 # How often a run says what it is doing, so a build that has stopped moving
 # says so rather than looking the same as one that is merely slow
@@ -123,10 +128,15 @@ def render(
     # A platform log takes plain flushed lines, since no cursor can be moved there
     if os.environ.get(PLAIN_LOG_ENV):
         step = max(1, total // LOGGED_LINES)
+        failed = 0
         for outcome in outcomes:
             collected.append(outcome)
             if outcome.error:
-                print(f"error {outcome.job.label}: {outcome.error}", flush=True)
+                failed += 1
+                if failed <= LOGGED_ERRORS:
+                    print(f"error {outcome.job.label}: {outcome.error}", flush=True)
+                elif failed == LOGGED_ERRORS + 1:
+                    print("the summary counts the failures from here", flush=True)
             if len(collected) % step == 0 or len(collected) == total:
                 share = len(collected) / total
                 print(
