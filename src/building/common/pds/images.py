@@ -18,7 +18,7 @@ def build_cube(image: Path, label: dict[str, str]) -> np.ndarray:
 
     Returns:
         The values as lines by samples by bands, in the band order the file
-        stores them in.
+        stores them in, and in the unit its label says they stand for.
 
     Raises:
         KeyError: When it names a sample type this cannot read.
@@ -31,9 +31,28 @@ def build_cube(image: Path, label: dict[str, str]) -> np.ndarray:
     flat = np.fromfile(image, dtype=dtype, count=wanted)
     # BIL writes one line's bands together, so bands sit in the middle.
     if stored == labels.BIL:
-        return flat.reshape(lines, bands, samples).transpose(0, 2, 1)
-    # BSQ writes whole bands one after another, so bands come first.
-    return flat.reshape(bands, lines, samples).transpose(1, 2, 0)
+        held = flat.reshape(lines, bands, samples).transpose(0, 2, 1)
+    else:
+        # BSQ writes whole bands one after another, so bands come first.
+        held = flat.reshape(bands, lines, samples).transpose(1, 2, 0)
+    return measured(held, label)
+
+
+def measured(values: np.ndarray, label: dict[str, str]) -> np.ndarray:
+    """Return what one image's stored values stand for.
+
+    Args:
+        values: The values as they were stored.
+        label: The parsed label describing them.
+
+    Returns:
+        The values in the unit the label names, which are the stored ones
+        themselves where it asks for no scaling and no offset.
+    """
+    factor, offset = labels.scaling(label)
+    if factor == 1.0 and offset == 0.0:
+        return values
+    return values.astype("f4") * factor + offset
 
 
 def load_cube(image: Path) -> tuple[np.ndarray, dict[str, str]]:

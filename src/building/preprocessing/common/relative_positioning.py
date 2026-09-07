@@ -73,7 +73,10 @@ def degrees(
         down = position.north[taken] if taken else position.north
         across = position.east[taken] if taken else position.east
     if position.polar is None:
-        return frame.centre_lon + across, frame.centre_lat + down
+        return (
+            geodesy.normalise_longitude(frame.centre_lon + across),
+            frame.centre_lat + down,
+        )
     # The offsets stand from the feature centre, so where that falls is worked again.
     centre_x, centre_y = geodesy.stereographic_forward(
         frame.centre_lon, frame.centre_lat, *position.polar
@@ -82,37 +85,6 @@ def degrees(
     if position.separable:
         x, y = x[None, :], y[:, None]
     return geodesy.stereographic_inverse(x, y, *position.polar)
-
-
-def metres(
-    position: RelativePosition, frame: FeatureFrame
-) -> tuple[np.ndarray, np.ndarray]:
-    """Return where every sample sits, in metres north and east of its feature.
-
-    Args:
-        position: Where the samples sit, in degrees from the feature centre or
-            in the metres of the projection it was placed on.
-        frame: The feature's local frame, which those offsets are relative to.
-
-    Returns:
-        The northing and the easting in metres. A separable position in degrees
-        keeps its northing on the one axis it was held over and spreads its
-        easting over both, since a degree of longitude covers less ground the
-        further north it is measured; every other position is crossed already.
-    """
-    if position.polar is not None:
-        # A projection's metres are its own, so the ground comes off its degrees.
-        lon, lat = degrees(position, frame)
-        radius = geodesy.local_radius_m(lat)
-        north = np.radians(lat - frame.centre_lat) * radius
-        east = np.radians(geodesy.normalise_longitude(lon - frame.centre_lon))
-        return north, east * radius * np.cos(np.radians(lat))
-    lat = frame.centre_lat + position.north
-    radius = geodesy.local_radius_m(lat)
-    reach = radius * np.cos(np.radians(lat))
-    north = np.radians(position.north) * radius
-    east = np.radians(position.east)
-    return north, east * (reach[:, None] if position.separable else reach)
 
 
 def ground_sample_m(

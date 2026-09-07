@@ -24,12 +24,14 @@ LAYOUT = frozenset(
         "LINES",
         "LINE_SAMPLES",
         "OBJECT",
+        "OFFSET",
         "PDS_VERSION_ID",
         "RECORD_BYTES",
         "RECORD_TYPE",
         "ROWS",
         "ROW_BYTES",
         "SAMPLE_BITS",
+        "SCALING_FACTOR",
         "SAMPLE_TYPE",
         "START_BYTE",
     }
@@ -43,6 +45,8 @@ _DTYPES = {
     ("PC_REAL", 32): "<f4",
     ("PC_REAL", 64): "<f8",
     ("MSB_INTEGER", 16): ">i2",
+    ("MSB_UNSIGNED_INTEGER", 16): ">u2",
+    ("MSB_UNSIGNED_INTEGER", 8): "u1",
     ("UNSIGNED_INTEGER", 8): "u1",
 }
 
@@ -117,6 +121,20 @@ def layout(label: dict[str, str]) -> tuple[int, int, int, str, str]:
     # The sample type and its width, which together name a numpy dtype.
     dtype = _DTYPES[label["SAMPLE_TYPE"], int(label["SAMPLE_BITS"])]
     return lines, samples, bands, stored, dtype
+
+
+def scaling(label: dict[str, str]) -> tuple[float, float]:
+    """Read what one image's stored values have to be turned into to be read.
+
+    Args:
+        label: The parsed label.
+
+    Returns:
+        The factor every stored value is multiplied by and the offset added
+        after it, which are one and zero for a label naming neither and so
+        stand for the values being what they say already.
+    """
+    return float(label.get("SCALING_FACTOR", 1.0)), float(label.get("OFFSET", 0.0))
 
 
 def columns(path: Path) -> list[dict[str, str]]:
