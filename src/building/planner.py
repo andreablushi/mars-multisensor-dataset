@@ -62,17 +62,22 @@ def build_plan(
                 taken.setdefault((kept.iid, held), kept.t_start)
             else:
                 unread += 1
+    asked = [
+        (instrument, identifier, tuple(held))
+        for (instrument, identifier), held in wanted.items()
+    ]
     if ode is not None:
         # An instrument the selection cannot name is asked which products hold it.
         for name, named in INSTRUMENTS.items():
             if not named.identifiers:
                 continue
             for feature in features:
+                # What it names is mosaicked to one box, so it is asked for alone.
                 for held in named.identifiers(feature.frame, ode):
-                    wanted[(name, held)].append(feature.frame)
+                    asked.append((name, held, (feature.frame,)))
 
     jobs, skipped = [], 0
-    for (instrument, identifier), held in wanted.items():
+    for instrument, identifier, held in asked:
         left = tuple(
             frame
             for frame in held

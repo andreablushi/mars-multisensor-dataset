@@ -34,7 +34,8 @@ class Instrument:
     Attributes:
         layout: What its arrays hold, and which of them it is stored for.
         fetch: What brings one product of it down into the cache.
-        read_observation: What reads a fetched product off disk, whole.
+        read_observation: What reads a fetched product off disk, which for a
+            product merged to a box is only what says where its parts are.
         crop: What cuts that observation to one feature's box, handing back the
             sample to store or None where it reaches none of it.
         discard: What deletes the product from the cache once it is built, and
@@ -43,9 +44,10 @@ class Instrument:
         observation_id: What reads which observation a product the selection
             kept belongs to, or None for an instrument the selection can never
             name.
-        identifiers: What asks an archive which of its products hold one
-            feature's ground, for the instrument the selection cannot name, and
-            None for every instrument named by a product id.
+        identifiers: What asks an archive what covers one feature's ground, for
+            the instrument the selection cannot name, and None for every
+            instrument named by a product id. What it names is merged to one
+            feature's own box, so it is asked for one feature at a time.
         altitude: What reads how high the spacecraft flew, for a sounder whose
             delay axis is read through it, and None for every other instrument.
         worker_bytes: What one build holds of its largest product at once, the
@@ -108,7 +110,7 @@ INSTRUMENTS = {
         mola_download.fetch,
         mola.read_observation,
         mola.crop,
-        identifiers=mola_download.tiles,
+        identifiers=mola_download.grids,
         # The whole gridded record is 2 GB, so a tile is held for the run.
         worker_bytes=256 * 1024**2,
     ),

@@ -36,6 +36,10 @@ CACHE = ProductCache(paths.MOLA_ROOT, {None: (".lbl", ".img")})
 # How fine a grid each resolution letter stands for, in pixels per degree.
 RESOLUTIONS = {"c": 4, "e": 16, "f": 32, "g": 64, "h": 128}
 
+# The grid a feature is mosaicked on, named for the record and how fine it is.
+CYLINDRICAL = "megdr128"
+GRIDS = {CYLINDRICAL: 128}
+
 
 def resolution(tile: str) -> int:
     """Read how fine a grid one tile is written on.

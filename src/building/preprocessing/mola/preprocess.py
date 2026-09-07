@@ -1,50 +1,56 @@
-"""Reading one MOLA tile off disk and cutting it to the feature it was kept for."""
+"""Reading the tiles that landed and cutting them to the feature they are merged for."""
 
 from __future__ import annotations
 
-from building.common.pds import images, labels
 from building.configs import mola as configs
 from building.models.feature import FeatureFrame
 from building.preprocessing.common.crop import overlap, taken
-from building.preprocessing.mola import projection
-from building.preprocessing.mola.models.observation import MolaObservation
+from building.preprocessing.mola.merge_tiles import merge_tiles
+from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
 
 
-def read_observation(identifier: str) -> MolaObservation:
-    """Read one tile onto the grid its own label projects it onto.
+def read_observation(grid: str) -> MolaGrid:
+    """Read which tiles of one grid a feature could be merged from.
 
     Args:
-        identifier: The tile, whose files must already be in the cache that
-            `download.fetch` puts them in.
+        grid: The grid, as `configs.GRIDS` names it, whose tiles must already
+            be in the cache that `download.fetch` puts them in.
 
     Returns:
-        The observation, its height on the grid its label places it on.
+        The tiles of it that landed, which no more than a label of is read
+        until a feature's own box says which bins of them to take.
+    """
+    resolution = configs.GRIDS[grid]
+    files = {}
+    for directory in sorted(configs.CACHE.root.iterdir()):
+        parts = configs.NAMING.parts(directory.name) if directory.is_dir() else None
+        if not parts or configs.RESOLUTIONS[parts["step"]] != resolution:
+            continue
+        image = configs.CACHE.files(
+            directory.name,
+            configs.NAMING.product(directory.name, configs.TOPOGRAPHY),
+            configs.TOPOGRAPHY,
+        )[".img"]
+        if image.exists():
+            files[directory.name] = image
+    return MolaGrid(grid, resolution, files)
+
+
+def crop(grid: MolaGrid, frame: FeatureFrame) -> MolaSample | None:
+    """Return the bins of one grid its feature's box keeps, merged into one.
+
+    Args:
+        grid: The tiles of the grid that landed.
+        frame: The local frame of the feature they are merged for.
+
+    Returns:
+        The height over that feature, or None where the grid reaches none of it.
 
     Raises:
-        FileNotFoundError: When the plane or its label is missing.
-        KeyError: When the label names a sample type this cannot read.
-        ValueError: When it names a projection this cannot read.
+        ValueError: When the tiles that landed leave part of its box unwritten.
     """
-    product = configs.NAMING.product(identifier, configs.TOPOGRAPHY)
-    height, label = images.load_plane(
-        configs.CACHE.files(identifier, product, configs.TOPOGRAPHY)[".img"]
-    )
-    return MolaObservation(
-        identifier, labels.merge(label), height, *projection.load(label)
-    )
-
-
-def crop(observation: MolaObservation, frame: FeatureFrame) -> MolaSample | None:
-    """Return one tile holding only the bins its feature's box keeps.
-
-    Args:
-        observation: The tile as it was read off disk.
-        frame: The local frame of the feature it was kept for.
-
-    Returns:
-        The tile cut to that feature, or None where it reaches none of it.
-    """
+    observation = merge_tiles(grid, frame)
     held = overlap(observation, frame)
     if held is None:
         return None
