@@ -8,6 +8,3 @@ share: 0.25
 
 # The number every draw is made with, so a smaller build is a reproducible subset.
 seed: 42
-
-# Which layout the arrays and the index are written in. Raise it when a reader breaks.
-version: 2

@@ -92,7 +92,7 @@ def run_build(
     """Fetch every product a build needs and cut each to the features that kept it.
 
     Args:
-        settings: The settled choices for the build, which name its version.
+        settings: The settled choices for the build.
         console: The console to render on.
         root: The directory this build of the dataset is written in.
         force: Whether to rebuild crops that are already written.
@@ -302,7 +302,7 @@ def _indexed(
     Args:
         plan: What the build set out to do, whose features this run covers.
         collected: What every job of this run left.
-        settings: The settled choices for the build, which name its version.
+        settings: The settled choices for the build.
         root: The dataset's own root directory.
 
     Returns:
@@ -328,6 +328,4 @@ def _indexed(
             features[one.feature] = earlier[one.feature]
     # What the dataset holds, which is every instrument in it and not a wish.
     held = tuple(sorted({one.instrument for one in records}))
-    metadata.write_metadata(
-        list(features.values()), records, held, settings.version, root
-    )
+    metadata.write_metadata(list(features.values()), records, held, root)
