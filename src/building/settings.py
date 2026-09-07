@@ -25,8 +25,6 @@ def load(path: Path = paths.BUILDING_CONFIG_PATH, cores: int | None = None) -> S
     return Settings(
         name=config["name"],
         share=config["share"],
-        instruments=tuple(config["instruments"]),
         seed=config["seed"],
-        version=config["version"],
         cores=cores,
     )

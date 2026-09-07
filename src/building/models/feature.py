@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from utils.geometry import geodesy
+
 
 @dataclass(frozen=True, slots=True)
 class FeatureFrame:
@@ -17,8 +19,6 @@ class FeatureFrame:
     Attributes:
         feature_class: The feature class, such as Crater.
         feature_name: The feature name as ODE spells it.
-        centre_lon: The longitude the local projection is centred on, -180 to 180.
-        centre_lat: The latitude it is centred on.
         min_lat: The southernmost latitude of the catalogue box, in degrees.
         max_lat: The northernmost latitude of the box, in degrees.
         west_lon: The westernmost longitude of the box, 0 to 360.
@@ -27,9 +27,29 @@ class FeatureFrame:
 
     feature_class: str
     feature_name: str
-    centre_lon: float
-    centre_lat: float
     min_lat: float
     max_lat: float
     west_lon: float
     east_lon: float
+
+    @property
+    def centre_lon(self) -> float:
+        """Return the longitude the local projection is centred on.
+
+        Returns:
+            The centre of the catalogue box in degrees, -180 to 180.
+        """
+        return geodesy.bbox_centre(
+            self.min_lat, self.max_lat, self.west_lon, self.east_lon
+        )[0]
+
+    @property
+    def centre_lat(self) -> float:
+        """Return the latitude the local projection is centred on.
+
+        Returns:
+            The centre of the catalogue box in degrees.
+        """
+        return geodesy.bbox_centre(
+            self.min_lat, self.max_lat, self.west_lon, self.east_lon
+        )[1]

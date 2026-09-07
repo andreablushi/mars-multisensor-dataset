@@ -96,11 +96,10 @@ side. A feature is built whole, with every observation the selection left it.
 The same seed and a larger share gives a superset, so a small build is always
 part of the larger one.
 
-`ready` holds the downloads to the room they were given, so they cannot race
-ahead of the builds that consume them. A product is deleted once every feature
-that wanted it has been cut, so a build needs room for what it holds at once and
-never for everything it ever fetched. Keep `ready` well above `workers`, or the
-build pool starves waiting for products.
+A product is deleted once every feature that wanted it has been cut, so a build
+needs room for what it holds at once and never for everything it ever fetched.
+How many downloads and builds run at once is worked out from the cores and the
+free memory the run finds, so neither is a setting a config carries.
 
 ## Using the dataset
 
@@ -148,6 +147,10 @@ so adding the centre back is what turns a placement into a coordinate:
 latitude = meta["centre_lat"] + held["north"]
 longitude = meta["centre_lon"] + held["east"]
 ```
+
+That holds while `meta["position_units"]` is `degrees`. A crop taken near a pole
+is placed on the projection `meta["polar"]` names instead, and its offsets are
+that projection's own metres, which have to be inverted rather than added.
 
 An axis named in `meta["ground"]` is ground; the others are the instrument's own
 and are sampled in their own unit, which `meta["axes"]` names. A grid places one
@@ -206,65 +209,9 @@ published and builds no artifact of its own.
 configs/
   analysis_runner.yaml  # What a run downloads and measures, and on how many workers
   window_filter.yaml    # What a window has to hold for a feature to earn a place
-  building_runner.yaml  # How much of the dataset to build, and on how many workers
+  building_runner.yaml  # How much of the dataset to build, and what to call it
   digitalhub.yaml       # What a submitted run is given, and what it publishes
 ```
 
 Each file is read as written and no setting is checked: the run that reads it is
 the check. What changes from one run to the next is a flag instead.
-
-## Structure
-
-```
-scripts/
-  analysis_pipeline.py  # Measures what the archives cover, and selects from it
-  building_pipeline.py  # Builds the dataset the selection asks for
-  dh_download.sh        # Brings the analysis entities back down
-  dh_dataset.sh         # Brings one build of the dataset back down
-  dhub/                 # Only what a submitted run needs
-    configs.py          # Reads configs/digitalhub.yaml
-    archives.py         # Packs what is published, unpacks what is read back
-    submit.py           # Registers a version of a function, and starts the job
-notebooks/              # The two notebooks that read the results
-src/
-  utils/                # What both halves use
-    ode/                # The ODE client, its settings, its errors
-    disk/               # Project paths, atomic writes, slugs, parquet
-    geometry/           # Mars, its longitudes and the local projection
-  analysis/             # What the archives cover, and what the notebooks read
-    console.py          # Progress bars and totals
-    planner.py          # What each half has left to do
-    runner.py           # Holds the survey's plan and its pools
-    models/             # Features, instruments, settings, jobs
-    metadata/           # Asking ODE for records, and reading them back
-    coverage/           # The coverage measurement, its geometry and its artifacts
-    selector/           # The best time window search, under one filter
-    stats/              # What the filter left, measured over one feature or all
-    visualization/      # What the notebooks draw
-  building/             # What a chosen observation is turned into
-    configs/            # What each instrument is, read by every stage
-    common/             # Naming, the product cache, the PDS formats
-    download/           # Bringing down what the selection kept
-    preprocessing/      # One product read, cut to a feature, and written down
-      common/           # What every instrument's crop shares
-      crism/ ctx/       # What each instrument reads and cuts of its own
-      mola/ sharad/
-    metadata/           # What the dataset, its features and its crops are
-    models/             # The frame, the jobs, the settings
-    dispatcher.py       # What each instrument does at every stage of a build
-    planner.py          # What a build has to fetch and cut
-    runner.py           # Holds the build's pools
-    console.py          # Progress and totals
-data/                   # Laid out as src is, each half owning what it writes
-  _catalog/             # Cached ODE catalogs, read by both halves
-  analysis/
-    metadata/           # Raw ODE records
-    coverage/
-      features/         # Per-feature coverage measurements
-      summary.parquet   # Every feature's summary rows together
-    selection/          # The features and observations the filter keeps
-    stats/              # What the filter left of the dataset
-  building/
-    dataset/            # The built dataset: crops, and the index over them
-    preprocessing/      # One directory per instrument, holding its products
-```

@@ -31,6 +31,7 @@ DIRECTORIES = {configs.IMAGE: "prj_full", configs.LABEL: "stage"}
 
 # What ASU suffixes each with: one shared image, and a label per projection it writes.
 REMOTE_IMAGE = ".tiff"
+# Depending on the zone, projection are either polar stereographic or equirectangular
 REMOTE_LABELS = (".scyl.isis.hdr", ".ps.isis.hdr")
 
 # How long to wait for the scan, which ASU builds on the way out.
@@ -39,13 +40,6 @@ TIMEOUT = 900.0
 
 def fetch(observation_id: str, client: httpx.Client) -> None:
     """Bring the projected scan and its label down, or leave what is here.
-
-    ASU keeps what it built under the volume the raw scan came from, and only
-    ODE knows which that is. It writes the scan in whichever projection holds
-    it, so the label is asked for under each in turn until one answers, and the
-    pixels come down once beside it. The last projection is asked for outside
-    that guard, so a scan ASU serves in none of them fails as what it is rather
-    than as the projection having been guessed wrong.
 
     Args:
         observation_id: The observation to fetch.
@@ -68,13 +62,18 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
     if not archived:
         raise FileNotFoundError(f"ODE carries no raw scan for {observation_id}.")
     volume = str(archived).lower()
-    for remote in REMOTE_LABELS[:-1]:
-        try:
-            archive.bring(destination, _asu(observation_id, volume, remote), TIMEOUT)
-            return
-        except FetchError:
-            continue
-    archive.bring(destination, _asu(observation_id, volume, REMOTE_LABELS[-1]), TIMEOUT)
+    written = configs.polar(observation_id)
+    likely, otherwise = REMOTE_LABELS[written], REMOTE_LABELS[not written]
+    try:
+        archive.bring(
+            destination, _asu(observation_id, volume, likely), TIMEOUT, client=client
+        )
+        return
+    except FetchError:
+        pass
+    archive.bring(
+        destination, _asu(observation_id, volume, otherwise), TIMEOUT, client=client
+    )
 
 
 def _asu(observation_id: str, volume_id: str, label: str) -> dict[str, str]:

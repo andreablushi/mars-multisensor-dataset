@@ -31,7 +31,10 @@ def build_plan(
     """Work out every product one build has to fetch, and what to cut it to.
 
     Args:
-        settings: The settled choices for the build, which size it.
+        settings: The settled choices for the build, which size it. Which
+            instruments it covers is not among them: the build takes every
+            instrument the selection names and that this half can read, and
+            every instrument matched by ground rather than named at all.
         root: The directory this build of the dataset is written in.
         ode: The client an instrument searched by ground is looked up through,
             or None to leave those instruments out of the plan.
@@ -47,29 +50,34 @@ def build_plan(
     features = [feature_metadata(one.feature) for one in picked]
     wanted: dict[tuple[str, str], list[FeatureFrame]] = defaultdict(list)
     taken: dict[tuple[str, str], datetime] = {}
+    unread = 0
     for one, feature in zip(picked, features, strict=True):
         # A feature is built whole, every observation this build has an instrument for.
         for kept in one.observations:
-            if kept.iid not in settings.instruments:
-                continue
             named = INSTRUMENTS.get(kept.iid)
             # Skip a product no instrument builds, and an id naming no observation.
             read = named.observation_id if named else None
             if read and (held := read(kept.pdsid)):
                 wanted[(kept.iid, held)].append(feature.frame)
                 taken.setdefault((kept.iid, held), kept.t_start)
+            else:
+                unread += 1
+    asked = [
+        (instrument, identifier, tuple(held))
+        for (instrument, identifier), held in wanted.items()
+    ]
     if ode is not None:
         # An instrument the selection cannot name is asked which products hold it.
-        for name in settings.instruments:
-            named = INSTRUMENTS.get(name)
-            if not named or not named.identifiers:
+        for name, named in INSTRUMENTS.items():
+            if not named.identifiers:
                 continue
             for feature in features:
+                # What it names is mosaicked to one box, so it is asked for alone.
                 for held in named.identifiers(feature.frame, ode):
-                    wanted[(name, held)].append(feature.frame)
+                    asked.append((name, held, (feature.frame,)))
 
     jobs, skipped = [], 0
-    for (instrument, identifier), held in wanted.items():
+    for instrument, identifier, held in asked:
         left = tuple(
             frame
             for frame in held
@@ -92,6 +100,7 @@ def build_plan(
         ),
         features=tuple(features),
         skipped_existing=skipped,
+        unread=unread,
     )
 
 

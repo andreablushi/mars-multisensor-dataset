@@ -17,7 +17,7 @@ CONVENTIONS = {
 }
 
 
-def load(
+def grid_axes(
     label: dict[str, str],
 ) -> tuple[np.ndarray, np.ndarray, PolarGrid | None]:
     """Return what places every line and every sample of one scan.

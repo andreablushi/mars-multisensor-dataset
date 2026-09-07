@@ -7,7 +7,8 @@ from dataclasses import dataclass
 import numpy as np
 
 # Which DDR backplane places a pixel; the other twelve say nothing MOLA says better.
-BACKPLANES = {"latitude": 3, "longitude": 4}
+LATITUDE_PLANE = 3
+LONGITUDE_PLANE = 4
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,7 +46,7 @@ class CrismObservation:
         Returns:
             Lines by columns, in degrees.
         """
-        return self.geometry[:, :, BACKPLANES["latitude"]]
+        return self.geometry[:, :, LATITUDE_PLANE]
 
     @property
     def longitude(self) -> np.ndarray:
@@ -54,4 +55,4 @@ class CrismObservation:
         Returns:
             Lines by columns, in degrees.
         """
-        return self.geometry[:, :, BACKPLANES["longitude"]]
+        return self.geometry[:, :, LONGITUDE_PLANE]

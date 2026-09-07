@@ -56,33 +56,6 @@ class Outcome:
     missed: int = 0
     error: Exception | None = None
 
-    @property
-    def written(self) -> int:
-        """Return how many crops the job wrote.
-
-        Returns:
-            How many records it left, one per crop.
-        """
-        return len(self.records)
-
-    @property
-    def label(self) -> str:
-        """Return a short human readable name for the job that was run.
-
-        Returns:
-            The label of the underlying job.
-        """
-        return self.job.label
-
-    @property
-    def failed(self) -> bool:
-        """Return whether the job raised an error.
-
-        Returns:
-            True when an error was recorded.
-        """
-        return self.error is not None
-
 
 @dataclass(frozen=True, slots=True)
 class Plan:
@@ -93,17 +66,12 @@ class Plan:
         features: What the dataset holds about every feature the build covers.
         skipped_existing: Products left alone because every crop of them is
             already written.
+        unread: Observations the selection kept that no instrument here could
+            read, whether it builds none of that instrument or the id names no
+            observation of it, and which were therefore never planned.
     """
 
     jobs: tuple[Job, ...]
     features: tuple[FeatureMetadata, ...] = ()
     skipped_existing: int = 0
-
-    @property
-    def feature_count(self) -> int:
-        """Return how many features the build covers.
-
-        Returns:
-            One per feature it holds.
-        """
-        return len(self.features)
+    unread: int = 0

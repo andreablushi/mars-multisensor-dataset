@@ -26,6 +26,70 @@ from building.preprocessing.crism.models.observation import CrismObservation
 from building.preprocessing.crism.models.sample import CrismSample
 
 
+def product_files(identifier: str, detector: str, kind: str) -> dict[str, Path]:
+    """Return where each half of one detector's product of an observation belongs.
+
+    Args:
+        identifier: The observation the product is a part of.
+        detector: Which detector's half of it, `l` or `s`.
+        kind: Which product of that half, the observation or the geometry.
+
+    Returns:
+        The path for each suffix it is published as, keyed by suffix.
+    """
+    return configs.CACHE.files(
+        identifier, configs.NAMING.product(identifier, kind, detector=detector), kind
+    )
+
+
+def cached_detectors(identifier: str) -> tuple[str, ...]:
+    """Read which detectors of one observation were downloaded whole.
+
+    Both detectors are read out together, but a small share of the survey was
+    archived as one half alone, so what landed says which to build from.
+
+    Args:
+        identifier: The observation, whose files must already be in the cache
+            that `download.fetch` puts them in.
+
+    Returns:
+        The detectors whose observation and geometry both landed, in the order
+        the archive names them.
+
+    Raises:
+        FileNotFoundError: When neither detector landed whole.
+    """
+    found = tuple(
+        name
+        for name in configs.DETECTORS
+        if all(
+            path.exists()
+            for kind in configs.KINDS
+            for path in product_files(identifier, name, kind).values()
+        )
+    )
+    if not found:
+        raise FileNotFoundError(f"No detector of {identifier} is in the cache.")
+    return found
+
+
+def placing_detector(identifier: str) -> str:
+    """Read which detector's geometry places one observation.
+
+    Args:
+        identifier: The observation, whose files must already be in the cache
+            that `download.fetch` puts them in.
+
+    Returns:
+        The first detector that landed, in the order they place an observation.
+
+    Raises:
+        FileNotFoundError: When neither detector landed whole.
+    """
+    found = cached_detectors(identifier)
+    return next(name for name in cleaning.PLACING_ORDER if name in found)
+
+
 def read_detectors(identifier: str) -> dict[str, Detector]:
     """Read every image one observation was downloaded as, keyed by detector.
 
@@ -35,19 +99,20 @@ def read_detectors(identifier: str) -> dict[str, Detector]:
             labels names included.
 
     Returns:
-        Both detectors, each cube ordered by the wavelength file its own label
-        was calibrated against.
+        Every detector that landed, each cube ordered by the wavelength file
+        its own label was calibrated against.
 
     Raises:
-        FileNotFoundError: When either image, its label, or a wavelength file
+        FileNotFoundError: When neither detector landed, or a wavelength file
             a label names is missing.
         ValueError: When a label names a band order this cannot read, or the
             wavelength file does not describe the cube beside it.
     """
     detectors = {}
-    for name in configs.DETECTORS:
-        scan = configs.NAMING.product(identifier, configs.OBSERVATION, detector=name)
-        cube, label = images.load_cube(configs.CACHE.files(identifier, scan)[".img"])
+    for name in cached_detectors(identifier):
+        cube, label = images.load_cube(
+            product_files(identifier, name, configs.OBSERVATION)[".img"]
+        )
         # The wavelength file this half was calibrated against, and no other.
         wavelength = Path(label[configs.WAVELENGTH_KEY]).stem.lower()
         record = configs.CACHE.files(configs.WAVELENGTH_DIR, wavelength)[".img"]
@@ -75,17 +140,15 @@ def read_label(identifier: str) -> dict[str, str]:
         calibrated them.
 
     Raises:
-        FileNotFoundError: When a label is missing.
+        FileNotFoundError: When neither detector landed, or a label is missing.
     """
-    held = []
-    for name in configs.DETECTORS:
-        scan = configs.NAMING.product(identifier, configs.OBSERVATION, detector=name)
-        held.append(labels.load(configs.CACHE.files(identifier, scan)[".lbl"]))
-    product = configs.NAMING.product(
-        identifier, configs.GEOMETRY, detector=cleaning.PLACING_DETECTOR
-    )
+    held = [
+        labels.load(product_files(identifier, name, configs.OBSERVATION)[".lbl"])
+        for name in cached_detectors(identifier)
+    ]
+    placing = placing_detector(identifier)
     held.append(
-        labels.load(configs.CACHE.files(identifier, product, configs.GEOMETRY)[".lbl"])
+        labels.load(product_files(identifier, placing, configs.GEOMETRY)[".lbl"])
     )
     merged = labels.merge(*held)
     return {
@@ -110,11 +173,9 @@ def read_geometry(identifier: str) -> np.ndarray:
         FileNotFoundError: When the geometry or its label is missing.
         KeyError: When the label names a sample type this cannot read.
     """
-    product = configs.NAMING.product(
-        identifier, configs.GEOMETRY, detector=cleaning.PLACING_DETECTOR
-    )
+    placing = placing_detector(identifier)
     return images.load_cube(
-        configs.CACHE.files(identifier, product, configs.GEOMETRY)[".img"]
+        product_files(identifier, placing, configs.GEOMETRY)[".img"]
     )[0]
 
 
@@ -126,8 +187,8 @@ def clean_detectors(identifier: str) -> dict[str, Detector]:
             that `download.fetch` puts them in.
 
     Returns:
-        Both detectors, each cube filled where it was not measured and its mask
-        set beside it.
+        Every detector that landed, each cube filled where it was not measured
+        and its mask set beside it.
 
     Raises:
         FileNotFoundError: When any file the observation needs is missing.
@@ -151,7 +212,7 @@ def clean_detectors(identifier: str) -> dict[str, Detector]:
 
 
 def read_observation(identifier: str) -> CrismObservation:
-    """Read one observation, clean it, and join its two detectors into one cube.
+    """Read one observation, clean it, and join the detectors it has into a cube.
 
     Args:
         identifier: The observation, whose files must already be in the cache
@@ -183,7 +244,9 @@ def crop(observation: CrismObservation, frame: FeatureFrame) -> CrismSample | No
         The observation cut to that feature, its bands left whole, or None
         where it reaches none of it.
     """
-    held = overlap(observation, frame)
+    held = overlap(
+        observation.latitude, observation.longitude, observation.separable, frame
+    )
     if held is None:
         return None
     # Calibrated column by column, so only that axis cuts and the bands stay whole.

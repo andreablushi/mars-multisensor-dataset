@@ -18,7 +18,7 @@ def build_cube(image: Path, label: dict[str, str]) -> np.ndarray:
 
     Returns:
         The values as lines by samples by bands, in the band order the file
-        stores them in.
+        stores them in, and in the unit its label says they stand for.
 
     Raises:
         KeyError: When it names a sample type this cannot read.
@@ -31,9 +31,60 @@ def build_cube(image: Path, label: dict[str, str]) -> np.ndarray:
     flat = np.fromfile(image, dtype=dtype, count=wanted)
     # BIL writes one line's bands together, so bands sit in the middle.
     if stored == labels.BIL:
-        return flat.reshape(lines, bands, samples).transpose(0, 2, 1)
-    # BSQ writes whole bands one after another, so bands come first.
-    return flat.reshape(bands, lines, samples).transpose(1, 2, 0)
+        held = flat.reshape(lines, bands, samples).transpose(0, 2, 1)
+    else:
+        # BSQ writes whole bands one after another, so bands come first.
+        held = flat.reshape(bands, lines, samples).transpose(1, 2, 0)
+    return measured(held, label)
+
+
+def measured(values: np.ndarray, label: dict[str, str]) -> np.ndarray:
+    """Return what one image's stored values stand for.
+
+    Args:
+        values: The values as they were stored.
+        label: The parsed label describing them.
+
+    Returns:
+        The values in the unit the label names, which are the stored ones
+        themselves where it asks for no scaling and no offset.
+    """
+    factor, offset = labels.scaling(label)
+    if factor == 1.0 and offset == 0.0:
+        return values
+    return values.astype("f4") * factor + offset
+
+
+def load_window(
+    image: Path,
+    label: dict[str, str],
+    lines: tuple[int, int],
+    samples: tuple[int, int],
+) -> np.ndarray:
+    """Read only the rectangle of one single band image the bounds ask for.
+
+    Args:
+        image: The `.img` file holding the values.
+        label: The parsed label describing it.
+        lines: The first line to read, and the line after the last.
+        samples: The first sample to read, and the sample after the last.
+
+    Returns:
+        The values inside those bounds, as lines by samples, in the unit the
+        label says they stand for.
+
+    Raises:
+        KeyError: When it names a sample type this cannot read.
+        ValueError: When the image holds more than the one band this reads.
+    """
+    _, across, bands, _, dtype = labels.layout(label)
+    if bands != 1:
+        raise ValueError(f"{image.name} holds {bands} bands rather than one.")
+    with image.open("rb") as handle:
+        handle.seek(lines[0] * across * np.dtype(dtype).itemsize)
+        flat = np.fromfile(handle, dtype=dtype, count=(lines[1] - lines[0]) * across)
+    held = flat.reshape(lines[1] - lines[0], across)[:, samples[0] : samples[1]]
+    return measured(held, label)
 
 
 def load_cube(image: Path) -> tuple[np.ndarray, dict[str, str]]:

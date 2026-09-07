@@ -26,6 +26,10 @@ def remove_spike_columns(
 
     Returns:
         The mask with each levelled column and band recorded.
+
+    Raises:
+        ValueError: When the threshold is further from a column's mean than
+            its own bands can reach, so that no band could ever be caught.
     """
     columns, bands = ~mask.columns, ~mask.bands
     live_columns, live_bands = np.flatnonzero(columns), np.flatnonzero(bands)
@@ -41,6 +45,14 @@ def remove_spike_columns(
     apart = np.abs(averaged - medfilt1(averaged, size))
     # crism_ml judges each column against the spread of its own bands.
     sigma = configs.STRIPE_SIGMA[detector]
+    # One of n bands stands at most (n-1)/sqrt(n) deviations off their own mean,
+    # so a threshold past that leaves the whole stage unable to catch anything.
+    reach = (live_bands.size - 1) / np.sqrt(live_bands.size)
+    if sigma >= reach:
+        raise ValueError(
+            f"A {detector} spike at {sigma} deviations cannot be reached by "
+            f"{live_bands.size} bands, which reach {reach:.2f}."
+        )
     limit = apart.mean(axis=-1, keepdims=True) + sigma * apart.std(
         ddof=1, axis=-1, keepdims=True
     )

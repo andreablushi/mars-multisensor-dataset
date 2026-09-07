@@ -30,7 +30,7 @@ def read_feature_metadata(
     """
     held = pq.read_table(root / paths.FEATURE_METADATA_NAME, schema=features.SCHEMA)
     return {
-        (one.frame.feature_class, one.frame.feature_name): one
+        one.identity: one
         for one in (parquet.build(FeatureMetadata, row) for row in held.to_pylist())
     }
 

@@ -6,6 +6,7 @@ from building.common.pds import images, labels, tables
 from building.configs import sharad as configs
 from building.models.feature import FeatureFrame
 from building.preprocessing.common.crop import overlap
+from building.preprocessing.sharad import elevation
 from building.preprocessing.sharad.models.observation import SharadObservation
 from building.preprocessing.sharad.models.sample import SharadSample
 
@@ -22,28 +23,23 @@ def read_observation(identifier: str) -> SharadObservation:
 
     Returns:
         The observation holding only the traces the geometry places, in the
-        order the radargram stores them.
+        order the radargram stores them, on the elevation its window is posted
+        against.
 
     Raises:
         FileNotFoundError: When either product or its label is missing.
         KeyError: When a label names a sample type this cannot read.
         ValueError: When the geometry holds fewer rows than its label promises.
     """
+    held = {
+        kind: configs.CACHE.files(
+            identifier, configs.NAMING.product(identifier, kind), kind
+        )
+        for kind in configs.KINDS
+    }
     # The echoes themselves, then the places they were sounded at.
-    power, sounding = images.load_plane(
-        configs.CACHE.files(
-            identifier,
-            configs.NAMING.product(identifier, configs.OBSERVATION),
-            configs.OBSERVATION,
-        )[".img"]
-    )
-    geometry, placing = tables.load_table(
-        configs.CACHE.files(
-            identifier,
-            configs.NAMING.product(identifier, configs.GEOMETRY),
-            configs.GEOMETRY,
-        )[".tab"]
-    )
+    power, sounding = images.load_plane(held[configs.OBSERVATION][".img"])
+    geometry, placing = tables.load_table(held[configs.GEOMETRY][".tab"])
     # The geometry counts columns from one, and the radargram from zero.
     traces = geometry[COLUMN_FIELD].astype("i8") - 1
     return SharadObservation(
@@ -52,6 +48,7 @@ def read_observation(identifier: str) -> SharadObservation:
         power[:, traces],
         geometry,
         traces,
+        elevation.elevation_m(power.shape[0]),
     )
 
 
@@ -65,7 +62,9 @@ def crop(observation: SharadObservation, frame: FeatureFrame) -> SharadSample | 
     Returns:
         The track cut to that feature, or None where it reaches none of it.
     """
-    held = overlap(observation, frame)
+    held = overlap(
+        observation.latitude, observation.longitude, observation.separable, frame
+    )
     if held is None:
         return None
     # The traces are the radargram's second axis, and the delay is left whole.
@@ -78,4 +77,5 @@ def crop(observation: SharadObservation, frame: FeatureFrame) -> SharadSample | 
         power=observation.power[:, traces],
         geometry=observation.geometry[traces],
         traces=observation.traces[traces],
+        elevation=observation.elevation,
     )

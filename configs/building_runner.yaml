@@ -1,20 +1,10 @@
 # What a build of the dataset holds, and how much of it to build.
 
 # The directory it is written in and the name it is published under.
-name: half
+name: small
 
 # What share of the features the selection kept to build, above zero and up to one.
-share: 0.5
-
-# Which instruments to build. MOLA is placed by the feature's box, not the selection.
-instruments:
-  - CTX
-  - CRISM
-  - SHARAD
-  - MOLA
+share: 0.02
 
 # The number every draw is made with, so a smaller build is a reproducible subset.
 seed: 42
-
-# Which layout the arrays and the index are written in. Raise it when a reader breaks.
-version: 2

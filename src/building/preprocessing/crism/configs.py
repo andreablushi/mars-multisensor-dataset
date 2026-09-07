@@ -8,8 +8,9 @@ UNCALIBRATED = 65535.0
 # What a label says about the calibration software, the same in every product.
 GROUND_SOFTWARE = ("MRO:IKF_", "MRO:RSC_", "MRO:REFZ_", "MRO:FRAM_STAT_")
 
-# Which detector places a merged observation, both halves being on the one grid.
-PLACING_DETECTOR = "l"
+# Which detector places a merged observation, both halves being on the one grid,
+# taken in this order so one delivered as a single half is placed by that half.
+PLACING_ORDER = ("l", "s")
 
 # The nm window each detector is trusted over, outside which the reading is noise.
 WINDOWS = {"l": (1020.0, 2650.0), "s": (400.0, 1060.0)}
@@ -22,7 +23,7 @@ BRIGHTNESS = (-0.05, 1.0)
 STRIPE_WIDTH = 80.0
 
 # How far above its column's mean a band reads as a spike, set per detector.
-STRIPE_SIGMA = {"l": 7.5, "s": 4.7}
+STRIPE_SIGMA = {"l": 5.0, "s": 3.0}
 
 # Where the atmosphere absorbs, in nm. Only the 2.0 um CO2 band is worth dropping.
 ATMOSPHERIC = {"l": ((1940.0, 2090.0),), "s": ()}

@@ -29,8 +29,8 @@ def remove_spikes(pixspec: np.ndarray, centre: np.ndarray) -> None:
         np.subtract(pixmed, pixspec, out=apart)
         np.abs(apart, out=apart)
         # crism_ml judges every sample against the whole cube's own spread.
-        limit = np.mean(apart.mean(axis=-1), keepdims=True) + sigma * np.mean(
-            apart.std(ddof=1, axis=-1), keepdims=True
+        limit = np.mean(apart.mean(axis=-1)) + sigma * np.mean(
+            apart.std(ddof=1, axis=-1)
         )
         np.greater(apart, limit, out=caught)
         np.copyto(pixspec, pixmed, where=caught)

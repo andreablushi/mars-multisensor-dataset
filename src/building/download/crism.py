@@ -21,7 +21,11 @@ WAVELENGTH_TYPE = "CDR"
 
 
 def fetch(observation_id: str, client: httpx.Client) -> None:
-    """Bring both detectors of one observation down, or leave what is here.
+    """Bring down whichever detectors of one observation ODE holds, or leave them.
+
+    Both detectors are read out together, but a small share of the survey was
+    archived as one half alone, so each is asked for and the observation is
+    built from whichever answered rather than being dropped for the other.
 
     Args:
         observation_id: The observation to fetch.
@@ -31,30 +35,50 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
         None.
 
     Raises:
-        FileNotFoundError: When ODE offers no download for a product.
+        FileNotFoundError: When ODE publishes neither detector, or publishes one
+            without the geometry that places it.
         KeyError: When a label names no wavelength file.
     """
-    for detector in configs.DETECTORS:
+
+    def brought(detector: str) -> bool:
+        """Bring one detector of the observation down, where it was archived.
+
+        Args:
+            detector: Which detector to ask ODE for.
+
+        Returns:
+            True when it landed, and False when ODE publishes no observation
+            under that detector.
+
+        Raises:
+            FileNotFoundError: When the observation is published but the
+                geometry placing it is not.
+        """
         for kind, product_type in TYPES.items():
             product_id = configs.NAMING.product(observation_id, kind, detector=detector)
-            archive.collect(
-                client,
-                product_id,
-                configs.CACHE.files(observation_id, product_id, kind),
-                pt=product_type,
-                **ODE,
-            )
-    found = {
-        detector: configs.CACHE.files(
-            observation_id,
-            configs.NAMING.product(
-                observation_id, configs.OBSERVATION, detector=detector
-            ),
-        )[".lbl"]
-        for detector in configs.DETECTORS
-    }
+            try:
+                archive.collect(
+                    client,
+                    product_id,
+                    configs.CACHE.files(observation_id, product_id, kind),
+                    pt=product_type,
+                    **ODE,
+                )
+            except FileNotFoundError:
+                if kind != configs.OBSERVATION:
+                    raise
+                return False
+        return True
+
+    found = [name for name in configs.DETECTORS if brought(name)]
+    if not found:
+        raise FileNotFoundError(f"ODE publishes no detector of {observation_id}.")
     # Only now do the labels exist to be asked which file calibrated them.
-    for label in found.values():
+    for detector in found:
+        scan = configs.NAMING.product(
+            observation_id, configs.OBSERVATION, detector=detector
+        )
+        label = configs.CACHE.files(observation_id, scan)[".lbl"]
         name = Path(labels.load(label)[configs.WAVELENGTH_KEY]).stem
         archive.collect(
             client,

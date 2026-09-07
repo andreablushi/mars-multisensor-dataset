@@ -41,12 +41,3 @@ class Mask:
     fill: float
     atmospheric: np.ndarray | None = None
     stripes: np.ndarray | None = None
-
-    @property
-    def kept(self) -> tuple[int, int]:
-        """Return how many columns and bands survive the mask.
-
-        Returns:
-            The live column count and the kept band count.
-        """
-        return int((~self.columns).sum()), int((~self.bands).sum())

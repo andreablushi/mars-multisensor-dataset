@@ -124,13 +124,15 @@ def collect(
         FileNotFoundError: When ODE offers no download for a missing half.
     """
     if any(not path.exists() for path in destination.values()):
-        bring(destination, offers(client, product_id, **params))
+        bring(destination, offers(client, product_id, **params), client=client)
 
 
 def bring(
     destination: dict[str, Path],
     urls: dict[str, str],
     timeout: float = TIMEOUT,
+    *,
+    client: httpx.Client | None = None,
 ) -> None:
     """Stream whichever halves of one product are not on disk yet.
 
@@ -138,6 +140,8 @@ def bring(
         destination: Where each half belongs, keyed by suffix.
         urls: Where each half is served from, keyed by the same suffix.
         timeout: How long to wait on each transfer.
+        client: A client whose connections to reuse, or None to open one per
+            transfer.
 
     Returns:
         None.
@@ -150,4 +154,4 @@ def bring(
             continue
         if not urls.get(suffix):
             raise FileNotFoundError(f"No {suffix} offered for {path.stem}.")
-        http.streamed(urls[suffix], path, timeout)
+        http.streamed(urls[suffix], path, timeout, client=client)

@@ -1,33 +1,60 @@
-"""Placing one MOLA tile on the grid its label projects it onto."""
+"""Placing one MOLA grid on its own projection, and cutting a cap to one feature."""
 
 from __future__ import annotations
 
 import numpy as np
 
-# The only projection the gridded record is written in.
-PROJECTION = "SIMPLE CYLINDRICAL"
+from building.common.pds import images, labels
+from building.models.feature import FeatureFrame
+from building.preprocessing.common.crop import polar_overlap
+from building.preprocessing.common.models.relative_position import PolarGrid
+from building.preprocessing.mola.models.grid import MolaGrid
+from building.preprocessing.mola.models.sample import MolaSample
+
+# The two projections the gridded record is written in.
+CYLINDRICAL = "SIMPLE CYLINDRICAL"
+POLAR = "POLAR STEREOGRAPHIC"
+
+# The archive writes the sphere a cap is built on in kilometres.
+KM = 1000.0
 
 
-def load(label: dict[str, str]) -> tuple[np.ndarray, np.ndarray]:
-    """Return the centre latitude of every line and longitude of every sample.
-
-    A simple cylindrical grid is even in both directions, so the two axes are
-    all that place it and a pixel sits where they cross.
+def grid_axes(
+    label: dict[str, str],
+) -> tuple[np.ndarray, np.ndarray, PolarGrid | None]:
+    """Return what places every line and every sample of one grid.
 
     Args:
-        label: The parsed label of one plane.
+        label: The parsed label of one product.
 
     Returns:
-        The latitude of every line, falling southward, and the longitude of
-        every sample, rising eastward, both in degrees.
+        What every line holds and what every sample holds, and the pole the two
+        are measured on. A cylindrical grid gives the latitude of every line,
+        falling southward, and the longitude of every sample, rising eastward,
+        both in degrees, and no pole beside them. A cap gives the northing and
+        the easting in the projection's own metres, and the pole that turns
+        them back into degrees.
 
     Raises:
         ValueError: When the label names a projection this cannot read.
     """
-    if label["MAP_PROJECTION_TYPE"] != PROJECTION:
-        raise ValueError(f"Cannot place a {label['MAP_PROJECTION_TYPE']} grid.")
+    named = label["MAP_PROJECTION_TYPE"]
+    # How fine the grid is, which both projections count in bins to the degree.
+    resolution = float(label["MAP_RESOLUTION"])
+    lines, samples = int(label["LINES"]), int(label["LINE_SAMPLES"])
+    if named == POLAR:
+        # A cap is placed from its own middle, and its degrees of arc are the
+        # projection's metres on the sphere the archive built it on.
+        radius = float(label["A_AXIS_RADIUS"]) * KM
+        down = np.radians((lines / 2.0 - 0.5 - np.arange(lines)) / resolution) * radius
+        across = (
+            np.radians((np.arange(samples) - samples / 2.0 + 0.5) / resolution) * radius
+        )
+        return down, across, (0.0, float(label["CENTER_LATITUDE"]) > 0.0, radius)
+    if named != CYLINDRICAL:
+        raise ValueError(f"Cannot place a {named} grid.")
     # How many degrees one pixel spans, the same in both directions.
-    step = 1.0 / float(label["MAP_RESOLUTION"])
+    step = 1.0 / resolution
     # The projection counts pixels from one, from the offset it puts its origin at.
     north = (
         float(label["CENTER_LATITUDE"])
@@ -38,6 +65,45 @@ def load(label: dict[str, str]) -> tuple[np.ndarray, np.ndarray]:
         + (1.0 - float(label["SAMPLE_PROJECTION_OFFSET"])) * step
     )
     return (
-        north - np.arange(int(label["LINES"])) * step,
-        west + np.arange(int(label["LINE_SAMPLES"])) * step,
+        north - np.arange(lines) * step,
+        west + np.arange(samples) * step,
+        None,
+    )
+
+
+def crop_cap(grid: MolaGrid, frame: FeatureFrame) -> MolaSample | None:
+    """Return the bins of one polar cap its feature's box keeps.
+
+    Args:
+        grid: The cap that landed, holding the one product it is published as.
+        frame: The local frame of the feature it is read for.
+
+    Returns:
+        The height over that feature, or None where the cap reaches none of it.
+        The sector the box stands on is worked out off the axes alone and then
+        read straight off disk, so a cap is never held whole.
+
+    Raises:
+        FileNotFoundError: When the cap or its label is missing.
+        KeyError: When the label names a sample type this cannot read.
+        ValueError: When it names a projection this cannot read.
+    """
+    (image,) = grid.files.values()
+    label = labels.load(image.with_suffix(".lbl"))
+    down, across, pole = grid_axes(label)
+    held = polar_overlap(down, across, pole, frame)
+    if held is None:
+        return None
+    lines, samples = held.bounds
+    return MolaSample(
+        identifier=grid.name,
+        position=held.position,
+        label=labels.merge(label),
+        inside=held.inside,
+        topography=images.load_window(
+            image,
+            label,
+            (int(lines[0]), int(lines[-1]) + 1),
+            (int(samples[0]), int(samples[-1]) + 1),
+        ),
     )

@@ -18,8 +18,12 @@ GEOMETRY = "geometry"
 KINDS = (OBSERVATION, GEOMETRY)
 
 # How ODE spells one detector, its kind written where the id carries neither.
+# Radiance and reflectance are the same acquisition calibrated twice, so a row
+# naming either reads as the one observation, which is fetched as reflectance.
 NAMING = Naming(
-    re.compile(r"^(?P<stem>\w+)_if(?P<code>\d+)(?P<detector>[ls]?)_(?P<level>trr\d+)$"),
+    re.compile(
+        r"^(?P<stem>\w+)_(?:if|ra)(?P<code>\d+)(?P<detector>[ls]?)_(?P<level>trr\d+)$"
+    ),
     identity="{stem}_if{code}_{level}",
     marks=("detector",),
     template="{stem}_{marker}{code}{detector}_{level}",

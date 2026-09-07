@@ -1,4 +1,4 @@
-"""Joining the visible and infrared halves, and the geometry beside them."""
+"""Joining the detectors one observation was delivered as, and its geometry."""
 
 from __future__ import annotations
 
@@ -20,12 +20,18 @@ def merge_detectors(
     geometry: np.ndarray,
     label: dict[str, str],
 ) -> CrismObservation:
-    """Join both detectors of a cleaned observation into one cube.
+    """Join the detectors of a cleaned observation into one cube.
+
+    The two are read out together, so they share a grid, but one of them can
+    lose the last frames of a strip the other kept and a small share of the
+    survey was archived as a single half. Both are met by taking the lines every
+    half and the geometry all carry, and by joining whichever halves landed.
 
     Args:
-        identifier: The observation the two detectors are halves of.
-        detectors: Both halves, already through `preprocess.clean_detectors`,
-            so each carries the mask saying what it kept.
+        identifier: The observation the detectors are halves of.
+        detectors: The halves that landed, already through
+            `preprocess.clean_detectors`, so each carries the mask saying what
+            it kept.
         geometry: The backplanes that place every pixel, on the same grid.
         label: What every product the observation was published as says of it.
 
@@ -33,19 +39,23 @@ def merge_detectors(
         The joined observation, its bands ascending in wavelength.
 
     Raises:
-        ValueError: When the observation has not been cleaned.
+        ValueError: When no half was delivered, or one has not been cleaned.
     """
-    visible, infrared = detectors[VISIBLE], detectors[INFRARED]
-    if visible.mask is None or infrared.mask is None:
+    halves = tuple(name for name in HALVES if name in detectors)
+    if not halves:
+        raise ValueError(f"{identifier} was delivered as no detector.")
+    if any(detectors[name].mask is None for name in halves):
         raise ValueError(f"{identifier} has not been cleaned.")
 
-    # Only the samples neither detector refused, which is one unbroken run.
-    columns = ~(visible.mask.columns | infrared.mask.columns)
+    # Every half is read out from the first frame, so the shortest ends the strip.
+    lines = min(geometry.shape[0], *(detectors[name].cube.shape[0] for name in halves))
+    # Only the samples no half refused.
+    columns = ~np.logical_or.reduce([detectors[name].mask.columns for name in halves])
 
     kept = np.flatnonzero(columns)
-    bands = {name: ~held.mask.bands for name, held in detectors.items()}
+    bands = {name: ~detectors[name].mask.bands for name in halves}
     table = np.concatenate(
-        [detectors[name].wavelengths[columns][:, bands[name]] for name in HALVES],
+        [detectors[name].wavelengths[columns][:, bands[name]] for name in halves],
         axis=1,
     )
     # The two overlap around a micron, so ordering is a sort and not a join.
@@ -54,13 +64,12 @@ def merge_detectors(
     lands = np.empty(order.size, dtype="i8")
     lands[order] = np.arange(order.size)
 
-    joined = np.empty((*visible.cube.shape[:1], kept.size, order.size), dtype="f4")
+    joined = np.empty((lines, kept.size, order.size), dtype="f4")
     at = 0
-    for name in HALVES:
-        held = detectors[name]
+    for name in halves:
         live = np.flatnonzero(bands[name])
-        joined[:, :, lands[at : at + live.size]] = held.cube[
-            np.ix_(np.arange(held.cube.shape[0]), kept, live)
+        joined[:, :, lands[at : at + live.size]] = detectors[name].cube[
+            np.ix_(np.arange(lines), kept, live)
         ]
         at += live.size
     return CrismObservation(
@@ -68,8 +77,10 @@ def merge_detectors(
         label,
         joined,
         table[:, order],
-        geometry[:, columns],
+        geometry[:lines, columns],
         kept,
-        # A pixel either detector could not read is no measurement of either.
-        ~(visible.mask.pixels | infrared.mask.pixels)[:, columns],
+        # A pixel any half could not read is no measurement of the observation.
+        ~np.logical_or.reduce([detectors[name].mask.pixels[:lines] for name in halves])[
+            :, columns
+        ],
     )

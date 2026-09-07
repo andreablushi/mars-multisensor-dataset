@@ -7,10 +7,12 @@ from dataclasses import dataclass
 import numpy as np
 
 # Which geometry field places a trace.
-PLACEMENT = {"latitude": "LATITUDE", "longitude": "LONGITUDE"}
+LATITUDE_FIELD = "LATITUDE"
+LONGITUDE_FIELD = "LONGITUDE"
 
 # Which fields the height above ground is read between, in km, for the delay axis.
-RADII = {"ground": "MARS RADIUS", "spacecraft": "SPACECRAFT RADIUS"}
+GROUND_RADIUS_FIELD = "MARS RADIUS"
+SPACECRAFT_RADIUS_FIELD = "SPACECRAFT RADIUS"
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +26,8 @@ class SharadObservation:
         geometry: One row per kept trace, in the same order.
         traces: Which of the original radargram columns these traces are,
             counted from zero.
+        elevation: How high above the areoid every delay sample stands, in
+            metres, which is one axis for every trace of the track.
     """
 
     identifier: str
@@ -31,6 +35,7 @@ class SharadObservation:
     power: np.ndarray
     geometry: np.recarray
     traces: np.ndarray
+    elevation: np.ndarray
 
     # A sounder walks a line, so every trace carries its own geometry's pair.
     separable = False
@@ -42,7 +47,7 @@ class SharadObservation:
         Returns:
             One per trace, in degrees.
         """
-        return self.geometry[PLACEMENT["latitude"]]
+        return self.geometry[LATITUDE_FIELD]
 
     @property
     def longitude(self) -> np.ndarray:
@@ -51,4 +56,4 @@ class SharadObservation:
         Returns:
             One per trace, in degrees.
         """
-        return self.geometry[PLACEMENT["longitude"]]
+        return self.geometry[LONGITUDE_FIELD]

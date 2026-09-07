@@ -25,9 +25,9 @@ resources:
     memory: 32Gi
     disk: 64Gi
   build:
-    cpu: 32
-    memory: 64Gi
-    disk: 500Gi
+    cpu: 16
+    memory: 32Gi
+    disk: 100Gi
 
 # The function each run is registered as: the whole pipeline, or the selection
 # alone. The project scopes them already, so a name carries no prefix.
