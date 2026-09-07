@@ -65,11 +65,15 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
     written = configs.polar(observation_id)
     likely, otherwise = REMOTE_LABELS[written], REMOTE_LABELS[not written]
     try:
-        archive.bring(destination, _asu(observation_id, volume, likely), TIMEOUT)
+        archive.bring(
+            destination, _asu(observation_id, volume, likely), TIMEOUT, client=client
+        )
         return
     except FetchError:
         pass
-    archive.bring(destination, _asu(observation_id, volume, otherwise), TIMEOUT)
+    archive.bring(
+        destination, _asu(observation_id, volume, otherwise), TIMEOUT, client=client
+    )
 
 
 def _asu(observation_id: str, volume_id: str, label: str) -> dict[str, str]:

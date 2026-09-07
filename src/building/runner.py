@@ -100,7 +100,14 @@ def run_build(
     """
     building_count, fetching_count, ready = pools(settings.cores)
     budget = Budget(_room())
-    with httpx.Client() as ode:
+    # Every download reuses these, so a run of tens of thousands of files pays
+    # for a connection once a host rather than once a file. Room for one to each
+    # archive per thread, since a query and a transfer can be in flight together.
+    held = httpx.Limits(
+        max_connections=fetching_count * 2,
+        max_keepalive_connections=fetching_count * 2,
+    )
+    with httpx.Client(limits=held) as ode:
         plan = planner.build_plan(settings, root, ode, force=force)
         printing.describe(
             plan, settings, (building_count, fetching_count, ready), budget, console

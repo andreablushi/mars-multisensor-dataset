@@ -131,6 +131,7 @@ def streamed(
     path: Path,
     timeout: float,
     *,
+    client: httpx.Client | None = None,
     retries: int = STREAM_RETRIES,
     backoff: float = BACKOFF_BASE,
     deadline: float = STREAM_DEADLINE,
@@ -141,6 +142,10 @@ def streamed(
         url: Where to read it from.
         path: Where it belongs once it is whole.
         timeout: How long to wait on one transfer, between one chunk and the next.
+        client: A client whose connections to reuse, or None to open one for
+            this transfer alone. A run moves tens of thousands of files, half of
+            them labels of a few kilobytes, so the handshake a fresh connection
+            costs is most of what a small one takes.
         retries: How many times to ask again after the first attempt.
         backoff: The base delay between attempts, in seconds.
         deadline: How long the whole transfer may run for, in seconds.
@@ -152,6 +157,7 @@ def streamed(
         FetchError: When the server refuses the file, when every attempt fails,
             or when the deadline passed first.
     """
+    reading = client.stream if client else httpx.stream
     give_up_at = time.monotonic() + deadline
     last: Exception | None = None
     for attempt in range(retries + 1):
@@ -161,7 +167,7 @@ def streamed(
             break
         ARCHIVE.wait()
         try:
-            with httpx.stream("GET", url, timeout=timeout) as reply:
+            with reading("GET", url, timeout=timeout) as reply:
                 if reply.status_code in RETRYABLE_STATUS:
                     if reply.status_code in CROWDED_STATUS:
                         ARCHIVE.refused()

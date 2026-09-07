@@ -132,4 +132,5 @@ def fetch(tile: str, client: httpx.Client) -> None:
                     for name, (url, _) in offered.items()
                     if Path(name).stem == product
                 },
+                client=client,
             )
