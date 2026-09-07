@@ -32,7 +32,7 @@ SNAP_GRID_M = 1e-6
 SHARAD_ALONG_TRACK_M = 460.0
 
 # Ground pixel size in metres for the sets ODE publishes no map scale for
-FALLBACK_PIXEL_M = {"MRO/CRISM/TRDR:msp*": 180.0, "MRO/CTX/EDR": 5.4}
+FALLBACK_PIXEL_M = {"MRO/CRISM/TRDR:msp*if*trr3": 180.0, "MRO/CTX/EDR": 5.4}
 
 # How wide one block of the grid is, in kilometres, so large is not coarse
 GRID_KM = 100

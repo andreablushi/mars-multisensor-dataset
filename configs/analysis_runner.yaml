@@ -12,13 +12,13 @@ grid_cells: 32
 # IHID/IID/PT, and a colon plus an ODE product id pattern to narrow the type.
 instruments:
   - MRO/CTX/EDR
-  - MRO/CRISM/TRDR:msp*      # the multispectral survey only, not hyperspectral
+  - MRO/CRISM/TRDR:msp*if*trr3  # the multispectral survey, reflectance cubes only
   - MRO/SHARAD/USRDRV2
 
 # Which of the downloaded sets the notebook figures draw. Comment out for all.
 plot_instruments:
   - MRO/CTX/EDR
-  - MRO/CRISM/TRDR:msp*
+  - MRO/CRISM/TRDR:msp*if*trr3
   - MRO/SHARAD/USRDRV2
 
 # Which products a box returns: b box overlap, f footprint overlap, o inside, i containing.
