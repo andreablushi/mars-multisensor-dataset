@@ -35,14 +35,16 @@ CGROUP_LIMITS = (
     Path("/sys/fs/cgroup/memory/memory.limit_in_bytes"),
 )
 
-# How many downloads run per build and at all; they wait on an archive, not on cores.
-# An archive serves one connection at about two megabytes a second however fast
-# the link is, and answers as many at once: sixteen of them measured thirty
-# megabytes a second together. So downloads are what a run is made faster by, up
-# to what the archives will take, which one refusal now backs the whole run off
-# from rather than each thread asking again on its own.
-FETCHING_PER_BUILD = 4
-MOST_FETCHING = 48
+# How many downloads run at once. They wait on an archive and not on cores, so
+# this is a count of its own and not a share of the machine: sizing it off the
+# cores would throttle the downloads a run is actually held up by whenever the
+# job was given fewer of them. An archive serves one connection at about two
+# megabytes a second however fast the link is, and answers as many at once:
+# sixteen measured thirty megabytes a second together and forty eight measured
+# no more, so this is where an archive stops answering faster rather than where
+# a run stops asking. One refusal backs the whole run off rather than each
+# thread asking again on its own.
+DOWNLOADS = 48
 
 
 def run_build(
@@ -68,7 +70,7 @@ def run_build(
     """
     # Every core builds, and what each build holds is measured as it lands.
     building_count = max(1, settings.cores or os.cpu_count() or 1)
-    fetching_count = max(1, min(MOST_FETCHING, building_count * FETCHING_PER_BUILD))
+    fetching_count = DOWNLOADS
     # Enough waiting to feed every builder while every download is still in flight.
     ready = building_count + fetching_count
     free = os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")

@@ -24,10 +24,15 @@ resources:
     cpu: 16
     memory: 32Gi
     disk: 64Gi
+  # A build waits on the archives and not on the cores: the last one held its
+  # sixteen at eight busy through the CTX half and at none at all through the
+  # SHARAD half, every thread being on the network. The downloads are a count of
+  # their own, so fewer cores costs a build nothing. The disk holds the whole
+  # dataset at once, which is no longer packed into an archive beside itself.
   build:
-    cpu: 16
+    cpu: 8
     memory: 32Gi
-    disk: 100Gi
+    disk: 250Gi
 
 # The function each run is registered as: the whole pipeline, or the selection
 # alone. The project scopes them already, so a name carries no prefix.
