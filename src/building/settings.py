@@ -26,5 +26,6 @@ def load(path: Path = paths.BUILDING_CONFIG_PATH, cores: int | None = None) -> S
         name=config["name"],
         share=config["share"],
         seed=config["seed"],
+        max_observations=config["max_observations"],
         cores=cores,
     )

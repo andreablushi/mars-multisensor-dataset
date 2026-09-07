@@ -19,6 +19,10 @@ class Settings:
             left it.
         seed: The number every draw is made with, so a smaller build is a
             reproducible subset of the full one.
+        max_observations: The observations a feature may keep and still be
+            built. A feature is built whole or not at all, so one seen more
+            often than this is left out rather than built in part, which would
+            leave it holding less than the filter passed it on.
         cores: How many cores the run was given, for a job a platform sized
             itself, and None to read the machine's own. How many builds and
             downloads run at once is worked out from this and from the memory
@@ -28,4 +32,5 @@ class Settings:
     name: str
     share: float
     seed: int
+    max_observations: int
     cores: int | None = None

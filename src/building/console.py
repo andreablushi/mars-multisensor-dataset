@@ -59,7 +59,9 @@ def describe(
     console.print(
         f"building {len(plan.features)} features from {len(plan.jobs)} products, "
         f"{crops} crops to write, {plan.skipped_existing} already written, "
-        f"{plan.unread} kept observations no instrument here reads"
+        f"{plan.unread} kept observations no instrument here reads, "
+        f"{plan.crowded} features left out over {settings.max_observations} "
+        f"observations"
     )
     console.print(
         f"instruments: {', '.join(sorted({job.instrument for job in plan.jobs}))}; "
