@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from building.configs import mola as configs
 from building.models.feature import FeatureFrame
-from building.preprocessing.common.crop import overlap, polar_overlap, taken
+from building.preprocessing.common.crop import overlap, taken
+from building.preprocessing.mola import projection
 from building.preprocessing.mola.merge_tiles import merge_tiles
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
-from building.preprocessing.mola.read_cap import read_cap
 
 
 def read_observation(grid: str) -> MolaGrid:
@@ -40,7 +40,7 @@ def read_observation(grid: str) -> MolaGrid:
             )[".img"]
             if image.exists():
                 files[directory.name] = image
-    return MolaGrid(grid, held.resolution, files, held.polar)
+    return MolaGrid(grid, held.resolution, files, held.north is not None)
 
 
 def crop(grid: MolaGrid, frame: FeatureFrame) -> MolaSample | None:
@@ -56,14 +56,10 @@ def crop(grid: MolaGrid, frame: FeatureFrame) -> MolaSample | None:
     Raises:
         ValueError: When the tiles that landed leave part of its box unwritten.
     """
-    observation = read_cap(grid, frame) if grid.polar else merge_tiles(grid, frame)
-    if observation is None:
-        return None
-    held = (
-        polar_overlap(observation.down, observation.across, observation.polar, frame)
-        if observation.polar
-        else overlap(observation.down, observation.across, observation.separable, frame)
-    )
+    if grid.polar:
+        return projection.crop_cap(grid, frame)
+    observation = merge_tiles(grid, frame)
+    held = overlap(observation.down, observation.across, observation.separable, frame)
     if held is None:
         return None
     return MolaSample(

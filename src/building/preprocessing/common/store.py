@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 
 import utils.disk.paths as paths
-from building.common.layout import Layout
+from building.common.layout import GROUND, Layout
 from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.sample import Sample
 from utils.disk.files import atomic_path
@@ -70,7 +70,11 @@ def write_sample(
     Returns:
         The file it was written as.
     """
-    ground = layout.ground
+    ground = tuple(
+        name
+        for name, holds in zip(layout.dims, layout.axes, strict=True)
+        if holds == GROUND
+    )
     # A separable position holds one ground axis each, any other a value per sample.
     north, east = (
         (ground[:1], ground[1:]) if held.position.separable else (ground, ground)

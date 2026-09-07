@@ -57,12 +57,12 @@ def describe(
     crops = sum(len(job.frames) for job in plan.jobs)
     building, fetching, ready = pools
     console.print(
-        f"building {plan.feature_count} features from {len(plan.jobs)} products, "
+        f"building {len(plan.features)} features from {len(plan.jobs)} products, "
         f"{crops} crops to write, {plan.skipped_existing} already written, "
         f"{plan.unread} kept observations no instrument here reads"
     )
     console.print(
-        f"instruments: {', '.join(plan.instruments)}; "
+        f"instruments: {', '.join(sorted({job.instrument for job in plan.jobs}))}; "
         f"share {settings.share:.0%}, seed {settings.seed}; "
         f"build pool {building}, download pool {fetching}, "
         f"{ready} products may wait, {budget.total / GIB:.0f} GiB between them"
@@ -123,13 +123,13 @@ def render(
         step = max(1, total // LOGGED_LINES)
         for outcome in outcomes:
             collected.append(outcome)
-            if outcome.failed:
-                print(f"error {outcome.label}: {outcome.error}", flush=True)
+            if outcome.error:
+                print(f"error {outcome.job.label}: {outcome.error}", flush=True)
             if len(collected) % step == 0 or len(collected) == total:
                 share = len(collected) / total
                 print(
                     f"{description} {len(collected)}/{total} ({share:.0%}) "
-                    f"{outcome.label}",
+                    f"{outcome.job.label}",
                     flush=True,
                 )
         return collected
@@ -139,8 +139,8 @@ def render(
         task = progress.add_task(description, total=total)
         for outcome in outcomes:
             collected.append(outcome)
-            if outcome.failed:
-                console.print(f"[red]error[/red] {outcome.label}: {outcome.error}")
+            if outcome.error:
+                console.print(f"[red]error[/red] {outcome.job.label}: {outcome.error}")
             progress.update(task, completed=len(collected))
     return collected
 
@@ -158,9 +158,9 @@ def print_summary(
     Returns:
         None.
     """
-    written = sum(one.written for one in outcomes)
+    written = sum(len(one.records) for one in outcomes)
     missed = sum(one.missed for one in outcomes)
-    failed = [one for one in outcomes if one.failed]
+    failed = [one for one in outcomes if one.error]
     console.print(
         f"built {len(outcomes) - len(failed)} products into {written:,} crops, "
         f"{len(failed)} failed, in {elapsed:.1f}s"
@@ -174,7 +174,7 @@ def print_summary(
         return
     console.print(f"[yellow]{len(failed)} products failed:[/yellow]")
     for one in failed[:LISTED]:
-        console.print(f"[yellow]  {one.label}: {one.error}[/yellow]")
+        console.print(f"[yellow]  {one.job.label}: {one.error}[/yellow]")
     if len(failed) > LISTED:
         console.print(f"[yellow]  and {len(failed) - LISTED} more[/yellow]")
 

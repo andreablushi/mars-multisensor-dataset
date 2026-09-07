@@ -1,10 +1,15 @@
-"""Placing one MOLA grid on the projection its own label writes it in."""
+"""Placing one MOLA grid on its own projection, and cutting a cap to one feature."""
 
 from __future__ import annotations
 
 import numpy as np
 
+from building.common.pds import images, labels
+from building.models.feature import FeatureFrame
+from building.preprocessing.common.crop import polar_overlap
 from building.preprocessing.common.models.relative_position import PolarGrid
+from building.preprocessing.mola.models.grid import MolaGrid
+from building.preprocessing.mola.models.sample import MolaSample
 
 # The two projections the gridded record is written in.
 CYLINDRICAL = "SIMPLE CYLINDRICAL"
@@ -14,7 +19,9 @@ POLAR = "POLAR STEREOGRAPHIC"
 KM = 1000.0
 
 
-def load(label: dict[str, str]) -> tuple[np.ndarray, np.ndarray, PolarGrid | None]:
+def grid_axes(
+    label: dict[str, str],
+) -> tuple[np.ndarray, np.ndarray, PolarGrid | None]:
     """Return what places every line and every sample of one grid.
 
     Args:
@@ -61,4 +68,42 @@ def load(label: dict[str, str]) -> tuple[np.ndarray, np.ndarray, PolarGrid | Non
         north - np.arange(lines) * step,
         west + np.arange(samples) * step,
         None,
+    )
+
+
+def crop_cap(grid: MolaGrid, frame: FeatureFrame) -> MolaSample | None:
+    """Return the bins of one polar cap its feature's box keeps.
+
+    Args:
+        grid: The cap that landed, holding the one product it is published as.
+        frame: The local frame of the feature it is read for.
+
+    Returns:
+        The height over that feature, or None where the cap reaches none of it.
+        The sector the box stands on is worked out off the axes alone and then
+        read straight off disk, so a cap is never held whole.
+
+    Raises:
+        FileNotFoundError: When the cap or its label is missing.
+        KeyError: When the label names a sample type this cannot read.
+        ValueError: When it names a projection this cannot read.
+    """
+    (image,) = grid.files.values()
+    label = labels.load(image.with_suffix(".lbl"))
+    down, across, pole = grid_axes(label)
+    held = polar_overlap(down, across, pole, frame)
+    if held is None:
+        return None
+    lines, samples = held.bounds
+    return MolaSample(
+        identifier=grid.name,
+        position=held.position,
+        label=labels.merge(label),
+        inside=held.inside,
+        topography=images.load_window(
+            image,
+            label,
+            (int(lines[0]), int(lines[-1]) + 1),
+            (int(samples[0]), int(samples[-1]) + 1),
+        ),
     )

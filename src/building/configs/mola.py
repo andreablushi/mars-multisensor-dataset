@@ -63,15 +63,6 @@ class Grid:
     product: str | None = None
     north: bool | None = None
 
-    @property
-    def polar(self) -> bool:
-        """Say whether the grid is projected onto a pole.
-
-        Returns:
-            True where it is a cap, and False where it is cylindrical.
-        """
-        return self.north is not None
-
 
 # The grid a feature is merged from, named for the record and how fine it is.
 CYLINDRICAL = "megdr128"
@@ -85,21 +76,3 @@ GRIDS = {
     NORTH_CAP: Grid(NORTH_CAP, 128, "megt_n_128_1", north=True),
     SOUTH_CAP: Grid(SOUTH_CAP, 128, "megt_s_128_1", north=False),
 }
-
-
-def resolution(tile: str) -> int:
-    """Read how fine a grid one tile is written on.
-
-    Args:
-        tile: The tile, such as 00n180hb.
-
-    Returns:
-        The pixels per degree the tile holds.
-
-    Raises:
-        ValueError: When the tile is not one this can read.
-    """
-    parts = NAMING.parts(tile)
-    if not parts:
-        raise ValueError(f"{tile} is not a simple cylindrical MEGDR tile.")
-    return RESOLUTIONS[parts["step"]]

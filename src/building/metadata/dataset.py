@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import subprocess
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import utils.disk.paths as paths
@@ -51,15 +51,3 @@ def dataset_manifest(instruments: tuple[str, ...]) -> DatasetManifest:
         selection=str(paths.SELECTION_ROOT.relative_to(paths.REPO_ROOT)),
         revision=revision,
     )
-
-
-def as_written(manifest: DatasetManifest) -> dict:
-    """Return the manifest as the object it is written as.
-
-    Args:
-        manifest: What the build has to say about the dataset.
-
-    Returns:
-        Its fields, ready to be written as JSON.
-    """
-    return asdict(manifest)

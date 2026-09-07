@@ -1,4 +1,4 @@
-"""One MOLA grid cut to a box, on the projection its own label writes it in."""
+"""The tiles one feature stands on, laid onto the single cylindrical grid they share."""
 
 from __future__ import annotations
 
@@ -6,12 +6,10 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from building.preprocessing.common.models.relative_position import PolarGrid
-
 
 @dataclass(frozen=True, slots=True)
 class MolaObservation:
-    """The height over one box, placed as the grid it was read from places it.
+    """The height over one box, on the tiles' own grid of latitude and longitude.
 
     Attributes:
         label: What the products it was read from say about it, merged.
@@ -19,12 +17,9 @@ class MolaObservation:
             stored under.
         topography: The height of the ground above the areoid in metres, as
             lines by samples, interpolated where no shot fell in the bin.
-        down: What every line holds, its latitude in degrees on a cylindrical
-            grid and its northing in the projection's metres on a cap.
-        across: What every sample holds, its longitude or its easting, read the
-            same way.
-        polar: The pole the two are measured on, and None where they are the
-            degrees a cylindrical grid places directly.
+        down: The latitude of every line in degrees, falling southward.
+        across: The longitude of every sample, rising eastward and running past
+            a whole turn where the box crosses the meridian.
     """
 
     identifier: str
@@ -32,7 +27,6 @@ class MolaObservation:
     topography: np.ndarray
     down: np.ndarray
     across: np.ndarray
-    polar: PolarGrid | None = None
 
     # Either projection is regular on both axes, so one axis places each side.
     separable = True

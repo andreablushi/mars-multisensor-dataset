@@ -56,33 +56,6 @@ class Outcome:
     missed: int = 0
     error: Exception | None = None
 
-    @property
-    def written(self) -> int:
-        """Return how many crops the job wrote.
-
-        Returns:
-            How many records it left, one per crop.
-        """
-        return len(self.records)
-
-    @property
-    def label(self) -> str:
-        """Return a short human readable name for the job that was run.
-
-        Returns:
-            The label of the underlying job.
-        """
-        return self.job.label
-
-    @property
-    def failed(self) -> bool:
-        """Return whether the job raised an error.
-
-        Returns:
-            True when an error was recorded.
-        """
-        return self.error is not None
-
 
 @dataclass(frozen=True, slots=True)
 class Plan:
@@ -102,21 +75,3 @@ class Plan:
     features: tuple[FeatureMetadata, ...] = ()
     skipped_existing: int = 0
     unread: int = 0
-
-    @property
-    def instruments(self) -> tuple[str, ...]:
-        """Return which instruments the build has products of.
-
-        Returns:
-            Each instrument named once, in name order.
-        """
-        return tuple(sorted({job.instrument for job in self.jobs}))
-
-    @property
-    def feature_count(self) -> int:
-        """Return how many features the build covers.
-
-        Returns:
-            One per feature it holds.
-        """
-        return len(self.features)

@@ -99,15 +99,16 @@ def tiles(grid: str, client: httpx.Client) -> list[str]:
     held = configs.GRIDS[grid]
     if held.product:
         return []
-    resolution = held.resolution
     found = set()
     for name in record(client):
         if not name.endswith(ODE_SUFFIX):
             continue
         # Keep only wanted tiles, which drops the polar stereographic ones.
-        tile = configs.NAMING.parse(Path(name).stem)
-        if tile and configs.resolution(tile) == resolution:
-            found.add(tile)
+        parts = configs.NAMING.parts(Path(name).stem)
+        if not parts or not parts["marker"]:
+            continue
+        if configs.RESOLUTIONS[parts["step"]] == held.resolution:
+            found.add(parts["tile"])
     return sorted(found)
 
 

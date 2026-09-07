@@ -10,7 +10,6 @@ from building.preprocessing.common.models.relative_position import (
     PolarGrid,
     RelativePosition,
 )
-from building.preprocessing.common.relative_positioning import relative_position
 from utils.geometry import geodesy
 
 # The whole turn, which a longitude offset is measured round.
@@ -43,7 +42,11 @@ def overlap(
     Returns:
         What the box keeps, or None where the observation reaches none of it.
     """
-    position = relative_position(latitude, longitude, separable, frame)
+    position = RelativePosition(
+        north=latitude - frame.centre_lat,
+        east=geodesy.normalise_longitude(longitude - frame.centre_lon),
+        separable=separable,
+    )
     box = Box(
         south=frame.min_lat - frame.centre_lat,
         north=frame.max_lat - frame.centre_lat,

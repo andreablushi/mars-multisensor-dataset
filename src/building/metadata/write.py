@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
+from dataclasses import asdict
 from pathlib import Path
 
 import utils.disk.paths as paths
@@ -35,5 +36,5 @@ def write_metadata(
     root.mkdir(parents=True, exist_ok=True)
     parquet.write(held, features.SCHEMA, root / paths.FEATURE_METADATA_NAME)
     parquet.write(taken, records.SCHEMA, root / paths.OBSERVATION_METADATA_NAME)
-    manifest = dataset.as_written(dataset.dataset_manifest(instruments))
+    manifest = asdict(dataset.dataset_manifest(instruments))
     (root / paths.DATASET_MANIFEST_NAME).write_text(json.dumps(manifest, indent=2))

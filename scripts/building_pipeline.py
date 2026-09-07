@@ -59,7 +59,7 @@ def build(force: bool = False, cores: int | None = None) -> int:
         choices, printing, paths.dataset_root(choices.name), force=force
     )
     console.print_summary(outcomes, time.monotonic() - started_at, printing)
-    return 1 if any(one.failed for one in outcomes) else 0
+    return 1 if any(one.error for one in outcomes) else 0
 
 
 @handler(outputs=[_DATASET])

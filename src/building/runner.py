@@ -45,43 +45,6 @@ FETCHING_PER_BUILD = 4
 MOST_FETCHING = 48
 
 
-def _room() -> int:
-    """Return how much memory this run may hold, in bytes.
-
-    Returns:
-        The share of what is free that a build is allowed, measured against the
-        limit a container holds it to where there is one.
-    """
-    free = os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
-    for path in CGROUP_LIMITS:
-        try:
-            free = min(free, int(path.read_text().split()[0]))
-        except (OSError, ValueError):
-            continue
-    return int(free * MEMORY_SHARE)
-
-
-def pools(cores: int | None) -> tuple[int, int, int]:
-    """Return how many builds run, how many downloads, and how many may wait.
-
-    Every core builds. A build holds a whole product, and the largest of them is
-    a CTX scan many times the size of anything else, but what each one holds is
-    measured as it lands and taken out of the run's memory, so the pool is no
-    longer cut down to what the heaviest product alone would leave room for.
-
-    Args:
-        cores: How many cores the run was given, or None for the machine's.
-
-    Returns:
-        The builds to run at once, the downloads to run at once, and how many
-        downloaded products may wait for a build to reach them.
-    """
-    building = max(1, cores or os.cpu_count() or 1)
-    fetching = max(1, min(MOST_FETCHING, building * FETCHING_PER_BUILD))
-    # Enough waiting to feed every builder while every download is still in flight.
-    return building, fetching, building + fetching
-
-
 def run_build(
     settings: Settings,
     console: Console,
@@ -103,8 +66,18 @@ def run_build(
     Raises:
         FileNotFoundError: When no selection has been written to build from.
     """
-    building_count, fetching_count, ready = pools(settings.cores)
-    budget = Budget(_room())
+    # Every core builds, and what each build holds is measured as it lands.
+    building_count = max(1, settings.cores or os.cpu_count() or 1)
+    fetching_count = max(1, min(MOST_FETCHING, building_count * FETCHING_PER_BUILD))
+    # Enough waiting to feed every builder while every download is still in flight.
+    ready = building_count + fetching_count
+    free = os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
+    for path in CGROUP_LIMITS:
+        try:
+            free = min(free, int(path.read_text().split()[0]))
+        except (OSError, ValueError):
+            continue
+    budget = Budget(int(free * MEMORY_SHARE))
     # Every download reuses these, so a run of tens of thousands of files pays
     # for a connection once a host rather than once a file. Room for one to each
     # archive per thread, since a query and a transfer can be in flight together.
@@ -210,7 +183,11 @@ def _outcomes(
                 steps.fetch(job.identifier, ode)
             # Only now is there a product to measure, and so a share to ask for.
             stage = progress.moved(stage, HOLDING)
-            held = budget.acquire(steps.holds(job.identifier))
+            held = budget.acquire(
+                steps.held_bytes(job.identifier)
+                if steps.held_bytes
+                else steps.worker_bytes
+            )
             stage = progress.moved(stage, BUILDING)
             building.submit(build_product, job, root).add_done_callback(
                 partial(built, job, held)

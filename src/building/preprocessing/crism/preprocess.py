@@ -26,6 +26,22 @@ from building.preprocessing.crism.models.observation import CrismObservation
 from building.preprocessing.crism.models.sample import CrismSample
 
 
+def product_files(identifier: str, detector: str, kind: str) -> dict[str, Path]:
+    """Return where each half of one detector's product of an observation belongs.
+
+    Args:
+        identifier: The observation the product is a part of.
+        detector: Which detector's half of it, `l` or `s`.
+        kind: Which product of that half, the observation or the geometry.
+
+    Returns:
+        The path for each suffix it is published as, keyed by suffix.
+    """
+    return configs.CACHE.files(
+        identifier, configs.NAMING.product(identifier, kind, detector=detector), kind
+    )
+
+
 def cached_detectors(identifier: str) -> tuple[str, ...]:
     """Read which detectors of one observation were downloaded whole.
 
@@ -49,11 +65,7 @@ def cached_detectors(identifier: str) -> tuple[str, ...]:
         if all(
             path.exists()
             for kind in configs.KINDS
-            for path in configs.CACHE.files(
-                identifier,
-                configs.NAMING.product(identifier, kind, detector=name),
-                kind,
-            ).values()
+            for path in product_files(identifier, name, kind).values()
         )
     )
     if not found:
@@ -98,8 +110,9 @@ def read_detectors(identifier: str) -> dict[str, Detector]:
     """
     detectors = {}
     for name in cached_detectors(identifier):
-        scan = configs.NAMING.product(identifier, configs.OBSERVATION, detector=name)
-        cube, label = images.load_cube(configs.CACHE.files(identifier, scan)[".img"])
+        cube, label = images.load_cube(
+            product_files(identifier, name, configs.OBSERVATION)[".img"]
+        )
         # The wavelength file this half was calibrated against, and no other.
         wavelength = Path(label[configs.WAVELENGTH_KEY]).stem.lower()
         record = configs.CACHE.files(configs.WAVELENGTH_DIR, wavelength)[".img"]
@@ -129,15 +142,13 @@ def read_label(identifier: str) -> dict[str, str]:
     Raises:
         FileNotFoundError: When neither detector landed, or a label is missing.
     """
-    held = []
-    for name in cached_detectors(identifier):
-        scan = configs.NAMING.product(identifier, configs.OBSERVATION, detector=name)
-        held.append(labels.load(configs.CACHE.files(identifier, scan)[".lbl"]))
-    product = configs.NAMING.product(
-        identifier, configs.GEOMETRY, detector=placing_detector(identifier)
-    )
+    held = [
+        labels.load(product_files(identifier, name, configs.OBSERVATION)[".lbl"])
+        for name in cached_detectors(identifier)
+    ]
+    placing = placing_detector(identifier)
     held.append(
-        labels.load(configs.CACHE.files(identifier, product, configs.GEOMETRY)[".lbl"])
+        labels.load(product_files(identifier, placing, configs.GEOMETRY)[".lbl"])
     )
     merged = labels.merge(*held)
     return {
@@ -162,11 +173,9 @@ def read_geometry(identifier: str) -> np.ndarray:
         FileNotFoundError: When the geometry or its label is missing.
         KeyError: When the label names a sample type this cannot read.
     """
-    product = configs.NAMING.product(
-        identifier, configs.GEOMETRY, detector=placing_detector(identifier)
-    )
+    placing = placing_detector(identifier)
     return images.load_cube(
-        configs.CACHE.files(identifier, product, configs.GEOMETRY)[".img"]
+        product_files(identifier, placing, configs.GEOMETRY)[".img"]
     )[0]
 
 

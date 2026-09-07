@@ -30,16 +30,3 @@ class Layout:
     axes: tuple[str, ...]
     measurement: str
     beside: dict[str, tuple[str, ...]] = field(default_factory=dict)
-
-    @property
-    def ground(self) -> tuple[str, ...]:
-        """Return the names of the axes a position places.
-
-        Returns:
-            The ground axes, outermost first.
-        """
-        return tuple(
-            name
-            for name, holds in zip(self.dims, self.axes, strict=True)
-            if holds == GROUND
-        )

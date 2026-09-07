@@ -34,13 +34,3 @@ class RelativePosition:
     east: np.ndarray
     separable: bool
     polar: PolarGrid | None = None
-
-    @property
-    def ground_axes(self) -> int:
-        """Return how many axes of ground the position places.
-
-        Returns:
-            The two a separable grid crosses, and otherwise the axes the
-            offsets are already held over.
-        """
-        return 2 if self.separable else self.north.ndim

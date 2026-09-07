@@ -7,10 +7,12 @@ from dataclasses import dataclass
 import numpy as np
 
 # Which geometry field places a trace.
-PLACEMENT = {"latitude": "LATITUDE", "longitude": "LONGITUDE"}
+LATITUDE_FIELD = "LATITUDE"
+LONGITUDE_FIELD = "LONGITUDE"
 
 # Which fields the height above ground is read between, in km, for the delay axis.
-RADII = {"ground": "MARS RADIUS", "spacecraft": "SPACECRAFT RADIUS"}
+GROUND_RADIUS_FIELD = "MARS RADIUS"
+SPACECRAFT_RADIUS_FIELD = "SPACECRAFT RADIUS"
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,7 +47,7 @@ class SharadObservation:
         Returns:
             One per trace, in degrees.
         """
-        return self.geometry[PLACEMENT["latitude"]]
+        return self.geometry[LATITUDE_FIELD]
 
     @property
     def longitude(self) -> np.ndarray:
@@ -54,4 +56,4 @@ class SharadObservation:
         Returns:
             One per trace, in degrees.
         """
-        return self.geometry[PLACEMENT["longitude"]]
+        return self.geometry[LONGITUDE_FIELD]

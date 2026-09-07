@@ -74,7 +74,7 @@ def read_observation(identifier: str) -> CtxObservation:
     if image.ndim != 2:
         raise ValueError(f"{identifier} holds a {image.ndim} dimensional image.")
     return CtxObservation(
-        identifier, labels.merge(label), image, *projection.load(label)
+        identifier, labels.merge(label), image, *projection.grid_axes(label)
     )
 
 

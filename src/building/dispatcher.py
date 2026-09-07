@@ -69,19 +69,6 @@ class Instrument:
     worker_bytes: int = 512 * 1024**2
     held_bytes: Callable[[str], int] | None = None
 
-    def holds(self, identifier: str) -> int:
-        """Return how much memory one build of one product of this holds.
-
-        Args:
-            identifier: The product, already downloaded, since what it holds is
-                measured off the files it landed as.
-
-        Returns:
-            How many bytes to hold for it, which is what it was declared to
-            hold where its own size is not read.
-        """
-        return self.held_bytes(identifier) if self.held_bytes else self.worker_bytes
-
 
 INSTRUMENTS = {
     crism_configs.LAYOUT.instrument: Instrument(

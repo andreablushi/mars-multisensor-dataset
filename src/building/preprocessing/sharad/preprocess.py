@@ -31,21 +31,15 @@ def read_observation(identifier: str) -> SharadObservation:
         KeyError: When a label names a sample type this cannot read.
         ValueError: When the geometry holds fewer rows than its label promises.
     """
+    held = {
+        kind: configs.CACHE.files(
+            identifier, configs.NAMING.product(identifier, kind), kind
+        )
+        for kind in configs.KINDS
+    }
     # The echoes themselves, then the places they were sounded at.
-    power, sounding = images.load_plane(
-        configs.CACHE.files(
-            identifier,
-            configs.NAMING.product(identifier, configs.OBSERVATION),
-            configs.OBSERVATION,
-        )[".img"]
-    )
-    geometry, placing = tables.load_table(
-        configs.CACHE.files(
-            identifier,
-            configs.NAMING.product(identifier, configs.GEOMETRY),
-            configs.GEOMETRY,
-        )[".tab"]
-    )
+    power, sounding = images.load_plane(held[configs.OBSERVATION][".img"])
+    geometry, placing = tables.load_table(held[configs.GEOMETRY][".tab"])
     # The geometry counts columns from one, and the radargram from zero.
     traces = geometry[COLUMN_FIELD].astype("i8") - 1
     return SharadObservation(

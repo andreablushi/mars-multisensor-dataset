@@ -12,32 +12,6 @@ from utils.geometry import geodesy
 MEASURED = 512
 
 
-def relative_position(
-    latitude: np.ndarray,
-    longitude: np.ndarray,
-    separable: bool,
-    frame: FeatureFrame,
-) -> RelativePosition:
-    """Return where every sample of one observation sits on its feature.
-
-    Args:
-        latitude: The latitude of every sample in degrees, or of every line
-            where the grid is separable.
-        longitude: The longitude of every sample, or of every sample of a line.
-        separable: Whether those two hold one axis each rather than a value for
-            every sample.
-        frame: The local frame of the feature it was kept for.
-
-    Returns:
-        The position, in degrees from that feature's own centre.
-    """
-    return RelativePosition(
-        north=latitude - frame.centre_lat,
-        east=geodesy.normalise_longitude(longitude - frame.centre_lon),
-        separable=separable,
-    )
-
-
 def degrees(
     position: RelativePosition, frame: FeatureFrame, taken: tuple = ()
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -116,7 +90,7 @@ def ground_sample_m(
         else position.north.shape
     )
     steps: list[float] = []
-    for axis in range(position.ground_axes):
+    for axis in range(len(sizes)):
         if plain:
             # One axis holds latitude, the other longitude, walked at the middle.
             lon, lat = degrees(position, frame)
