@@ -70,8 +70,11 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
         resources={"cpu": asked["cpu"], "mem": asked["memory"], "disk": asked["disk"]},
         envs=[
             {"name": "PYTHONPATH", "value": f"{root}:{root}/src:{root}/scripts"},
-            # The box's own cap, which nothing inside a container reads reliably
-            {"name": budget.MEMORY_ENV, "value": str(given_bytes(asked["memory"]))},
+            # What the build plans against, which is under the box so it may misjudge
+            {
+                "name": budget.MEMORY_ENV,
+                "value": str(given_bytes(asked.get("budget", asked["memory"]))),
+            },
         ],
         parameters=parameters | {"workers": int(asked["cpu"])},
         wait=False,

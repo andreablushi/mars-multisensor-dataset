@@ -23,7 +23,10 @@ class Platform:
         source_root: Where that clone lands on the job.
         python_version: The interpreter the image is built on.
         image_extras: What the platform itself asks for, beyond the pipeline.
-        resources: The cores, memory and disk each stage asks for, by stage.
+        checkpoint_hours: How often a build publishes what it has finished, so a
+            run that dies is resumed from its last one rather than from nothing.
+        resources: The cores, the memory, the budget it plans against and the disk
+            each stage asks for, by stage.
         functions: The function each stage is registered as, by stage.
         publishes: What each stage publishes, by the name a download asks for.
     """
@@ -33,6 +36,7 @@ class Platform:
     source_root: str
     python_version: str
     image_extras: list[str]
+    checkpoint_hours: float
     resources: dict[str, dict[str, str]]
     functions: dict[str, str]
     publishes: dict[str, str]

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import os
 import time
+from collections.abc import Callable
 
 from dhub import archives, submit
 from dhub import configs as platform
@@ -19,17 +20,30 @@ from shared.console import PLAIN_LOG_ENV
 
 BUILD_HANDLER = "scripts.building_pipeline:run_build"
 
-_PUBLISHED = platform.load().publishes
+# What the published dataset holds, said once since a checkpoint publishes it too.
+DATASET_HELD = (
+    "The cropped observations and their index, one object per crop; read "
+    "observations.parquet and ask the store for the crops it names."
+)
+
+_PLATFORM = platform.load()
+_PUBLISHED = _PLATFORM.publishes
 _DATASET = _PUBLISHED["dataset"]
 _SELECTION = _PUBLISHED["selection"]
 
 
-def build_dataset(force: bool = False, workers: int | None = None) -> int:
+def build_dataset(
+    force: bool = False,
+    workers: int | None = None,
+    checkpoint: Callable[[], None] | None = None,
+) -> int:
     """Build the dataset the selection asks for, over as much of it as configured.
 
     Args:
         force: Whether to build every crop again, rather than only the missing ones.
         workers: How many products to build at once, or None for the config.
+        checkpoint: What publishes the dataset as it stands, for a platform run
+            that is resumed from what it left, and None for a run here.
 
     Returns:
         code: A process exit code, non zero when any product failed to build.
@@ -38,7 +52,12 @@ def build_dataset(force: bool = False, workers: int | None = None) -> int:
     printing = Console()
     started_at = time.monotonic()
     outcomes = runner.run_build(
-        choices, printing, paths.dataset_root(choices.name), force=force
+        choices,
+        printing,
+        paths.dataset_root(choices.name),
+        force=force,
+        checkpoint=checkpoint,
+        checkpoint_seconds=_PLATFORM.checkpoint_hours * 3600,
     )
     console.print_summary(outcomes, time.monotonic() - started_at, printing)
     return 1 if any(one.error for one in outcomes) else 0
@@ -77,14 +96,14 @@ def run_build(project, force: bool = False, workers: int | None = None):
             project, published_as, paths.dataset_root(choices.name)
         )
     print(f"building {choices.share:.0%} of the dataset as {choices.name}", flush=True)
-    failed = build_dataset(force, workers)
-    published = archives.published_folder(
-        project,
-        paths.dataset_root(choices.name),
-        published_as,
-        "The cropped observations and their index, one object per crop; read "
-        "observations.parquet and ask the store for the crops it names.",
-    )
+    root = paths.dataset_root(choices.name)
+
+    def checkpoint() -> None:
+        """Publish what the build has finished, so a run that dies resumes from it."""
+        archives.published_folder(project, root, published_as, DATASET_HELD)
+
+    failed = build_dataset(force, workers, checkpoint)
+    published = archives.published_folder(project, root, published_as, DATASET_HELD)
     if failed:
         raise RuntimeError(
             "the build had failures; what was published holds what finished"

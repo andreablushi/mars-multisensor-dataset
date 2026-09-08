@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import queue
 import threading
-from collections.abc import Iterator, Sequence
+import time
+from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import Future, ProcessPoolExecutor, ThreadPoolExecutor
 from contextlib import closing
 from functools import partial
@@ -37,6 +38,8 @@ def run_build(
     root: Path,
     *,
     force: bool = False,
+    checkpoint: Callable[[], None] | None = None,
+    checkpoint_seconds: float = 0.0,
 ) -> list[Outcome]:
     """Fetch every product a build needs and cut each to the features that kept it.
 
@@ -45,6 +48,9 @@ def run_build(
         console: The console to render on.
         root: The directory this build of the dataset is written in.
         force: Whether to rebuild crops that are already written.
+        checkpoint: What publishes the dataset as it stands, so a run that dies
+            is resumed from what it left, or None to publish only at the end.
+        checkpoint_seconds: How long to leave between one of those and the next.
 
     Returns:
         collected: Every finished outcome, in completion order.
@@ -74,11 +80,49 @@ def run_build(
                 plan.jobs, ode, fetching, building, root, settings, budget, progress
             )
             with closing(held) as outcomes:
+                if checkpoint is not None and checkpoint_seconds > 0:
+                    outcomes = _checkpointed(
+                        outcomes, plan, settings, root, checkpoint, checkpoint_seconds
+                    )
                 collected = printing.render(
                     outcomes, len(plan.jobs), "building", console
                 )
     _indexed(plan, collected, settings, root)
     return collected
+
+
+def _checkpointed(
+    outcomes: Iterator[Outcome],
+    plan: Plan,
+    settings: Settings,
+    root: Path,
+    checkpoint: Callable[[], None],
+    seconds: float,
+) -> Iterator[Outcome]:
+    """Hand on every outcome, publishing what is built each time the period passes.
+
+    Args:
+        outcomes: The outcomes as the runner finishes them.
+        plan: What the build set out to do, whose features the index covers.
+        settings: The settled choices for the build.
+        root: The dataset's own root directory.
+        checkpoint: What publishes the dataset as it stands.
+        seconds: How long to leave between one publish and the next.
+
+    Yields:
+        outcome: Each outcome as it came in, unchanged.
+    """
+    collected: list[Outcome] = []
+    due = time.monotonic() + seconds
+    for outcome in outcomes:
+        collected.append(outcome)
+        yield outcome
+        if time.monotonic() < due:
+            continue
+        # An index is written first, so what is published is readable on its own.
+        _indexed(plan, collected, settings, root)
+        checkpoint()
+        due = time.monotonic() + seconds
 
 
 def _outcomes(

@@ -13,6 +13,10 @@ image_extras:
   - digitalhub>=0.15.6,<0.16
   - pandas
 
+# How often a build publishes what it has finished, so a run that dies is resumed
+# from its last one rather than from nothing. Zero publishes only at the end.
+checkpoint_hours: 4
+
 # What the platform gives each stage, which asks for what that stage is held up by.
 resources:
   pipeline:
@@ -26,9 +30,12 @@ resources:
   # A build waits on the archives, not the cores, and its disk holds the whole dataset
   # The cores stay where they are: a job builds one product per core, so asking for
   # more of them multiplies what the box holds rather than relieving it.
+  # The budget is what a build plans against, and the memory is what it is given: a
+  # build that misjudges what it holds overruns the first and still fits the second.
   build:
     cpu: 8
     memory: 64Gi
+    budget: 32Gi
     disk: 500Gi
 
 # The function each run is registered as, the project scoping it so it needs no prefix
