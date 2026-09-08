@@ -8,7 +8,7 @@ from concurrent.futures import ProcessPoolExecutor
 from analysis.coverage.artifacts import index
 from analysis.metadata.loaders.features import load_features
 from analysis.models.feature import Feature
-from analysis.selector.artifacts import filter_config as filtering
+from analysis.selector import configs as filtering
 from analysis.selector.artifacts import write
 from analysis.selector.models.selection import (
     SelectedFeature,

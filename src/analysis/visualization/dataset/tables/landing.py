@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ipywidgets as widgets
 
-from analysis.selector.artifacts import filter_config as filtering
+from analysis.selector import configs as filtering
 from analysis.stats.models.dataset import DatasetStats
 from analysis.stats.models.spread import Spread
 from analysis.visualization.common import quantities, tables, wording

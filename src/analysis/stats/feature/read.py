@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from analysis.coverage.models.coverage import SetCoverage
-from analysis.selector.artifacts import filter_config as filtering
+from analysis.selector import configs as filtering
 from analysis.selector.models import track as timeline
 from analysis.selector.models.selection import Selection
 from analysis.stats.artifacts import selection

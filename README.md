@@ -117,8 +117,7 @@ on disk.
 
 ```
 configs/
-  analysis.yaml         # What a run downloads and measures, and on how many workers
-  window_filter.yaml    # What a window has to hold for a feature to earn a place
+  analysis.yaml         # What a run downloads and measures, and what a window must hold
   building.yaml         # How much of the dataset to build, and what to call it
   digitalhub.yaml       # What a submitted run is given, and what it publishes
 ```
