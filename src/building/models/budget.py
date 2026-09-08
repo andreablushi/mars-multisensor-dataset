@@ -2,8 +2,19 @@
 
 from __future__ import annotations
 
+import os
 import threading
 from collections import deque
+from pathlib import Path
+
+# Where a platform run is told, in bytes, the memory the box it runs on was given.
+MEMORY_ENV = "PIPELINE_MEMORY_BYTES"
+
+# Where a container writes the memory it is held to, by cgroup version.
+CGROUP_LIMITS = (
+    Path("/sys/fs/cgroup/memory.max"),
+    Path("/sys/fs/cgroup/memory/memory.limit_in_bytes"),
+)
 
 
 class Budget:
@@ -55,3 +66,26 @@ class Budget:
         with self._changed:
             self._free = min(self.total, self._free + taken)
             self._changed.notify_all()
+
+
+def memory_bytes() -> int:
+    """Return how many bytes of memory the box this run was given holds.
+
+    Returns:
+        held: The memory the platform named for the box, the limit a container
+            is held to where one is written, and the machine's own free memory
+            where neither says.
+    """
+    told = os.environ.get(MEMORY_ENV, "")
+    if told.isdigit():
+        return int(told)
+    machine = os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
+    for path in CGROUP_LIMITS:
+        try:
+            held = int(path.read_text().split()[0])
+        except (OSError, ValueError):
+            continue
+        # An unlimited cgroup writes a sentinel larger than the machine itself
+        if held <= machine:
+            return held
+    return os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")

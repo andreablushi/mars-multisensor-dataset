@@ -7,9 +7,13 @@ import tomllib
 import digitalhub as dh
 
 import utils.disk.paths as paths
+from building.models import budget
 from dhub import configs
 
 COMPLETED = "COMPLETED"
+
+# What each unit the platform sizes a box in is worth in bytes.
+UNITS = {"Ki": 1024, "Mi": 1024**2, "Gi": 1024**3, "Ti": 1024**4}
 
 
 def submitted(
@@ -50,13 +54,32 @@ def submitted(
         return 1
     function.refresh()
 
-    # Start the job, told where the clone lands and how many cores it has
+    # Start the job, told where the clone lands and what the box holds
     asked = platform.resources[half]
     root = platform.source_root
+
+    def given(memory: str) -> int:
+        """Return how many bytes the memory a box was asked for comes to.
+
+        Args:
+            memory: The memory as the platform config spells it, such as `32Gi`.
+
+        Returns:
+            held: That memory in bytes.
+        """
+        unit = memory[-2:]
+        if unit in UNITS:
+            return int(memory[:-2]) * UNITS[unit]
+        return int(memory)
+
     run = function.run(
         action="job",
         resources={"cpu": asked["cpu"], "mem": asked["memory"], "disk": asked["disk"]},
-        envs=[{"name": "PYTHONPATH", "value": f"{root}:{root}/src:{root}/scripts"}],
+        envs=[
+            {"name": "PYTHONPATH", "value": f"{root}:{root}/src:{root}/scripts"},
+            # The box's own cap, which nothing inside a container reads reliably
+            {"name": budget.MEMORY_ENV, "value": str(given(asked["memory"]))},
+        ],
         parameters=parameters | {sized: int(asked["cpu"])},
         wait=False,
     )

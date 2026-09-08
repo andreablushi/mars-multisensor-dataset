@@ -20,20 +20,14 @@ from building.dispatcher import INSTRUMENTS
 from building.metadata import read as metadata_read
 from building.metadata import write as metadata
 from building.metadata.observation import ObservationMetadata, observation_metadata
-from building.models.budget import Budget
+from building.models.budget import Budget, memory_bytes
 from building.models.job import Job, Outcome, Plan
 from building.models.progress import BUILDING, FETCHING, HOLDING, QUEUED, Progress
 from building.models.settings import Settings
 from building.preprocessing.common import store
 
-# How much of what the machine has free a build may hold, the rest left elsewhere.
+# How much of the box's memory a build may hold, the rest left to everything else.
 MEMORY_SHARE = 0.7
-
-# Where a container writes the memory it is held to, which is what a job was given.
-CGROUP_LIMITS = (
-    Path("/sys/fs/cgroup/memory.max"),
-    Path("/sys/fs/cgroup/memory/memory.limit_in_bytes"),
-)
 
 # How many downloads run at once; they wait on an archive and not on the cores
 DOWNLOADS = 48
@@ -65,13 +59,7 @@ def run_build(
     fetching_count = DOWNLOADS
     # Enough waiting to feed every builder while every download is still in flight.
     ready = building_count + fetching_count
-    free = os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
-    for path in CGROUP_LIMITS:
-        try:
-            free = min(free, int(path.read_text().split()[0]))
-        except (OSError, ValueError):
-            continue
-    budget = Budget(int(free * MEMORY_SHARE))
+    budget = Budget(int(memory_bytes() * MEMORY_SHARE))
     # Reused, so a run pays for a connection once a host rather than once a file
     held = httpx.Limits(
         max_connections=fetching_count * 2,
