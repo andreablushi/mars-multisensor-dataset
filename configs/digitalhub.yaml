@@ -24,10 +24,12 @@ resources:
     memory: 32Gi
     disk: 64Gi
   # A build waits on the archives, not the cores, and its disk holds the whole dataset
+  # The cores stay where they are: a job builds one product per core, so asking for
+  # more of them multiplies what the box holds rather than relieving it.
   build:
     cpu: 8
-    memory: 32Gi
-    disk: 250Gi
+    memory: 64Gi
+    disk: 500Gi
 
 # The function each run is registered as, the project scoping it so it needs no prefix
 functions:
