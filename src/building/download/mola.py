@@ -12,7 +12,7 @@ from building.configs import mola as configs
 from building.download import archive
 
 if TYPE_CHECKING:
-    from building.models.feature import FeatureFrame
+    from shared.models.feature import Feature
 
 # What ODE publishes MOLA under.
 ODE = {"ihid": "MGS", "iid": "MOLA"}
@@ -63,7 +63,7 @@ def record(client: httpx.Client) -> dict[str, tuple[str, Box]]:
     return _RECORD
 
 
-def grids(feature: FeatureFrame, client: httpx.Client) -> list[str]:
+def grids(feature: Feature, client: httpx.Client) -> list[str]:
     """Read which grid one feature's ground is mosaicked from.
 
     Args:

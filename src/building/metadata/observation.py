@@ -9,10 +9,10 @@ import numpy as np
 
 from building.common.layout import GROUND, Layout
 from building.common.pds import times
-from building.models.feature import FeatureFrame
 from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.sample import Sample
 from shared.disk import parquet
+from shared.models.feature import Feature
 
 # What a label calls the two ends of the time a product was taken over.
 STARTED = "START_TIME"
@@ -90,7 +90,7 @@ class ObservationMetadata:
 
 def observation_metadata(
     held: Sample,
-    frame: FeatureFrame,
+    frame: Feature,
     layout: Layout,
     path: str,
     t_start: datetime | None = None,

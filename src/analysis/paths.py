@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from analysis.models.feature import Feature
 from analysis.models.instrument import InstrumentSet
 from shared.disk.slugify import slugify
+from shared.models.feature import Feature
 from shared.paths import CONFIGS_ROOT, DATA_ROOT
 
 CONFIG_PATH = CONFIGS_ROOT / "analysis.yaml"

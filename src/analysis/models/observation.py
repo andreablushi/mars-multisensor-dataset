@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from analysis.models.feature import Feature
+from shared.models.feature import Feature
 
 
 @dataclass(frozen=True, slots=True)

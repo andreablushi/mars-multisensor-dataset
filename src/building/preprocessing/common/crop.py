@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.overlap import Overlap
 from building.preprocessing.common.models.relative_position import (
     PolarGrid,
@@ -12,6 +11,7 @@ from building.preprocessing.common.models.relative_position import (
 )
 from shared.maths import geodesy
 from shared.maths.geodesy import TURN
+from shared.models.feature import Feature
 
 # The longest segment the box is walked in, a chord leaving its arc by under a pixel.
 STEP = 0.1
@@ -24,7 +24,7 @@ def overlap(
     latitude: np.ndarray,
     longitude: np.ndarray,
     separable: bool,
-    frame: FeatureFrame,
+    frame: Feature,
 ) -> Overlap | None:
     """Return what one feature's box keeps of one observation.
 
@@ -118,7 +118,7 @@ def taken(array: np.ndarray, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
 
 
 def polar_overlap(
-    down: np.ndarray, across: np.ndarray, grid: PolarGrid, frame: FeatureFrame
+    down: np.ndarray, across: np.ndarray, grid: PolarGrid, frame: Feature
 ) -> Overlap | None:
     """Return what one feature's box keeps of one grid projected onto a pole.
 

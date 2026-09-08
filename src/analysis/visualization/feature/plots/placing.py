@@ -5,9 +5,9 @@ from __future__ import annotations
 from functools import lru_cache
 
 from analysis.metadata.loaders.features import load_features
-from analysis.models.feature import Feature
 from analysis.visualization.feature.models.placing import Placed
 from shared.disk.slugify import slugify
+from shared.models.feature import Feature
 
 HALF_TURN_DEG = 180.0
 

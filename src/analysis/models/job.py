@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from analysis.models.feature import Feature
 from analysis.models.instrument import InstrumentSet
+from shared.models.feature import Feature
 
 
 @dataclass(frozen=True, slots=True)

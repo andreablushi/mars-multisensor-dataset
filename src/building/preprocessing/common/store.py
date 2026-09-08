@@ -9,11 +9,11 @@ import numpy as np
 
 from building import paths
 from building.common.layout import GROUND, Layout
-from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.sample import Sample
 from shared.disk.files import atomic_path
 from shared.disk.slugify import slugify
 from shared.maths import physics
+from shared.models.feature import Feature
 
 # What the arrays placing a crop are called, and what the masks beside them are.
 NORTH = "north"
@@ -29,9 +29,7 @@ METRES = "metres"
 META = "meta"
 
 
-def sample_path(
-    frame: FeatureFrame, instrument: str, identifier: str, root: Path
-) -> Path:
+def sample_path(frame: Feature, instrument: str, identifier: str, root: Path) -> Path:
     """Return where one cropped observation's arrays belong.
 
     Args:
@@ -69,7 +67,7 @@ def native(values: np.ndarray) -> np.ndarray:
 def write_sample(
     held: Sample,
     layout: Layout,
-    frame: FeatureFrame,
+    frame: Feature,
     root: Path,
 ) -> Path:
     """Write one sample down, its arrays and what describes them in one file.

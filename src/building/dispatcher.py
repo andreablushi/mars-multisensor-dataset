@@ -24,7 +24,7 @@ from building.preprocessing.sharad import elevation
 from building.preprocessing.sharad import preprocess as sharad
 
 if TYPE_CHECKING:
-    from analysis.models.feature import Feature
+    from shared.models.feature import Feature
 
 
 @dataclass(frozen=True, slots=True)

@@ -8,7 +8,7 @@ from datetime import datetime
 from shapely.geometry.base import BaseGeometry
 
 from analysis.coverage.models.region import FeatureRegion
-from analysis.models.feature import Feature
+from shared.models.feature import Feature
 
 
 @dataclass(frozen=True, slots=True)

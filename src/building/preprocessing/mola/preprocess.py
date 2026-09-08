@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from building.configs import mola as configs
-from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.relative_position import RelativePosition
 from building.preprocessing.mola import projection
 from building.preprocessing.mola.merge_tiles import merge_tiles
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
 from shared.maths import geodesy
+from shared.models.feature import Feature
 
 
 def read_observation(grid: str) -> MolaGrid:
@@ -44,7 +44,7 @@ def read_observation(grid: str) -> MolaGrid:
     return MolaGrid(grid, held.resolution, files, held.north is not None)
 
 
-def crop(grid: MolaGrid, frame: FeatureFrame) -> MolaSample | None:
+def crop(grid: MolaGrid, frame: Feature) -> MolaSample | None:
     """Return the bins of one grid its feature's box keeps, merged into one.
 
     Args:

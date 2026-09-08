@@ -8,9 +8,9 @@ from pathlib import Path
 from analysis import paths
 from analysis.metadata.fetchers.features import fetch_features
 from analysis.metadata.ode import ODEClient
-from analysis.models.feature import Feature
 from analysis.paths import features_path
 from shared.disk.files import read_jsonl, write_jsonl
+from shared.models.feature import Feature
 
 
 def load_features(

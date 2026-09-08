@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from analysis.selector.models.selection import SelectedFeature
-from building.models.feature import FeatureFrame
 from shared.disk import parquet
+from shared.models.feature import Feature
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,7 +28,7 @@ class FeatureMetadata:
         observations_kept: How many observations the filter left it.
     """
 
-    frame: FeatureFrame
+    frame: Feature
     area_km2: float
     kept: bool
     window_start: datetime | None
@@ -57,7 +57,7 @@ def feature_metadata(feature: SelectedFeature) -> FeatureMetadata:
         metadata: The metadata, its frame carrying the catalogue box.
     """
     return FeatureMetadata(
-        frame=FeatureFrame(
+        frame=Feature(
             feature_class=feature.feature_class,
             feature_name=feature.feature_name,
             min_lat=feature.min_lat,

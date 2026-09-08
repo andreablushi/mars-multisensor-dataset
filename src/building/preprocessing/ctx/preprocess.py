@@ -10,11 +10,11 @@ import tifffile
 
 from building.common.pds import labels
 from building.configs import ctx as configs
-from building.models.feature import FeatureFrame
 from building.preprocessing.common.crop import marked, overlap, polar_overlap, taken
 from building.preprocessing.ctx import projection
 from building.preprocessing.ctx.models.observation import CtxObservation
 from building.preprocessing.ctx.models.sample import BLANK, CtxSample
+from shared.models.feature import Feature
 
 # Nothing here reads ASU's no-data tag: what a scan left blank is `BLANK`
 logging.getLogger("tifffile").setLevel(logging.ERROR)
@@ -99,7 +99,7 @@ def windowed(image: Path, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     return taken(window, (lines - top, samples - left))
 
 
-def crop(observation: CtxObservation, frame: FeatureFrame) -> CtxSample | None:
+def crop(observation: CtxObservation, frame: Feature) -> CtxSample | None:
     """Return one scan holding only the pixels its feature's box keeps.
 
     Args:

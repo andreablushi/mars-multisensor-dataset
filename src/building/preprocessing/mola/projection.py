@@ -5,12 +5,12 @@ from __future__ import annotations
 import numpy as np
 
 from building.common.pds import images, labels
-from building.models.feature import FeatureFrame
 from building.preprocessing.common.crop import polar_overlap
 from building.preprocessing.common.models.relative_position import PolarGrid
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
 from shared.maths import physics
+from shared.models.feature import Feature
 
 # The two projections the gridded record is written in.
 CYLINDRICAL = "SIMPLE CYLINDRICAL"
@@ -65,7 +65,7 @@ def grid_axes(
     )
 
 
-def crop_cap(grid: MolaGrid, frame: FeatureFrame) -> MolaSample | None:
+def crop_cap(grid: MolaGrid, frame: Feature) -> MolaSample | None:
     """Return the bins of one polar cap its feature's box keeps.
 
     Args:

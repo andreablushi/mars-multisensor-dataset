@@ -7,7 +7,7 @@ from datetime import datetime
 
 from building.metadata.feature import FeatureMetadata
 from building.metadata.observation import ObservationMetadata
-from building.models.feature import FeatureFrame
+from shared.models.feature import Feature
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,7 +24,7 @@ class Job:
 
     instrument: str
     identifier: str
-    frames: tuple[FeatureFrame, ...] = ()
+    frames: tuple[Feature, ...] = ()
     t_start: datetime | None = None
 
     @property

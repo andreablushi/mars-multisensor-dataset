@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from analysis.models.feature import Feature
 from analysis.models.instrument import InstrumentSet
+from shared.models.feature import Feature
 
 
 def stamp(feature: Feature, instrument_set: InstrumentSet, loc: str) -> dict[str, Any]:
@@ -43,7 +43,7 @@ def feature_of(item: dict[str, Any]) -> Feature:
         feature: The feature box the record was downloaded for.
     """
     return Feature(
-        name=item["feature_name"],
+        feature_name=item["feature_name"],
         feature_class=item["feature_class"],
         min_lat=float(item["feature_min_lat"]),
         max_lat=float(item["feature_max_lat"]),

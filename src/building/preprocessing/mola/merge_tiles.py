@@ -7,15 +7,15 @@ import math
 import numpy as np
 
 from building.common.pds import images, labels
-from building.models.feature import FeatureFrame
 from building.preprocessing.mola import projection
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.observation import MolaObservation
 from shared.maths import geodesy
 from shared.maths.geodesy import TURN
+from shared.models.feature import Feature
 
 
-def merge_tiles(grid: MolaGrid, frame: FeatureFrame) -> MolaObservation:
+def merge_tiles(grid: MolaGrid, frame: Feature) -> MolaObservation:
     """Return the one grid every tile a feature stands on writes its part of.
 
     Args:

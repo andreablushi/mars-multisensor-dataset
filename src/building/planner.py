@@ -15,10 +15,10 @@ from analysis import dataset_list
 from analysis.selector.models.selection import Selection
 from building.dispatcher import INSTRUMENTS
 from building.metadata.feature import feature_metadata
-from building.models.feature import FeatureFrame
 from building.models.job import Job, Plan
 from building.models.settings import Settings
 from building.preprocessing.common.store import sample_path
+from shared.models.feature import Feature
 
 
 def build_plan(
@@ -46,7 +46,7 @@ def build_plan(
     """
     picked, crowded = _sampled(dataset_list.read_dataset_list(), settings)
     features = [feature_metadata(one.feature) for one in picked]
-    wanted: dict[tuple[str, str], list[FeatureFrame]] = defaultdict(list)
+    wanted: dict[tuple[str, str], list[Feature]] = defaultdict(list)
     taken: dict[tuple[str, str], datetime] = {}
     unread = 0
     for one, feature in zip(picked, features, strict=True):

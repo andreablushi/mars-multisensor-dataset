@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import numpy as np
 
-from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.relative_position import RelativePosition
 from shared.maths import geodesy
+from shared.models.feature import Feature
 
 # How many neighbouring pairs of one axis to measure a ground sample over.
 MEASURED = 512
 
 
 def degrees(
-    position: RelativePosition, frame: FeatureFrame, taken: tuple = ()
+    position: RelativePosition, frame: Feature, taken: tuple = ()
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return the longitude and latitude the samples of one position sit at.
 
@@ -44,9 +44,7 @@ def degrees(
     return geodesy.stereographic_inverse(x, y, *position.polar)
 
 
-def ground_sample_m(
-    position: RelativePosition, frame: FeatureFrame
-) -> tuple[float, ...]:
+def ground_sample_m(position: RelativePosition, frame: Feature) -> tuple[float, ...]:
     """Return how much ground one sample spans, along each of its ground axes.
 
     Args:

@@ -10,7 +10,6 @@ import numpy as np
 
 from building.common.pds import images, labels
 from building.configs import crism as configs
-from building.models.feature import FeatureFrame
 from building.preprocessing.common.crop import marked, overlap, taken
 from building.preprocessing.crism.correction import (
     atmospheric,
@@ -24,6 +23,7 @@ from building.preprocessing.crism.correction import (
 from building.preprocessing.crism.models.detector import Detector
 from building.preprocessing.crism.models.observation import CrismObservation
 from building.preprocessing.crism.models.sample import CrismSample
+from shared.models.feature import Feature
 
 # What a wavelength file writes where the detector was never calibrated.
 UNCALIBRATED = 65535.0
@@ -266,7 +266,7 @@ def read_observation(identifier: str) -> CrismObservation:
     )
 
 
-def crop(observation: CrismObservation, frame: FeatureFrame) -> CrismSample | None:
+def crop(observation: CrismObservation, frame: Feature) -> CrismSample | None:
     """Return one observation holding only the pixels its feature's box keeps.
 
     Args:
