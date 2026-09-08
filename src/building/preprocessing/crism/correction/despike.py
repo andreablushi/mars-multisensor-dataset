@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from building.preprocessing.crism import configs
 from building.preprocessing.crism.correction import bands_calibration
 from building.preprocessing.crism.correction.destripe import medfilt1
+
+# The windows crism_ml despikes with, in nm, at 20 deviations rather than five.
+SPIKE_PASSES = ((72.0, 20.0), (46.0, 20.0), (20.0, 20.0))
 
 
 def remove_spikes(pixspec: np.ndarray, centre: np.ndarray) -> None:
@@ -21,7 +23,7 @@ def remove_spikes(pixspec: np.ndarray, centre: np.ndarray) -> None:
     pixmed = np.empty_like(pixspec)
     apart = np.empty_like(pixspec)
     caught = np.empty(pixspec.shape, dtype=bool)
-    for width, sigma in configs.SPIKE_PASSES:
+    for width, sigma in SPIKE_PASSES:
         medfilt1(pixspec, bands_calibration.window(centre, width), out=pixmed)
         np.subtract(pixmed, pixspec, out=apart)
         np.abs(apart, out=apart)

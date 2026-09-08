@@ -6,9 +6,14 @@ from dataclasses import replace
 
 import numpy as np
 
-from building.preprocessing.crism import configs
 from building.preprocessing.crism.correction import bands_calibration
 from building.preprocessing.crism.models.mask import Mask
+
+# How wide the moving median reaches, in nm so every configuration means the same.
+STRIPE_WIDTH = 80.0
+
+# How far above its column's mean a band reads as a spike, set per detector.
+STRIPE_SIGMA = {"l": 5.0, "s": 3.0}
 
 
 def remove_spike_columns(
@@ -40,11 +45,11 @@ def remove_spike_columns(
     averaged = block.mean(axis=0)
     # How far each band sits from the median of its wavelength neighbours.
     size = bands_calibration.window(
-        bands_calibration.centres(table)[bands], configs.STRIPE_WIDTH
+        bands_calibration.centres(table)[bands], STRIPE_WIDTH
     )
     apart = np.abs(averaged - medfilt1(averaged, size))
     # crism_ml judges each column against the spread of its own bands.
-    sigma = configs.STRIPE_SIGMA[detector]
+    sigma = STRIPE_SIGMA[detector]
     # One of n bands sits at most (n-1)/sqrt(n) off the mean; past that catches none
     reach = (live_bands.size - 1) / np.sqrt(live_bands.size)
     if sigma >= reach:

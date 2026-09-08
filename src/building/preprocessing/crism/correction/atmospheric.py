@@ -6,9 +6,11 @@ from dataclasses import replace
 
 import numpy as np
 
-from building.preprocessing.crism import configs
 from building.preprocessing.crism.correction import bands_calibration
 from building.preprocessing.crism.models.mask import Mask
+
+# Where the atmosphere absorbs, in nm. Only the 2.0 um CO2 band is worth dropping.
+ATMOSPHERIC = {"l": ((1940.0, 2090.0),), "s": ()}
 
 
 def remove_atmospheric_bands(
@@ -28,7 +30,7 @@ def remove_atmospheric_bands(
     """
     centre = bands_calibration.centres(table)
     caught = np.zeros(centre.shape, dtype=bool)
-    for low, high in configs.ATMOSPHERIC[detector]:
+    for low, high in ATMOSPHERIC[detector]:
         caught |= ~np.isnan(centre) & (centre >= low) & (centre <= high)
 
     # Only what masking still counted as usable is being taken away.

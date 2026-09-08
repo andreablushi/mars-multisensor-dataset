@@ -12,7 +12,6 @@ from building.common.pds import images, labels
 from building.configs import crism as configs
 from building.models.feature import FeatureFrame
 from building.preprocessing.common.crop import marked, overlap, taken
-from building.preprocessing.crism import configs as cleaning
 from building.preprocessing.crism.correction import (
     atmospheric,
     bands_calibration,
@@ -25,6 +24,15 @@ from building.preprocessing.crism.correction import (
 from building.preprocessing.crism.models.detector import Detector
 from building.preprocessing.crism.models.observation import CrismObservation
 from building.preprocessing.crism.models.sample import CrismSample
+
+# What a wavelength file writes where the detector was never calibrated.
+UNCALIBRATED = 65535.0
+
+# What a label says about the calibration software, the same in every product.
+GROUND_SOFTWARE = ("MRO:IKF_", "MRO:RSC_", "MRO:REFZ_", "MRO:FRAM_STAT_")
+
+# Which detector places a merged observation, in order so a lone half places itself
+PLACING_ORDER = ("l", "s")
 
 
 def product_files(identifier: str, detector: str, kind: str) -> dict[str, Path]:
@@ -86,7 +94,7 @@ def placing_detector(identifier: str) -> str:
         FileNotFoundError: When neither detector landed whole.
     """
     found = cached_detectors(identifier)
-    return next(name for name in cleaning.PLACING_ORDER if name in found)
+    return next(name for name in PLACING_ORDER if name in found)
 
 
 def read_wavelengths(record: Path) -> np.ndarray:
@@ -100,7 +108,7 @@ def read_wavelengths(record: Path) -> np.ndarray:
             the detector was never calibrated.
     """
     written = images.load_cube(record)[0][0]
-    return np.where(written >= cleaning.UNCALIBRATED, np.nan, written.astype("f8"))
+    return np.where(written >= UNCALIBRATED, np.nan, written.astype("f8"))
 
 
 def read_detectors(identifier: str) -> dict[str, Detector]:
@@ -160,7 +168,7 @@ def read_label(identifier: str) -> dict[str, str]:
     return {
         key: value
         for key, value in merged.items()
-        if not key.startswith(cleaning.GROUND_SOFTWARE)
+        if not key.startswith(GROUND_SOFTWARE)
     }
 
 
