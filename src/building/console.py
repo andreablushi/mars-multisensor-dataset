@@ -26,26 +26,17 @@ WATCHED_SECONDS = 300.0
 GIB = 1024**3
 
 
-def describe(
-    plan: Plan,
-    settings: Settings,
-    pools: tuple[int, int, int],
-    budget: Budget,
-    console: Console,
-) -> None:
+def describe(plan: Plan, settings: Settings, budget: Budget, console: Console) -> None:
     """Print what a build has to do before it starts.
 
     Args:
         plan: What the planner worked out.
         settings: The settled choices for the build, which size it.
-        pools: The builds, the downloads and the products that may wait, as the
-            runner worked them out from the machine.
         budget: The memory those builds share, which settles how many of the
             heaviest products run at once.
         console: The console to print on.
     """
     crops = sum(len(job.frames) for job in plan.jobs)
-    building, fetching, ready = pools
     console.print(
         f"building {len(plan.features)} features from {len(plan.jobs)} products, "
         f"{crops} crops to write, {plan.skipped_existing} already written, "
@@ -56,8 +47,9 @@ def describe(
     console.print(
         f"instruments: {', '.join(sorted({job.instrument for job in plan.jobs}))}; "
         f"share {settings.share:.0%}, seed {settings.seed}; "
-        f"build pool {building}, download pool {fetching}, "
-        f"{ready} products may wait, {budget.total / GIB:.0f} GiB between them"
+        f"build pool {settings.workers}, download pool {settings.downloads}, "
+        f"{settings.in_flight} products may wait, "
+        f"{budget.total / GIB:.0f} GiB between them"
     )
 
 

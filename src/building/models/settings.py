@@ -29,3 +29,13 @@ class Settings:
     max_observations: int
     workers: int
     downloads: int
+
+    @property
+    def in_flight(self) -> int:
+        """Return how many products may be in the build at once.
+
+        Returns:
+            held: Enough waiting to feed every builder while every download is
+                still in flight.
+        """
+        return self.workers + self.downloads

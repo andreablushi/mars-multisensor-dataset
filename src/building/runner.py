@@ -51,38 +51,25 @@ def run_build(
         FileNotFoundError: When no selection has been written to build from.
     """
     # Every core builds, and what each build holds is measured as it lands.
-    building_count = settings.workers
-    fetching_count = settings.downloads
-    # Enough waiting to feed every builder while every download is still in flight.
-    ready = building_count + fetching_count
     budget = Budget(int(memory_bytes() * MEMORY_SHARE))
     # Reused, so a run pays for a connection once a host rather than once a file
-    held = httpx.Limits(
-        max_connections=fetching_count * 2,
-        max_keepalive_connections=fetching_count * 2,
+    limits = httpx.Limits(
+        max_connections=settings.downloads * 2,
+        max_keepalive_connections=settings.downloads * 2,
     )
-    with httpx.Client(limits=held) as ode:
+    with httpx.Client(limits=limits) as ode:
         plan = planner.build_plan(settings, root, ode, force=force)
-        printing.describe(
-            plan, settings, (building_count, fetching_count, ready), budget, console
-        )
+        printing.describe(plan, settings, budget, console)
         progress = Progress(len(plan.jobs))
         # A download waits on the network and a build on the cores, so the pools differ.
         with (
-            ProcessPoolExecutor(max_workers=building_count) as building,
+            ProcessPoolExecutor(max_workers=settings.workers) as building,
             # A thread waiting on memory holds no download back, so this is wider
-            ThreadPoolExecutor(max_workers=ready) as fetching,
+            ThreadPoolExecutor(max_workers=settings.in_flight) as fetching,
             printing.watch(progress),
         ):
             held = _outcomes(
-                plan.jobs,
-                ode,
-                fetching,
-                building,
-                root,
-                (fetching_count, ready),
-                budget,
-                progress,
+                plan.jobs, ode, fetching, building, root, settings, budget, progress
             )
             with closing(held) as outcomes:
                 collected = printing.render(
@@ -98,7 +85,7 @@ def _outcomes(
     fetching: ThreadPoolExecutor,
     building: ProcessPoolExecutor,
     root: Path,
-    counts: tuple[int, int],
+    settings: Settings,
     budget: Budget,
     progress: Progress,
 ) -> Iterator[Outcome]:
@@ -110,19 +97,18 @@ def _outcomes(
         fetching: The threads the downloads run on.
         building: The processes the builds run on.
         root: The dataset's own root directory.
-        counts: How many downloads may run at once, and how many downloaded
-            products may wait at once to be built.
+        settings: The settled choices for the build, which bound how many
+            products run at once and how many of them are downloading.
         budget: The memory the builds running at once share between them.
         progress: What every product still in the build is doing.
 
     Yields:
         outcome: One outcome per job, in the order they finish.
     """
-    fetching_count, ready = counts
     finished: queue.Queue[Outcome] = queue.Queue()
     # A place to land in, and a turn on the network, since neither bounds the other.
-    waiting = threading.Semaphore(ready)
-    downloading = threading.Semaphore(fetching_count)
+    waiting = threading.Semaphore(settings.in_flight)
+    downloading = threading.Semaphore(settings.downloads)
 
     def finish(outcome: Outcome, ticket: object, held: int) -> None:
         """Record what one job left and give back everything it took.
