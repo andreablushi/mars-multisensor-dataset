@@ -6,7 +6,7 @@ import shutil
 import tarfile
 from pathlib import Path
 
-from digitalhub.utils.exceptions import EntityNotExistsError
+from digitalhub.utils.exceptions import BackendError
 
 from shared import paths
 
@@ -76,7 +76,9 @@ def download_folder(project, name: str, into: Path) -> int:
     """
     try:
         artifact = project.get_artifact(name)
-    except EntityNotExistsError:
+    # A name nothing is published under leaves the platform with no version to
+    # hand back, which it reports as a plain backend error and not a missing one.
+    except BackendError:
         print(f"nothing is published as {name}, so this starts from none", flush=True)
         return 0
     into.mkdir(parents=True, exist_ok=True)
