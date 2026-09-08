@@ -1,5 +1,5 @@
 [project]
-name = "mars-multisensor-features"
+name = "mars-multisensor-dataset"
 version = "0.1.0"
 description = "A multi-sensor dataset of Mars geological features: co-temporal CTX, CRISM and SHARAD observations cropped to each feature."
 readme = "README.md"

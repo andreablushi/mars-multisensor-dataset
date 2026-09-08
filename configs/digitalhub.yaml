@@ -4,7 +4,7 @@
 project: mars-multisensor-features
 
 # The repository the platform clones, and where that clone lands on the job.
-repository: https://github.com/andreablushi/mars-multisensor-features
+repository: https://github.com/andreablushi/mars-multisensor-dataset
 source_root: /shared
 
 # The image a job is built on, its extras what the platform itself asks for
