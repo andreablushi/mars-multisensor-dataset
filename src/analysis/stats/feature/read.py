@@ -8,9 +8,11 @@ from analysis.coverage.models.coverage import SetCoverage
 from analysis.selector.artifacts import filter_config as filtering
 from analysis.selector.models import track as timeline
 from analysis.selector.models.selection import Selection
-from analysis.stats import configs
 from analysis.stats.artifacts import selection
 from analysis.stats.models.feature import FeatureLooks
+
+# How many features are held read at once, so every panel of one shares it.
+FEATURE_CACHE = 8
 
 # How many features are held read, so every panel of one shares the reading
 _read: dict[tuple[str, str], FeatureLooks | None] = {}
@@ -32,7 +34,7 @@ def read_feature(coverage: Sequence[SetCoverage]) -> FeatureLooks | None:
     summary = coverage[0].summary
     key = (summary.feature_class, summary.feature_name)
     if key not in _read:
-        if len(_read) >= configs.FEATURE_CACHE:
+        if len(_read) >= FEATURE_CACHE:
             _read.clear()
         picked = selection.selection_by_feature().get(key)
         _read[key] = None if picked is None else place_kept_looks(coverage, picked)

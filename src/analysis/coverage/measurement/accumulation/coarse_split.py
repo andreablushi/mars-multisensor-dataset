@@ -9,9 +9,12 @@ import numpy as np
 from shapely import STRtree, area, bounds, intersection, is_empty
 from shapely.geometry.base import BaseGeometry
 
-from analysis.coverage import configs
 from analysis.coverage.models.grid import Grid
 from analysis.coverage.models.region import FeatureRegion
+
+# The union is kept per cell so each insert touches a small shape, not as a unit
+MIN_UNION_CELLS = 4
+MAX_UNION_CELLS = 32
 
 
 def grid_over(region: FeatureRegion, shapes: Sequence[BaseGeometry]) -> Grid:
@@ -27,12 +30,12 @@ def grid_over(region: FeatureRegion, shapes: Sequence[BaseGeometry]) -> Grid:
     west, south, east, north = region.shape.bounds
     boxes = bounds(np.asarray(shapes, dtype=object))
     spans = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
-    side = configs.MAX_UNION_CELLS
+    side = MAX_UNION_CELLS
     # A set whose every footprint met the feature edge on has no span to size by
     if (spans > 0.0).any():
         typical = float(np.sqrt(np.median(spans[spans > 0.0])))
         wanted = round(math.sqrt((east - west) * (north - south)) / typical)
-        side = int(min(max(wanted, configs.MIN_UNION_CELLS), configs.MAX_UNION_CELLS))
+        side = int(min(max(wanted, MIN_UNION_CELLS), MAX_UNION_CELLS))
     return Grid(west=west, south=south, east=east, north=north, side=side)
 
 

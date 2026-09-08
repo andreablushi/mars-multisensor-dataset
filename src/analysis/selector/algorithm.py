@@ -7,7 +7,6 @@ from bisect import bisect_left
 from collections.abc import Sequence
 
 from analysis.coverage import ground
-from analysis.selector import configs
 from analysis.selector.filters import redundancy, timeless
 from analysis.selector.filters.coverage_constraints import coverage_constraints
 from analysis.selector.models.counter import Counter
@@ -16,7 +15,13 @@ from analysis.selector.models.survey import Survey
 from analysis.selector.models.track import Track
 from analysis.selector.models.window import Window
 
-_PRICE_PER_DEGREE = 0.01 / configs.LS_PER_PERCENT
+# How far Mars may turn for one more point of ground, in degrees; ten days at mean
+LS_PER_PERCENT = 5.25
+
+# The cells a look must bring that its own set has not, as a share of the feature
+GAIN_SHARE = 0.001
+
+_PRICE_PER_DEGREE = 0.01 / LS_PER_PERCENT
 
 
 def search(track: Track, criteria: Filter) -> Survey | None:
@@ -41,7 +46,7 @@ def search(track: Track, criteria: Filter) -> Survey | None:
     if picked is None:
         return None
     # What a look has to bring the feature, which its own size is read for
-    gain = max(1, round(configs.GAIN_SHARE * len(track.grid.inside)))
+    gain = max(1, round(GAIN_SHARE * len(track.grid.inside)))
     # Clean up the record to only what is worth keeping, and report reached
     kept, reached = redundancy.trimmed(track, picked, windowed, gain)
     return Survey(

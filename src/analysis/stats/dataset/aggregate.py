@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from analysis.stats import configs
 from analysis.stats.feature import measure
 from analysis.stats.models.dataset import Aggregate, ClassStats, DatasetStats
 from analysis.stats.models.feature import FeatureStats
 from analysis.stats.models.spread import Spread
+
+# How far past the whole feature a share may read before it is thrown out.
+SHARE_CEILING = 1.01
 
 
 def dataset_stats(measured: Sequence[FeatureStats]) -> DatasetStats:
@@ -94,7 +96,7 @@ def plausible(feature: FeatureStats) -> bool:
     shares = [reach.km2 / area_km2 for reach in feature.reached.values()]
     shares.append(sum(feature.overlaps.values()) / area_km2)
     shares.append(feature.window.geo_mean)
-    return max(shares) <= configs.SHARE_CEILING
+    return max(shares) <= SHARE_CEILING
 
 
 def _stats_per_class(

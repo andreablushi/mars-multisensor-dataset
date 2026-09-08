@@ -8,12 +8,14 @@ from dataclasses import dataclass
 import numpy as np
 
 from analysis.coverage.models.coverage import Event, SetCoverage
-from analysis.selector import configs
 from analysis.selector.filters import admissible, season
 from analysis.selector.filters.clean_window import clean_window
 from analysis.selector.models.filter import Filter
 from analysis.selector.models.grid import Grid
 from analysis.utils import mask as packing
+
+# Seconds in a day, which is what every span is measured in.
+DAY_SECONDS = 86400.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,8 +67,7 @@ def build(
     return Track(
         observations=[observation for observation, _, _ in held],
         times=[
-            observation.t_start.timestamp() / configs.DAY_SECONDS
-            for observation, _, _ in held
+            observation.t_start.timestamp() / DAY_SECONDS for observation, _, _ in held
         ],
         ls=season.arcs([observation.t_start for observation, _, _ in held]),
         owners=[owner for _, owner, _ in held],

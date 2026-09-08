@@ -8,10 +8,12 @@ from pathlib import Path
 from typing import Any
 
 from analysis import paths
-from analysis.stats import configs
 from analysis.stats.models.dataset import Aggregate, ClassStats, DatasetStats
 from analysis.stats.models.spread import Spread
 from shared.disk.files import atomic_path
+
+# The layout of a published file, raised whenever what is written changes.
+STATS_SHAPE = 2
 
 
 def stats_path(root: Path = paths.STATS_ROOT) -> Path:
@@ -46,10 +48,8 @@ def read_stats_file(root: Path = paths.STATS_ROOT) -> DatasetStats:
     """Read back what the stats pipeline published."""
     path = stats_path(root)
     saved = json.loads(path.read_text(encoding="utf-8"))
-    if saved["shape"] != configs.STATS_SHAPE:
-        raise ValueError(
-            f"{path.name} holds shape {saved['shape']}, not {configs.STATS_SHAPE}"
-        )
+    if saved["shape"] != STATS_SHAPE:
+        raise ValueError(f"{path.name} holds shape {saved['shape']}, not {STATS_SHAPE}")
     return _from_json(saved)
 
 
@@ -64,7 +64,7 @@ def _as_json(stats: DatasetStats) -> dict[str, Any]:
     """
     held = stats.held
     return {
-        "shape": configs.STATS_SHAPE,
+        "shape": STATS_SHAPE,
         "classes": {
             name: [held.selected, _spreads(held.taken)]
             for name, held in stats.classes.items()

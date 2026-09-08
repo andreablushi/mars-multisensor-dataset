@@ -21,7 +21,6 @@ from shapely import (
 )
 from shapely.geometry.base import BaseGeometry
 
-from analysis.coverage import configs
 from analysis.coverage.models.region import FeatureRegion
 from analysis.models.feature import Feature
 from shared.maths import geodesy
@@ -30,6 +29,15 @@ _EMPTY = Polygon()
 _LINESTRING = 1
 _POLYGON = 3
 _FIRST_MULTIPART = 4
+
+# Tracks are clipped to a dilated box so buffering still reaches the edge
+LINE_CLIP_MARGIN_DEG = 2.0
+
+# Straight lon/lat edges curve once projected, so resample below this step
+MAX_SEGMENT_DEG = 0.25
+
+# Segments per quarter circle when a track is buffered to its swath.
+BUFFER_QUAD_SEGMENTS = 16
 
 
 def feature_region(feature: Feature) -> FeatureRegion:
@@ -45,7 +53,7 @@ def feature_region(feature: Feature) -> FeatureRegion:
     west_lon, east_lon = feature.west_lon, feature.east_lon
     centre_lon, centre_lat = geodesy.bbox_centre(min_lat, max_lat, west_lon, east_lon)
     lons, lats = geodesy.bbox_ring(
-        min_lat, max_lat, west_lon, east_lon, configs.MAX_SEGMENT_DEG
+        min_lat, max_lat, west_lon, east_lon, MAX_SEGMENT_DEG
     )
     x, y = geodesy.laea_forward(lons, lats, centre_lon, centre_lat)
     shape = Polygon(np.column_stack((x, y)))
@@ -64,7 +72,7 @@ def feature_region(feature: Feature) -> FeatureRegion:
             max_lat,
             west_lon,
             east_lon,
-            margin_deg=configs.LINE_CLIP_MARGIN_DEG,
+            margin_deg=LINE_CLIP_MARGIN_DEG,
         ),
     )
 
@@ -133,7 +141,7 @@ def projected_footprints(
     radii = np.where(areal[owners], 0.0, np.asarray(swath_widths_m)[owners] / 2.0)
 
     projected = transform(
-        segmentize(parts, configs.MAX_SEGMENT_DEG),
+        segmentize(parts, MAX_SEGMENT_DEG),
         lambda coords: np.column_stack(
             geodesy.laea_forward(
                 coords[:, 0], coords[:, 1], region.centre_lon, region.centre_lat
@@ -142,7 +150,7 @@ def projected_footprints(
     )
     grown = radii > 0.0
     projected[grown] = buffer(
-        projected[grown], radii[grown], quad_segs=configs.BUFFER_QUAD_SEGMENTS
+        projected[grown], radii[grown], quad_segs=BUFFER_QUAD_SEGMENTS
     )
     # A footprint reaching far around the projection centre crosses itself
     broken = ~is_valid(projected)

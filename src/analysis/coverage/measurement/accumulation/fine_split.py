@@ -8,11 +8,16 @@ import numpy as np
 from shapely import contains_xy, prepare
 from shapely.geometry.base import BaseGeometry
 
-from analysis.coverage import configs
 from analysis.coverage.models.grid import Grid
 from analysis.coverage.models.region import FeatureRegion
 
 _NONE = np.empty(0, dtype=np.int64)
+
+# How wide one block of the grid is, in kilometres, so large is not coarse
+GRID_KM = 100
+
+# A footprint under this share of a cell is given none, to credit no ground
+MIN_CELL_SHARE = 0.5
 
 
 def grid_over(region: FeatureRegion, grid_cells: int) -> Grid:
@@ -32,7 +37,7 @@ def grid_over(region: FeatureRegion, grid_cells: int) -> Grid:
         south=south,
         east=east,
         north=north,
-        side=max(1, math.ceil(span_km / configs.GRID_KM)) * grid_cells,
+        side=max(1, math.ceil(span_km / GRID_KM)) * grid_cells,
     )
 
 
@@ -60,7 +65,7 @@ def filled(grid: Grid, shape: BaseGeometry) -> np.ndarray:
             line, crosswise = np.nonzero(inside)
             return rows[line] * grid.side + columns[crosswise]
     # A footprint holding no cell centre is given the one cell it sits in
-    if shape.area >= grid.cell_area_m2 * configs.MIN_CELL_SHARE:
+    if shape.area >= grid.cell_area_m2 * MIN_CELL_SHARE:
         point = shape.representative_point()
         row = int(np.abs(northings - point.y).argmin())
         column = int(np.abs(eastings - point.x).argmin())

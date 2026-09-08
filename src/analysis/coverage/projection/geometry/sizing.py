@@ -8,10 +8,19 @@ from collections.abc import Sequence
 import numpy as np
 from shapely import from_wkt
 
-from analysis.coverage import configs
 from analysis.coverage.projection.geometry import footprints
 from analysis.models.observation import Observation
 from shared.maths import geodesy, physics
+
+# SHARAD transmits 15-25 MHz; its centre sets the sounding wavelength
+SHARAD_CENTRE_FREQUENCY_HZ = 20e6
+SHARAD_WAVELENGTH_M = physics.SPEED_OF_LIGHT_M_S / SHARAD_CENTRE_FREQUENCY_HZ
+
+# A sounding is as wide as its swath and as long as a spacing ODE never publishes
+SHARAD_ALONG_TRACK_M = 460.0
+
+# Ground pixel size in metres for the sets ODE publishes no map scale for
+FALLBACK_PIXEL_M = {"MRO/CRISM/TRDR:msp*if*trr3": 180.0, "MRO/CTX/EDR": 5.4}
 
 
 def track_widths(observations: Sequence[Observation]) -> list[float | None]:
@@ -38,7 +47,7 @@ def track_widths(observations: Sequence[Observation]) -> list[float | None]:
         speed = length / observation.duration_s
         radius = (physics.MARS_GM * physics.RADIUS_M**2 / speed**2) ** (1.0 / 3.0)
         altitude = radius - physics.RADIUS_M
-        widths[position] = 2.0 * math.sqrt(configs.SHARAD_WAVELENGTH_M * altitude / 2.0)
+        widths[position] = 2.0 * math.sqrt(SHARAD_WAVELENGTH_M * altitude / 2.0)
     return widths
 
 
@@ -59,8 +68,8 @@ def ground_pixel_km2(
         KeyError: When a set publishes no scale and none is configured for it.
     """
     if width_km is not None:
-        return width_km * configs.SHARAD_ALONG_TRACK_M / 1000.0
-    scale = map_scale_m or configs.FALLBACK_PIXEL_M.get(set_key)
+        return width_km * SHARAD_ALONG_TRACK_M / 1000.0
+    scale = map_scale_m or FALLBACK_PIXEL_M.get(set_key)
     if scale is None:
         raise KeyError(
             f"{set_key} publishes no map scale and none is configured for it, "
