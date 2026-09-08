@@ -26,8 +26,7 @@ DATASET_HELD = (
     "observations.parquet and ask the store for the crops it names."
 )
 
-_PLATFORM = platform.load()
-_PUBLISHED = _PLATFORM.publishes
+_PUBLISHED = platform.load().publishes
 _DATASET = _PUBLISHED["dataset"]
 _SELECTION = _PUBLISHED["selection"]
 
@@ -57,7 +56,6 @@ def build_dataset(
         paths.dataset_root(choices.name),
         force=force,
         checkpoint=checkpoint,
-        checkpoint_seconds=_PLATFORM.checkpoint_hours * 3600,
     )
     console.print_summary(outcomes, time.monotonic() - started_at, printing)
     return 1 if any(one.error for one in outcomes) else 0

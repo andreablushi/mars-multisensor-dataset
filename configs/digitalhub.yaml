@@ -13,10 +13,6 @@ image_extras:
   - digitalhub>=0.15.6,<0.16
   - pandas
 
-# How often a build publishes what it has finished, so a run that dies is resumed
-# from its last one rather than from nothing. Zero publishes only at the end.
-checkpoint_hours: 4
-
 # What the platform gives each stage, which asks for what that stage is held up by.
 resources:
   pipeline:
@@ -34,7 +30,7 @@ resources:
   # build that misjudges what it holds overruns the first and still fits the second.
   build:
     cpu: 8
-    memory: 64Gi
+    memory: 48Gi
     budget: 32Gi
     disk: 500Gi
 
