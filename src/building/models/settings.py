@@ -18,12 +18,14 @@ class Settings:
             reproducible subset of the full one.
         max_observations: The observations a feature may keep and still be built,
             one seen more often left out whole rather than built in part.
-        cores: How many cores the run was given, for a job a platform sized itself,
-            and None to read the machine's own.
+        workers: How many products are built at once, one per core, which a job
+            a platform sized itself is given rather than reads.
+        downloads: How many downloads run at once, which wait on the archives.
     """
 
     name: str
     share: float
     seed: int
     max_observations: int
-    cores: int | None = None
+    workers: int
+    downloads: int

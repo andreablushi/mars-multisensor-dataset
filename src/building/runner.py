@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import queue
 import threading
 from collections.abc import Iterator, Sequence
@@ -29,9 +28,6 @@ from building.preprocessing.common import store
 # How much of the box's memory a build may hold, the rest left to everything else.
 MEMORY_SHARE = 0.7
 
-# How many downloads run at once; they wait on an archive and not on the cores
-DOWNLOADS = 48
-
 
 def run_build(
     settings: Settings,
@@ -55,8 +51,8 @@ def run_build(
         FileNotFoundError: When no selection has been written to build from.
     """
     # Every core builds, and what each build holds is measured as it lands.
-    building_count = max(1, settings.cores or os.cpu_count() or 1)
-    fetching_count = DOWNLOADS
+    building_count = settings.workers
+    fetching_count = settings.downloads
     # Enough waiting to feed every builder while every download is still in flight.
     ready = building_count + fetching_count
     budget = Budget(int(memory_bytes() * MEMORY_SHARE))

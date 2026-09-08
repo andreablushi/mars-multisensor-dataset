@@ -11,3 +11,9 @@ seed: 42
 
 # The observations a feature may keep and still be built, one over it left out whole
 max_observations: 500
+
+# Products built at once, one per core; a run on a platform is given its own.
+workers: 8
+
+# Downloads at once, which wait on the archives and not on the cores.
+downloads: 48

@@ -28,9 +28,7 @@ def given_bytes(memory: str) -> int:
     return int(memory)
 
 
-def submitted(
-    stage: str, handler: str, ref: str, sized: str = "workers", **parameters
-) -> int:
+def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
     """Register a version of one stage from a pushed commit, and run it.
 
     Args:
@@ -38,8 +36,6 @@ def submitted(
             and the resources it is given.
         handler: The dotted path the platform imports and calls.
         ref: The branch, tag, or commit the platform clones.
-        sized: The keyword the handler is told its cores through, which the
-            selection stage runs one worker per and a build sizes its pools from.
         **parameters: What the handler is called with on the platform.
 
     Returns:
@@ -77,7 +73,7 @@ def submitted(
             # The box's own cap, which nothing inside a container reads reliably
             {"name": budget.MEMORY_ENV, "value": str(given_bytes(asked["memory"]))},
         ],
-        parameters=parameters | {sized: int(asked["cpu"])},
+        parameters=parameters | {"workers": int(asked["cpu"])},
         wait=False,
     )
     print(run.key)

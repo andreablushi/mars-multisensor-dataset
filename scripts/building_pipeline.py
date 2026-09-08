@@ -23,17 +23,17 @@ _DATASET = _PUBLISHED["dataset"]
 _SELECTION = _PUBLISHED["selection"]
 
 
-def build_dataset(force: bool = False, cores: int | None = None) -> int:
+def build_dataset(force: bool = False, workers: int | None = None) -> int:
     """Build the dataset the selection asks for, over as much of it as configured.
 
     Args:
         force: Whether to build every crop again, rather than only the missing ones.
-        cores: How many cores the run was given, or None for the machine's.
+        workers: How many products to build at once, or None for the config.
 
     Returns:
         code: A process exit code, non zero when any product failed to build.
     """
-    choices = overall.load(cores=cores)
+    choices = overall.load(workers=workers)
     printing = Console()
     started_at = time.monotonic()
     outcomes = runner.run_build(
@@ -44,14 +44,14 @@ def build_dataset(force: bool = False, cores: int | None = None) -> int:
 
 
 @handler(outputs=[_DATASET])
-def run_build(project, force: bool = False, cores: int | None = None):
+def run_build(project, force: bool = False, workers: int | None = None):
     """Build the dataset on DigitalHub and publish what it left on disk.
 
     Args:
         project: The DigitalHub project the dataset is logged into.
         force: Whether to build the dataset again from nothing, rather than
             filling in whatever the last build of it left missing.
-        cores: How many cores the run was given, as the job was sized.
+        workers: How many products to build at once, as the job was sized.
 
     Returns:
         dataset: The published dataset, one object per crop.
@@ -61,7 +61,7 @@ def run_build(project, force: bool = False, cores: int | None = None):
             what the selection asked for.
     """
     os.environ[console.PLAIN_LOG_ENV] = "1"
-    choices = overall.load(cores=cores)
+    choices = overall.load(workers=workers)
     # The platform clones the repo alone, so the selection comes off its archive
     print("fetching the selection", flush=True)
     archives.unpack_archive(
@@ -76,7 +76,7 @@ def run_build(project, force: bool = False, cores: int | None = None):
             project, published_as, paths.dataset_root(choices.name)
         )
     print(f"building {choices.share:.0%} of the dataset as {choices.name}", flush=True)
-    failed = build_dataset(force, cores)
+    failed = build_dataset(force, workers)
     published = archives.published_folder(
         project,
         paths.dataset_root(choices.name),
@@ -114,7 +114,7 @@ def main() -> int:
 
     if arguments.dh:
         return submit.submitted(
-            "build", BUILD_HANDLER, arguments.ref, "cores", force=arguments.force
+            "build", BUILD_HANDLER, arguments.ref, force=arguments.force
         )
     return build_dataset(arguments.force)
 
