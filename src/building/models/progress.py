@@ -14,6 +14,9 @@ HOLDING = "holding"
 BUILDING = "building"
 STAGES = (QUEUED, FETCHING, HOLDING, BUILDING)
 
+# How many of the products a build is waiting on it names, the longest held first.
+NAMED = 3
+
 
 @dataclass(slots=True)
 class Progress:
@@ -28,58 +31,75 @@ class Progress:
     total: int
     finished: int = 0
     moved_at: float = field(default_factory=time.monotonic)
-    _at: Counter[str] = field(default_factory=Counter)
+    _held: dict[object, tuple[str, str, float]] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
-    def entered(self, stage: str) -> str:
-        """Record that one more product has reached a stage.
+    def entered(self, label: str, stage: str) -> object:
+        """Record that one product has reached the first stage of the build.
 
         Args:
+            label: What the product is called, which is what a stall names.
             stage: The stage it has reached.
 
         Returns:
-            stage: That stage, so a caller can hold it as where the product now is.
+            ticket: What the product is tracked by, since two jobs of one
+                archive's record are named alike.
         """
+        ticket = object()
         with self._lock:
-            self._at[stage] += 1
             self.moved_at = time.monotonic()
-        return stage
+            self._held[ticket] = (label, stage, self.moved_at)
+        return ticket
 
-    def left(self, stage: str, *, finished: bool = False) -> None:
-        """Record that one product has left a stage.
+    def moved(self, ticket: object, onto: str) -> object:
+        """Record that one product has moved on to the next stage.
 
         Args:
-            stage: The stage it has left.
-            finished: Whether it left the build altogether rather than moving on.
-        """
-        with self._lock:
-            self._at[stage] -= 1
-            self.finished += finished
-            self.moved_at = time.monotonic()
-
-    def moved(self, stage: str, onto: str) -> str:
-        """Record that one product has moved from one stage to the next.
-
-        Args:
-            stage: The stage it has left.
+            ticket: What the product is tracked by, as `entered` handed it back.
             onto: The stage it has reached.
 
         Returns:
-            stage: The stage it has reached.
+            ticket: That same ticket, so a caller holds one thing throughout.
         """
-        self.left(stage)
-        return self.entered(onto)
+        with self._lock:
+            self.moved_at = time.monotonic()
+            label, _, _ = self._held[ticket]
+            self._held[ticket] = (label, onto, self.moved_at)
+        return ticket
+
+    def left(self, ticket: object, *, finished: bool = False) -> None:
+        """Record that one product has left the stage it was at.
+
+        Args:
+            ticket: What the product is tracked by, as `entered` handed it back.
+            finished: Whether it left the build altogether rather than moving on.
+        """
+        with self._lock:
+            self._held.pop(ticket, None)
+            self.finished += finished
+            self.moved_at = time.monotonic()
 
     @property
     def standing(self) -> str:
         """Return one line saying what the build is doing right now.
 
         Returns:
-            written: How many products are at each stage, how many are done, and how
-                long since any moved.
+            written: How many products are at each stage, how many are done, how
+                long since any moved, and the products held longest at one stage,
+                which is what a stalled build is waiting on.
         """
         with self._lock:
-            at = {stage: self._at[stage] for stage in STAGES}
-            done, still = self.finished, time.monotonic() - self.moved_at
-        counted = ", ".join(f"{count} {stage}" for stage, count in at.items())
-        return f"{done}/{self.total} done; {counted}; last moved {still:.0f}s ago"
+            now = time.monotonic()
+            held = list(self._held.values())
+            done, still = self.finished, now - self.moved_at
+        at = Counter(stage for _, stage, _ in held)
+        counted = ", ".join(f"{at[stage]} {stage}" for stage in STAGES)
+        line = f"{done}/{self.total} done; {counted}; last moved {still:.0f}s ago"
+        if not held:
+            return line
+        # Named rather than counted, since a count never says what is holding it up
+        waiting = sorted(held, key=lambda one: one[2])[:NAMED]
+        named = ", ".join(
+            f"{label} {stage} {now - since:.0f}s" for label, stage, since in waiting
+        )
+        return f"{line}; waiting on {named}"

@@ -126,9 +126,10 @@ def render(
                     print("the summary counts the failures from here", flush=True)
             if len(collected) % step == 0 or len(collected) == total:
                 share = len(collected) / total
+                # The one named is the one just finished, never the one under way
                 print(
-                    f"{description} {len(collected)}/{total} ({share:.0%}) "
-                    f"{outcome.job.label}",
+                    f"{description} {len(collected)}/{total} ({share:.0%}); "
+                    f"{outcome.job.label} done",
                     flush=True,
                 )
         return collected

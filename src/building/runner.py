@@ -128,15 +128,17 @@ def _outcomes(
     waiting = threading.Semaphore(ready)
     downloading = threading.Semaphore(fetching_count)
 
-    def finish(outcome: Outcome, held: int) -> None:
+    def finish(outcome: Outcome, ticket: object, held: int) -> None:
         """Record what one job left and give back everything it took.
 
         Args:
             outcome: What the job left, whether it was built or failed.
+            ticket: What the job was tracked by while it was still in the build.
             held: How much memory it was holding, and zero where it held none.
         """
         if held:
             budget.release(held)
+        progress.left(ticket, finished=True)
         finished.put(outcome)
         waiting.release()
 
@@ -149,32 +151,32 @@ def _outcomes(
         # The place is taken before the download, so the room is never given elsewhere.
         waiting.acquire()
         steps = INSTRUMENTS[job.instrument]
-        stage, held = progress.entered(QUEUED), 0
+        ticket, held = progress.entered(job.label, QUEUED), 0
         try:
             with downloading:
-                stage = progress.moved(stage, FETCHING)
+                progress.moved(ticket, FETCHING)
                 steps.fetch(job.identifier, ode)
             # Only now is there a product to measure, and so a share to ask for.
-            stage = progress.moved(stage, HOLDING)
+            progress.moved(ticket, HOLDING)
             held = budget.acquire(
                 steps.held_bytes(job.identifier)
                 if steps.held_bytes
                 else steps.worker_bytes
             )
-            stage = progress.moved(stage, BUILDING)
+            progress.moved(ticket, BUILDING)
             building.submit(build_product, job, root).add_done_callback(
-                partial(built, job, held)
+                partial(built, job, ticket, held)
             )
         except Exception as error:  # noqa: BLE001
             # The download failed or the pool is closing, so this builds nowhere.
-            progress.left(stage, finished=True)
-            finish(Outcome(job, error=error), held)
+            finish(Outcome(job, error=error), ticket, held)
 
-    def built(job: Job, held: int, done: Future[Outcome]) -> None:
+    def built(job: Job, ticket: object, held: int, done: Future[Outcome]) -> None:
         """Record what one job's build left, a worker the pool lost included.
 
         Args:
             job: The job that was built.
+            ticket: What the job was tracked by while it was still in the build.
             held: How much memory it was holding while it built.
             done: What the build pool left.
         """
@@ -182,8 +184,7 @@ def _outcomes(
             outcome = done.result()
         except Exception as error:  # noqa: BLE001
             outcome = Outcome(job, error=error)
-        progress.left(BUILDING, finished=True)
-        finish(outcome, held)
+        finish(outcome, ticket, held)
 
     # Every path leaves one outcome and gives its place back, or it waits for ever.
     for job in jobs:
