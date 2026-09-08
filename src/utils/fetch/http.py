@@ -30,7 +30,7 @@ STREAM_RETRIES = 5
 QUERY_DEADLINE = 900.0
 
 # How long one transfer may run in all, so a trickling server is given up on
-STREAM_DEADLINE = 1800.0
+STREAM_DEADLINE = 3600.0
 
 # The pause every request waits out, which one archive's refusal lengthens.
 ARCHIVE = Throttle()
