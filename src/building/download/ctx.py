@@ -67,7 +67,10 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
         )
         return
     except FetchError:
-        pass
+        # The scan is served at one URL whatever the projection, so only a label
+        # ASU never wrote is worth asking for in the other one.
+        if destination[configs.SUFFIXES[configs.LABEL]].exists():
+            raise
     archive.bring(
         destination, _asu(observation_id, volume, otherwise), TIMEOUT, client=client
     )
