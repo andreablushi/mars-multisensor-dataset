@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import numpy as np
+
 from building.common.pds import images, labels, tables
 from building.configs import sharad as configs
 from building.preprocessing.common.crop import overlap
@@ -68,12 +70,15 @@ def crop(observation: SharadObservation, frame: Feature) -> SharadSample | None:
         return None
     # The traces are the radargram's second axis, and the delay is left whole.
     (traces,) = held.bounds
+    power = observation.power[:, traces]
     return SharadSample(
         identifier=observation.identifier,
         position=held.position,
         label=observation.label,
         inside=held.inside,
-        power=observation.power[:, traces],
+        # The archive sounds a trace or fills it whole, so one flag covers its delays.
+        valid=np.isfinite(power).all(axis=0),
+        power=power,
         geometry=observation.geometry[traces],
         traces=observation.traces[traces],
         elevation=observation.elevation,
