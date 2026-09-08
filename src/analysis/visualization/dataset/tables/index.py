@@ -62,7 +62,7 @@ def _resolution(read: DatasetStats, iid: str) -> str:
         iid: The instrument to write it for.
 
     Returns:
-        The side of that ground in metres, or that it was never measured.
+        written: The side of that ground in metres, or that it was never measured.
     """
     # The median, since a handful of records publish a pixel far out from the rest
     measured = read.held.pixel_km2.get(iid)

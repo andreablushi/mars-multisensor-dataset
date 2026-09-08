@@ -13,9 +13,6 @@ def ratio_colmed(pixspec: np.ndarray, rem: np.ndarray) -> None:
             place.
         rem: Lines by samples, True where the pixel is not a measurement and so
             is kept out of the median.
-
-    Returns:
-        None.
     """
     for at in range(pixspec.shape[1]):
         live = ~rem[:, at]

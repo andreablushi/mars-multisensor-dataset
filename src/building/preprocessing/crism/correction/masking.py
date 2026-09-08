@@ -4,9 +4,14 @@ from __future__ import annotations
 
 import numpy as np
 
-from building.preprocessing.crism import configs
 from building.preprocessing.crism.correction import bands_calibration
 from building.preprocessing.crism.models.mask import Mask
+
+# The nm window each detector is trusted over, outside which the reading is noise.
+WINDOWS = {"l": (1020.0, 2650.0), "s": (400.0, 1060.0)}
+
+# The range a brightness can take, its floor below zero so noise there survives.
+BRIGHTNESS = (-0.05, 1.0)
 
 
 def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: str) -> Mask:
@@ -20,7 +25,7 @@ def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: str) -> Mask:
             picks the window.
 
     Returns:
-        The mask saying where the cube was filled rather than measured.
+        mask: The mask saying where the cube was filled rather than measured.
 
     Raises:
         KeyError: When no window is configured for that detector.
@@ -28,7 +33,7 @@ def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: str) -> Mask:
             it is a measurement to fill the rest from.
     """
     centre = bands_calibration.centres(table)
-    low, high = configs.WINDOWS[detector]
+    low, high = WINDOWS[detector]
 
     # What the wavelength file refused to name, which is already NaN.
     columns = np.isnan(table).all(axis=1)
@@ -45,7 +50,7 @@ def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: str) -> Mask:
         raise ValueError(f"The {detector} window keeps no band of this cube.")
 
     # A brightness outside what light can do is not a reading.
-    floor, ceiling = configs.BRIGHTNESS
+    floor, ceiling = BRIGHTNESS
     scattered = cube < floor
     scattered |= cube > ceiling
     scattered |= ~np.isfinite(cube)

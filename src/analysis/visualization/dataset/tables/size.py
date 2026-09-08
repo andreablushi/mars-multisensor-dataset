@@ -1,14 +1,19 @@
-"""How big a dataset the filter leaves, and how long its windows run."""
+"""How big a dataset the filter leaves, and how much of it a build takes."""
 
 from __future__ import annotations
 
+from collections import Counter
+from collections.abc import Sequence
+
 import ipywidgets as widgets
 
+from analysis.selector.models.selection import Selection
 from analysis.stats.models.dataset import DatasetStats
 from analysis.visualization.common import quantities, tables, wording
 from analysis.visualization.common.models.tables import Row
 
 _HEADINGS = ("Statistic", "Value")
+_AGAINST = ("Statistic", "The filter leaves", "A build takes")
 
 
 def final(read: DatasetStats) -> widgets.Widget:
@@ -29,3 +34,31 @@ def final(read: DatasetStats) -> widgets.Widget:
             )
         )
     return tables.written("The dataset the filter leaves", _HEADINGS, rows)
+
+
+def built(picked: Sequence[Selection], cap: int) -> widgets.Widget:
+    """Tabulate what a build takes of the dataset once the crowded features are out."""
+    kept = [one for one in picked if one.feature.kept]
+    buildable = [one for one in kept if len(one.observations) <= cap]
+    left, taken = (
+        Counter(held.iid for one in group for held in one.observations)
+        for group in (kept, buildable)
+    )
+    rows: list[Row] = [
+        ("Features", f"{len(kept):,}", f"{len(buildable):,}"),
+        (
+            "Feature classes",
+            f"{len({one.feature.feature_class for one in kept}):,}",
+            f"{len({one.feature.feature_class for one in buildable}):,}",
+        ),
+        ("Observations", f"{sum(left.values()):,}", f"{sum(taken.values()):,}"),
+    ]
+    rows.extend(
+        (f"{iid} observations", f"{left[iid]:,}", f"{taken[iid]:,}")
+        for iid in sorted(left)
+    )
+    return tables.written(
+        f"The dataset a build takes, at most {cap:,} observations a feature",
+        _AGAINST,
+        rows,
+    )

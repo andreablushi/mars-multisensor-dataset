@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from analysis.models.feature import Feature
 from analysis.models.instrument import InstrumentSet
+from shared.models.feature import Feature
 
 
 def stamp(feature: Feature, instrument_set: InstrumentSet, loc: str) -> dict[str, Any]:
@@ -18,7 +18,7 @@ def stamp(feature: Feature, instrument_set: InstrumentSet, loc: str) -> dict[str
         loc: Which products the box returned.
 
     Returns:
-        The provenance fields to merge into every stored record.
+        fields: The provenance fields to merge into every stored record.
     """
     return {
         "feature_name": feature.name,
@@ -40,10 +40,10 @@ def feature_of(item: dict[str, Any]) -> Feature:
         item: One stored observation record.
 
     Returns:
-        The feature box the record was downloaded for.
+        feature: The feature box the record was downloaded for.
     """
     return Feature(
-        name=item["feature_name"],
+        feature_name=item["feature_name"],
         feature_class=item["feature_class"],
         min_lat=float(item["feature_min_lat"]),
         max_lat=float(item["feature_max_lat"]),
@@ -59,7 +59,7 @@ def set_key_of(item: dict[str, Any]) -> str:
         item: One stored observation record.
 
     Returns:
-        The set identifier stamped on the record when it was downloaded.
+        key: The set identifier stamped on the record when it was downloaded.
     """
     return str(item["instrument_set"])
 
@@ -71,7 +71,7 @@ def as_utc(text: str) -> datetime:
         text: The ISO 8601 timestamp as stored.
 
     Returns:
-        The timezone-aware timestamp.
+        moment: The timezone-aware timestamp.
     """
     parsed = datetime.fromisoformat(text)
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)

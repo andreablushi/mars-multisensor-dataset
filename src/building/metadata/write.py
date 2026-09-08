@@ -7,13 +7,13 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
-import utils.disk.paths as paths
+from building import paths
 from building.metadata import dataset
 from building.metadata import feature as features
 from building.metadata import observation as records
 from building.metadata.feature import FeatureMetadata
 from building.metadata.observation import ObservationMetadata
-from utils.disk import parquet
+from shared.disk import parquet
 
 
 def write_metadata(
@@ -29,9 +29,6 @@ def write_metadata(
         taken: One record per feature and observation, in the same manner.
         instruments: The instruments the build covered.
         root: The directory the files are written in, made when missing.
-
-    Returns:
-        None.
     """
     root.mkdir(parents=True, exist_ok=True)
     parquet.write(held, features.SCHEMA, root / paths.FEATURE_METADATA_NAME)

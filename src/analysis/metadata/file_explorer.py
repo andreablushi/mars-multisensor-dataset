@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import utils.disk.paths as paths
+from analysis import paths
 from analysis.models.instrument import InstrumentSet
 
 
@@ -15,7 +15,7 @@ def find_sets(root: Path = paths.METADATA_ROOT) -> list[Path]:
         root: The metadata root directory.
 
     Returns:
-        The non-empty JSONL files, sorted, one per feature and instrument set.
+        files: The non-empty JSONL files, sorted, one per feature and instrument set.
     """
     return sorted(path for path in root.glob("*/*/*.jsonl") if path.stat().st_size > 0)
 
@@ -31,7 +31,7 @@ def has_metadata(
         root: The metadata root directory.
 
     Returns:
-        True when a non-empty metadata file for that set exists.
+        found: True when a non-empty metadata file for that set exists.
     """
     directory = root / feature_dir.parent.name / feature_dir.name
     return any(

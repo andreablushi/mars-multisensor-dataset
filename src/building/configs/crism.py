@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import re
 
+from building import paths
 from building.common.layout import GROUND, WAVELENGTH, Layout
 from building.common.naming import Naming
 from building.common.product_cache import ProductCache
-from utils.disk import paths
 
 # The two detectors of one scan, infrared and visible.
 DETECTORS = ("l", "s")
@@ -17,9 +17,7 @@ OBSERVATION = "observation"
 GEOMETRY = "geometry"
 KINDS = (OBSERVATION, GEOMETRY)
 
-# How ODE spells one detector, its kind written where the id carries neither.
-# Radiance and reflectance are the same acquisition calibrated twice, so a row
-# naming either reads as the one observation, which is fetched as reflectance.
+# How ODE spells one detector; radiance and reflectance are the one observation
 NAMING = Naming(
     re.compile(
         r"^(?P<stem>\w+)_(?:if|ra)(?P<code>\d+)(?P<detector>[ls]?)_(?P<level>trr\d+)$"

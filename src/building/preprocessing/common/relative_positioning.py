@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import numpy as np
 
-from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.relative_position import RelativePosition
-from utils.geometry import geodesy
+from shared.maths import geodesy
+from shared.models.feature import Feature
 
 # How many neighbouring pairs of one axis to measure a ground sample over.
 MEASURED = 512
 
 
 def degrees(
-    position: RelativePosition, frame: FeatureFrame, taken: tuple = ()
+    position: RelativePosition, frame: Feature, taken: tuple = ()
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return the longitude and latitude the samples of one position sit at.
 
@@ -21,14 +21,12 @@ def degrees(
         position: Where the samples sit, in degrees from the feature centre or
             in the metres of the projection it was placed on.
         frame: The feature's local frame, which those offsets are relative to.
-        taken: Which of each ground axis to read, outermost first, empty for
-            all of them. A projected grid is crossed to be read, so this keeps
-            the crossing to the part that is wanted.
+        taken: Which of each ground axis to read, outermost first, and empty for
+            all of them.
 
     Returns:
-        The longitudes and latitudes in degrees. They hold one axis each where
-        the position is separable degrees, and are crossed over both axes where
-        it is separable metres on a projection.
+        longitudes: The longitudes in degrees.
+        latitudes: The latitudes in degrees.
     """
     down, across = position.offsets(taken)
     if position.polar is None:
@@ -46,9 +44,7 @@ def degrees(
     return geodesy.stereographic_inverse(x, y, *position.polar)
 
 
-def ground_sample_m(
-    position: RelativePosition, frame: FeatureFrame
-) -> tuple[float, ...]:
+def ground_sample_m(position: RelativePosition, frame: Feature) -> tuple[float, ...]:
     """Return how much ground one sample spans, along each of its ground axes.
 
     Args:
@@ -57,12 +53,8 @@ def ground_sample_m(
         frame: The feature's local frame, which the offsets are relative to.
 
     Returns:
-        The median great-circle distance in metres between samples neighbouring
-        along each ground axis, in the order those axes run, and not a number
-        for an axis holding a single sample. A map raster near a pole is far
-        finer across than along, so one figure for both would say neither, and
-        a projection's own metres are not the ground's, so both are measured
-        off the degrees rather than read from the offsets.
+        sample: The median great-circle metres between neighbouring samples along each
+            ground axis, and not a number for an axis holding a single sample.
     """
 
     def middle(length: int) -> slice:
@@ -72,7 +64,7 @@ def ground_sample_m(
             length: How many samples the axis holds.
 
         Returns:
-            The slice of it to measure over.
+            middle: The slice of it to measure over.
         """
         kept = min(length, MEASURED)
         start = (length - kept) // 2

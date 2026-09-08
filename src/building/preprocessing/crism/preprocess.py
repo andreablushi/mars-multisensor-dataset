@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import replace
 from pathlib import Path
 
@@ -9,9 +10,7 @@ import numpy as np
 
 from building.common.pds import images, labels
 from building.configs import crism as configs
-from building.models.feature import FeatureFrame
 from building.preprocessing.common.crop import marked, overlap, taken
-from building.preprocessing.crism import configs as cleaning
 from building.preprocessing.crism.correction import (
     atmospheric,
     bands_calibration,
@@ -24,6 +23,16 @@ from building.preprocessing.crism.correction import (
 from building.preprocessing.crism.models.detector import Detector
 from building.preprocessing.crism.models.observation import CrismObservation
 from building.preprocessing.crism.models.sample import CrismSample
+from shared.models.feature import Feature
+
+# What a wavelength file writes where the detector was never calibrated.
+UNCALIBRATED = 65535.0
+
+# What a label says about the calibration software, the same in every product.
+GROUND_SOFTWARE = ("MRO:IKF_", "MRO:RSC_", "MRO:REFZ_", "MRO:FRAM_STAT_")
+
+# Which detector places a merged observation, in order so a lone half places itself
+PLACING_ORDER = ("l", "s")
 
 
 def product_files(identifier: str, detector: str, kind: str) -> dict[str, Path]:
@@ -35,7 +44,7 @@ def product_files(identifier: str, detector: str, kind: str) -> dict[str, Path]:
         kind: Which product of that half, the observation or the geometry.
 
     Returns:
-        The path for each suffix it is published as, keyed by suffix.
+        files: The path for each suffix it is published as, keyed by suffix.
     """
     return configs.CACHE.files(
         identifier, configs.NAMING.product(identifier, kind, detector=detector), kind
@@ -45,16 +54,13 @@ def product_files(identifier: str, detector: str, kind: str) -> dict[str, Path]:
 def cached_detectors(identifier: str) -> tuple[str, ...]:
     """Read which detectors of one observation were downloaded whole.
 
-    Both detectors are read out together, but a small share of the survey was
-    archived as one half alone, so what landed says which to build from.
-
     Args:
         identifier: The observation, whose files must already be in the cache
             that `download.fetch` puts them in.
 
     Returns:
-        The detectors whose observation and geometry both landed, in the order
-        the archive names them.
+        detectors: The detectors whose observation and geometry both landed, as the
+            archive names them.
 
     Raises:
         FileNotFoundError: When neither detector landed whole.
@@ -81,26 +87,40 @@ def placing_detector(identifier: str) -> str:
             that `download.fetch` puts them in.
 
     Returns:
-        The first detector that landed, in the order they place an observation.
+        detector: The first detector that landed, in the order they place an
+            observation.
 
     Raises:
         FileNotFoundError: When neither detector landed whole.
     """
     found = cached_detectors(identifier)
-    return next(name for name in cleaning.PLACING_ORDER if name in found)
+    return next(name for name in PLACING_ORDER if name in found)
+
+
+def read_wavelengths(record: Path) -> np.ndarray:
+    """Read the centre wavelength of every column and band one record holds.
+
+    Args:
+        record: The `.img` of a wavelength file, which holds a single line.
+
+    Returns:
+        wavelengths: The centre wavelength in nm as columns by bands, NaN where
+            the detector was never calibrated.
+    """
+    written = images.load_cube(record)[0][0]
+    return np.where(written >= UNCALIBRATED, np.nan, written.astype("f8"))
 
 
 def read_detectors(identifier: str) -> dict[str, Detector]:
     """Read every image one observation was downloaded as, keyed by detector.
 
     Args:
-        identifier: The observation, whose files must already be in the cache
-            that `download.fetch` puts them in, the wavelength file each of its
-            labels names included.
+        identifier: The observation, whose files must already be in the cache that
+            `download.fetch` puts them in, its wavelength files included.
 
     Returns:
-        Every detector that landed, each cube ordered by the wavelength file
-        its own label was calibrated against.
+        detectors: Every detector that landed, each cube ordered by the wavelength file
+            its label names.
 
     Raises:
         FileNotFoundError: When neither detector landed, or a wavelength file
@@ -116,14 +136,8 @@ def read_detectors(identifier: str) -> dict[str, Detector]:
         # The wavelength file this half was calibrated against, and no other.
         wavelength = Path(label[configs.WAVELENGTH_KEY]).stem.lower()
         record = configs.CACHE.files(configs.WAVELENGTH_DIR, wavelength)[".img"]
-        # A wavelength file holds one line, so its cube is one grid deep.
-        written = images.load_cube(record)[0][0]
-        # Say what was never calibrated with NaN rather than a number.
-        wavelengths = np.where(
-            written >= cleaning.UNCALIBRATED, np.nan, written.astype("f8")
-        )
         # Order the bands by wavelength and mark what was never calibrated.
-        cube, table = bands_calibration.calibrate(cube, wavelengths)
+        cube, table = bands_calibration.calibrate(cube, read_wavelengths(record))
         detectors[name] = Detector(name, cube, table)
     return detectors
 
@@ -136,8 +150,8 @@ def read_label(identifier: str) -> dict[str, str]:
             that `download.fetch` puts them in.
 
     Returns:
-        Their labels merged into one, without the tuning of the software that
-        calibrated them.
+        label: Their labels merged into one, without the tuning of the software that
+            calibrated them.
 
     Raises:
         FileNotFoundError: When neither detector landed, or a label is missing.
@@ -154,7 +168,7 @@ def read_label(identifier: str) -> dict[str, str]:
     return {
         key: value
         for key, value in merged.items()
-        if not key.startswith(cleaning.GROUND_SOFTWARE)
+        if not key.startswith(GROUND_SOFTWARE)
     }
 
 
@@ -166,8 +180,8 @@ def read_geometry(identifier: str) -> np.ndarray:
             that `download.fetch` puts them in.
 
     Returns:
-        The backplanes of the detector that places it, as lines by samples by
-        fourteen.
+        backplanes: The backplanes of the detector that places it, as lines by samples
+            by fourteen.
 
     Raises:
         FileNotFoundError: When the geometry or its label is missing.
@@ -179,6 +193,36 @@ def read_geometry(identifier: str) -> np.ndarray:
     )[0]
 
 
+def cleaning_steps(detector: Detector) -> Iterator[tuple[str, Detector]]:
+    """Refuse everything one detector holds that is not measured, a step at a time.
+
+    Args:
+        detector: The detector as it was read, whose one cube every step works in
+            place on, so a caller wanting a step back has to copy it out.
+
+    Yields:
+        step: What was just done, and the detector once it was done.
+
+    Raises:
+        ValueError: When a window keeps no band of the cube.
+    """
+    cube, table, name = detector.cube, detector.wavelengths, detector.name
+    mask = masking.bad_pixels(cube, table, name)
+    yield "masked", replace(detector, mask=mask)
+    mask = atmospheric.remove_atmospheric_bands(cube, mask, table, name)
+    yield "atmosphere dropped", replace(detector, mask=mask)
+    mask = destripe.remove_spike_columns(cube, mask, table, name)
+    yield "destriped", replace(detector, mask=mask)
+    ratio.ratio_colmed(cube, mask.pixels)
+    yield "ratioed", replace(detector, mask=mask)
+    # Despike only the bands in play, so filled ones cannot pull the median about.
+    kept = ~mask.bands
+    block = np.ascontiguousarray(cube[:, :, kept])
+    despike.remove_spikes(block, bands_calibration.centres(table)[kept])
+    cube[:, :, kept] = block
+    yield "despiked", replace(detector, mask=mask)
+
+
 def clean_detectors(identifier: str) -> dict[str, Detector]:
     """Read one observation and refuse everything in it that is not measured.
 
@@ -187,28 +231,17 @@ def clean_detectors(identifier: str) -> dict[str, Detector]:
             that `download.fetch` puts them in.
 
     Returns:
-        Every detector that landed, each cube filled where it was not measured
-        and its mask set beside it.
+        detectors: Every detector that landed, each cube filled where it was not
+            measured and its mask beside it.
 
     Raises:
         FileNotFoundError: When any file the observation needs is missing.
         ValueError: When a window keeps no band of a cube.
     """
-    cleaned = {}
-    for name, detector in read_detectors(identifier).items():
-        # Every step works on the one cube, so the chain holds no second copy.
-        cube, table = detector.cube, detector.wavelengths
-        mask = masking.bad_pixels(cube, table, name)
-        mask = atmospheric.remove_atmospheric_bands(cube, mask, table, name)
-        mask = destripe.remove_spike_columns(cube, mask, table, name)
-        ratio.ratio_colmed(cube, mask.pixels)
-        # Despike only the bands in play, so filled ones cannot pull the median about.
-        kept = ~mask.bands
-        block = np.ascontiguousarray(cube[:, :, kept])
-        despike.remove_spikes(block, bands_calibration.centres(table)[kept])
-        cube[:, :, kept] = block
-        cleaned[name] = replace(detector, mask=mask)
-    return cleaned
+    return {
+        name: list(cleaning_steps(detector))[-1][1]
+        for name, detector in read_detectors(identifier).items()
+    }
 
 
 def read_observation(identifier: str) -> CrismObservation:
@@ -219,7 +252,7 @@ def read_observation(identifier: str) -> CrismObservation:
             that `download.fetch` puts them in.
 
     Returns:
-        The observation, its bands ascending in wavelength.
+        observation: The observation, its bands ascending in wavelength.
 
     Raises:
         FileNotFoundError: When any file the observation needs is missing.
@@ -233,7 +266,7 @@ def read_observation(identifier: str) -> CrismObservation:
     )
 
 
-def crop(observation: CrismObservation, frame: FeatureFrame) -> CrismSample | None:
+def crop(observation: CrismObservation, frame: Feature) -> CrismSample | None:
     """Return one observation holding only the pixels its feature's box keeps.
 
     Args:
@@ -241,8 +274,8 @@ def crop(observation: CrismObservation, frame: FeatureFrame) -> CrismSample | No
         frame: The local frame of the feature it was kept for.
 
     Returns:
-        The observation cut to that feature, its bands left whole, or None
-        where it reaches none of it.
+        sample: The observation cut to that feature, its bands left whole, or None where
+            it reaches none of it.
     """
     held = overlap(
         observation.latitude, observation.longitude, observation.separable, frame

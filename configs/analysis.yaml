@@ -1,0 +1,37 @@
+# A run downloads every set still missing and measures every set not yet measured.
+
+# Jobs at once in each half: download threads, then coverage processes.
+workers: 16
+
+# Re-fetch the ODE feature catalogue instead of the cache.
+refresh_catalog: false
+
+# How many cells a block is divided into. For computation purpose.
+grid_cells: 32
+
+# What a run downloads and measures, and what the notebook figures draw in turn.
+# IHID/IID/PT, and a colon plus an ODE product id pattern to narrow the type.
+instruments:
+  - MRO/CTX/EDR
+  - MRO/CRISM/TRDR:msp*if*trr3  # the multispectral survey, reflectance cubes only
+  - MRO/SHARAD/USRDRV2
+
+# Which products a box returns: b box overlap, f footprint overlap, o inside, i containing.
+loc: f
+
+# What a window has to hold before a feature earns a place in the dataset.
+window:
+  # The coverage each instrument is asked of a feature, in percent of its area.
+  constraints:
+    - {CTX: 0.50}
+    - {CRISM: 0.30}
+    - {SHARAD: 0.0}
+
+  # The pixels an instrument has to land on a feature to count, powers of two preferred
+  admits: {CTX: 65536, CRISM: 4096, SHARAD: 64}
+
+  # How far Mars may turn inside a window, in degrees of Ls; 90 is one season
+  span_ls: 90.0
+
+  # What instruments are excluded from the window, and kept whenever they came
+  timeless: [SHARAD]

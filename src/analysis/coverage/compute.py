@@ -18,7 +18,7 @@ def compute(job: Job, grid_cells: int, union_threads: int) -> Outcome:
         union_threads: How many of the feature's cells to accumulate at once.
 
     Returns:
-        The outcome, carrying the error when the job failed.
+        outcome: The outcome, carrying the error when the job failed.
     """
     try:
         projected = project.project(load_observations(job.source))

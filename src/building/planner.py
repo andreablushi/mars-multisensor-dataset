@@ -15,10 +15,10 @@ from analysis import dataset_list
 from analysis.selector.models.selection import Selection
 from building.dispatcher import INSTRUMENTS
 from building.metadata.feature import feature_metadata
-from building.models.feature import FeatureFrame
 from building.models.job import Job, Plan
 from building.models.settings import Settings
 from building.preprocessing.common.store import sample_path
+from shared.models.feature import Feature
 
 
 def build_plan(
@@ -32,23 +32,21 @@ def build_plan(
 
     Args:
         settings: The settled choices for the build, which size it. Which
-            instruments it covers is not among them: the build takes every
-            instrument the selection names and that this half can read, and
-            every instrument matched by ground rather than named at all.
+            instruments it covers is not among them.
         root: The directory this build of the dataset is written in.
         ode: The client an instrument searched by ground is looked up through,
             or None to leave those instruments out of the plan.
         force: When True, plan products every crop of which is already written.
 
     Returns:
-        The plan, its jobs heaviest first so no long one is picked up last.
+        plan: The plan, its jobs heaviest first so no long one is picked up last.
 
     Raises:
         FileNotFoundError: When no selection has been written to build from.
     """
-    picked = _sampled(dataset_list.read_dataset_list(), settings)
+    picked, crowded = _sampled(dataset_list.read_dataset_list(), settings)
     features = [feature_metadata(one.feature) for one in picked]
-    wanted: dict[tuple[str, str], list[FeatureFrame]] = defaultdict(list)
+    wanted: dict[tuple[str, str], list[Feature]] = defaultdict(list)
     taken: dict[tuple[str, str], datetime] = {}
     unread = 0
     for one, feature in zip(picked, features, strict=True):
@@ -58,7 +56,9 @@ def build_plan(
             # Skip a product no instrument builds, and an id naming no observation.
             read = named.observation_id if named else None
             if read and (held := read(kept.pdsid)):
-                wanted[(kept.iid, held)].append(feature.frame)
+                # Both detectors name one observation, so it is cut from once
+                if feature.frame not in wanted[(kept.iid, held)]:
+                    wanted[(kept.iid, held)].append(feature.frame)
                 taken.setdefault((kept.iid, held), kept.t_start)
             else:
                 unread += 1
@@ -101,23 +101,31 @@ def build_plan(
         features=tuple(features),
         skipped_existing=skipped,
         unread=unread,
+        crowded=crowded,
     )
 
 
-def _sampled(picked: Sequence[Selection], settings: Settings) -> list[Selection]:
+def _sampled(
+    picked: Sequence[Selection], settings: Settings
+) -> tuple[list[Selection], int]:
     """Keep the share of the features one build covers, evenly across classes.
 
     Args:
         picked: What the search left of every feature it searched.
-        settings: The settled choices for the build.
+        settings: The settled choices for the build, whose cap is read before the
+            draw, so a share is a share of what a build may cover.
 
     Returns:
-        The selections to build, in the order the selection was written.
+        kept: The selections to build, in the order the selection was written.
+        crowded: How many features were left out for holding too many observations.
     """
-    kept = [one for one in picked if one.feature.kept]
+    passed = [one for one in picked if one.feature.kept]
+    cap = settings.max_observations
+    kept = [one for one in passed if len(one.observations) <= cap]
+    crowded = len(passed) - len(kept)
     wanted = round(settings.share * len(kept))
     if wanted >= len(kept):
-        return kept
+        return kept, crowded
     classes: dict[str, list[int]] = defaultdict(list)
     for at, one in enumerate(kept):
         classes[one.feature.feature_class].append(at)
@@ -129,4 +137,4 @@ def _sampled(picked: Sequence[Selection], settings: Settings) -> list[Selection]
     # One from each class in turn, so every class is reached before any is drawn twice.
     rounds = zip_longest(*(classes[name] for name in order))
     taken = [at for at in chain.from_iterable(rounds) if at is not None]
-    return [kept[at] for at in sorted(taken[:wanted])]
+    return [kept[at] for at in sorted(taken[:wanted])], crowded

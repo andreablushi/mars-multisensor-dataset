@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from building.common.pds import images, labels, tables
 from building.configs import sharad as configs
-from building.models.feature import FeatureFrame
 from building.preprocessing.common.crop import overlap
 from building.preprocessing.sharad import elevation
 from building.preprocessing.sharad.models.observation import SharadObservation
 from building.preprocessing.sharad.models.sample import SharadSample
+from shared.models.feature import Feature
 
 # The field the geometry names each radargram column in, counted from one.
 COLUMN_FIELD = "RADARGRAM COLUMN"
@@ -22,9 +22,8 @@ def read_observation(identifier: str) -> SharadObservation:
             that `download.fetch` puts them in.
 
     Returns:
-        The observation holding only the traces the geometry places, in the
-        order the radargram stores them, on the elevation its window is posted
-        against.
+        observation: The observation holding only the traces the geometry places, in the
+            radargram's own order.
 
     Raises:
         FileNotFoundError: When either product or its label is missing.
@@ -52,7 +51,7 @@ def read_observation(identifier: str) -> SharadObservation:
     )
 
 
-def crop(observation: SharadObservation, frame: FeatureFrame) -> SharadSample | None:
+def crop(observation: SharadObservation, frame: Feature) -> SharadSample | None:
     """Return one track holding only the traces its feature's box keeps.
 
     Args:
@@ -60,7 +59,7 @@ def crop(observation: SharadObservation, frame: FeatureFrame) -> SharadSample | 
         frame: The local frame of the feature it was kept for.
 
     Returns:
-        The track cut to that feature, or None where it reaches none of it.
+        sample: The track cut to that feature, or None where it reaches none of it.
     """
     held = overlap(
         observation.latitude, observation.longitude, observation.separable, frame

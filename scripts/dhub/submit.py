@@ -6,28 +6,40 @@ import tomllib
 
 import digitalhub as dh
 
-import utils.disk.paths as paths
+from building.models import budget
 from dhub import configs
+from shared import paths
 
-COMPLETED = "COMPLETED"
+UNITS = {"Ki": 1024, "Mi": 1024**2, "Gi": 1024**3, "Ti": 1024**4}
 
 
-def submitted(
-    half: str, handler: str, ref: str, sized: str = "workers", **parameters
-) -> int:
-    """Register a version of one half from a pushed commit, and run it.
+def given_bytes(memory: str) -> int:
+    """Return how many bytes the memory a box was asked for comes to.
 
     Args:
-        half: Which half to submit, naming the function it is registered as
+        memory: The memory as the platform config spells it, such as `32Gi`.
+
+    Returns:
+        held: That memory in bytes.
+    """
+    unit = memory[-2:]
+    if unit in UNITS:
+        return int(memory[:-2]) * UNITS[unit]
+    return int(memory)
+
+
+def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
+    """Register a version of one stage from a pushed commit, and run it.
+
+    Args:
+        stage: Which stage to submit, naming the function it is registered as
             and the resources it is given.
         handler: The dotted path the platform imports and calls.
         ref: The branch, tag, or commit the platform clones.
-        sized: The keyword the handler is told its cores through, which the
-            analysis half runs one worker per and a build sizes its pools from.
         **parameters: What the handler is called with on the platform.
 
     Returns:
-        A process exit code, non zero when the image did not build.
+        code: A process exit code, non zero when the image did not build.
     """
     platform = configs.load()
     # The image is built from the repo's own dependencies, so it cannot drift
@@ -35,7 +47,7 @@ def submitted(
     needs = tomllib.loads(manifest)["project"]["dependencies"] + platform.image_extras
     project = dh.get_or_create_project(platform.project)
     function = project.new_function(
-        name=platform.functions[half],
+        name=platform.functions[stage],
         kind="python",
         python_version=platform.python_version,
         code_src=f"git+{platform.repository}#{ref}",
@@ -45,20 +57,23 @@ def submitted(
 
     # Build the image first, since the job cannot install anything itself.
     built = function.run(action="build", wait=True)
-    if built.status.state != COMPLETED:
+    if built.status.state != "COMPLETED":
         print(f"the image did not build: {built.status.state}")
         return 1
     function.refresh()
 
-    # Start the job on the built image, telling it where the clone lands and
-    # how many cores it was given to size itself by.
-    asked = platform.resources[half]
+    # Start the job, told where the clone lands and what the box holds
+    asked = platform.resources[stage]
     root = platform.source_root
     run = function.run(
         action="job",
         resources={"cpu": asked["cpu"], "mem": asked["memory"], "disk": asked["disk"]},
-        envs=[{"name": "PYTHONPATH", "value": f"{root}:{root}/src:{root}/scripts"}],
-        parameters=parameters | {sized: int(asked["cpu"])},
+        envs=[
+            {"name": "PYTHONPATH", "value": f"{root}:{root}/src:{root}/scripts"},
+            # The box's own cap, which nothing inside a container reads reliably
+            {"name": budget.MEMORY_ENV, "value": str(given_bytes(asked["memory"]))},
+        ],
+        parameters=parameters | {"workers": int(asked["cpu"])},
         wait=False,
     )
     print(run.key)

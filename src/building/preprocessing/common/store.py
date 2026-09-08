@@ -7,13 +7,13 @@ from pathlib import Path
 
 import numpy as np
 
-import utils.disk.paths as paths
+from building import paths
 from building.common.layout import GROUND, Layout
-from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.sample import Sample
-from utils.disk.files import atomic_path
-from utils.disk.slugify import slugify
-from utils.geometry import geodesy
+from shared.disk.files import atomic_path
+from shared.disk.slugify import slugify
+from shared.maths import physics
+from shared.models.feature import Feature
 
 # What the arrays placing a crop are called, and what the masks beside them are.
 NORTH = "north"
@@ -29,9 +29,7 @@ METRES = "metres"
 META = "meta"
 
 
-def sample_path(
-    frame: FeatureFrame, instrument: str, identifier: str, root: Path
-) -> Path:
+def sample_path(frame: Feature, instrument: str, identifier: str, root: Path) -> Path:
     """Return where one cropped observation's arrays belong.
 
     Args:
@@ -41,7 +39,7 @@ def sample_path(
         root: The dataset's own root directory.
 
     Returns:
-        The file it is written as, which need not exist.
+        path: The file it is written as, which need not exist.
     """
     return (
         root
@@ -60,8 +58,7 @@ def native(values: np.ndarray) -> np.ndarray:
             significant byte first whatever the machine reading it is.
 
     Returns:
-        The same values in the machine's own order, so what is stored can be
-        handed to a tensor rather than swapped by whoever reads it.
+        values: The same values in the machine's own order, ready to hand to a tensor.
     """
     held = np.asarray(values)
     return held.astype(held.dtype.newbyteorder("="), copy=False)
@@ -70,7 +67,7 @@ def native(values: np.ndarray) -> np.ndarray:
 def write_sample(
     held: Sample,
     layout: Layout,
-    frame: FeatureFrame,
+    frame: Feature,
     root: Path,
 ) -> Path:
     """Write one sample down, its arrays and what describes them in one file.
@@ -83,7 +80,7 @@ def write_sample(
         root: The dataset's own root directory.
 
     Returns:
-        The file it was written as.
+        path: The file it was written as.
     """
     ground = tuple(
         name
@@ -120,7 +117,7 @@ def write_sample(
         "centre_lon": frame.centre_lon,
         "centre_lat": frame.centre_lat,
         "position_units": DEGREES if grid is None else METRES,
-        "radii_m": [geodesy.EQUATORIAL_RADIUS_M, geodesy.POLAR_RADIUS_M],
+        "radii_m": [physics.EQUATORIAL_RADIUS_M, physics.POLAR_RADIUS_M],
         "polar": None if grid is None else list(grid),
         "dims": {name: list(axes) for name, axes in along.items()},
         "axes": list(layout.axes),

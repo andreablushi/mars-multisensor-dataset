@@ -17,8 +17,8 @@ def build_cube(image: Path, label: dict[str, str]) -> np.ndarray:
         label: The parsed label describing it.
 
     Returns:
-        The values as lines by samples by bands, in the band order the file
-        stores them in, and in the unit its label says they stand for.
+        values: The values as lines by samples by bands, in the file's own band order
+            and the label's unit.
 
     Raises:
         KeyError: When it names a sample type this cannot read.
@@ -46,8 +46,8 @@ def measured(values: np.ndarray, label: dict[str, str]) -> np.ndarray:
         label: The parsed label describing them.
 
     Returns:
-        The values in the unit the label names, which are the stored ones
-        themselves where it asks for no scaling and no offset.
+        values: The values in the unit the label names, the stored ones where it asks
+            for no scaling.
     """
     factor, offset = labels.scaling(label)
     if factor == 1.0 and offset == 0.0:
@@ -70,8 +70,8 @@ def load_window(
         samples: The first sample to read, and the sample after the last.
 
     Returns:
-        The values inside those bounds, as lines by samples, in the unit the
-        label says they stand for.
+        values: The values inside those bounds, as lines by samples, in the label's
+            unit.
 
     Raises:
         KeyError: When it names a sample type this cannot read.
@@ -94,8 +94,8 @@ def load_cube(image: Path) -> tuple[np.ndarray, dict[str, str]]:
         image: The `.img` file holding the values, whose `.lbl` sits beside it.
 
     Returns:
-        The values as lines by samples by bands, in the band order the file
-        stores them in, and the parsed label describing them.
+        values: The values as lines by samples by bands, in the file's own band order.
+        label: The parsed label describing them.
 
     Raises:
         FileNotFoundError: When the image or its label is missing.
@@ -112,7 +112,8 @@ def load_plane(image: Path) -> tuple[np.ndarray, dict[str, str]]:
         image: The `.img` file holding the values, whose `.lbl` sits beside it.
 
     Returns:
-        The values as lines by samples, and the parsed label describing them.
+        values: The values as lines by samples.
+        label: The parsed label describing them.
 
     Raises:
         FileNotFoundError: When the image or its label is missing.

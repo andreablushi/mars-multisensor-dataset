@@ -7,7 +7,6 @@ from bisect import bisect_left
 from collections.abc import Sequence
 
 from analysis.coverage import ground
-from analysis.selector import configs
 from analysis.selector.filters import redundancy, timeless
 from analysis.selector.filters.coverage_constraints import coverage_constraints
 from analysis.selector.models.counter import Counter
@@ -16,7 +15,13 @@ from analysis.selector.models.survey import Survey
 from analysis.selector.models.track import Track
 from analysis.selector.models.window import Window
 
-_PRICE_PER_DEGREE = 0.01 / configs.LS_PER_PERCENT
+# How far Mars may turn for one more point of ground, in degrees; ten days at mean
+LS_PER_PERCENT = 5.25
+
+# The cells a look must bring that its own set has not, as a share of the feature
+GAIN_SHARE = 0.001
+
+_PRICE_PER_DEGREE = 0.01 / LS_PER_PERCENT
 
 
 def search(track: Track, criteria: Filter) -> Survey | None:
@@ -27,7 +32,7 @@ def search(track: Track, criteria: Filter) -> Survey | None:
         criteria: The filter read against the feature, holding what it is asked.
 
     Returns:
-        The chosen window, or None when no window is worth keeping.
+        survey: The chosen window, or None when no window is worth keeping.
     """
     # What the filter asks of this feature, worked out once when it was read
     windowed, standing = criteria.windowed, criteria.standing
@@ -40,8 +45,10 @@ def search(track: Track, criteria: Filter) -> Survey | None:
     picked = _best(track, windowed, criteria)
     if picked is None:
         return None
+    # What a look has to bring the feature, which its own size is read for
+    gain = max(1, round(GAIN_SHARE * len(track.grid.inside)))
     # Clean up the record to only what is worth keeping, and report reached
-    kept, reached = redundancy.trimmed(track, picked, windowed, configs.GAIN)
+    kept, reached = redundancy.trimmed(track, picked, windowed, gain)
     return Survey(
         area_km2=track.grid.area_km2,
         start=track.observations[kept[0]].t_start,
@@ -49,7 +56,7 @@ def search(track: Track, criteria: Filter) -> Survey | None:
         days=track.times[kept[-1]] - track.times[kept[0]],
         geo_mean=_scored(track, reached),
         kept=tuple(kept),
-        standing=timeless.fresh_looks(track, criteria.timeless),
+        standing=timeless.fresh_looks(track, criteria.timeless, gain),
     )
 
 
@@ -62,7 +69,7 @@ def _best(track: Track, windowed: Constraints, criteria: Filter) -> Window | Non
         criteria: What the window is asked for, which caps how far it turns.
 
     Returns:
-        The window worth the most, or None when no window is worth keeping.
+        window: The window worth the most, or None when no window is worth keeping.
     """
     span_ls = criteria.span_ls
     looked = _looked_before(track)
@@ -98,8 +105,8 @@ def _looked_before(track: Track) -> list[list[int]]:
         track: The admissible observations on one time axis.
 
     Returns:
-        For each observation, where on the axis its own set last reached each of
-        its cells, or -1 for a cell that set had never reached, in order.
+        looked: For each observation, where its own set last reached each of its cells,
+            or -1 for a cell it had never reached.
     """
     seen: list[dict[int, int]] = [{} for _ in track.iids]
     looked: list[list[int]] = []
@@ -123,7 +130,8 @@ def _scored(track: Track, counts: Sequence[int], arc: float = 0.0) -> float:
         arc: How far Mars turns inside the window, charged against its ground.
 
     Returns:
-        The constraints rooted together as a share of the feature, less their arc.
+        worth: The constraints rooted together as a share of the feature, less their
+            arc.
     """
     rooted = math.prod(counts) ** (1.0 / len(counts))
     geo_mean = ground.share(rooted, track.grid.cell_km2, track.grid.area_km2)

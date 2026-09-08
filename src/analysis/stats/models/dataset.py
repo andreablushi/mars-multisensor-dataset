@@ -19,8 +19,7 @@ class Aggregate:
         pixels_per_look: The pixels one observation of each instrument landed on
             a feature, over the kept features it took any of.
         pixel_km2: The ground one pixel of each instrument covers, over every
-            feature searched, since an instrument's pixel is the same size
-            whichever feature it falls on and whether or not it earned a window.
+            feature searched, its size being the same on any of them.
     """
 
     searched: int
@@ -37,9 +36,8 @@ class ClassStats:
 
     Attributes:
         selected: How many features of the class earned a window.
-        taken: How many observations of a selected feature each instrument
-            keeps, by instrument. Read feature by feature, so the spread is how
-            much the features of the class differ.
+        taken: How many observations of a selected feature each instrument keeps,
+            read feature by feature so the spread is how much they differ.
     """
 
     selected: int

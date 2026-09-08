@@ -5,9 +5,9 @@ from __future__ import annotations
 from functools import lru_cache
 
 from analysis.metadata.loaders.features import load_features
-from analysis.models.feature import Feature
 from analysis.visualization.feature.models.placing import Placed
-from utils.disk.slugify import slugify
+from shared.disk.slugify import slugify
+from shared.models.feature import Feature
 
 HALF_TURN_DEG = 180.0
 
@@ -20,7 +20,8 @@ def placed(feature_class: str, name: str) -> Placed | None:
         name: The feature name as ODE spells it.
 
     Returns:
-        Where it falls in lon and lat, or None where no plate carree crop covers it.
+        placed: Where it falls in lon and lat, or None where no plate carree crop covers
+            it.
     """
     grid = Placed(_catalogue()[slugify(feature_class), slugify(name)])
     # A feature wrapping the planet has no lon/lat box a plate carree crop can cover
@@ -33,7 +34,7 @@ def _catalogue() -> dict[tuple[str, str], Feature]:
     """Read the feature catalogue once, keyed by the slugs the trees use.
 
     Returns:
-        Every catalogued feature, by its class and name slug.
+        features: Every catalogued feature, by its class and name slug.
     """
     return {
         (slugify(feature.feature_class), slugify(feature.name)): feature

@@ -7,15 +7,12 @@ from datetime import datetime
 
 from building.metadata.feature import FeatureMetadata
 from building.metadata.observation import ObservationMetadata
-from building.models.feature import FeatureFrame
+from shared.models.feature import Feature
 
 
 @dataclass(frozen=True, slots=True)
 class Job:
     """One product to bring down and cut to every feature that kept it.
-
-    The same product is often kept for several features, so it is downloaded,
-    read and cleaned once and then cut once per feature.
 
     Attributes:
         instrument: The instrument that fetches it, as ODE names it.
@@ -27,7 +24,7 @@ class Job:
 
     instrument: str
     identifier: str
-    frames: tuple[FeatureFrame, ...] = ()
+    frames: tuple[Feature, ...] = ()
     t_start: datetime | None = None
 
     @property
@@ -35,7 +32,7 @@ class Job:
         """Return a short human readable name for this job.
 
         Returns:
-            What was asked for, and the instrument it was asked of.
+            label: What was asked for, and the instrument it was asked of.
         """
         return f"{self.identifier} [{self.instrument}]"
 
@@ -66,12 +63,14 @@ class Plan:
         features: What the dataset holds about every feature the build covers.
         skipped_existing: Products left alone because every crop of them is
             already written.
-        unread: Observations the selection kept that no instrument here could
-            read, whether it builds none of that instrument or the id names no
-            observation of it, and which were therefore never planned.
+        unread: Observations the selection kept that no instrument here could read,
+            and which were therefore never planned.
+        crowded: Features the filter passed that the build left out whole, for
+            holding more observations than one feature may carry into it.
     """
 
     jobs: tuple[Job, ...]
     features: tuple[FeatureMetadata, ...] = ()
     skipped_existing: int = 0
     unread: int = 0
+    crowded: int = 0

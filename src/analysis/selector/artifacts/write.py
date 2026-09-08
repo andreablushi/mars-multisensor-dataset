@@ -5,13 +5,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import utils.disk.paths as paths
+from analysis import paths
 from analysis.selector.models.selection import (
     SelectedFeature,
     SelectedObservation,
     Selection,
 )
-from utils.disk import parquet
+from shared.disk import parquet
 
 FEATURES = parquet.schema_of(SelectedFeature)
 OBSERVATIONS = parquet.schema_of(SelectedObservation)
@@ -27,7 +27,8 @@ def write_selection(
         root: The directory the two files are written in, made when it is missing.
 
     Returns:
-        The features file and the observations file, in that order.
+        features: The file the features were written to.
+        observations: The file the observations were written to.
     """
     features = root / paths.SELECTED_FEATURES_NAME
     observations = root / paths.SELECTED_OBSERVATIONS_NAME

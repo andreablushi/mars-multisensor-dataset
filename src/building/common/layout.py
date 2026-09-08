@@ -20,9 +20,8 @@ class Layout:
         axes: What each of those axes holds, in the same order.
         measurement: The array the instrument is stored for, which is also what
             the sample calls it.
-        beside: What else of the sample is stored, keyed by the name it is
-            written as and read off the sample by, each with the names of its
-            own axes.
+        beside: What else of the sample is stored, keyed by the name it is written
+            as and read off the sample by, each with its own axes.
     """
 
     instrument: str

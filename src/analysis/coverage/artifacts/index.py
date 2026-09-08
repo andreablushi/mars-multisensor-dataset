@@ -8,20 +8,20 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-import utils.disk.paths as paths
+from analysis import paths
 from analysis.coverage.artifacts.write import EVENTS, SUMMARY
 from analysis.coverage.models.coverage import Event, SetCoverage
 from analysis.coverage.models.summary import Summary
 from analysis.metadata import file_explorer
 from analysis.models.instrument import InstrumentSet
-from utils.disk.files import atomic_path
+from shared.disk.files import atomic_path
 
 
 def reindex() -> int:
     """Rebuild the per-feature and catalogue-wide summaries from disk.
 
     Returns:
-        How many summary rows the catalogue index holds.
+        rows: How many summary rows the catalogue index holds.
     """
     for feature_dir in sorted(paths.FEATURES_ROOT.glob("*/*")):
         found = sorted(feature_dir.glob(f"*{paths.SET_SUMMARY_SUFFIX}"))
@@ -37,7 +37,7 @@ def computed_features() -> set[tuple[str, str]]:
     """Return every feature that has coverage computed locally.
 
     Returns:
-        The class and name slug of each feature with a computed instrument set.
+        features: The class and name slug of each feature with a computed set.
     """
     return {
         (path.parent.parent.name, path.parent.name)
@@ -49,7 +49,7 @@ def catalogued_features() -> list[tuple[str, str]]:
     """Name every feature the computed artifacts hold, as the catalogue spells it.
 
     Returns:
-        The class and name of each feature, once each and in order.
+        features: The class and name of each feature, once each and in order.
     """
     table = _index()
     return sorted(
@@ -67,7 +67,7 @@ def catalogued_observations() -> dict[tuple[str, str], int]:
     """Count the observations the computed artifacts hold for each feature.
 
     Returns:
-        How many observations each feature holds in all, by class and name.
+        observations: How many observations each feature holds, by class and name.
     """
     table = _index()
     counted: dict[tuple[str, str], int] = {}
@@ -87,7 +87,7 @@ def catalogued_rows() -> list[Summary]:
     """Read every row the computed artifacts hold anywhere.
 
     Returns:
-        One row per feature and instrument set measured, in index order.
+        rows: One row per feature and instrument set measured, in index order.
     """
     return [Summary(**row) for row in _index().to_pylist()]
 
@@ -100,7 +100,7 @@ def load_feature(feature_class: str, name: str) -> list[SetCoverage]:
         name: The feature name as ODE spells it.
 
     Returns:
-        One entry per instrument set, widest coverage first, then busiest.
+        coverage: One entry per instrument set, widest coverage first, then busiest.
     """
     directory = paths.feature_coverage_dir(paths.FEATURES_ROOT, feature_class, name)
     measured: list[SetCoverage] = []
@@ -168,7 +168,7 @@ def _concatenate(found: list[Path], destination: Path) -> int:
         destination: The parquet file to write them to.
 
     Returns:
-        The number of rows written.
+        rows: The number of rows written.
     """
     tables = [pq.read_table(path, schema=SUMMARY) for path in found]
     combined = pa.concat_tables(tables) if tables else SUMMARY.empty_table()
@@ -181,7 +181,7 @@ def _index() -> pa.Table:
     """Read the catalogue index, under the current schema.
 
     Returns:
-        The index, empty when no run has left one.
+        index: The index, empty when no run has left one.
     """
     path = paths.catalog_summary_path()
     return (

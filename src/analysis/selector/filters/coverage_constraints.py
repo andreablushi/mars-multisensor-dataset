@@ -17,7 +17,7 @@ def coverage_constraints(
         cells_reached: How many cells each set reaches inside the window.
 
     Returns:
-        The cells each constraint reaches, in order, or None when one is unmet.
+        counts: The cells each constraint reaches, in order, or None when one is unmet.
     """
     counts: list[int] = []
     for answers in constraints:

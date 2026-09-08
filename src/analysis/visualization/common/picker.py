@@ -7,13 +7,13 @@ from collections.abc import Callable
 import ipywidgets as widgets
 from IPython.display import display
 
-import analysis.utils.settings as settings
+from analysis import configs
 from analysis.coverage.artifacts import index
 from analysis.metadata.loaders.features import load_features
 from analysis.stats.artifacts import selection
 from analysis.visualization.common import panels
 from analysis.visualization.common.models.coverage import Coverage
-from utils.disk.slugify import slugify
+from shared.disk.slugify import slugify
 
 DEFAULT_CLASS = "Crater"
 NO_DATA_SUFFIX = "  (no data)"
@@ -89,22 +89,14 @@ class FeaturePicker:
         """Load the confirmed feature and refill every claimed area."""
         feature_class, name = self._class.value, self._name.value
         if (slugify(feature_class), slugify(name)) in self._computed:
-            # The config says which sets are drawn, and in what order
-            config = settings.load()
-            wanted = config.plot_instrument_sets
-            loaded = index.load_feature(feature_class, name)
-            keys = {chosen.key for chosen in wanted or ()}
-            kept = (
-                list(loaded)
-                if wanted is None
-                else [one for one in loaded if one.summary.set_key in keys]
-            )
+            # The config says in what order the sets are drawn
             ranks = {
                 chosen.key: rank
-                for rank, chosen in enumerate(wanted or config.instrument_sets)
+                for rank, chosen in enumerate(configs.load().instrument_sets)
             }
             self.coverage = sorted(
-                kept, key=lambda one: ranks.get(one.summary.set_key, len(ranks))
+                index.load_feature(feature_class, name),
+                key=lambda one: ranks.get(one.summary.set_key, len(ranks)),
             )
             note = widgets.HTML(
                 f"Loaded <b>{feature_class} / {name}</b>. "
@@ -126,8 +118,8 @@ def _kept_features() -> dict[tuple[str, str], bool]:
     """Say which searched features earned a window.
 
     Returns:
-        Whether each searched feature was kept, by class and name, and nothing
-        at all where no selection has been written to read it off.
+        kept: Whether each searched feature was kept, by class and name, and nothing at
+            all where no selection has been written to read it off.
     """
     try:
         picked = selection.selection_by_feature()

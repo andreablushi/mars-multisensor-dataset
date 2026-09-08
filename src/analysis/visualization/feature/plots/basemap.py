@@ -6,7 +6,7 @@ from html import escape
 
 import ipywidgets as widgets
 
-from analysis.selector.artifacts import filter_config as filtering
+from analysis.selector import configs as filtering
 from analysis.stats.feature import read
 from analysis.visualization.common import panels, wording
 from analysis.visualization.common.models.coverage import Coverage

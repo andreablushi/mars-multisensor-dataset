@@ -10,22 +10,32 @@ class Settings:
     """The settled choices for a build, read from one flat config file.
 
     Attributes:
-        name: What this build of the dataset is called, which is the directory
-            it is written in and the name it is published under, so one build
-            never overwrites another.
-        share: What share of the features the selection kept to build, from
-            above zero to one, drawn evenly across their classes. A feature is
-            built whole or not at all, with every observation the selection
-            left it.
+        name: What this build is called, the directory it is written in and the
+            name it is published under, so one build never overwrites another.
+        share: What share of the features the selection kept to build, from above
+            zero to one, drawn evenly across their classes.
         seed: The number every draw is made with, so a smaller build is a
             reproducible subset of the full one.
-        cores: How many cores the run was given, for a job a platform sized
-            itself, and None to read the machine's own. How many builds and
-            downloads run at once is worked out from this and from the memory
-            the machine has free, so neither is a setting a run carries.
+        max_observations: The observations a feature may keep and still be built,
+            one seen more often left out whole rather than built in part.
+        workers: How many products are built at once, one per core, which a job
+            a platform sized itself is given rather than reads.
+        downloads: How many downloads run at once, which wait on the archives.
     """
 
     name: str
     share: float
     seed: int
-    cores: int | None = None
+    max_observations: int
+    workers: int
+    downloads: int
+
+    @property
+    def in_flight(self) -> int:
+        """Return how many products may be in the build at once.
+
+        Returns:
+            held: Enough waiting to feed every builder while every download is
+                still in flight.
+        """
+        return self.workers + self.downloads

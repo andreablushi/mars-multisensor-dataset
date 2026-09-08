@@ -29,15 +29,14 @@ class ProductCache:
         """Return where each half of one product belongs.
 
         Args:
-            directory: The directory under the root, which is the observation
-                for a product of one, and a name of its own for what every
-                observation shares.
+            directory: The directory under the root, the observation for a product
+                of one and a name of its own for what every observation shares.
             stem: What each half of the product is called, without its suffix.
             kind: Which product it is, for an instrument publishing more than
                 one, or None where it publishes a single kind.
 
         Returns:
-            The path for each suffix, keyed by suffix.
+            files: The path for each suffix, keyed by suffix.
 
         Raises:
             KeyError: When the kind is not one this instrument publishes.
@@ -54,9 +53,6 @@ class ProductCache:
         Args:
             directory: The directory under the root the product was kept in,
                 which is the observation or tile it belongs to.
-
-        Returns:
-            None.
         """
         # Only its own directory, so what every observation shares is left alone.
         shutil.rmtree(self.root / directory, ignore_errors=True)

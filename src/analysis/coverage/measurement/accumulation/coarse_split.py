@@ -9,35 +9,33 @@ import numpy as np
 from shapely import STRtree, area, bounds, intersection, is_empty
 from shapely.geometry.base import BaseGeometry
 
-from analysis.coverage import configs
 from analysis.coverage.models.grid import Grid
 from analysis.coverage.models.region import FeatureRegion
+
+# The union is kept per cell so each insert touches a small shape, not as a unit
+MIN_UNION_CELLS = 4
+MAX_UNION_CELLS = 32
 
 
 def grid_over(region: FeatureRegion, shapes: Sequence[BaseGeometry]) -> Grid:
     """Size a grid to the footprints it will hold, and lay it over the feature.
-
-    A cell is kept near the size of a typical footprint, so each insert into a
-    cell's union touches a small shape. These cells are scratch and never leave
-    the union: cutting the same ground more finely gives the same answer, only
-    far slower, which is what the fine split is for instead.
 
     Args:
         region: The projected feature the cells cover.
         shapes: The projected footprints the grid will hold.
 
     Returns:
-        The grid, its side within the configured bounds.
+        grid: The grid, its side within the configured bounds.
     """
     west, south, east, north = region.shape.bounds
     boxes = bounds(np.asarray(shapes, dtype=object))
     spans = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
-    side = configs.MAX_UNION_CELLS
+    side = MAX_UNION_CELLS
     # A set whose every footprint met the feature edge on has no span to size by
     if (spans > 0.0).any():
         typical = float(np.sqrt(np.median(spans[spans > 0.0])))
         wanted = round(math.sqrt((east - west) * (north - south)) / typical)
-        side = int(min(max(wanted, configs.MIN_UNION_CELLS), configs.MAX_UNION_CELLS))
+        side = int(min(max(wanted, MIN_UNION_CELLS), MAX_UNION_CELLS))
     return Grid(west=west, south=south, east=east, north=north, side=side)
 
 
@@ -52,7 +50,7 @@ def cells(
         shapes: The projected footprints, in the order they are walked.
 
     Yields:
-        Each cell's rectangle, the ground it holds, and the shapes reaching it.
+        cell: Each cell's rectangle, the ground it holds, and the shapes reaching it.
     """
     rectangles = grid.rectangles
     caps = area(intersection(rectangles, region.shape))
@@ -76,7 +74,8 @@ def clip(
         rectangle: The cell to cut them to.
 
     Returns:
-        The kept indices and their clipped shapes, as a pair of arrays.
+        kept: The indices the box keeps.
+        shapes: Their clipped shapes, one to each.
     """
     pieces = intersection(shapes[reaching], rectangle)
     kept = ~is_empty(pieces)

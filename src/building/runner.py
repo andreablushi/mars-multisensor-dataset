@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import queue
 import threading
 from collections.abc import Iterator, Sequence
@@ -20,29 +19,16 @@ from building.dispatcher import INSTRUMENTS
 from building.metadata import read as metadata_read
 from building.metadata import write as metadata
 from building.metadata.observation import ObservationMetadata, observation_metadata
-from building.models.budget import Budget
+from building.models.budget import Budget, memory_bytes
 from building.models.job import Job, Outcome, Plan
 from building.models.progress import BUILDING, FETCHING, HOLDING, QUEUED, Progress
 from building.models.settings import Settings
 from building.preprocessing.common import store
 
-# How much of what the machine has free a build may hold, the rest left elsewhere.
-MEMORY_SHARE = 0.7
-
-# Where a container writes the memory it is held to, which is what a job was given.
-CGROUP_LIMITS = (
-    Path("/sys/fs/cgroup/memory.max"),
-    Path("/sys/fs/cgroup/memory/memory.limit_in_bytes"),
-)
-
-# How many downloads run per build and at all; they wait on an archive, not on cores.
-# An archive serves one connection at about two megabytes a second however fast
-# the link is, and answers as many at once: sixteen of them measured thirty
-# megabytes a second together. So downloads are what a run is made faster by, up
-# to what the archives will take, which one refusal now backs the whole run off
-# from rather than each thread asking again on its own.
-FETCHING_PER_BUILD = 4
-MOST_FETCHING = 48
+# How much of the box's memory a build may hold. The rest is not spare: the box is
+# charged for the downloads in flight and for the cache of every file written and
+# read back, none of which this budget meters.
+MEMORY_SHARE = 0.45
 
 
 def run_build(
@@ -61,53 +47,31 @@ def run_build(
         force: Whether to rebuild crops that are already written.
 
     Returns:
-        Every finished outcome, in completion order.
+        collected: Every finished outcome, in completion order.
 
     Raises:
         FileNotFoundError: When no selection has been written to build from.
     """
     # Every core builds, and what each build holds is measured as it lands.
-    building_count = max(1, settings.cores or os.cpu_count() or 1)
-    fetching_count = max(1, min(MOST_FETCHING, building_count * FETCHING_PER_BUILD))
-    # Enough waiting to feed every builder while every download is still in flight.
-    ready = building_count + fetching_count
-    free = os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
-    for path in CGROUP_LIMITS:
-        try:
-            free = min(free, int(path.read_text().split()[0]))
-        except (OSError, ValueError):
-            continue
-    budget = Budget(int(free * MEMORY_SHARE))
-    # Every download reuses these, so a run of tens of thousands of files pays
-    # for a connection once a host rather than once a file. Room for one to each
-    # archive per thread, since a query and a transfer can be in flight together.
-    held = httpx.Limits(
-        max_connections=fetching_count * 2,
-        max_keepalive_connections=fetching_count * 2,
+    budget = Budget(int(memory_bytes() * MEMORY_SHARE))
+    # Reused, so a run pays for a connection once a host rather than once a file
+    limits = httpx.Limits(
+        max_connections=settings.downloads * 2,
+        max_keepalive_connections=settings.downloads * 2,
     )
-    with httpx.Client(limits=held) as ode:
+    with httpx.Client(limits=limits) as ode:
         plan = planner.build_plan(settings, root, ode, force=force)
-        printing.describe(
-            plan, settings, (building_count, fetching_count, ready), budget, console
-        )
+        printing.describe(plan, settings, budget, console)
         progress = Progress(len(plan.jobs))
         # A download waits on the network and a build on the cores, so the pools differ.
         with (
-            ProcessPoolExecutor(max_workers=building_count) as building,
-            # A thread waiting on memory is holding no download back, so the pool
-            # carries every product that may wait rather than every download.
-            ThreadPoolExecutor(max_workers=ready) as fetching,
+            ProcessPoolExecutor(max_workers=settings.workers) as building,
+            # A thread waiting on memory holds no download back, so this is wider
+            ThreadPoolExecutor(max_workers=settings.in_flight) as fetching,
             printing.watch(progress),
         ):
             held = _outcomes(
-                plan.jobs,
-                ode,
-                fetching,
-                building,
-                root,
-                (fetching_count, ready),
-                budget,
-                progress,
+                plan.jobs, ode, fetching, building, root, settings, budget, progress
             )
             with closing(held) as outcomes:
                 collected = printing.render(
@@ -123,7 +87,7 @@ def _outcomes(
     fetching: ThreadPoolExecutor,
     building: ProcessPoolExecutor,
     root: Path,
-    counts: tuple[int, int],
+    settings: Settings,
     budget: Budget,
     progress: Progress,
 ) -> Iterator[Outcome]:
@@ -135,32 +99,30 @@ def _outcomes(
         fetching: The threads the downloads run on.
         building: The processes the builds run on.
         root: The dataset's own root directory.
-        counts: How many downloads may run at once, and how many downloaded
-            products may wait at once to be built.
+        settings: The settled choices for the build, which bound how many
+            products run at once and how many of them are downloading.
         budget: The memory the builds running at once share between them.
         progress: What every product still in the build is doing.
 
     Yields:
-        One outcome per job, in the order they finish.
+        outcome: One outcome per job, in the order they finish.
     """
-    fetching_count, ready = counts
     finished: queue.Queue[Outcome] = queue.Queue()
     # A place to land in, and a turn on the network, since neither bounds the other.
-    waiting = threading.Semaphore(ready)
-    downloading = threading.Semaphore(fetching_count)
+    waiting = threading.Semaphore(settings.in_flight)
+    downloading = threading.Semaphore(settings.downloads)
 
-    def finish(outcome: Outcome, held: int) -> None:
+    def finish(outcome: Outcome, ticket: object, held: int) -> None:
         """Record what one job left and give back everything it took.
 
         Args:
             outcome: What the job left, whether it was built or failed.
+            ticket: What the job was tracked by while it was still in the build.
             held: How much memory it was holding, and zero where it held none.
-
-        Returns:
-            None.
         """
         if held:
             budget.release(held)
+        progress.left(ticket, finished=True)
         finished.put(outcome)
         waiting.release()
 
@@ -169,51 +131,44 @@ def _outcomes(
 
         Args:
             job: The product to fetch.
-
-        Returns:
-            None.
         """
         # The place is taken before the download, so the room is never given elsewhere.
         waiting.acquire()
         steps = INSTRUMENTS[job.instrument]
-        stage, held = progress.entered(QUEUED), 0
+        ticket, held = progress.entered(job.label, QUEUED), 0
         try:
             with downloading:
-                stage = progress.moved(stage, FETCHING)
+                progress.moved(ticket, FETCHING)
                 steps.fetch(job.identifier, ode)
             # Only now is there a product to measure, and so a share to ask for.
-            stage = progress.moved(stage, HOLDING)
+            progress.moved(ticket, HOLDING)
             held = budget.acquire(
                 steps.held_bytes(job.identifier)
                 if steps.held_bytes
                 else steps.worker_bytes
             )
-            stage = progress.moved(stage, BUILDING)
+            progress.moved(ticket, BUILDING)
             building.submit(build_product, job, root).add_done_callback(
-                partial(built, job, held)
+                partial(built, job, ticket, held)
             )
         except Exception as error:  # noqa: BLE001
             # The download failed or the pool is closing, so this builds nowhere.
-            progress.left(stage, finished=True)
-            finish(Outcome(job, error=error), held)
+            finish(Outcome(job, error=error), ticket, held)
 
-    def built(job: Job, held: int, done: Future[Outcome]) -> None:
+    def built(job: Job, ticket: object, held: int, done: Future[Outcome]) -> None:
         """Record what one job's build left, a worker the pool lost included.
 
         Args:
             job: The job that was built.
+            ticket: What the job was tracked by while it was still in the build.
             held: How much memory it was holding while it built.
             done: What the build pool left.
-
-        Returns:
-            None.
         """
         try:
             outcome = done.result()
         except Exception as error:  # noqa: BLE001
             outcome = Outcome(job, error=error)
-        progress.left(BUILDING, finished=True)
-        finish(outcome, held)
+        finish(outcome, ticket, held)
 
     # Every path leaves one outcome and gives its place back, or it waits for ever.
     for job in jobs:
@@ -230,8 +185,8 @@ def build_product(job: Job, root: Path) -> Outcome:
         root: The dataset's own root directory.
 
     Returns:
-        The outcome, holding the record of every sample written, and the error
-        that stopped it where one did after some were already on disk.
+        outcome: The outcome, holding the record of every sample written, and the error
+            that stopped it where one did after some were already on disk.
 
     Raises:
         Exception: Whatever reading the product off disk raised, which the pool
@@ -281,9 +236,6 @@ def _indexed(
         collected: What every job of this run left.
         settings: The settled choices for the build.
         root: The dataset's own root directory.
-
-    Returns:
-        None.
     """
     written = [held for one in collected for held in one.records]
     rewritten = {one.identity for one in written}

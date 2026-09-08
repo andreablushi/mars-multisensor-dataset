@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from utils.disk.slugify import slugify
+from shared.disk.slugify import slugify
 
 
 @dataclass(frozen=True)
@@ -31,7 +31,7 @@ class InstrumentSet:
             key: An IHID/IID/PT triple, optionally with a colon and a product pattern.
 
         Returns:
-            The instrument set.
+            instrument: The instrument set.
         """
         triple, _, pattern = key.partition(":")
         return cls(
@@ -44,7 +44,8 @@ class InstrumentSet:
         """Return the short readable name for this set.
 
         Returns:
-            The instrument and product type, with the pattern where it is part of one.
+            label: The instrument and product type, with the pattern where it is part of
+                one.
         """
         name = f"{self.iid} {self.pt}"
         return f"{name} {self.product_id}" if self.product_id else name
@@ -54,7 +55,8 @@ class InstrumentSet:
         """Return the canonical IHID/IID/PT identifier.
 
         Returns:
-            The three identifiers joined by slashes, with the pattern after a colon.
+            key: The three identifiers joined by slashes, with the pattern after a
+                colon.
         """
         key = f"{self.ihid}/{self.iid}/{self.pt}"
         return f"{key}:{self.product_id}" if self.product_id else key
@@ -64,6 +66,6 @@ class InstrumentSet:
         """Return a filesystem safe name for this instrument set.
 
         Returns:
-            The canonical identifier as a slug.
+            slug: The canonical identifier as a slug.
         """
         return slugify(self.key)

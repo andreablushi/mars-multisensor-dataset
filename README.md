@@ -1,44 +1,19 @@
-# Mars Multi-Sensor Observations Dataset
+# Multi-Sensor Dataset Pipeline for Mars Geological Features
 
-A multi-sensor build dataset pipeline of Mars geological features. One sample is a single named
-landform seen by three instruments inside one shared time window: CTX visible
-imagery, CRISM multispectral cubes, and SHARAD radar sounding, each cropped to
-that landform's extent.
+This repository provides an automated analysis pipeline to process and extract geological features and observations on Mars using data from NASA's [Orbital Data Explorer (ODE)](https://ode.rsl.wustl.edu/mars/).
+
+The pipeline checks feature availability and filters geological targets according to specific coverage and temporal window criteria. Selected features and their corresponding multi-sensor observations are then processed into standardized data, ready for training and evaluation of machine learning models.
 
 ## Development commands
 
 ```bash
 uv sync                                     # environment
 uv run ruff check . && uv run ruff format . # lint, over the whole repo
-git config core.hooksPath .githooks         # once per clone, blocks unlinted pushes
 ```
-
-## Running the analysis
-
-One entry point runs every stage, here by default:
-
-```bash
-uv run python scripts/analysis_pipeline.py
-```
-
-It downloads the ODE metadata still missing, measures the coverage of every
-feature, searches each for its best window, and writes what the filter keeps.
-Every other choice comes from `configs/`, so the same files describe what was run
-and what to run again.
-
-| Flag | What it does |
-| --- | --- |
-| `--only-stats` | skip the download and the measurement, and select from what is already on disk |
-| `--force` | redo finished work rather than skip it: download again and measure again |
-| `--dh` | submit to DigitalHub instead of running here |
-| `--ref` | with `--dh`, the branch, tag, or commit the platform clones |
 
 ## Running it on DigitalHub
 
-[DigitalHub](https://scc-digitalhub.github.io/docs/0.15/) runs the same entry
-point on a cluster and keeps what it produced as versioned entities. It clones a
-pushed commit, so every change has to be on the branch you name with `--ref`
-before it can run.
+This repository was built to run on [DigitalHub](https://scc-digitalhub.github.io/docs/0.15/), a platform that manages and executes data processing pipelines in a distributed environment. DigitalHub runs the same entry point on a cluster and keeps what it produced as versioned entities. It clones a pushed commit, so every change has to be on the branch you name with `--ref` before it can run.
 
 ```bash
 uv sync --group digitalhub
@@ -49,15 +24,32 @@ uv run --group digitalhub python scripts/analysis_pipeline.py --dh
 uv run --group digitalhub python scripts/analysis_pipeline.py --dh --only-stats
 ```
 
-The first form runs every stage in one job and publishes all of it: the
-measurements, the catalogue index, the records behind them, and the selection
-and stats the filter left. The second reads a published measurement back and
-publishes only the selection and the stats, so re-running an edited filter costs
-nothing but the search.
-
 Everything a submission needs, from the project name to the memory a job asks
 for, is in `configs/digitalhub.yaml`. The pip requirements are taken straight
 from `pyproject.toml`, so the image always matches this repository.
+
+It's possible to run the pipeline locally, by simply omitting the `--dh` flag. The local run will use the same configs and produce the same outputs, but it will not be versioned or managed by DigitalHub.
+
+
+## Running the analysis
+
+One entry point runs every stage, here by default:
+
+```bash
+uv run python scripts/analysis_pipeline.py
+```
+
+It downloads the ODE metadata, measures the coverage of every
+feature, searches each for its best window, and writes what the filter keeps.
+Every other choice comes from `configs/`, so the same files describe what was run
+and what to run again.
+
+| Flag | What it does |
+| --- | --- |
+| `--only-stats` | skip the download and the measurement, and select from what is already on disk |
+| `--force` | redo finished work rather than skip it: download again and measure again |
+| `--dh` | submit to DigitalHub instead of running locally |
+| `--ref` | with `--dh`, the branch, tag, or commit the platform clones |
 
 ## Downloading what it published
 
@@ -75,7 +67,7 @@ publishes.
 | --- | --- | --- |
 | `coverage` | the coverage measurements | `data/analysis/coverage/` |
 | `summary` | one row per feature and instrument set | `data/analysis/coverage/` |
-| `catalog` | the ODE feature and instrument set lists | `data/_catalog/` |
+| `catalog` | the ODE feature set list | `data/_catalog/` |
 | `metadata` | the ODE records behind the measurements | `data/analysis/metadata/` |
 | `selection` | the features and observations the filter keeps | `data/analysis/selection/` |
 | `stats` | what the filter left of the dataset | `data/analysis/stats/` |
@@ -83,28 +75,18 @@ publishes.
 
 ## Building the dataset
 
+Starting from the previous selection, the pipeline builds a dataset where a sample is defined as a geological feature and its corresponding multi-sensor observations.
+
 ```bash
 uv run python scripts/building_pipeline.py          # here
 uv run --group digitalhub python scripts/building_pipeline.py --dh
 ```
 
-`configs/building_runner.yaml` says how much to build. `share` is what fraction
-of the features the selection kept to build, drawn evenly across their classes,
-and `name` is what that build is called: it is the directory it is written in
-and the name it is published under, so a half build and a whole one sit side by
-side. A feature is built whole, with every observation the selection left it.
-The same seed and a larger share gives a superset, so a small build is always
-part of the larger one.
+Every run choices of the dataset to build are described in `configs/building.yaml`.
 
-A product is deleted once every feature that wanted it has been cut, so a build
-needs room for what it holds at once and never for everything it ever fetched.
-How many downloads and builds run at once is worked out from the cores and the
-free memory the run finds, so neither is a setting a config carries.
+### Dataset structure
 
-## Using the dataset
-
-The dataset is one directory: a crop per observation of a feature, and beside
-them the index that says what each is. Nothing outside it is needed to read it.
+The dataset is entirely self-contained within a single directory, consisting of individual observation crops and a master index mapping each file. Published as separate objects rather than a single compressed archive, each crop is keyed to its index path. During training, jobs read the index and fetch only the sampled crops directly from storage, avoiding full dataset downloads in the DigitalHub.
 
 ```
 dataset/
@@ -114,84 +96,7 @@ dataset/
   <class>/<feature>/<instrument>/<identifier>.npz
 ```
 
-Each crop is a single `.npz`. Beside its arrays it carries a `meta` entry, a
-JSON object saying what every array's axes are called, which of them are ground,
-where the feature it was cut to sits, and the label every product it was
-published as was written with.
-
-```python
-import json
-from pathlib import Path
-
-import numpy as np
-import pyarrow.parquet as pq
-
-root = Path("data/building/dataset")
-rows = pq.read_table(root / "observations.parquet").to_pylist()
-
-held = np.load(root / rows[0]["path"], allow_pickle=False)
-meta = json.loads(str(held["meta"]))
-values = held[meta["measurement"]]  # what the instrument measured
-```
-
-The index is read on its own, so a count, a filter or a split opens no array at
-all. A split is drawn over features and never over observations, since one
-feature is seen in many observations and splitting those would put the same
-ground on both sides of it.
-
-Every crop holds its measurement placed by `north` and `east`, in degrees from
-the feature's own centre. Nothing in an array says where on Mars its feature is,
-so adding the centre back is what turns a placement into a coordinate:
-
-```python
-latitude = meta["centre_lat"] + held["north"]
-longitude = meta["centre_lon"] + held["east"]
-```
-
-That holds while `meta["position_units"]` is `degrees`. A crop taken near a pole
-is placed on the projection `meta["polar"]` names instead, and its offsets are
-that projection's own metres, which have to be inverted rather than added.
-
-An axis named in `meta["ground"]` is ground; the others are the instrument's own
-and are sampled in their own unit, which `meta["axes"]` names. A grid places one
-axis each and a swath or a track places every sample, which is what `separable`
-says. Two masks narrow what is a measurement, and each is written only when it
-excludes something, so an absent one means every sample is kept:
-
-```python
-kept = np.ones(
-    [
-        values.shape[meta["dims"][meta["measurement"]].index(one)]
-        for one in meta["ground"]
-    ],
-    bool,
-)
-for name in ("inside", "valid"):  # in the box, and measured
-    if name in held.files:
-        kept &= held[name]
-```
-
-`inside` is unset for a map raster, which meets a feature's box in a rectangle,
-and set for a swath or a track, which does not. `valid` is unset where every
-sample is a measurement.
-
-Each row of the index carries the statistics of its own crop, over the samples
-those two masks keep. They pool exactly, since every row says how many values it
-was measured over, and an average of per-crop means or standard deviations would
-not. Pool them per instrument, since each measures its own quantity:
-
-```python
-held_rows = [one for one in rows if one["instrument"] == "CRISM"]
-n = sum(one["valid_count"] for one in held_rows)
-mean = sum(one["value_mean"] * one["valid_count"] for one in held_rows) / n
-var = (
-    sum(
-        one["valid_count"] * (one["value_std"] ** 2 + (one["value_mean"] - mean) ** 2)
-        for one in held_rows
-    )
-    / n
-)
-```
+Each crop is stored as an .npz file containing spatial data arrays and an embedded meta JSON object. The metadata specifies axis names, indicates which axes correspond to ground coordinates, defines the cropped feature's location, and records the original publication labels for every product.
 
 ## Notebooks
 
@@ -203,13 +108,17 @@ of it is still drawn, at zero, so a missing line always means something.
 feature rather than of a sample of them. It reads back what the pipeline
 published and builds no artifact of its own.
 
+`notebooks/crism_preprocessing.ipynb` takes one CRISM observation apart, a
+correction at a time, drawing the cube after each one. It brings that
+observation down itself, so it waits on no pipeline and on nothing already
+on disk.
+
 ## Configuration
 
 ```
 configs/
-  analysis_runner.yaml  # What a run downloads and measures, and on how many workers
-  window_filter.yaml    # What a window has to hold for a feature to earn a place
-  building_runner.yaml  # How much of the dataset to build, and what to call it
+  analysis.yaml         # What a run downloads and measures, and what a window must hold
+  building.yaml         # How much of the dataset to build, and what to call it
   digitalhub.yaml       # What a submitted run is given, and what it publishes
 ```
 

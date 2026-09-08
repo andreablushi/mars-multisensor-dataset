@@ -16,7 +16,7 @@ def measured_feature(looks: FeatureLooks) -> FeatureStats:
         looks: Its timeline, the window it earned, and where its looks sit on it.
 
     Returns:
-        What it holds.
+        stats: What it holds.
     """
     track, window, taken = looks.track, looks.window, looks.taken
     # What each instrument left inside the window, and which of them each cell holds
@@ -35,8 +35,7 @@ def measured_feature(looks: FeatureLooks) -> FeatureStats:
         overlaps[instrument_names] = (
             overlaps.get(instrument_names, 0.0) + track.grid.cell_km2
         )
-    # A pixel is the same size whether or not its look was chosen, so every
-    # observation offered to the feature is read and not only the ones kept
+    # A pixel is one size whether or not its look was chosen, so all are read
     pixel_km2: dict[str, float] = {}
     for index, owner in enumerate(track.owners):
         iid = track.iids[owner]
@@ -69,7 +68,8 @@ def ground_by_instrument_count(
         overlaps: The ground each set of instruments reaches, counting a cell once.
 
     Returns:
-        The ground in square kilometres, by how many instruments reach it, fewest first.
+        ground: The ground in square kilometres, by how many instruments reach it,
+            fewest first.
     """
     summed: dict[int, float] = {}
     for instrument_names, km2 in overlaps.items():
@@ -86,7 +86,8 @@ def _pixels_landed(track: Track, taken: Sequence[int], iid: str) -> float | None
         iid: The instrument to count.
 
     Returns:
-        The pixels it landed there, or None when any of its observations carries none.
+        pixels: The pixels it landed there, or None when any of its observations carries
+            none.
     """
     total = 0.0
     for index in taken:

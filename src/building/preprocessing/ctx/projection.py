@@ -26,12 +26,9 @@ def grid_axes(
         label: The parsed ISIS label of one scan.
 
     Returns:
-        What every line holds and what every sample holds, and the polar grid
-        the two are measured on. A cylindrical grid gives the latitude of every
-        line, falling southward, and the longitude of every sample, rising
-        eastward, both in degrees, and no grid beside them. A polar one gives
-        the northing and the easting in the projection's own metres, and the
-        grid that turns them back into degrees.
+        down: What every line holds, the latitude of it or its northing.
+        across: What every sample holds, the longitude of it or its easting.
+        polar: The grid the two are measured on, and None for a cylindrical one.
 
     Raises:
         ValueError: When the label names a projection or a convention this

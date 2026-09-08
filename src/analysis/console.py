@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 
@@ -12,12 +11,7 @@ from rich.progress import BarColumn, MofNCompleteColumn, Progress
 from analysis.models.job import Plan
 from analysis.models.progress import CoverageSummary, DownloadSummary, ProgressEvent
 from analysis.models.settings import Settings
-
-# How many items are named before the rest are counted
-LISTED = 5
-
-# Set by a platform run, whose log takes plain flushed lines rather than a bar.
-PLAIN_LOG_ENV = "PIPELINE_PLAIN_LOG"
+from shared import console as printing
 
 # How many progress lines a stage prints where no cursor can be moved
 LOGGED_LINES = 50
@@ -33,9 +27,6 @@ def describe(
         coverage: The plan produced by the coverage planner.
         settings: The settled choices for the run, which size both halves.
         console: The console to print on.
-
-    Returns:
-        None.
     """
     console.print(
         f"download: {download.feature_count} features x {download.set_count} sets, "
@@ -60,19 +51,18 @@ def render(
         total: The number of units in the run.
         description: The label for the progress task.
         console: The console to render on.
-
-    Returns:
-        None.
     """
     # A platform log takes plain flushed lines, since no cursor can be moved there
-    if os.environ.get(PLAIN_LOG_ENV):
+    if printing.plain_log():
         step = max(1, total // LOGGED_LINES)
+        failed = 0
         for event in events:
             outcome = event.outcome
             if outcome.failed:
-                print(f"error {outcome.label}: {outcome.error}", flush=True)
+                failed += 1
+                printing.named_failure(outcome.label, outcome.error, failed)
             if event.completed % step == 0 or event.completed == total:
-                _reached(description, event.completed, total, outcome.label)
+                printing.reached(description, event.completed, total, outcome.label)
         return
     with Progress(
         BarColumn(bar_width=None),
@@ -95,27 +85,20 @@ def logged(description: str) -> Callable[[int, int], None]:
         description: The label for the stage, carried on every line printed.
 
     Returns:
-        A callback taking how many units are done and how many there are.
+        progress: A callback taking how many units are done and how many there are.
     """
 
     def moved(done: int, total: int) -> None:
         """Print where the stage has reached, on the units it reports on."""
         if done % max(1, total // LOGGED_LINES) == 0 or done == total:
-            _reached(description, done, total)
+            printing.reached(description, done, total)
 
     return moved
 
 
 def print_interrupted() -> None:
-    """Print the notice shown when a run is stopped with Ctrl-C.
-
-    Returns:
-        None.
-    """
-    Console().print(
-        "[yellow]interrupted: pending jobs cancelled, finished files kept. "
-        "Re-run to resume.[/yellow]"
-    )
+    """Print the notice shown when a run is stopped with Ctrl-C."""
+    printing.print_interrupted("finished files")
 
 
 def print_summary(
@@ -133,9 +116,6 @@ def print_summary(
         indexed: Summary rows gathered into the catalogue index.
         missing: The instrument sets that still have no artifact on disk.
         console: The console to print on.
-
-    Returns:
-        None.
     """
     console.print(
         f"downloaded {download.ran} sets, {download.failed} failed, "
@@ -155,25 +135,4 @@ def print_summary(
     if not missing:
         return
     console.print(f"[yellow]{len(missing)} sets still have no artifact:[/yellow]")
-    for source in missing[:LISTED]:
-        console.print(f"[yellow]  {source}[/yellow]")
-    if len(missing) > LISTED:
-        console.print(f"[yellow]  and {len(missing) - LISTED} more[/yellow]")
-
-
-def _reached(description: str, completed: int, total: int, label: str = "") -> None:
-    """Print how far a stage has got, in the plain form a platform log takes.
-
-    Args:
-        description: The label for the stage.
-        completed: How many units are finished.
-        total: How many there are.
-        label: What just finished, where the stage names its units.
-
-    Returns:
-        None.
-    """
-    share = completed / total
-    print(
-        f"{description} {completed}/{total} ({share:.0%}) {label}".rstrip(), flush=True
-    )
+    printing.print_listed([str(source) for source in missing], console)

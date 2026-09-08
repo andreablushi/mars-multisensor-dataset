@@ -19,7 +19,7 @@ def _times(text: np.ndarray) -> np.ndarray:
         text: The column's values, one fixed width byte string per row.
 
     Returns:
-        The times, as datetimes.
+        times: The times, as datetimes.
 
     Raises:
         ValueError: When a stamp is not one that can be read at all.
@@ -44,9 +44,8 @@ def build_table(table: Path, label: dict[str, str], fields: list[dict[str, str]]
         fields: The COLUMN objects, as `labels.columns` returns them.
 
     Returns:
-        A structured array of one row per record, its fields named as the label
-        names them, integers read as integers, times as datetimes and the rest
-        as floats.
+        table: One row per record, its fields named as the label names them, integers
+            read as integers, times as datetimes and the rest as floats.
     """
     rows, width = int(label["ROWS"]), int(label["ROW_BYTES"])
     raw = np.fromfile(table, dtype="S1", count=rows * width)
@@ -73,8 +72,8 @@ def load_table(table: Path) -> tuple[np.recarray, dict[str, str]]:
         table: The `.tab` file holding the records, whose `.lbl` sits beside it.
 
     Returns:
-        A structured array of one row per record, its fields named as the label
-        names its columns, and the parsed label describing them.
+        table: One row per record, its fields named as the label names its columns.
+        label: The parsed label describing them.
 
     Raises:
         FileNotFoundError: When the table or its label is missing.

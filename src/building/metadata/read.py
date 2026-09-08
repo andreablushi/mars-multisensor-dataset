@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-import utils.disk.paths as paths
+from building import paths
 from building.metadata import feature as features
 from building.metadata import observation as records
 from building.metadata.feature import FeatureMetadata
 from building.metadata.observation import ObservationMetadata
-from utils.disk import parquet
+from shared.disk import parquet
 
 
 def read_feature_metadata(
@@ -23,7 +23,7 @@ def read_feature_metadata(
         root: The directory the metadata was written in.
 
     Returns:
-        Each feature's own row, by class and name.
+        features: Each feature's own row, by class and name.
 
     Raises:
         FileNotFoundError: When no features have been written there.
@@ -44,7 +44,7 @@ def read_observation_metadata(
         root: The directory the metadata was written in.
 
     Returns:
-        One row per feature and observation.
+        records: One row per feature and observation.
 
     Raises:
         FileNotFoundError: When no observations have been written there.

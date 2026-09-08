@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-import utils.disk.paths as paths
+from analysis import paths
 from analysis.selector.artifacts.write import FEATURES, OBSERVATIONS
 from analysis.selector.models.selection import (
     SelectedFeature,
@@ -18,15 +18,11 @@ from analysis.selector.models.selection import (
 def read_dataset_list(root: Path = paths.SELECTION_ROOT) -> list[Selection]:
     """Read back every feature the selection stage searched, and what each keeps.
 
-    A feature the filter refused is read back too, holding no observation, so a
-    caller sees what to leave alone as plainly as what to download.
-
     Args:
         root: The directory the selection was written in.
 
     Returns:
-        One entry per feature searched, in the order they were written, each
-        carrying the observations it keeps, oldest first.
+        selections: One entry per feature searched, in the order they were written.
 
     Raises:
         FileNotFoundError: When no selection has been written there.

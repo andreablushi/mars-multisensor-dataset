@@ -67,7 +67,7 @@ class SetCoverage:
         """Return the short readable name for the instrument set.
 
         Returns:
-            The instrument and product type, such as "CTX EDR", with any pattern.
+            label: The instrument and product type, such as "CTX EDR", with any pattern.
         """
         return InstrumentSet.from_key(self.summary.set_key).label
 
@@ -76,7 +76,7 @@ class SetCoverage:
         """Report whether the set holds any observation of this feature.
 
         Returns:
-            True when the set has at least one observation.
+            observed: True when the set has at least one observation.
         """
         return bool(self.events)
 
@@ -85,7 +85,7 @@ class SetCoverage:
         """Return why the set holds nothing to draw.
 
         Returns:
-            What is missing, or an empty string when the set was observed.
+            reason: What is missing, or an empty string when the set was observed.
         """
         if self.observed:
             return ""

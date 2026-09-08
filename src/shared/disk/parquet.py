@@ -12,7 +12,7 @@ from typing import Any, get_args, get_origin, get_type_hints
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from utils.disk.files import atomic_path
+from shared.disk.files import atomic_path
 
 _ARROW = {
     str: pa.string(),
@@ -31,7 +31,7 @@ def schema_of(model: type) -> pa.Schema:
         model: The dataclass whose fields become the columns, in their own order.
 
     Returns:
-        The schema, every column nullable as parquet writes them.
+        schema: The schema, every column nullable as parquet writes them.
     """
     hints = get_type_hints(model)
     columns = []
@@ -40,8 +40,7 @@ def schema_of(model: type) -> pa.Schema:
         # A column a row may leave unset is written as the type it holds when set
         if isinstance(kind, UnionType):
             kind = next(one for one in get_args(kind) if one is not NoneType)
-        # A row built out of another row is written as that row's own columns,
-        # so a model composes without the file it writes gaining a level.
+        # A nested row is written as its own columns, so the file gains no level
         if is_dataclass(kind):
             columns.extend(zip(schema_of(kind).names, schema_of(kind).types))
             continue
@@ -62,7 +61,7 @@ def build[Row](model: type[Row], row: Mapping[str, Any]) -> Row:
         row: The columns of one written row, keyed as the schema names them.
 
     Returns:
-        The model, the rows it composes built from the same flat columns.
+        model: The model, the rows it composes built from the same flat columns.
     """
     hints = get_type_hints(model)
     held: dict[str, Any] = {}
@@ -89,9 +88,6 @@ def write(
         data: The dataclass rows to write, or the columns keyed by the schema's fields.
         schema: The schema to write them under.
         path: The destination parquet file.
-
-    Returns:
-        None.
     """
     if isinstance(data, Mapping):
         columns = dict(data)
@@ -100,8 +96,7 @@ def write(
         for row in data:
             for field in fields(row):
                 held = getattr(row, field.name)
-                # A row built out of another row is written as that row's own
-                # columns, so what it composes is read as its own fields are.
+                # A nested row is read as its own fields are
                 if is_dataclass(held):
                     for one in fields(held):
                         columns[one.name].append(getattr(held, one.name))

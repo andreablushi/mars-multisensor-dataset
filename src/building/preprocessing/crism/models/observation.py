@@ -44,7 +44,7 @@ class CrismObservation:
         """Return the latitude every pixel was measured at.
 
         Returns:
-            Lines by columns, in degrees.
+            latitude: Lines by columns, in degrees.
         """
         return self.geometry[:, :, LATITUDE_PLANE]
 
@@ -53,6 +53,6 @@ class CrismObservation:
         """Return the longitude every pixel was measured at.
 
         Returns:
-            Lines by columns, in degrees.
+            longitude: Lines by columns, in degrees.
         """
         return self.geometry[:, :, LONGITUDE_PLANE]

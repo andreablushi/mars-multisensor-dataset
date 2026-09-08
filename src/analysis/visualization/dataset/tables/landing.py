@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ipywidgets as widgets
 
-from analysis.selector.artifacts import filter_config as filtering
+from analysis.selector import configs as filtering
 from analysis.stats.models.dataset import DatasetStats
 from analysis.stats.models.spread import Spread
 from analysis.visualization.common import quantities, tables, wording
@@ -64,7 +64,8 @@ def _share(measured: Spread) -> tuple[str, str]:
         measured: The share read off every feature that earned a window.
 
     Returns:
-        The mean share with its spread, then the least any feature gave it.
+        mean: The mean share with its spread.
+        least: The least any feature gave it.
     """
     return (
         wording.spread(measured, lambda share: f"{share:.1%}"),

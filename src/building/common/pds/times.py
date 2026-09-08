@@ -15,7 +15,7 @@ def moment(text: str) -> datetime:
         text: The timestamp as the archive wrote it.
 
     Returns:
-        The timestamp, a rounded up second read as the minute after it.
+        moment: The timestamp, a rounded up second read as the minute after it.
 
     Raises:
         ValueError: When the text is not a timestamp at all.

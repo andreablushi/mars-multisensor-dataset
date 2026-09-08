@@ -1,1 +1,1 @@
-"""Everything each instrument is declared as, which both stages are written against."""
+"""What a build is settled by: each instrument as it is declared, and the run."""

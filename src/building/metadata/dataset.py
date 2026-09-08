@@ -6,7 +6,8 @@ import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-import utils.disk.paths as paths
+from analysis import paths as analysis_paths
+from shared import paths
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,7 +34,8 @@ def dataset_manifest(instruments: tuple[str, ...]) -> DatasetManifest:
         instruments: The instruments the build covered.
 
     Returns:
-        The manifest, its revision unset where the build ran outside a checkout.
+        manifest: The manifest, its revision unset where the build ran outside a
+            checkout.
     """
     try:
         revision = subprocess.run(
@@ -48,6 +50,6 @@ def dataset_manifest(instruments: tuple[str, ...]) -> DatasetManifest:
     return DatasetManifest(
         built_at=datetime.now(UTC).isoformat(timespec="seconds"),
         instruments=tuple(sorted(instruments)),
-        selection=str(paths.SELECTION_ROOT.relative_to(paths.REPO_ROOT)),
+        selection=str(analysis_paths.SELECTION_ROOT.relative_to(paths.REPO_ROOT)),
         revision=revision,
     )

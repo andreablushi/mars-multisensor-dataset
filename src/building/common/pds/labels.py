@@ -58,7 +58,7 @@ def _value(text: str) -> str:
         text: What the label writes after the equals sign.
 
     Returns:
-        The value alone.
+        value: The value alone.
     """
     held = text.strip()
     # The unit comes off first, since a quoted value carries it outside its quote.
@@ -74,8 +74,8 @@ def load(path: Path) -> dict[str, str]:
         path: The `.lbl` or `.hdr` file to read.
 
     Returns:
-        The label, keyed as written, with quotes and unit suffixes stripped.
-        Where a key is written more than once the first wins.
+        label: The label, keyed as written, quotes and unit suffixes stripped, the first
+            of a repeated key winning.
     """
     label: dict[str, str] = {}
     skipping = False
@@ -104,8 +104,11 @@ def layout(label: dict[str, str]) -> tuple[int, int, int, str, str]:
         label: The parsed label.
 
     Returns:
-        The lines, samples and bands it holds, the order its bands are written
-        in, and the numpy dtype its samples are stored as.
+        lines: How many lines it holds.
+        samples: How many samples each line holds.
+        bands: How many bands it holds.
+        order: The order its bands are written in.
+        dtype: The numpy dtype its samples are stored as.
 
     Raises:
         KeyError: When it names a sample type this cannot read.
@@ -130,9 +133,9 @@ def scaling(label: dict[str, str]) -> tuple[float, float]:
         label: The parsed label.
 
     Returns:
-        The factor every stored value is multiplied by and the offset added
-        after it, which are one and zero for a label naming neither and so
-        stand for the values being what they say already.
+        factor: What every stored value is multiplied by, one where the label names
+            none.
+        offset: What is added after it, zero where the label names none.
     """
     return float(label.get("SCALING_FACTOR", 1.0)), float(label.get("OFFSET", 0.0))
 
@@ -144,8 +147,8 @@ def columns(path: Path) -> list[dict[str, str]]:
         path: The `.lbl` file describing the table.
 
     Returns:
-        One dictionary per column, keyed as the label writes it, with quotes
-        and unit suffixes stripped.
+        columns: One dictionary per column, keyed as the label writes it, stripped of
+            quotes and units.
     """
     found: list[dict[str, str]] = []
     inside: dict[str, str] | None = None
@@ -168,8 +171,8 @@ def merge(*held: dict[str, str]) -> dict[str, str]:
         held: The label of each product, in the order they are preferred.
 
     Returns:
-        Their keys in one map, without what only describes the file they were
-        published in, and without a key the archive left unset.
+        label: Their keys in one map, without what only describes the file they came in
+            and without a key the archive left unset.
     """
     merged: dict[str, str] = {}
     for one in held:

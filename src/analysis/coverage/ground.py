@@ -12,7 +12,7 @@ def share(cells: float, cell_km2: float, area_km2: float) -> float:
         area_km2: How much ground the whole of it holds.
 
     Returns:
-        The share of that ground the cells cover, from nought to one.
+        share: The share of that ground the cells cover, from nought to one.
     """
     return cells * cell_km2 / area_km2
 
@@ -26,6 +26,6 @@ def cells(share: float, area_km2: float, cell_km2: float) -> float:
         cell_km2: How much ground one cell covers.
 
     Returns:
-        The cells it comes to, which need not be a whole number of them.
+        cells: The cells it comes to, which need not be a whole number of them.
     """
     return share * area_km2 / cell_km2

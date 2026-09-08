@@ -1,9 +1,4 @@
-"""What the stats made of the dataset, written out so they need not be read again.
-
-The keys below are the published format, not the field names the stats carry, so
-a field may be renamed without the published file having to be read again. Only
-a change to what is written raises `configs.STATS_SHAPE`.
-"""
+"""What the stats made of the dataset, written out so they need not be read again."""
 
 from __future__ import annotations
 
@@ -12,11 +7,13 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-import utils.disk.paths as paths
-from analysis.stats import configs
+from analysis import paths
 from analysis.stats.models.dataset import Aggregate, ClassStats, DatasetStats
 from analysis.stats.models.spread import Spread
-from utils.disk.files import atomic_path
+from shared.disk.files import atomic_path
+
+# The layout of a published file, raised whenever what is written changes.
+STATS_SHAPE = 2
 
 
 def stats_path(root: Path = paths.STATS_ROOT) -> Path:
@@ -26,7 +23,7 @@ def stats_path(root: Path = paths.STATS_ROOT) -> Path:
         root: The directory it is written in.
 
     Returns:
-        The file, which need not exist.
+        path: The file, which need not exist.
     """
     return root / paths.STATS_NAME
 
@@ -39,7 +36,7 @@ def write_stats_file(held: DatasetStats, root: Path = paths.STATS_ROOT) -> Path:
         root: The directory to write it in, made when it is missing.
 
     Returns:
-        The file written.
+        path: The file written.
     """
     path = stats_path(root)
     with atomic_path(path) as tmp:
@@ -51,10 +48,8 @@ def read_stats_file(root: Path = paths.STATS_ROOT) -> DatasetStats:
     """Read back what the stats pipeline published."""
     path = stats_path(root)
     saved = json.loads(path.read_text(encoding="utf-8"))
-    if saved["shape"] != configs.STATS_SHAPE:
-        raise ValueError(
-            f"{path.name} holds shape {saved['shape']}, not {configs.STATS_SHAPE}"
-        )
+    if saved["shape"] != STATS_SHAPE:
+        raise ValueError(f"{path.name} holds shape {saved['shape']}, not {STATS_SHAPE}")
     return _from_json(saved)
 
 
@@ -65,11 +60,11 @@ def _as_json(stats: DatasetStats) -> dict[str, Any]:
         stats: What the filter left of the dataset.
 
     Returns:
-        What the file is written from.
+        held: What the file is written from.
     """
     held = stats.held
     return {
-        "shape": configs.STATS_SHAPE,
+        "shape": STATS_SHAPE,
         "classes": {
             name: [held.selected, _spreads(held.taken)]
             for name, held in stats.classes.items()
@@ -95,7 +90,7 @@ def _from_json(saved: Mapping[str, Any]) -> DatasetStats:
         saved: What the file was written with.
 
     Returns:
-        The stats the run left.
+        stats: The stats the run left.
 
     """
     held = saved["held"]
@@ -125,7 +120,7 @@ def _spreads(measured: Mapping[str, Spread]) -> dict[str, list[float]]:
         measured: The measurement each instrument left, by instrument.
 
     Returns:
-        The numbers each of them holds, by instrument.
+        numbers: The numbers each of them holds, by instrument.
     """
     return {iid: _spread(one) for iid, one in measured.items()}
 
@@ -137,7 +132,7 @@ def _spreads_back(saved: Mapping[str, Sequence[float]]) -> dict[str, Spread]:
         saved: The numbers each instrument's measurement was written as.
 
     Returns:
-        The measurement each of them left, by instrument.
+        spreads: The measurement each of them left, by instrument.
     """
     return {iid: _read(one) for iid, one in saved.items()}
 
@@ -149,7 +144,7 @@ def _spread(measured: Spread) -> list[float]:
         measured: The measurement read off many features.
 
     Returns:
-        Its numbers, in the order the spread names them.
+        numbers: Its numbers, in the order the spread names them.
     """
     return [
         measured.mean,
@@ -168,7 +163,7 @@ def _read(saved: Sequence[float]) -> Spread:
         saved: Its numbers, in the order the spread names them.
 
     Returns:
-        The measurement.
+        spread: The measurement.
     """
     mean, middle, deviation, low, high, counted = saved
     return Spread(mean, middle, deviation, low, high, int(counted))

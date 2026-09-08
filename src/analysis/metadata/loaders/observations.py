@@ -7,7 +7,7 @@ from pathlib import Path
 
 import analysis.metadata.provenance as provenance
 from analysis.models.observation import Observation, ObservationSet
-from utils.disk.files import read_jsonl
+from shared.disk.files import read_jsonl
 
 
 def load_observations(path: Path) -> ObservationSet:
@@ -17,7 +17,7 @@ def load_observations(path: Path) -> ObservationSet:
         path: The JSONL file holding the set's observations.
 
     Returns:
-        The set as stored, in chronological order.
+        observations: The set as stored, in chronological order.
     """
     stored = read_jsonl(path)
     first = next(stored)

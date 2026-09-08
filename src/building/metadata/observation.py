@@ -9,10 +9,10 @@ import numpy as np
 
 from building.common.layout import GROUND, Layout
 from building.common.pds import times
-from building.models.feature import FeatureFrame
 from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.sample import Sample
-from utils.disk import parquet
+from shared.disk import parquet
+from shared.models.feature import Feature
 
 # What a label calls the two ends of the time a product was taken over.
 STARTED = "START_TIME"
@@ -31,14 +31,12 @@ class ObservationMetadata:
         path: Where its arrays were written, relative to the dataset's own root.
         axes: What each axis of the value array holds, in the array's own order.
         shape: The value array's shape, in that same order.
-        ground_sample_m: How much ground one sample spans along each ground
-            axis, in the order those axes run, measured off the position
-            rather than claimed by a label.
+        ground_sample_m: How much ground one sample spans along each ground axis,
+            in the order those axes run, measured rather than claimed.
         separable: Whether the position holds one axis each rather than a
             value per sample.
-        valid_count: How many of the stored values are measurements, which is
-            what the statistics beside it were measured over and what lets them
-            be pooled with another observation's.
+        valid_count: How many of the stored values are measurements, which is what
+            the statistics beside it were measured over and pool by.
         value_min: The smallest of those values, or None where the crop holds
             no measurement to say anything about.
         value_max: The largest of them, or None for the same reason.
@@ -76,7 +74,7 @@ class ObservationMetadata:
         """Return the feature this observation was kept for.
 
         Returns:
-            Its class and its name.
+            feature: Its class and its name.
         """
         return (self.feature_class, self.feature_name)
 
@@ -85,14 +83,14 @@ class ObservationMetadata:
         """Return what tells this stored observation from every other.
 
         Returns:
-            The feature it was kept for, and the product it was cut from.
+            identity: The feature it was kept for, and the product it was cut from.
         """
         return (*self.feature, self.instrument, self.identifier)
 
 
 def observation_metadata(
     held: Sample,
-    frame: FeatureFrame,
+    frame: Feature,
     layout: Layout,
     path: str,
     t_start: datetime | None = None,
@@ -111,8 +109,8 @@ def observation_metadata(
             delay axis is read through it, and None for every other instrument.
 
     Returns:
-        The metadata, its ground sample and its statistics measured rather than
-        claimed, and those statistics unset where it holds no measurement.
+        metadata: The metadata, its ground sample and statistics measured rather than
+            claimed, and those unset where it holds no measurement.
     """
     values = getattr(held, layout.measurement)
     # A ground mask reaches every value on it, so it spreads over the instrument's axes.
@@ -132,8 +130,7 @@ def observation_metadata(
         else np.finfo(values.dtype)
     )
     counted = int(measured.sum()) * int(np.prod(values.shape) // measured.size)
-    # A crop can reach a feature's box and hold no measurement on it at all, and
-    # there is nothing to say of values that were never taken.
+    # A crop can reach the box and measure nothing, and nothing says nothing
     smallest, largest, mean, deviation = (
         (
             float(np.min(values, where=measured, initial=limits.max)),
@@ -174,7 +171,7 @@ def _moment(label: dict[str, str], key: str) -> datetime | None:
         key: Which time to read.
 
     Returns:
-        The time in UTC, or None where the label holds no readable one.
+        moment: The time in UTC, or None where the label holds no readable one.
     """
     held = label.get(key)
     try:

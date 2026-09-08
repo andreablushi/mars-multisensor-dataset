@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from analysis.metadata.ode import ODEClient
-from analysis.models.feature import Feature
+from shared.models.feature import Feature
 
 ODE_META_DB = "mars"
 
@@ -15,7 +15,7 @@ def fetch_features(client: ODEClient) -> list[Feature]:
         client: The ODE client to query with.
 
     Returns:
-        The list of unique features.
+        features: The list of unique features.
 
     Raises:
         KeyError: When ODE answers without the catalog it always publishes.
@@ -26,7 +26,7 @@ def fetch_features(client: ODEClient) -> list[Feature]:
     seen: set[Feature] = set()
     for item in results["Features"]["Feature"]:
         feature = Feature(
-            name=item["FeatureName"],
+            feature_name=item["FeatureName"],
             feature_class=item["FeatureClass"],
             min_lat=float(item["MinLat"]),
             max_lat=float(item["MaxLat"]),

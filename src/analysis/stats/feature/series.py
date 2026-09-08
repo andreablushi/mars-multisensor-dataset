@@ -15,7 +15,7 @@ def coverage_over_time(coverage: Sequence[SetCoverage]) -> list[Series]:
         coverage: The feature's instrument sets, in the order they are drawn.
 
     Returns:
-        One series per set, in the same order.
+        series: One series per set, in the same order.
     """
     area_km2 = coverage[0].summary.feature_area_km2
     first = min(instrument.summary.t_first for instrument in coverage)

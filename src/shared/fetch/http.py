@@ -10,32 +10,27 @@ from typing import Any
 
 import httpx
 
-from utils.disk.files import atomic_path
-from utils.fetch.throttle import Throttle
+from shared.disk.files import atomic_path
+from shared.fetch.throttle import Throttle
 
-REQUEST_TIMEOUT = 30.0
+# A box spanning a fifth of the planet takes ODE forty seconds to answer at any
+# page size, the cost being the query and not the payload
+REQUEST_TIMEOUT = 180.0
 MAX_RETRIES = 20
 BACKOFF_BASE = 0.5
 # Ceiling on one backoff sleep, so many retries stay minutes rather than days
 BACKOFF_MAX = 30.0
 RETRYABLE_STATUS = frozenset({403, 429, 500, 502, 503, 504})
-# Which of those mean the caller is asking too often, as against a server that is
-# merely broken or has nothing to give. Only these hold every other thread back:
-# an archive answering for a file it does not have with a 500 would otherwise
-# brake a whole run for asking it a question it invited.
+# Which of those mean the caller is asking too often, and so hold every thread
 CROWDED_STATUS = frozenset({403, 429})
-# Fewer tries for a transfer than for a query, since one runs for minutes and
-# a job retrying every one of them would hang for hours
+# Fewer tries for a transfer than a query, one running for minutes not seconds
 STREAM_RETRIES = 5
 
-# How long one query may be asked for in all, retries and their waits included.
-# An attempt count alone bounds nothing: a server that answers slowly and then
-# refuses leaves a thread here for the sum of its timeouts, which is an hour.
-QUERY_DEADLINE = 420.0
+# How long one query may be asked for in all, an attempt count bounding nothing
+QUERY_DEADLINE = 900.0
 
-# How long one transfer may run in all, the retries and the reading included, so
-# a server that keeps a connection open while trickling is given up on.
-STREAM_DEADLINE = 1800.0
+# How long one transfer may run in all, so a trickling server is given up on
+STREAM_DEADLINE = 3600.0
 
 # The pause every request waits out, which one archive's refusal lengthens.
 ARCHIVE = Throttle()
@@ -51,9 +46,6 @@ def slept(attempt: int, backoff: float) -> None:
     Args:
         attempt: Which retry is about to be made, counting the first as one.
         backoff: The base delay, in seconds.
-
-    Returns:
-        None.
     """
     time.sleep(
         min(backoff * 2 ** (attempt - 1), BACKOFF_MAX) + random.uniform(0.0, backoff)
@@ -85,7 +77,7 @@ def fetched_json(
         deadline: How long to keep asking for in all, in seconds.
 
     Returns:
-        What `accepted` read out of the first usable reply.
+        found: What `accepted` read out of the first usable reply.
 
     Raises:
         FetchError: When the server refuses the request, when no attempt left a
@@ -142,16 +134,11 @@ def streamed(
         url: Where to read it from.
         path: Where it belongs once it is whole.
         timeout: How long to wait on one transfer, between one chunk and the next.
-        client: A client whose connections to reuse, or None to open one for
-            this transfer alone. A run moves tens of thousands of files, half of
-            them labels of a few kilobytes, so the handshake a fresh connection
-            costs is most of what a small one takes.
+        client: A client whose connections to reuse, or None to open one for this
+            transfer alone.
         retries: How many times to ask again after the first attempt.
         backoff: The base delay between attempts, in seconds.
         deadline: How long the whole transfer may run for, in seconds.
-
-    Returns:
-        None.
 
     Raises:
         FetchError: When the server refuses the file, when every attempt fails,
@@ -181,8 +168,7 @@ def streamed(
                 # Nothing is left behind when a transfer fails part way through.
                 with atomic_path(path) as tmp, tmp.open("wb") as handle:
                     for chunk in reply.iter_bytes():
-                        # A timeout bounds one chunk, and this the whole transfer,
-                        # so a server that trickles is given up on rather than held.
+                        # A timeout bounds one chunk, and this the whole transfer
                         if time.monotonic() >= give_up_at:
                             raise FetchError(
                                 f"{url} was still sending after {deadline:.0f}s"

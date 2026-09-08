@@ -10,20 +10,16 @@ import tifffile
 
 from building.common.pds import labels
 from building.configs import ctx as configs
-from building.models.feature import FeatureFrame
 from building.preprocessing.common.crop import marked, overlap, polar_overlap, taken
 from building.preprocessing.ctx import projection
 from building.preprocessing.ctx.models.observation import CtxObservation
 from building.preprocessing.ctx.models.sample import BLANK, CtxSample
+from shared.models.feature import Feature
 
-# ASU writes the no-data value into a tag as a float where tifffile reads an
-# integer, and says so of every page of every scan it serves. Nothing here reads
-# that tag: what a scan left blank is `BLANK`, which the sample model names.
+# Nothing here reads ASU's no-data tag: what a scan left blank is `BLANK`
 logging.getLogger("tifffile").setLevel(logging.ERROR)
 
-# What one build holds for every byte of the scan: the window a feature keeps,
-# the crop cut from it and the masks beside it. Cached scans of 51 MB and 829 MB
-# peaked at 1.2 and 0.4 times their own size, so two carries either with room over.
+# What one build holds per byte of scan; measured peaks were 1.2 and 0.4 times
 HELD_PER_BYTE = 2
 
 # What the reader, the label and the grids cost whatever size the scan is.
@@ -33,22 +29,18 @@ HELD_FLOOR = 256 * 1024**2
 def held_bytes(identifier: str) -> int:
     """Return how much memory one build of this scan holds at its peak.
 
-    A projected scan runs from tens of megabytes to a few gigabytes, so what one
-    build of it holds is read off the scan that landed rather than guessed for
-    the whole instrument. Only the window a feature keeps is ever decoded, so
-    this bounds that window rather than the scan it is cut from.
-
     Args:
         identifier: The observation, whose files must already be in the cache
             that `download.fetch` puts them in.
 
     Returns:
-        How many bytes to hold for it, floor included.
+        held: How many bytes to hold for it, floor included.
 
     Raises:
         FileNotFoundError: When the image is missing.
         tifffile.TiffFileError: When it is not a TIFF this can read.
     """
+    # Read off the scan that landed, a projected one running to gigabytes
     files = configs.CACHE.files(identifier, identifier)
     with tifffile.TiffFile(files[configs.SUFFIXES[configs.IMAGE]]) as scan:
         held = scan.pages[0].nbytes
@@ -63,7 +55,7 @@ def read_observation(identifier: str) -> CtxObservation:
             that `download.fetch` puts them in.
 
     Returns:
-        The observation, its image on that grid.
+        observation: The observation, its image on that grid.
 
     Raises:
         FileNotFoundError: When the image or its label is missing.
@@ -92,7 +84,7 @@ def windowed(image: Path, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
         bounds: The lines to keep and then the samples, as the cut left them.
 
     Returns:
-        The pixels of those lines and samples, as lines by samples.
+        pixels: The pixels of those lines and samples, as lines by samples.
     """
     lines, samples = bounds
     # A box over the meridian keeps two ends of a strip, so the window spans both.
@@ -107,7 +99,7 @@ def windowed(image: Path, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     return taken(window, (lines - top, samples - left))
 
 
-def crop(observation: CtxObservation, frame: FeatureFrame) -> CtxSample | None:
+def crop(observation: CtxObservation, frame: Feature) -> CtxSample | None:
     """Return one scan holding only the pixels its feature's box keeps.
 
     Args:
@@ -115,7 +107,7 @@ def crop(observation: CtxObservation, frame: FeatureFrame) -> CtxSample | None:
         frame: The local frame of the feature it was kept for.
 
     Returns:
-        The scan cut to that feature, or None where it reaches none of it.
+        sample: The scan cut to that feature, or None where it reaches none of it.
     """
     held = (
         polar_overlap(observation.down, observation.across, observation.polar, frame)

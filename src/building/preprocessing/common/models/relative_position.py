@@ -15,19 +15,14 @@ class RelativePosition:
     """Where each sample of one observation sits on the feature it was kept for.
 
     Attributes:
-        north: How far north of the feature centre, in degrees, or in the
-            projection's own metres where one is set. One per line where the
-            grid is separable, and one per sample where it is not.
-        east: How far east of it, in the same unit, wrapped so the meridian is
-            no jump where that unit is degrees. One per sample of a line where
-            the grid is separable, and otherwise shaped as `north` is.
+        north: How far north of the feature centre, in degrees or a projection's own
+            metres, one per line where the grid is separable and per sample where not.
+        east: How far east of it, in the same unit, wrapped so the meridian is no
+            jump, one per sample of a line where the grid is separable.
         separable: Whether the two hold one axis each, a line's north and a
             sample's east, rather than a value for every sample.
-        polar: The grid the two are measured on, and None where they are the
-            degrees every other placement holds. Its metres are the
-            projection's own and not the ground's, the two differing by a scale
-            that rises away from the pole, so a distance is measured off the
-            degrees it inverts to rather than read from the offsets.
+        polar: The grid the two are measured on, and None where they are the degrees
+            every other placement holds.
     """
 
     north: np.ndarray
@@ -40,7 +35,7 @@ class RelativePosition:
         """Return how many samples each ground axis holds.
 
         Returns:
-            One count per ground axis, in the order those axes run.
+            sizes: One count per ground axis, in the order those axes run.
         """
         if self.separable:
             return (self.north.size, self.east.size)
@@ -54,8 +49,9 @@ class RelativePosition:
                 empty for all of them.
 
         Returns:
-            The northings and the eastings, holding one axis each where the
-            position is separable and a value per sample where it is not.
+            north: The northings, one axis where the position is separable and a value
+                per sample where it is not.
+            east: The eastings, holding the same.
         """
         if not taken:
             return self.north, self.east
@@ -72,8 +68,9 @@ class RelativePosition:
             ground: The instrument's ground axes, in the order they run.
 
         Returns:
-            The axes of the northing and those of the easting, one each where
-            the position is separable and every ground axis where it is not.
+            north: The axes of the northing, one where separable and every ground axis
+                where not.
+            east: The axes of the easting, holding the same.
         """
         if self.separable:
             return ground[:1], ground[1:]

@@ -37,6 +37,6 @@ class Series:
         """Report whether the set holds any observation of the ground on show.
 
         Returns:
-            True when it holds at least one.
+            observed: True when it holds at least one.
         """
         return bool(self.times)

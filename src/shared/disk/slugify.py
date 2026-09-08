@@ -14,7 +14,7 @@ def slugify(text: str) -> str:
         text: The raw name, for example "Rovers and Landers".
 
     Returns:
-        A slug such as "rovers_and_landers", or "unnamed" if empty.
+        slug: A slug such as "rovers_and_landers", or "unnamed" if empty.
     """
     slug = _SLUG_RE.sub("_", text.strip().lower()).strip("_")
     return slug or "unnamed"

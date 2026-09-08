@@ -8,7 +8,7 @@ import httpx
 
 from building.configs import ctx as configs
 from building.download import archive
-from utils.fetch.http import FetchError
+from shared.fetch.http import FetchError
 
 # What ODE publishes CTX under.
 ODE = {"ihid": "MRO", "iid": "CTX"}
@@ -45,9 +45,6 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
         observation_id: The observation to fetch.
         client: The client whose connections every query is asked over.
 
-    Returns:
-        None.
-
     Raises:
         FileNotFoundError: When ODE carries no raw scan to read the volume off.
         FetchError: When ASU serves the scan in none of the projections.
@@ -70,7 +67,10 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
         )
         return
     except FetchError:
-        pass
+        # The scan is served at one URL whatever the projection, so only a label
+        # ASU never wrote is worth asking for in the other one.
+        if destination[configs.SUFFIXES[configs.LABEL]].exists():
+            raise
     archive.bring(
         destination, _asu(observation_id, volume, otherwise), TIMEOUT, client=client
     )
@@ -87,7 +87,7 @@ def _asu(observation_id: str, volume_id: str, label: str) -> dict[str, str]:
             scan was written in.
 
     Returns:
-        The URL each product is streamed from, keyed by its suffix on disk.
+        urls: The URL each product is streamed from, keyed by its suffix on disk.
     """
     # ODE spells a scan in lower case, and ASU serves it in upper.
     scan = observation_id.upper()

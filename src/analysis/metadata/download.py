@@ -5,7 +5,7 @@ from __future__ import annotations
 from analysis.metadata.fetchers.products import fetch_products
 from analysis.metadata.ode import ODEClient
 from analysis.models.job import Job, Outcome
-from utils.disk.files import write_jsonl
+from shared.disk.files import write_jsonl
 
 
 def download(job: Job, client: ODEClient, loc: str) -> Outcome:
@@ -17,7 +17,7 @@ def download(job: Job, client: ODEClient, loc: str) -> Outcome:
         loc: Which products a feature box returns.
 
     Returns:
-        The outcome, carrying the error when the job failed.
+        outcome: The outcome, carrying the error when the job failed.
     """
     try:
         records = fetch_products(client, job.feature, job.instrument_set, loc)

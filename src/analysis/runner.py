@@ -36,7 +36,7 @@ def run_jobs(
         pool: The pool to run on, owned and shut down by the caller.
 
     Yields:
-        One event per finished job, in completion order.
+        event: One event per finished job, in completion order.
     """
     futures = [pool.submit(execute, job) for job in jobs]
     for completed, future in enumerate(as_completed(futures), start=1):
@@ -55,7 +55,8 @@ def run_pipeline(
             both halves at once: a set is downloaded again and measured again.
 
     Returns:
-        Every finished download outcome, then every finished coverage outcome.
+        fetched: Every finished download outcome.
+        measured: Every finished coverage outcome.
     """
     futures: list[Future[Outcome]] = []
     fetched: list[Outcome] = []

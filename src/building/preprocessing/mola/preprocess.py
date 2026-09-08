@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from building.configs import mola as configs
-from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.relative_position import RelativePosition
 from building.preprocessing.mola import projection
 from building.preprocessing.mola.merge_tiles import merge_tiles
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
-from utils.geometry import geodesy
+from shared.maths import geodesy
+from shared.models.feature import Feature
 
 
 def read_observation(grid: str) -> MolaGrid:
@@ -20,8 +20,8 @@ def read_observation(grid: str) -> MolaGrid:
             be in the cache that `download.fetch` puts them in.
 
     Returns:
-        The tiles of it that landed, which no more than a label of is read
-        until a feature's own box says which bins of them to take.
+        grid: The tiles of it that landed, no more than a label of which is read until a
+            box says which bins to take.
     """
     held = configs.GRIDS[grid]
     files = {}
@@ -44,7 +44,7 @@ def read_observation(grid: str) -> MolaGrid:
     return MolaGrid(grid, held.resolution, files, held.north is not None)
 
 
-def crop(grid: MolaGrid, frame: FeatureFrame) -> MolaSample | None:
+def crop(grid: MolaGrid, frame: Feature) -> MolaSample | None:
     """Return the bins of one grid its feature's box keeps, merged into one.
 
     Args:
@@ -52,8 +52,7 @@ def crop(grid: MolaGrid, frame: FeatureFrame) -> MolaSample | None:
         frame: The local frame of the feature they are merged for.
 
     Returns:
-        The height over that feature, or None where a cap reaches none of it.
-        A tiled grid is merged to the box itself, so it is never cut again.
+        sample: The height over that feature, or None where a cap reaches none of it.
 
     Raises:
         ValueError: When the tiles that landed leave part of its box unwritten.

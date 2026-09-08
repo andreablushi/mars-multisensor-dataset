@@ -22,7 +22,8 @@ def measure_set(
         union_threads: How many of the feature's cells to accumulate at once.
 
     Returns:
-        One row per observation and the single row describing the set.
+        events: One row per observation.
+        summary: The single row describing the set.
     """
     feature, region = projected.feature, projected.region
     observations = projected.observations

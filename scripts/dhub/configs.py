@@ -8,7 +8,9 @@ from pathlib import Path
 
 import yaml
 
-import utils.disk.paths as paths
+from shared.paths import CONFIGS_ROOT
+
+PLATFORM_CONFIG_PATH = CONFIGS_ROOT / "digitalhub.yaml"
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,9 +23,9 @@ class Platform:
         source_root: Where that clone lands on the job.
         python_version: The interpreter the image is built on.
         image_extras: What the platform itself asks for, beyond the pipeline.
-        resources: The cores, memory and disk each half asks for, by half.
-        functions: The function each half is registered as, by half.
-        publishes: What each half publishes, by the name a download asks for.
+        resources: The cores, memory and disk each stage asks for, by stage.
+        functions: The function each stage is registered as, by stage.
+        publishes: What each stage publishes, by the name a download asks for.
     """
 
     project: str
@@ -37,18 +39,18 @@ class Platform:
 
 
 @lru_cache(maxsize=1)
-def load(path: Path = paths.PLATFORM_CONFIG_PATH) -> Platform:
+def load(path: Path = PLATFORM_CONFIG_PATH) -> Platform:
     """Settle what a platform run is given, reading the config file once.
 
     Args:
         path: The config file, which carries every setting a run is submitted with.
 
     Returns:
-        The settled choices for the submission.
+        platform: The settled choices for the submission.
     """
     config = yaml.safe_load(path.read_text(encoding="utf-8"))
     asked = {
-        half: {key: str(value) for key, value in one.items()}
-        for half, one in config["resources"].items()
+        stage: {key: str(value) for key, value in one.items()}
+        for stage, one in config["resources"].items()
     }
     return Platform(**config | {"resources": asked})

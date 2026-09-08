@@ -5,12 +5,12 @@ from __future__ import annotations
 from dataclasses import asdict
 from pathlib import Path
 
-import utils.disk.paths as paths
+from analysis import paths
 from analysis.metadata.fetchers.features import fetch_features
 from analysis.metadata.ode import ODEClient
-from analysis.models.feature import Feature
-from utils.disk.files import read_jsonl, write_jsonl
-from utils.disk.paths import features_path
+from analysis.paths import features_path
+from shared.disk.files import read_jsonl, write_jsonl
+from shared.models.feature import Feature
 
 
 def load_features(
@@ -27,7 +27,7 @@ def load_features(
         refresh: When True, re-fetch and overwrite the cache.
 
     Returns:
-        The list of features.
+        features: The list of features.
 
     Raises:
         FileNotFoundError: When nothing is cached and no client was given to fetch with.

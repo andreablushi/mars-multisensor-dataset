@@ -10,9 +10,17 @@ from shapely import Polygon, area, covers, prepare, union_all
 from shapely.errors import GEOSException
 from shapely.geometry.base import BaseGeometry
 
-from analysis.coverage import configs
 from analysis.coverage.measurement.accumulation import coarse_split
 from analysis.coverage.models.region import FeatureRegion
+
+# How many observations a sector folds in before its union is rebuilt in one
+UNION_CHUNK = 64
+
+# A sector covered to within this share of what it could hold
+SATURATION_TOLERANCE = 1e-12
+
+# Grid an overlay is snapped to when exact arithmetic cannot node it.
+SNAP_GRID_M = 1e-6
 
 
 def new_ground(
@@ -26,7 +34,7 @@ def new_ground(
         threads: How many cells to accumulate at once, this job's share of the machine.
 
     Returns:
-        The ground in square metres each observation covered first, as it was given.
+        ground: The ground in square metres each observation covered first.
     """
     indexed = np.asarray(shapes, dtype=object)
     grid = coarse_split.grid_over(region, indexed)
@@ -56,15 +64,15 @@ def _cell_contributions(
         reaching: The indices of the observations reaching it, in order.
 
     Returns:
-        The ground in square metres this cell saw each observation cover first.
+        ground: The ground in square metres this cell saw each observation cover first.
     """
     covered: BaseGeometry = Polygon()
     arrived: list[BaseGeometry] = []
     share: list[tuple[int, float]] = []
-    limit = cap * (1.0 - configs.SATURATION_TOLERANCE)
-    for start in range(0, reaching.size, configs.UNION_CHUNK):
+    limit = cap * (1.0 - SATURATION_TOLERANCE)
+    for start in range(0, reaching.size, UNION_CHUNK):
         indices, pieces = coarse_split.clip(
-            shapes, reaching[start : start + configs.UNION_CHUNK], rectangle
+            shapes, reaching[start : start + UNION_CHUNK], rectangle
         )
         if not indices.size:
             continue
@@ -74,7 +82,7 @@ def _cell_contributions(
             covered = union_all(arrived)
         except GEOSException:
             # Exact arithmetic can fail on an overlay, which a fine grid settles
-            covered = union_all(arrived, grid_size=configs.SNAP_GRID_M)
+            covered = union_all(arrived, grid_size=SNAP_GRID_M)
         prepare(covered)
         if covered.area >= limit:
             break
@@ -94,9 +102,6 @@ def _record_first_cover(
         pieces: The footprints clipped to the cell, in the same order.
         covered: The cell's union before this chunk, empty for the first.
         share: The cell's contributions so far, appended to in place.
-
-    Returns:
-        None.
     """
     running = covered
     for index, piece in zip(indices, pieces, strict=True):
@@ -112,9 +117,9 @@ def _record_first_cover(
             merged = union_all([running, piece])
         except GEOSException:
             # Exact arithmetic can fail on an overlay, which a fine grid settles
-            merged = union_all([running, piece], grid_size=configs.SNAP_GRID_M)
+            merged = union_all([running, piece], grid_size=SNAP_GRID_M)
         added = merged.area - running.area
-        if added <= running.area * configs.SATURATION_TOLERANCE:
+        if added <= running.area * SATURATION_TOLERANCE:
             continue
         share.append((int(index), added))
         running = merged
