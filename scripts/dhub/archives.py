@@ -6,6 +6,8 @@ import shutil
 import tarfile
 from pathlib import Path
 
+from digitalhub.utils.exceptions import EntityNotExistsError
+
 import utils.disk.paths as paths
 
 
@@ -58,6 +60,30 @@ def published_folder(project, root: Path, name: str, description: str):
     return project.log_artifact(
         name=name, kind="artifact", source=str(root), description=description
     )
+
+
+def download_folder(project, name: str, into: Path) -> int:
+    """Put a published folder back where a run reads it, so it fills in the rest.
+
+    Args:
+        project: The DigitalHub project the folder was logged into.
+        name: The name the folder was published under, which need not be published
+            yet: a first run has nothing to fill in from.
+        into: The directory it fills, keeping whatever is already there.
+
+    Returns:
+        files: How many files it now holds, and zero where nothing is published.
+    """
+    try:
+        artifact = project.get_artifact(name)
+    except EntityNotExistsError:
+        print(f"nothing is published as {name}, so this starts from none", flush=True)
+        return 0
+    into.mkdir(parents=True, exist_ok=True)
+    artifact.download(str(into), overwrite=True)
+    files = sum(1 for one in into.rglob("*") if one.is_file())
+    print(f"filling in from {name}, {files:,} files already built", flush=True)
+    return files
 
 
 def unpack_archive(downloaded: str, into: Path) -> None:

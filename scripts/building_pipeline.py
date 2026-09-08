@@ -25,7 +25,7 @@ def build_dataset(force: bool = False, cores: int | None = None) -> int:
     """Build the dataset the selection asks for, over as much of it as configured.
 
     Args:
-        force: Whether to rebuild crops that are already written.
+        force: Whether to build every crop again, rather than only the missing ones.
         cores: How many cores the run was given, or None for the machine's.
 
     Returns:
@@ -47,7 +47,8 @@ def run_build(project, force: bool = False, cores: int | None = None):
 
     Args:
         project: The DigitalHub project the dataset is logged into.
-        force: Whether to rebuild crops that are already written.
+        force: Whether to build the dataset again from nothing, rather than
+            filling in whatever the last build of it left missing.
         cores: How many cores the run was given, as the job was sized.
 
     Returns:
@@ -64,13 +65,19 @@ def run_build(project, force: bool = False, cores: int | None = None):
     archives.unpack_archive(
         project.get_artifact(_SELECTION).download(overwrite=True), paths.SELECTION_ROOT
     )
+    # The build's own name is carried through, so one never overwrites another
+    published_as = f"{_DATASET}-{choices.name}"
+    # A job starts on an empty disk, so what is already built comes off the platform
+    if not force:
+        archives.download_folder(
+            project, published_as, paths.dataset_root(choices.name)
+        )
     print(f"building {choices.share:.0%} of the dataset as {choices.name}", flush=True)
     failed = build_dataset(force, cores)
-    # The build's own name is carried through, so one never overwrites another
     published = archives.published_folder(
         project,
         paths.dataset_root(choices.name),
-        f"{_DATASET}-{choices.name}",
+        published_as,
         "The cropped observations and their index, one object per crop; read "
         "observations.parquet and ask the store for the crops it names.",
     )
@@ -94,7 +101,10 @@ def main() -> int:
         "--dh", action="store_true", help="submit to DigitalHub instead of running here"
     )
     parsed.add_argument(
-        "--force", action="store_true", help="rebuild crops that are already written"
+        "--force",
+        action="store_true",
+        help="build the dataset again from nothing, rather than filling in what "
+        "the last build left missing",
     )
     parsed.add_argument("--ref", default="main", help="branch, tag, or commit to run")
     arguments = parsed.parse_args()
