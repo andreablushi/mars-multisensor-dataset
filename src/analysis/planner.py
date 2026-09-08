@@ -5,11 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 
-import shared.disk.paths as paths
+from analysis import paths
 from analysis.models.feature import Feature
 from analysis.models.instrument import InstrumentSet
 from analysis.models.job import Job, Plan
-from shared.disk.paths import events_path, metadata_file, set_summary_path
+from analysis.paths import events_path, metadata_file, set_summary_path
 
 
 def _outstanding[T, R](

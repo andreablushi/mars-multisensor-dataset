@@ -8,7 +8,7 @@ from pathlib import Path
 
 from digitalhub.utils.exceptions import EntityNotExistsError
 
-import shared.disk.paths as paths
+from shared import paths
 
 
 def published_archive(project, root: Path, name: str, description: str):

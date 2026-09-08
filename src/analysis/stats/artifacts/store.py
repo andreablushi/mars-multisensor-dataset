@@ -7,7 +7,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-import shared.disk.paths as paths
+from analysis import paths
 from analysis.stats import configs
 from analysis.stats.models.dataset import Aggregate, ClassStats, DatasetStats
 from analysis.stats.models.spread import Spread

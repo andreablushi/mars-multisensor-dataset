@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-import shared.disk.paths as paths
+from building import paths
 from building.common.layout import GROUND, Layout
 from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.sample import Sample

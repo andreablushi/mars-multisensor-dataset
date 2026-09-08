@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import shared.disk.paths as paths
+from analysis import paths
 from analysis.selector.models.selection import (
     SelectedFeature,
     SelectedObservation,

@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
-import shared.disk.paths as paths
+from building import paths
 from building.metadata import dataset
 from building.metadata import feature as features
 from building.metadata import observation as records

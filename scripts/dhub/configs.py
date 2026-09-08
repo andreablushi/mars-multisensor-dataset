@@ -8,7 +8,9 @@ from pathlib import Path
 
 import yaml
 
-import shared.disk.paths as paths
+from shared.paths import CONFIGS_ROOT
+
+PLATFORM_CONFIG_PATH = CONFIGS_ROOT / "digitalhub.yaml"
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,7 +39,7 @@ class Platform:
 
 
 @lru_cache(maxsize=1)
-def load(path: Path = paths.PLATFORM_CONFIG_PATH) -> Platform:
+def load(path: Path = PLATFORM_CONFIG_PATH) -> Platform:
     """Settle what a platform run is given, reading the config file once.
 
     Args:

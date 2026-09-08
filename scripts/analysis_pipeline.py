@@ -12,8 +12,7 @@ from digitalhub_runtime_python import handler
 from rich.console import Console
 
 import analysis.utils.settings as settings
-import shared.disk.paths as paths
-from analysis import console, planner, runner
+from analysis import console, paths, planner, runner
 from analysis.coverage.artifacts import index
 from analysis.metadata import file_explorer
 from analysis.models.progress import CoverageSummary, DownloadSummary

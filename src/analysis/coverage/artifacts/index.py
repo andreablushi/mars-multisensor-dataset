@@ -8,7 +8,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-import shared.disk.paths as paths
+from analysis import paths
 from analysis.coverage.artifacts.write import EVENTS, SUMMARY
 from analysis.coverage.models.coverage import Event, SetCoverage
 from analysis.coverage.models.summary import Summary

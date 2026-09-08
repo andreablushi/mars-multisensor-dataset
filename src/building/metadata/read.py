@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-import shared.disk.paths as paths
+from building import paths
 from building.metadata import feature as features
 from building.metadata import observation as records
 from building.metadata.feature import FeatureMetadata

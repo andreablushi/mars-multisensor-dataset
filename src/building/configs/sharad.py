@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import re
 
+from building import paths
 from building.common.layout import ELEVATION, GROUND, Layout
 from building.common.naming import Naming
 from building.common.product_cache import ProductCache
-from shared.disk import paths
 
 # The two products one track is published as.
 OBSERVATION = "observation"

@@ -11,8 +11,8 @@ from dhub import archives, configs, submit
 from digitalhub_runtime_python import handler
 from rich.console import Console
 
-import shared.disk.paths as paths
-from building import console, runner, settings
+from analysis import paths as analysis_paths
+from building import console, paths, runner, settings
 
 BUILD_HANDLER = "scripts.building_pipeline:run_build"
 
@@ -63,7 +63,8 @@ def run_build(project, force: bool = False, cores: int | None = None):
     # The platform clones the repo alone, so the selection comes off its archive
     print("fetching the selection", flush=True)
     archives.unpack_archive(
-        project.get_artifact(_SELECTION).download(overwrite=True), paths.SELECTION_ROOT
+        project.get_artifact(_SELECTION).download(overwrite=True),
+        analysis_paths.SELECTION_ROOT,
     )
     # The build's own name is carried through, so one never overwrites another
     published_as = f"{_DATASET}-{choices.name}"

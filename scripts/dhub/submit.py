@@ -6,9 +6,9 @@ import tomllib
 
 import digitalhub as dh
 
-import shared.disk.paths as paths
 from building.models import budget
 from dhub import configs
+from shared import paths
 
 UNITS = {"Ki": 1024, "Mi": 1024**2, "Gi": 1024**3, "Ti": 1024**4}
 

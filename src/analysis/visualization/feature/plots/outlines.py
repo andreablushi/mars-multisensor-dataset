@@ -8,7 +8,7 @@ import numpy as np
 from shapely import wkt as reading
 from shapely.geometry.base import BaseGeometry
 
-import shared.disk.paths as paths
+from analysis import paths
 from analysis.metadata.loaders.observations import load_observations
 from analysis.models.instrument import InstrumentSet
 from analysis.visualization.common.models.coverage import Coverage
