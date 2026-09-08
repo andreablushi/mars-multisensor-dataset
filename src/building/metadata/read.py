@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-import utils.disk.paths as paths
+import shared.disk.paths as paths
 from building.metadata import feature as features
 from building.metadata import observation as records
 from building.metadata.feature import FeatureMetadata
 from building.metadata.observation import ObservationMetadata
-from utils.disk import parquet
+from shared.disk import parquet
 
 
 def read_feature_metadata(

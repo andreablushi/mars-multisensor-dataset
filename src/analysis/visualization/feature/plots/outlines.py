@@ -8,12 +8,12 @@ import numpy as np
 from shapely import wkt as reading
 from shapely.geometry.base import BaseGeometry
 
-import utils.disk.paths as paths
+import shared.disk.paths as paths
 from analysis.metadata.loaders.observations import load_observations
 from analysis.models.instrument import InstrumentSet
 from analysis.visualization.common.models.coverage import Coverage
 from analysis.visualization.feature.models.outlines import Trace
-from utils.disk.slugify import slugify
+from shared.disk.slugify import slugify
 
 OUTLINE_CACHE = 4
 

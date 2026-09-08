@@ -10,8 +10,8 @@ from building.preprocessing.common.models.relative_position import (
     PolarGrid,
     RelativePosition,
 )
-from utils.geometry import geodesy
-from utils.geometry.geodesy import TURN
+from shared.geometry import geodesy
+from shared.geometry.geodesy import TURN
 
 # The longest segment the box is walked in, a chord leaving its arc by under a pixel.
 STEP = 0.1

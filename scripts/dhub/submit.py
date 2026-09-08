@@ -6,7 +6,7 @@ import tomllib
 
 import digitalhub as dh
 
-import utils.disk.paths as paths
+import shared.disk.paths as paths
 from building.models import budget
 from dhub import configs
 

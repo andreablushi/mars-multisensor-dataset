@@ -8,7 +8,7 @@ import httpx
 
 from building.configs import ctx as configs
 from building.download import archive
-from utils.fetch.http import FetchError
+from shared.fetch.http import FetchError
 
 # What ODE publishes CTX under.
 ODE = {"ihid": "MRO", "iid": "CTX"}

@@ -12,7 +12,7 @@ from typing import Any, get_args, get_origin, get_type_hints
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from utils.disk.files import atomic_path
+from shared.disk.files import atomic_path
 
 _ARROW = {
     str: pa.string(),

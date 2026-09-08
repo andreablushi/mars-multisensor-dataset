@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-from utils.fetch import http, ode_configs
+from shared.fetch import http, ode_configs
 
 
 class ODEClient:

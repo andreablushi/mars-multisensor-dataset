@@ -5,12 +5,12 @@ from __future__ import annotations
 from dataclasses import asdict
 from pathlib import Path
 
-import utils.disk.paths as paths
+import shared.disk.paths as paths
 from analysis.metadata.fetchers.features import fetch_features
 from analysis.metadata.ode import ODEClient
 from analysis.models.feature import Feature
-from utils.disk.files import read_jsonl, write_jsonl
-from utils.disk.paths import features_path
+from shared.disk.files import read_jsonl, write_jsonl
+from shared.disk.paths import features_path
 
 
 def load_features(

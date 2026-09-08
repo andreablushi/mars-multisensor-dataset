@@ -7,7 +7,7 @@ import re
 from building.common.layout import ELEVATION, GROUND, Layout
 from building.common.naming import Naming
 from building.common.product_cache import ProductCache
-from utils.disk import paths
+from shared.disk import paths
 
 # The two products one track is published as.
 OBSERVATION = "observation"

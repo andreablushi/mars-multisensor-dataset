@@ -7,13 +7,13 @@ from pathlib import Path
 
 import numpy as np
 
-import utils.disk.paths as paths
+import shared.disk.paths as paths
 from building.common.layout import GROUND, Layout
 from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.sample import Sample
-from utils.disk.files import atomic_path
-from utils.disk.slugify import slugify
-from utils.geometry import geodesy
+from shared.disk.files import atomic_path
+from shared.disk.slugify import slugify
+from shared.geometry import geodesy
 
 # What the arrays placing a crop are called, and what the masks beside them are.
 NORTH = "north"

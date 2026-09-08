@@ -10,8 +10,8 @@ from typing import Any
 
 import httpx
 
-from utils.disk.files import atomic_path
-from utils.fetch.throttle import Throttle
+from shared.disk.files import atomic_path
+from shared.fetch.throttle import Throttle
 
 # A box spanning a fifth of the planet takes ODE forty seconds to answer at any
 # page size, the cost being the query and not the payload

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import yaml
 
-import utils.disk.paths as paths
+import shared.disk.paths as paths
 from analysis.selector.models.filter import Filter
 
 

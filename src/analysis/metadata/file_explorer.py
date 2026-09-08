@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import utils.disk.paths as paths
+import shared.disk.paths as paths
 from analysis.models.instrument import InstrumentSet
 
 

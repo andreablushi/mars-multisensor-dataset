@@ -7,7 +7,7 @@ import re
 from building.common.layout import GROUND, WAVELENGTH, Layout
 from building.common.naming import Naming
 from building.common.product_cache import ProductCache
-from utils.disk import paths
+from shared.disk import paths
 
 # The two detectors of one scan, infrared and visible.
 DETECTORS = ("l", "s")

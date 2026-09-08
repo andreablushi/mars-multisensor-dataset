@@ -9,7 +9,7 @@ from building.preprocessing.mola import projection
 from building.preprocessing.mola.merge_tiles import merge_tiles
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
-from utils.geometry import geodesy
+from shared.geometry import geodesy
 
 
 def read_observation(grid: str) -> MolaGrid:

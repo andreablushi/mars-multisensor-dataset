@@ -5,7 +5,7 @@ from __future__ import annotations
 from analysis.metadata.fetchers.products import fetch_products
 from analysis.metadata.ode import ODEClient
 from analysis.models.job import Job, Outcome
-from utils.disk.files import write_jsonl
+from shared.disk.files import write_jsonl
 
 
 def download(job: Job, client: ODEClient, loc: str) -> Outcome:

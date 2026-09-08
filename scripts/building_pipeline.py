@@ -11,7 +11,7 @@ from dhub import archives, configs, submit
 from digitalhub_runtime_python import handler
 from rich.console import Console
 
-import utils.disk.paths as paths
+import shared.disk.paths as paths
 from building import console, runner, settings
 
 BUILD_HANDLER = "scripts.building_pipeline:run_build"

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from utils.disk.slugify import slugify
+from shared.disk.slugify import slugify
 
 if TYPE_CHECKING:
     from analysis.models.feature import Feature

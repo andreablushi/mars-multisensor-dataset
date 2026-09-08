@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from utils.geometry import geodesy
+from shared.geometry import geodesy
 
 
 @dataclass(frozen=True, slots=True)

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-import utils.disk.paths as paths
+import shared.disk.paths as paths
 from building.models.settings import Settings
 
 

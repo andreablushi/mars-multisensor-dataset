@@ -9,8 +9,8 @@ import analysis.metadata.provenance as provenance
 from analysis.metadata.ode import ODEClient
 from analysis.models.feature import Feature
 from analysis.models.instrument import InstrumentSet
-from utils.fetch import ode_configs
-from utils.fetch.ode_configs import ODEError
+from shared.fetch import ode_configs
+from shared.fetch.ode_configs import ODEError
 
 # A feature circling the planet is asked in two halves, no ODE box reaching round
 LONGITUDE_HALVES = ((0.0, 180.0), (180.0, 360.0))

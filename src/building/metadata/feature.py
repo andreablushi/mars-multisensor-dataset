@@ -7,7 +7,7 @@ from datetime import datetime
 
 from analysis.selector.models.selection import SelectedFeature
 from building.models.feature import FeatureFrame
-from utils.disk import parquet
+from shared.disk import parquet
 
 
 @dataclass(frozen=True, slots=True)

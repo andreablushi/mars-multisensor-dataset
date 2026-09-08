@@ -6,7 +6,7 @@ import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-import utils.disk.paths as paths
+import shared.disk.paths as paths
 
 
 @dataclass(frozen=True, slots=True)

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from building.common.layout import GROUND, Layout
 from building.common.naming import Naming
 from building.common.product_cache import ProductCache
-from utils.disk import paths
+from shared.disk import paths
 
 # The one plane of a tile that is read, the height of its ground.
 TOPOGRAPHY = "topography"

@@ -5,13 +5,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import utils.disk.paths as paths
+import shared.disk.paths as paths
 from analysis.selector.models.selection import (
     SelectedFeature,
     SelectedObservation,
     Selection,
 )
-from utils.disk import parquet
+from shared.disk import parquet
 
 FEATURES = parquet.schema_of(SelectedFeature)
 OBSERVATIONS = parquet.schema_of(SelectedObservation)

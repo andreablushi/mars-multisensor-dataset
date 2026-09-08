@@ -7,13 +7,13 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
-import utils.disk.paths as paths
+import shared.disk.paths as paths
 from building.metadata import dataset
 from building.metadata import feature as features
 from building.metadata import observation as records
 from building.metadata.feature import FeatureMetadata
 from building.metadata.observation import ObservationMetadata
-from utils.disk import parquet
+from shared.disk import parquet
 
 
 def write_metadata(

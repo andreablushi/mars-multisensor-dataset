@@ -11,7 +11,7 @@ from shapely import from_wkt
 from analysis.coverage import configs
 from analysis.coverage.projection.geometry import footprints
 from analysis.models.observation import Observation
-from utils.geometry import geodesy
+from shared.geometry import geodesy
 
 
 def track_widths(observations: Sequence[Observation]) -> list[float | None]:

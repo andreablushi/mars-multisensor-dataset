@@ -7,11 +7,11 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-import utils.disk.paths as paths
+import shared.disk.paths as paths
 from analysis.stats import configs
 from analysis.stats.models.dataset import Aggregate, ClassStats, DatasetStats
 from analysis.stats.models.spread import Spread
-from utils.disk.files import atomic_path
+from shared.disk.files import atomic_path
 
 
 def stats_path(root: Path = paths.STATS_ROOT) -> Path:

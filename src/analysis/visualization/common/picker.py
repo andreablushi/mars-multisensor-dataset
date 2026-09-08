@@ -13,7 +13,7 @@ from analysis.metadata.loaders.features import load_features
 from analysis.stats.artifacts import selection
 from analysis.visualization.common import panels
 from analysis.visualization.common.models.coverage import Coverage
-from utils.disk.slugify import slugify
+from shared.disk.slugify import slugify
 
 DEFAULT_CLASS = "Crater"
 NO_DATA_SUFFIX = "  (no data)"

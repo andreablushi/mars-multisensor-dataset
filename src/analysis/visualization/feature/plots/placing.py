@@ -7,7 +7,7 @@ from functools import lru_cache
 from analysis.metadata.loaders.features import load_features
 from analysis.models.feature import Feature
 from analysis.visualization.feature.models.placing import Placed
-from utils.disk.slugify import slugify
+from shared.disk.slugify import slugify
 
 HALF_TURN_DEG = 180.0
 

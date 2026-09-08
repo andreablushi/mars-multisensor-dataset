@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-import utils.disk.paths as paths
+import shared.disk.paths as paths
 
 
 @dataclass(frozen=True, slots=True)

@@ -24,7 +24,7 @@ from shapely.geometry.base import BaseGeometry
 from analysis.coverage import configs
 from analysis.coverage.models.region import FeatureRegion
 from analysis.models.feature import Feature
-from utils.geometry import geodesy
+from shared.geometry import geodesy
 
 _EMPTY = Polygon()
 _LINESTRING = 1

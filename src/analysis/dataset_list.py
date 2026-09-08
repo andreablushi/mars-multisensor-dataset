@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-import utils.disk.paths as paths
+import shared.disk.paths as paths
 from analysis.selector.artifacts.write import FEATURES, OBSERVATIONS
 from analysis.selector.models.selection import (
     SelectedFeature,

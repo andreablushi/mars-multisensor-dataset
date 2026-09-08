@@ -7,7 +7,7 @@ import re
 from building.common.layout import GROUND, Layout
 from building.common.naming import Naming
 from building.common.product_cache import ProductCache
-from utils.disk import paths
+from shared.disk import paths
 
 # The two products a scan comes as, the label first so a wrong projection costs less.
 LABEL = "label"
