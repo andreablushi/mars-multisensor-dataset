@@ -1,10 +1,10 @@
 # What a build of the dataset holds, and how much of it to build.
 
 # The directory it is written in and the name it is published under.
-name: small
+name: full
 
 # What share of the features the selection kept to build, above zero and up to one.
-share: 0.02
+share: 1.0
 
 # The number every draw is made with, so a smaller build is a reproducible subset.
 seed: 42
