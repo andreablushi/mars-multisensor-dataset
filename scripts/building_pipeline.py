@@ -15,6 +15,7 @@ from rich.console import Console
 from analysis import paths as analysis_paths
 from building import console, paths, runner
 from building.configs import overall
+from shared.console import PLAIN_LOG_ENV
 
 BUILD_HANDLER = "scripts.building_pipeline:run_build"
 
@@ -60,7 +61,7 @@ def run_build(project, force: bool = False, workers: int | None = None):
         RuntimeError: When a product failed, which leaves the dataset short of
             what the selection asked for.
     """
-    os.environ[console.PLAIN_LOG_ENV] = "1"
+    os.environ[PLAIN_LOG_ENV] = "1"
     choices = overall.load(workers=workers)
     # The platform clones the repo alone, so the selection comes off its archive
     print("fetching the selection", flush=True)

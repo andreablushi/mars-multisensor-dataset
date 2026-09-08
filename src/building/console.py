@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import threading
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
@@ -15,18 +14,10 @@ from building.models.budget import Budget
 from building.models.job import Outcome, Plan
 from building.models.progress import Progress
 from building.models.settings import Settings
-
-# How many items are named before the rest are counted
-LISTED = 5
-
-# Set by a platform run, whose log takes plain flushed lines rather than a bar.
-PLAIN_LOG_ENV = "PIPELINE_PLAIN_LOG"
+from shared import console as printing
 
 # Progress lines where no cursor moves; the platform keeps a run's first 100 kB
 LOGGED_LINES = 100
-
-# How many failures a run names as it hits them, the summary counting them all.
-LOGGED_ERRORS = 50
 
 # How often a run says what it is doing, so a stalled build does not look slow
 WATCHED_SECONDS = 300.0
@@ -78,7 +69,7 @@ def watch(progress: Progress) -> Iterator[None]:
         progress: What every product still in the build is doing.
     """
     # A moving bar already says a run is alive; only a flat log needs telling.
-    if not os.environ.get(PLAIN_LOG_ENV):
+    if not printing.plain_log():
         yield
         return
     done = threading.Event()
@@ -113,24 +104,18 @@ def render(
     """
     collected: list[Outcome] = []
     # A platform log takes plain flushed lines, since no cursor can be moved there
-    if os.environ.get(PLAIN_LOG_ENV):
+    if printing.plain_log():
         step = max(1, total // LOGGED_LINES)
         failed = 0
         for outcome in outcomes:
             collected.append(outcome)
             if outcome.error:
                 failed += 1
-                if failed <= LOGGED_ERRORS:
-                    print(f"error {outcome.job.label}: {outcome.error}", flush=True)
-                elif failed == LOGGED_ERRORS + 1:
-                    print("the summary counts the failures from here", flush=True)
+                printing.named_failure(outcome.job.label, outcome.error, failed)
             if len(collected) % step == 0 or len(collected) == total:
-                share = len(collected) / total
                 # The one named is the one just finished, never the one under way
-                print(
-                    f"{description} {len(collected)}/{total} ({share:.0%}); "
-                    f"{outcome.job.label} done",
-                    flush=True,
+                printing.reached(
+                    description, len(collected), total, f"{outcome.job.label} done"
                 )
         return collected
     with Bar(
@@ -170,15 +155,9 @@ def print_summary(
     if not failed:
         return
     console.print(f"[yellow]{len(failed)} products failed:[/yellow]")
-    for one in failed[:LISTED]:
-        console.print(f"[yellow]  {one.job.label}: {one.error}[/yellow]")
-    if len(failed) > LISTED:
-        console.print(f"[yellow]  and {len(failed) - LISTED} more[/yellow]")
+    printing.print_listed([f"{one.job.label}: {one.error}" for one in failed], console)
 
 
 def print_interrupted() -> None:
     """Print the notice shown when a build is stopped with Ctrl-C."""
-    Console().print(
-        "[yellow]interrupted: pending jobs cancelled, written crops kept. "
-        "Re-run to resume.[/yellow]"
-    )
+    printing.print_interrupted("written crops")

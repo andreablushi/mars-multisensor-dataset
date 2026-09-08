@@ -19,6 +19,7 @@ from analysis.models.progress import CoverageSummary, DownloadSummary
 from analysis.selector import select
 from analysis.stats.artifacts import store
 from analysis.stats.dataset import aggregate, read
+from shared.console import PLAIN_LOG_ENV
 
 PIPELINE_HANDLER = "scripts.analysis_pipeline:run_pipeline"
 SELECTION_HANDLER = "scripts.analysis_pipeline:run_selection"
@@ -96,7 +97,7 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
         RuntimeError: When the measuring stage reported a failure, which leaves
             the coverage too incomplete to select a dataset from.
     """
-    os.environ[console.PLAIN_LOG_ENV] = "1"
+    os.environ[PLAIN_LOG_ENV] = "1"
     print("measuring coverage", flush=True)
     failed = compute_coverage(force, workers)
     coverage = archives.published_archive(
@@ -144,7 +145,7 @@ def run_selection(project, workers: int | None = None):
         selection: The archive of the features and observations kept.
         stats: The archive of what the filter left of the dataset.
     """
-    os.environ[console.PLAIN_LOG_ENV] = "1"
+    os.environ[PLAIN_LOG_ENV] = "1"
     print("fetching the measurements", flush=True)
     archives.unpack_archive(
         project.get_artifact(_COVERAGE).download(overwrite=True), paths.COVERAGE_ROOT
