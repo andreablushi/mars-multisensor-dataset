@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-SPEED_OF_LIGHT = 299_792_458.0
-
-# The gravitational parameter for Mars, whose radius is named beside the planet
-MARS_GM = 4.2828372e13
+from shared.maths import physics
 
 # SHARAD transmits 15-25 MHz; its centre sets the sounding wavelength
 SHARAD_CENTRE_FREQUENCY_HZ = 20e6
-SHARAD_WAVELENGTH_M = SPEED_OF_LIGHT / SHARAD_CENTRE_FREQUENCY_HZ
+SHARAD_WAVELENGTH_M = physics.SPEED_OF_LIGHT_M_S / SHARAD_CENTRE_FREQUENCY_HZ
 
 # Tracks are clipped to a dilated box so buffering still reaches the edge
 LINE_CLIP_MARGIN_DEG = 2.0

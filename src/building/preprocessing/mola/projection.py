@@ -10,13 +10,11 @@ from building.preprocessing.common.crop import polar_overlap
 from building.preprocessing.common.models.relative_position import PolarGrid
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
+from shared.maths import physics
 
 # The two projections the gridded record is written in.
 CYLINDRICAL = "SIMPLE CYLINDRICAL"
 POLAR = "POLAR STEREOGRAPHIC"
-
-# The archive writes the sphere a cap is built on in kilometres.
-KM = 1000.0
 
 
 def grid_axes(
@@ -41,7 +39,7 @@ def grid_axes(
     lines, samples = int(label["LINES"]), int(label["LINE_SAMPLES"])
     if named == POLAR:
         # A cap is placed from its middle, its arc the projection's own metres
-        radius = float(label["A_AXIS_RADIUS"]) * KM
+        radius = float(label["A_AXIS_RADIUS"]) * physics.METRES_PER_KM
         down = np.radians((lines / 2.0 - 0.5 - np.arange(lines)) / resolution) * radius
         across = (
             np.radians((np.arange(samples) - samples / 2.0 + 0.5) / resolution) * radius

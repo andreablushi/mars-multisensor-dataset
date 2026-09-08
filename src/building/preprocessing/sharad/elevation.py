@@ -9,16 +9,13 @@ from building.preprocessing.sharad.models.observation import (
     SPACECRAFT_RADIUS_FIELD,
 )
 from building.preprocessing.sharad.models.sample import SharadSample
-
-# The archive writes both radii in kilometres.
-KM = 1000.0
+from shared.maths import physics
 
 # How far apart the archive posts two delay samples of one echo record.
 SAMPLE_INTERVAL_S = 0.0375e-6
-LIGHT_SPEED_M_S = 299792458.0
 
 # What one sample is worth of free-space range, the centre cell being the areoid.
-SAMPLE_RANGE_M = LIGHT_SPEED_M_S * SAMPLE_INTERVAL_S / 2.0
+SAMPLE_RANGE_M = physics.SPEED_OF_LIGHT_M_S * SAMPLE_INTERVAL_S / 2.0
 
 
 def elevation_m(samples: int) -> np.ndarray:
@@ -47,5 +44,5 @@ def altitude_m(sample: SharadSample) -> tuple[float, float]:
     """
     above = (
         sample.geometry[SPACECRAFT_RADIUS_FIELD] - sample.geometry[GROUND_RADIUS_FIELD]
-    ) * KM
+    ) * physics.METRES_PER_KM
     return float(above.min()), float(above.max())

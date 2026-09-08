@@ -13,7 +13,7 @@ from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.sample import Sample
 from shared.disk.files import atomic_path
 from shared.disk.slugify import slugify
-from shared.geometry import geodesy
+from shared.maths import physics
 
 # What the arrays placing a crop are called, and what the masks beside them are.
 NORTH = "north"
@@ -119,7 +119,7 @@ def write_sample(
         "centre_lon": frame.centre_lon,
         "centre_lat": frame.centre_lat,
         "position_units": DEGREES if grid is None else METRES,
-        "radii_m": [geodesy.EQUATORIAL_RADIUS_M, geodesy.POLAR_RADIUS_M],
+        "radii_m": [physics.EQUATORIAL_RADIUS_M, physics.POLAR_RADIUS_M],
         "polar": None if grid is None else list(grid),
         "dims": {name: list(axes) for name, axes in along.items()},
         "axes": list(layout.axes),

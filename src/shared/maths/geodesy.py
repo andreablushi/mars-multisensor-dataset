@@ -6,15 +6,10 @@ import math
 
 import numpy as np
 
+from shared.maths.physics import EQUATORIAL_RADIUS_M, POLAR_RADIUS_M, RADIUS_M
+
 # The whole turn, which every longitude here is measured round.
 TURN = 360.0
-
-# IAU mean radius for Mars, which the equal-area projection is built on
-RADIUS_M = 3_389_500.0
-
-# The IAU axes Mars is an oblate spheroid of, no sphere being right throughout
-EQUATORIAL_RADIUS_M = 3_396_190.0
-POLAR_RADIUS_M = 3_376_200.0
 
 # A degree of longitude vanishes at a pole, so the correction is floored
 MIN_COSINE = 0.05

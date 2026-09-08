@@ -6,7 +6,7 @@ import numpy as np
 
 from building.models.feature import FeatureFrame
 from building.preprocessing.common.models.relative_position import RelativePosition
-from shared.geometry import geodesy
+from shared.maths import geodesy
 
 # How many neighbouring pairs of one axis to measure a ground sample over.
 MEASURED = 512
