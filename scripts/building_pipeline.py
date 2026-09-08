@@ -7,16 +7,18 @@ import argparse
 import os
 import time
 
-from dhub import archives, configs, submit
+from dhub import archives, submit
+from dhub import configs as platform
 from digitalhub_runtime_python import handler
 from rich.console import Console
 
 from analysis import paths as analysis_paths
-from building import console, paths, runner, settings
+from building import console, paths, runner
+from building.configs import overall
 
 BUILD_HANDLER = "scripts.building_pipeline:run_build"
 
-_PUBLISHED = configs.load().publishes
+_PUBLISHED = platform.load().publishes
 _DATASET = _PUBLISHED["dataset"]
 _SELECTION = _PUBLISHED["selection"]
 
@@ -31,7 +33,7 @@ def build_dataset(force: bool = False, cores: int | None = None) -> int:
     Returns:
         code: A process exit code, non zero when any product failed to build.
     """
-    choices = settings.load(cores=cores)
+    choices = overall.load(cores=cores)
     printing = Console()
     started_at = time.monotonic()
     outcomes = runner.run_build(
@@ -59,7 +61,7 @@ def run_build(project, force: bool = False, cores: int | None = None):
             what the selection asked for.
     """
     os.environ[console.PLAIN_LOG_ENV] = "1"
-    choices = settings.load(cores=cores)
+    choices = overall.load(cores=cores)
     # The platform clones the repo alone, so the selection comes off its archive
     print("fetching the selection", flush=True)
     archives.unpack_archive(

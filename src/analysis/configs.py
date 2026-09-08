@@ -1,4 +1,4 @@
-"""Reading the analysis runner config, the one place a run is configured from."""
+"""Reading the analysis config, the one place a run is settled from."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from analysis.models.instrument import InstrumentSet
 from analysis.models.settings import Settings
 
 
-def load(path: Path = paths.RUNNER_CONFIG_PATH, workers: int | None = None) -> Settings:
+def load(path: Path = paths.CONFIG_PATH, workers: int | None = None) -> Settings:
     """Settle what a run should do, reading the config file once.
 
     Args:

@@ -1,4 +1,4 @@
-"""Reading the building runner config, the one place a build is configured from."""
+"""Reading the building config, the one place a build is settled from."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from building import paths
 from building.models.settings import Settings
 
 
-def load(path: Path = paths.BUILDING_CONFIG_PATH, cores: int | None = None) -> Settings:
+def load(path: Path = paths.CONFIG_PATH, cores: int | None = None) -> Settings:
     """Settle what a build should do, reading the config file once.
 
     Args:

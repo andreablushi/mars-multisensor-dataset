@@ -9,7 +9,7 @@ from analysis.models.instrument import InstrumentSet
 from shared.disk.slugify import slugify
 from shared.paths import CONFIGS_ROOT, DATA_ROOT
 
-RUNNER_CONFIG_PATH = CONFIGS_ROOT / "analysis_runner.yaml"
+CONFIG_PATH = CONFIGS_ROOT / "analysis.yaml"
 FILTER_CONFIG_PATH = CONFIGS_ROOT / "window_filter.yaml"
 
 CATALOG_ROOT = DATA_ROOT / "_catalog"

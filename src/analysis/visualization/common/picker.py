@@ -7,7 +7,7 @@ from collections.abc import Callable
 import ipywidgets as widgets
 from IPython.display import display
 
-import analysis.utils.settings as settings
+from analysis import configs
 from analysis.coverage.artifacts import index
 from analysis.metadata.loaders.features import load_features
 from analysis.stats.artifacts import selection
@@ -90,7 +90,7 @@ class FeaturePicker:
         feature_class, name = self._class.value, self._name.value
         if (slugify(feature_class), slugify(name)) in self._computed:
             # The config says which sets are drawn, and in what order
-            config = settings.load()
+            config = configs.load()
             wanted = config.plot_instrument_sets
             loaded = index.load_feature(feature_class, name)
             keys = {chosen.key for chosen in wanted or ()}

@@ -7,12 +7,12 @@ import argparse
 import os
 import time
 
-from dhub import archives, configs, submit
+from dhub import archives, submit
+from dhub import configs as platform
 from digitalhub_runtime_python import handler
 from rich.console import Console
 
-import analysis.utils.settings as settings
-from analysis import console, paths, planner, runner
+from analysis import configs, console, paths, planner, runner
 from analysis.coverage.artifacts import index
 from analysis.metadata import file_explorer
 from analysis.models.progress import CoverageSummary, DownloadSummary
@@ -23,7 +23,7 @@ from analysis.stats.dataset import aggregate, read
 PIPELINE_HANDLER = "scripts.analysis_pipeline:run_pipeline"
 SELECTION_HANDLER = "scripts.analysis_pipeline:run_selection"
 
-_PUBLISHED = configs.load().publishes
+_PUBLISHED = platform.load().publishes
 _COVERAGE = _PUBLISHED["coverage"]
 _CATALOG = _PUBLISHED["catalog"]
 _METADATA = _PUBLISHED["metadata"]
@@ -42,7 +42,7 @@ def compute_coverage(force: bool = False, workers: int | None = None) -> int:
     Returns:
         code: A process exit code, non zero when either half had a failure.
     """
-    choices = settings.load(workers=workers)
+    choices = configs.load(workers=workers)
     printing = Console()
     started_at = time.monotonic()
     fetched, outcomes = runner.run_pipeline(choices, printing, force)
@@ -65,7 +65,7 @@ def compute_selection(workers: int | None = None) -> None:
     Args:
         workers: How many processes to run on at once, or None for the config.
     """
-    workers = settings.load(workers=workers).workers
+    workers = configs.load(workers=workers).workers
     picked = select.select_dataset(workers, console.logged("selection"))
     kept = sum(1 for one in picked if one.feature.kept)
     print(f"{kept:,} of {len(picked):,} features earned a place", flush=True)

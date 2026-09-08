@@ -82,7 +82,7 @@ uv run python scripts/building_pipeline.py          # here
 uv run --group digitalhub python scripts/building_pipeline.py --dh
 ```
 
-Every run choices of the dataset to build are described in `configs/building_runner.yaml`.
+Every run choices of the dataset to build are described in `configs/building.yaml`.
 
 ### Dataset structure
 
@@ -117,9 +117,9 @@ on disk.
 
 ```
 configs/
-  analysis_runner.yaml  # What a run downloads and measures, and on how many workers
+  analysis.yaml         # What a run downloads and measures, and on how many workers
   window_filter.yaml    # What a window has to hold for a feature to earn a place
-  building_runner.yaml  # How much of the dataset to build, and what to call it
+  building.yaml         # How much of the dataset to build, and what to call it
   digitalhub.yaml       # What a submitted run is given, and what it publishes
 ```
 
