@@ -25,8 +25,10 @@ from building.models.progress import BUILDING, FETCHING, HOLDING, QUEUED, Progre
 from building.models.settings import Settings
 from building.preprocessing.common import store
 
-# How much of the box's memory a build may hold, the rest left to everything else.
-MEMORY_SHARE = 0.7
+# How much of the box's memory a build may hold. The rest is not spare: the box is
+# charged for the downloads in flight and for the cache of every file written and
+# read back, none of which this budget meters.
+MEMORY_SHARE = 0.45
 
 
 def run_build(
