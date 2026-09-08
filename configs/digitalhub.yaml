@@ -19,7 +19,7 @@ resources:
     cpu: 16
     memory: 32Gi
     disk: 64Gi
-  stats:
+  selection:
     cpu: 16
     memory: 32Gi
     disk: 64Gi
@@ -32,7 +32,7 @@ resources:
 # The function each run is registered as, the project scoping it so it needs no prefix
 functions:
   pipeline: analysis-pipeline
-  stats: select-features
+  selection: select-features
   build: build-dataset
 
 # What each half publishes, which is what dh_download.sh brings back down.

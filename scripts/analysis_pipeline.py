@@ -6,9 +6,9 @@ from __future__ import annotations
 import argparse
 import os
 import time
-from collections.abc import Callable
 
-from dhub import archives, configs
+from dhub import archives, configs, submit
+from digitalhub_runtime_python import handler
 from rich.console import Console
 
 import analysis.utils.settings as settings
@@ -21,28 +21,30 @@ from analysis.selector import select
 from analysis.stats.artifacts import store
 from analysis.stats.dataset import aggregate, read
 
-try:
-    from digitalhub_runtime_python import handler
-except ModuleNotFoundError:
-    # Only a submitted run installs the platform, so here the mark does nothing
-    def handler(outputs: list[str]) -> Callable:
-        """Leave a handler as it is when the platform is not installed."""
-        return lambda called: called
-
-
 PIPELINE_HANDLER = "scripts.analysis_pipeline:run_pipeline"
-STATS_HANDLER = "scripts.analysis_pipeline:run_stats"
+SELECTION_HANDLER = "scripts.analysis_pipeline:run_selection"
 
 _PUBLISHED = configs.load().publishes
 _COVERAGE = _PUBLISHED["coverage"]
 _CATALOG = _PUBLISHED["catalog"]
 _METADATA = _PUBLISHED["metadata"]
-_SELECTION = _PUBLISHED["selection"]
-_STATS = _PUBLISHED["stats"]
 _SUMMARY = _PUBLISHED["summary"]
 
+SELECTION_ARCHIVES = (
+    (
+        _PUBLISHED["selection"],
+        paths.SELECTION_ROOT,
+        "The features and observations the filter keeps; unpack under data/analysis/.",
+    ),
+    (
+        _PUBLISHED["stats"],
+        paths.STATS_ROOT,
+        "What the filter left of the dataset; unpack under data/analysis/.",
+    ),
+)
 
-def survey(force: bool = False, workers: int | None = None) -> int:
+
+def compute_coverage(force: bool = False, workers: int | None = None) -> int:
     """Download the ODE metadata still missing and measure the coverage it left.
 
     Args:
@@ -69,7 +71,7 @@ def survey(force: bool = False, workers: int | None = None) -> int:
     return 1 if computed.failed or downloaded.failed else 0
 
 
-def stats(workers: int | None = None) -> None:
+def compute_selection(workers: int | None = None) -> None:
     """Search every measured feature under the filter and read what it left.
 
     Args:
@@ -87,7 +89,7 @@ def stats(workers: int | None = None) -> None:
     )
 
 
-@handler(outputs=[_COVERAGE, _SUMMARY, _SELECTION, _STATS])
+@handler(outputs=[_COVERAGE, _SUMMARY, *(name for name, _, _ in SELECTION_ARCHIVES)])
 def run_pipeline(project, force: bool = False, workers: int | None = None):
     """Run every stage on DigitalHub and publish everything each one left on disk.
 
@@ -108,7 +110,7 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
     """
     os.environ[console.PLAIN_LOG_ENV] = "1"
     print("measuring coverage", flush=True)
-    failed = survey(force, workers)
+    failed = compute_coverage(force, workers)
     coverage = archives.logged_archive(
         project,
         paths.COVERAGE_ROOT,
@@ -121,31 +123,35 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
         source=str(paths.COVERAGE_ROOT / paths.SUMMARY_NAME),
         description="One row per feature and instrument set.",
     )
-    if any(paths.CATALOG_ROOT.glob("*.jsonl")):
-        archives.logged_archive(
-            project,
-            paths.CATALOG_ROOT,
-            _CATALOG,
-            "The ODE feature and instrument sets; unpack under data/.",
-        )
-    if any(paths.METADATA_ROOT.rglob("*.jsonl")):
-        archives.logged_archive(
-            project,
-            paths.METADATA_ROOT,
-            _METADATA,
-            "The ODE records behind each measurement; unpack under data/analysis/.",
-        )
+    archives.logged_archive(
+        project,
+        paths.CATALOG_ROOT,
+        _CATALOG,
+        "The ODE feature and instrument sets; unpack under data/.",
+    )
+    archives.logged_archive(
+        project,
+        paths.METADATA_ROOT,
+        _METADATA,
+        "The ODE records behind each measurement; unpack under data/analysis/.",
+    )
     # Report a failure only once uploaded, and never select from short coverage
     if failed:
         raise RuntimeError("the run had failures; the archives hold what finished")
-    stats(workers)
-    selection, published = _published_selection(project)
+    compute_selection(workers)
     print("done", flush=True)
-    return coverage, summary, selection, published
+    return (
+        coverage,
+        summary,
+        *(
+            archives.logged_archive(project, root, name, held)
+            for name, root, held in SELECTION_ARCHIVES
+        ),
+    )
 
 
-@handler(outputs=[_SELECTION, _STATS])
-def run_stats(project, workers: int | None = None):
+@handler(outputs=[name for name, _, _ in SELECTION_ARCHIVES])
+def run_selection(project, workers: int | None = None):
     """Select the dataset on DigitalHub under the filter, and publish what it leaves.
 
     Args:
@@ -155,9 +161,6 @@ def run_stats(project, workers: int | None = None):
     Returns:
         selection: The archive of the features and observations kept.
         stats: The archive of what the filter left of the dataset.
-
-    Raises:
-        RuntimeError: When the published measurements hold no feature to search.
     """
     os.environ[console.PLAIN_LOG_ENV] = "1"
     print("fetching the measurements", flush=True)
@@ -168,38 +171,11 @@ def run_stats(project, workers: int | None = None):
     archives.unpacked(
         project.get_artifact(_CATALOG).download(overwrite=True), paths.CATALOG_ROOT
     )
-    if not index.catalogued_features():
-        raise RuntimeError("the published measurements hold no feature to search")
-    stats(workers)
-    selection, published = _published_selection(project)
+    compute_selection(workers)
     print("done", flush=True)
-    return selection, published
-
-
-def _published_selection(project):
-    """Publish what the filter keeps of the features, and what it left of them.
-
-    Args:
-        project: The DigitalHub project the archives are logged into.
-
-    Returns:
-        selection: The archive of the features and observations kept.
-        stats: The archive of what the filter left of the dataset.
-    """
-    return (
-        archives.logged_archive(
-            project,
-            paths.SELECTION_ROOT,
-            _SELECTION,
-            "The features and observations the filter keeps; "
-            "unpack under data/analysis/.",
-        ),
-        archives.logged_archive(
-            project,
-            paths.STATS_ROOT,
-            _STATS,
-            "What the filter left of the dataset; unpack under data/analysis/.",
-        ),
+    return tuple(
+        archives.logged_archive(project, root, name, held)
+        for name, root, held in SELECTION_ARCHIVES
     )
 
 
@@ -226,16 +202,13 @@ def main() -> int:
     arguments = parsed.parse_args()
 
     if arguments.dh:
-        # Only a submission needs the platform installed, so it is asked for here
-        from dhub import submit
-
         if arguments.only_stats:
-            return submit.submitted("stats", STATS_HANDLER, arguments.ref)
+            return submit.submitted("selection", SELECTION_HANDLER, arguments.ref)
         return submit.submitted(
             "pipeline", PIPELINE_HANDLER, arguments.ref, force=arguments.force
         )
-    failed = 0 if arguments.only_stats else survey(arguments.force)
-    stats()
+    failed = 0 if arguments.only_stats else compute_coverage(arguments.force)
+    compute_selection()
     return failed
 
 
