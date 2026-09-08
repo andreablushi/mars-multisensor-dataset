@@ -6,43 +6,22 @@ from __future__ import annotations
 import argparse
 import os
 import time
-from collections.abc import Callable
 
-from dhub import archives, configs
+from dhub import archives, configs, submit
+from digitalhub_runtime_python import handler
 from rich.console import Console
 
 import utils.disk.paths as paths
 from building import console, runner, settings
 
-try:
-    from digitalhub_runtime_python import handler
-except ModuleNotFoundError:
-    # Only a submitted run installs the platform, so here the mark does nothing
-    def handler(outputs: list[str]) -> Callable:
-        """Leave a handler as it is when the platform is not installed."""
-        return lambda called: called
-
-
 BUILD_HANDLER = "scripts.building_pipeline:run_build"
 
-_DATASET = configs.load().publishes.get("dataset", "dataset")
-_SELECTION = configs.load().publishes.get("selection", "selection")
+_PUBLISHED = configs.load().publishes
+_DATASET = _PUBLISHED["dataset"]
+_SELECTION = _PUBLISHED["selection"]
 
 
-def _published(name: str) -> str:
-    """Return what one build of the dataset is published under.
-
-    Args:
-        name: What the build is called, as its config names it.
-
-    Returns:
-        name: The artifact name, carrying the build's own so one never overwrites
-            another.
-    """
-    return f"{_DATASET}-{name}"
-
-
-def build(force: bool = False, cores: int | None = None) -> int:
+def build_dataset(force: bool = False, cores: int | None = None) -> int:
     """Build the dataset the selection asks for, over as much of it as configured.
 
     Args:
@@ -86,11 +65,12 @@ def run_build(project, force: bool = False, cores: int | None = None):
         project.get_artifact(_SELECTION).download(overwrite=True), paths.SELECTION_ROOT
     )
     print(f"building {choices.share:.0%} of the dataset as {choices.name}", flush=True)
-    failed = build(force, cores)
+    failed = build_dataset(force, cores)
+    # The build's own name is carried through, so one never overwrites another
     published = archives.logged_folder(
         project,
         paths.dataset_root(choices.name),
-        _published(choices.name),
+        f"{_DATASET}-{choices.name}",
         "The cropped observations and their index, one object per crop; read "
         "observations.parquet and ask the store for the crops it names.",
     )
@@ -120,13 +100,10 @@ def main() -> int:
     arguments = parsed.parse_args()
 
     if arguments.dh:
-        # Only a submission needs the platform installed, so it is asked for here
-        from dhub import submit
-
         return submit.submitted(
             "build", BUILD_HANDLER, arguments.ref, "cores", force=arguments.force
         )
-    return build(arguments.force)
+    return build_dataset(arguments.force)
 
 
 if __name__ == "__main__":
