@@ -9,8 +9,8 @@ import analysis.metadata.provenance as provenance
 from analysis.metadata.ode import ODEClient
 from analysis.models.feature import Feature
 from analysis.models.instrument import InstrumentSet
-from shared.fetch import ode_configs
-from shared.fetch.ode_configs import ODEError
+from shared.fetch import ode
+from shared.fetch.ode import ODEError
 
 # A feature circling the planet is asked in two halves, no ODE box reaching round
 LONGITUDE_HALVES = ((0.0, 180.0), (180.0, 360.0))
@@ -68,7 +68,7 @@ def _params(box: Box, instrument_set: InstrumentSet, loc: str) -> dict[str, str]
     min_lat, max_lat, west_lon, east_lon = box
     params = {
         "query": "product",
-        "target": ode_configs.ODE_TARGET,
+        "target": ode.ODE_TARGET,
         "ihid": instrument_set.ihid,
         "iid": instrument_set.iid,
         "pt": instrument_set.pt,

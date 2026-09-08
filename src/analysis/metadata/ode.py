@@ -6,7 +6,8 @@ from typing import Any
 
 import httpx
 
-from shared.fetch import http, ode_configs
+from shared.fetch import http
+from shared.fetch.ode import ODE_BASE_URL, OUTPUT, ODEError
 
 
 class ODEClient:
@@ -46,14 +47,12 @@ class ODEClient:
             if not isinstance(results, dict):
                 return None
             if str(results.get("Status", "")).upper() == "ERROR":
-                raise ode_configs.ODEError(
-                    str(results.get("Error", "unknown ODE error"))
-                )
+                raise ODEError(str(results.get("Error", "unknown ODE error")))
             return results
 
         return http.fetched_json(
-            ode_configs.ODE_BASE_URL,
-            {**ode_configs.OUTPUT, **params},
+            ODE_BASE_URL,
+            {**OUTPUT, **params},
             accepted=accepted,
             client=self._client,
         )

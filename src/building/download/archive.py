@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-from shared.fetch import http, ode_configs
+from shared.fetch import http, ode
 
 # How long to wait for the larger half of a product.
 TIMEOUT = 300.0
@@ -45,16 +45,16 @@ def query(client: httpx.Client, **params: str) -> list[dict]:
         if not isinstance(results, dict):
             return None
         if str(results.get("Status", "")).upper() == "ERROR":
-            raise ode_configs.ODEError(str(results.get("Error", "unknown ODE error")))
+            raise ode.ODEError(str(results.get("Error", "unknown ODE error")))
         return results
 
     results = http.fetched_json(
-        ode_configs.ODE_BASE_URL,
+        ode.ODE_BASE_URL,
         {
-            **ode_configs.OUTPUT,
+            **ode.OUTPUT,
             "query": "product",
             "results": "f",
-            "target": ode_configs.ODE_TARGET,
+            "target": ode.ODE_TARGET,
             **params,
         },
         accepted=accepted,
