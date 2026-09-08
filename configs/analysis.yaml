@@ -9,16 +9,11 @@ refresh_catalog: false
 # How many cells a block is divided into. For computation purpose.
 grid_cells: 32
 
+# What a run downloads and measures, and what the notebook figures draw in turn.
 # IHID/IID/PT, and a colon plus an ODE product id pattern to narrow the type.
 instruments:
   - MRO/CTX/EDR
   - MRO/CRISM/TRDR:msp*if*trr3  # the multispectral survey, reflectance cubes only
-  - MRO/SHARAD/USRDRV2
-
-# Which of the downloaded sets the notebook figures draw. Comment out for all.
-plot_instruments:
-  - MRO/CTX/EDR
-  - MRO/CRISM/TRDR:msp*if*trr3
   - MRO/SHARAD/USRDRV2
 
 # Which products a box returns: b box overlap, f footprint overlap, o inside, i containing.

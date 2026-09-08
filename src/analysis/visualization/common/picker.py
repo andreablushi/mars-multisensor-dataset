@@ -89,22 +89,14 @@ class FeaturePicker:
         """Load the confirmed feature and refill every claimed area."""
         feature_class, name = self._class.value, self._name.value
         if (slugify(feature_class), slugify(name)) in self._computed:
-            # The config says which sets are drawn, and in what order
-            config = configs.load()
-            wanted = config.plot_instrument_sets
-            loaded = index.load_feature(feature_class, name)
-            keys = {chosen.key for chosen in wanted or ()}
-            kept = (
-                list(loaded)
-                if wanted is None
-                else [one for one in loaded if one.summary.set_key in keys]
-            )
+            # The config says in what order the sets are drawn
             ranks = {
                 chosen.key: rank
-                for rank, chosen in enumerate(wanted or config.instrument_sets)
+                for rank, chosen in enumerate(configs.load().instrument_sets)
             }
             self.coverage = sorted(
-                kept, key=lambda one: ranks.get(one.summary.set_key, len(ranks))
+                index.load_feature(feature_class, name),
+                key=lambda one: ranks.get(one.summary.set_key, len(ranks)),
             )
             note = widgets.HTML(
                 f"Loaded <b>{feature_class} / {name}</b>. "
