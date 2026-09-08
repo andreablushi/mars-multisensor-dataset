@@ -61,13 +61,13 @@ def run_build(project, force: bool = False, cores: int | None = None):
     choices = settings.load(cores=cores)
     # The platform clones the repo alone, so the selection comes off its archive
     print("fetching the selection", flush=True)
-    archives.unpacked(
+    archives.unpack_archive(
         project.get_artifact(_SELECTION).download(overwrite=True), paths.SELECTION_ROOT
     )
     print(f"building {choices.share:.0%} of the dataset as {choices.name}", flush=True)
     failed = build_dataset(force, cores)
     # The build's own name is carried through, so one never overwrites another
-    published = archives.logged_folder(
+    published = archives.published_folder(
         project,
         paths.dataset_root(choices.name),
         f"{_DATASET}-{choices.name}",

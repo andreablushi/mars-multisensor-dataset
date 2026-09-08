@@ -13,7 +13,7 @@ image_extras:
   - digitalhub>=0.15.6,<0.16
   - pandas
 
-# What the platform gives each half, which asks for what that half is held up by.
+# What the platform gives each stage, which asks for what that stage is held up by.
 resources:
   pipeline:
     cpu: 16
@@ -35,7 +35,7 @@ functions:
   selection: select-features
   build: build-dataset
 
-# What each half publishes, which is what dh_download.sh brings back down.
+# What each stage publishes, which is what dh_download.sh brings back down.
 publishes:
   coverage: coverage
   catalog: catalog

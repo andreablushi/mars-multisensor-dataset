@@ -9,7 +9,7 @@ from pathlib import Path
 import utils.disk.paths as paths
 
 
-def logged_archive(project, root: Path, name: str, description: str):
+def published_archive(project, root: Path, name: str, description: str):
     """Pack one tree and publish it as a single archive, saying how big it went up.
 
     Args:
@@ -39,7 +39,7 @@ def logged_archive(project, root: Path, name: str, description: str):
         packed.unlink(missing_ok=True)
 
 
-def logged_folder(project, root: Path, name: str, description: str):
+def published_folder(project, root: Path, name: str, description: str):
     """Publish one tree file by file, each addressable where it lands.
 
     Args:
@@ -60,7 +60,7 @@ def logged_folder(project, root: Path, name: str, description: str):
     )
 
 
-def unpacked(downloaded: str, into: Path) -> None:
+def unpack_archive(downloaded: str, into: Path) -> None:
     """Put a published archive back where the pipeline reads it, and nothing else.
 
     Args:
@@ -75,7 +75,7 @@ def unpacked(downloaded: str, into: Path) -> None:
     if path.is_dir():
         found = sorted(path.glob("*.tar.gz"))
         if not found:
-            raise RuntimeError(f"no measurements were downloaded into {path}")
+            raise RuntimeError(f"no archive was downloaded into {path}")
         path = found[0]
     shutil.rmtree(into, ignore_errors=True)
     into.parent.mkdir(parents=True, exist_ok=True)

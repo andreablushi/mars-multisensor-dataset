@@ -111,7 +111,7 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
     os.environ[console.PLAIN_LOG_ENV] = "1"
     print("measuring coverage", flush=True)
     failed = compute_coverage(force, workers)
-    coverage = archives.logged_archive(
+    coverage = archives.published_archive(
         project,
         paths.COVERAGE_ROOT,
         _COVERAGE,
@@ -123,13 +123,13 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
         source=str(paths.COVERAGE_ROOT / paths.SUMMARY_NAME),
         description="One row per feature and instrument set.",
     )
-    archives.logged_archive(
+    archives.published_archive(
         project,
         paths.CATALOG_ROOT,
         _CATALOG,
         "The ODE feature and instrument sets; unpack under data/.",
     )
-    archives.logged_archive(
+    archives.published_archive(
         project,
         paths.METADATA_ROOT,
         _METADATA,
@@ -144,7 +144,7 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
         coverage,
         summary,
         *(
-            archives.logged_archive(project, root, name, held)
+            archives.published_archive(project, root, name, held)
             for name, root, held in SELECTION_ARCHIVES
         ),
     )
@@ -164,17 +164,17 @@ def run_selection(project, workers: int | None = None):
     """
     os.environ[console.PLAIN_LOG_ENV] = "1"
     print("fetching the measurements", flush=True)
-    archives.unpacked(
+    archives.unpack_archive(
         project.get_artifact(_COVERAGE).download(overwrite=True), paths.COVERAGE_ROOT
     )
     # The selection writes each feature's own ground, which it reads here
-    archives.unpacked(
+    archives.unpack_archive(
         project.get_artifact(_CATALOG).download(overwrite=True), paths.CATALOG_ROOT
     )
     compute_selection(workers)
     print("done", flush=True)
     return tuple(
-        archives.logged_archive(project, root, name, held)
+        archives.published_archive(project, root, name, held)
         for name, root, held in SELECTION_ARCHIVES
     )
 
