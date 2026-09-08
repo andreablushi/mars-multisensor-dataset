@@ -6,9 +6,28 @@ import shutil
 import tarfile
 from pathlib import Path
 
+from digitalhub.stores.data.api import get_default_store
 from digitalhub.utils.exceptions import BackendError
 
 from shared import paths
+
+ANALYSIS_DIR = "analysis"
+
+
+def published_at(project, *parts: str) -> str:
+    """Return where one published thing belongs, in the store the platform uses.
+
+    Args:
+        project: The DigitalHub project, which names its own tree in the store.
+        *parts: The directories it is gathered into and the name it lands as,
+            in order, an empty last part leaving it a directory of its own.
+
+    Returns:
+        path: The destination, which the platform writes to as given rather than
+            generating one of its own per version.
+    """
+    root = get_default_store(project.name)
+    return "/".join((root, project.name, "artifacts", *parts))
 
 
 def published_archive(project, root: Path, name: str, description: str):
@@ -34,7 +53,11 @@ def published_archive(project, root: Path, name: str, description: str):
     print(f"uploading {name}, {packed.stat().st_size / 1e6:.0f} MB", flush=True)
     try:
         return project.log_artifact(
-            name=name, kind="artifact", source=str(packed), description=description
+            name=name,
+            kind="artifact",
+            source=str(packed),
+            path=published_at(project, ANALYSIS_DIR, packed.name),
+            description=description,
         )
     finally:
         # The platform holds it now, so the job keeps neither file nor pages
@@ -58,7 +81,11 @@ def published_folder(project, root: Path, name: str, description: str):
     held = sum(one.stat().st_size for one in files)
     print(f"uploading {name}, {len(files):,} files, {held / 1e6:.0f} MB", flush=True)
     return project.log_artifact(
-        name=name, kind="artifact", source=str(root), description=description
+        name=name,
+        kind="artifact",
+        source=str(root),
+        path=published_at(project, name, ""),
+        description=description,
     )
 
 

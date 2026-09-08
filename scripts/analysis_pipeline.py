@@ -107,9 +107,11 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
         "Coverage events and summaries; unpack under data/analysis/.",
     )
     print("uploading the summary", flush=True)
-    summary = project.log_table(
+    summary = project.log_artifact(
         name=_SUMMARY,
+        kind="artifact",
         source=str(paths.COVERAGE_ROOT / paths.SUMMARY_NAME),
+        path=archives.published_at(project, archives.ANALYSIS_DIR, paths.SUMMARY_NAME),
         description="One row per feature and instrument set.",
     )
     archives.published_archive(

@@ -42,7 +42,7 @@ download_and_extract() {
         -n "$name" \
         -d "$staged"
 
-    # An artifact comes down as an archive, a dataitem as the file itself
+    # An archive comes down packed, the summary as the one file it is
     local packed
     packed="$(find "$staged" -maxdepth 1 -name '*.tar.gz' -print -quit)"
     if [[ -n $packed ]]; then
@@ -74,7 +74,7 @@ download() {
         metadata) download_and_extract artifact "$(published metadata)" data/analysis/metadata ;;
         selection) download_and_extract artifact "$(published selection)" data/analysis/selection ;;
         stats) download_and_extract artifact "$(published stats)" data/analysis/stats ;;
-        summary) download_and_extract dataitem "$(published summary)" data/analysis/coverage shares ;;
+        summary) download_and_extract artifact "$(published summary)" data/analysis/coverage shares ;;
         *)
             echo "nothing is published under \`$1\`" >&2
             usage >&2
