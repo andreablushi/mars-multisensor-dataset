@@ -28,20 +28,9 @@ _PUBLISHED = configs.load().publishes
 _COVERAGE = _PUBLISHED["coverage"]
 _CATALOG = _PUBLISHED["catalog"]
 _METADATA = _PUBLISHED["metadata"]
+_SELECTION = _PUBLISHED["selection"]
+_STATS = _PUBLISHED["stats"]
 _SUMMARY = _PUBLISHED["summary"]
-
-SELECTION_ARCHIVES = (
-    (
-        _PUBLISHED["selection"],
-        paths.SELECTION_ROOT,
-        "The features and observations the filter keeps; unpack under data/analysis/.",
-    ),
-    (
-        _PUBLISHED["stats"],
-        paths.STATS_ROOT,
-        "What the filter left of the dataset; unpack under data/analysis/.",
-    ),
-)
 
 
 def compute_coverage(force: bool = False, workers: int | None = None) -> int:
@@ -89,7 +78,7 @@ def compute_selection(workers: int | None = None) -> None:
     )
 
 
-@handler(outputs=[_COVERAGE, _SUMMARY, *(name for name, _, _ in SELECTION_ARCHIVES)])
+@handler(outputs=[_COVERAGE, _SUMMARY, _SELECTION, _STATS])
 def run_pipeline(project, force: bool = False, workers: int | None = None):
     """Run every stage on DigitalHub and publish everything each one left on disk.
 
@@ -139,18 +128,12 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
     if failed:
         raise RuntimeError("the run had failures; the archives hold what finished")
     compute_selection(workers)
+    selection, published = _published_selection(project)
     print("done", flush=True)
-    return (
-        coverage,
-        summary,
-        *(
-            archives.published_archive(project, root, name, held)
-            for name, root, held in SELECTION_ARCHIVES
-        ),
-    )
+    return coverage, summary, selection, published
 
 
-@handler(outputs=[name for name, _, _ in SELECTION_ARCHIVES])
+@handler(outputs=[_SELECTION, _STATS])
 def run_selection(project, workers: int | None = None):
     """Select the dataset on DigitalHub under the filter, and publish what it leaves.
 
@@ -172,10 +155,35 @@ def run_selection(project, workers: int | None = None):
         project.get_artifact(_CATALOG).download(overwrite=True), paths.CATALOG_ROOT
     )
     compute_selection(workers)
+    selection, published = _published_selection(project)
     print("done", flush=True)
-    return tuple(
-        archives.published_archive(project, root, name, held)
-        for name, root, held in SELECTION_ARCHIVES
+    return selection, published
+
+
+def _published_selection(project):
+    """Publish what the filter keeps of the features, and what it left of them.
+
+    Args:
+        project: The DigitalHub project the archives are logged into.
+
+    Returns:
+        selection: The archive of the features and observations kept.
+        stats: The archive of what the filter left of the dataset.
+    """
+    return (
+        archives.published_archive(
+            project,
+            paths.SELECTION_ROOT,
+            _SELECTION,
+            "The features and observations the filter keeps; "
+            "unpack under data/analysis/.",
+        ),
+        archives.published_archive(
+            project,
+            paths.STATS_ROOT,
+            _STATS,
+            "What the filter left of the dataset; unpack under data/analysis/.",
+        ),
     )
 
 
