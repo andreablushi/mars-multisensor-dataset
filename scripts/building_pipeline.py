@@ -8,6 +8,7 @@ import os
 import time
 from collections.abc import Callable
 
+import digitalhub as dh
 from dhub import archives, submit
 from dhub import configs as platform
 from digitalhub_runtime_python import handler
@@ -25,6 +26,12 @@ DATASET_HELD = (
     "The cropped observations and their index, one object per crop; read "
     "observations.parquet and ask the store for the crops it names."
 )
+
+# How many times to try one publish, the credentials refreshed between attempts.
+PUBLISH_TRIES = 4
+
+# How long to wait after a failed publish, doubled by each failure after it.
+PUBLISH_BACKOFF = 30.0
 
 _PUBLISHED = platform.load().publishes
 _DATASET = _PUBLISHED["dataset"]
@@ -59,6 +66,36 @@ def build_dataset(
     )
     console.print_summary(outcomes, time.monotonic() - started_at, printing)
     return 1 if any(one.error for one in outcomes) else 0
+
+
+def published_dataset(project, root, name):
+    """Publish the dataset, refreshing the credentials and asking again on failure.
+
+    Args:
+        project: The DigitalHub project the dataset is logged into.
+        root: The directory holding the crops and their index.
+        name: The name the dataset is published under.
+
+    Returns:
+        artifact: The logged artifact.
+
+    Raises:
+        Exception: Whatever the last attempt raised, every one having failed.
+    """
+    for attempt in range(1, PUBLISH_TRIES + 1):
+        try:
+            return archives.published_folder(project, root, name, DATASET_HELD)
+        except Exception as error:  # noqa: BLE001
+            if attempt == PUBLISH_TRIES:
+                raise
+            print(f"publishing {name} failed: {error}", flush=True)
+            # The store hands back a refusal for a lapsed token as for anything else.
+            try:
+                dh.refresh_token()
+            except Exception as refused:  # noqa: BLE001
+                print(f"the token was not refreshed: {refused}", flush=True)
+            time.sleep(PUBLISH_BACKOFF * 2 ** (attempt - 1))
+    raise RuntimeError(f"{name} was not published")
 
 
 @handler(outputs=[_DATASET])
@@ -98,10 +135,10 @@ def run_build(project, force: bool = False, workers: int | None = None):
 
     def checkpoint() -> None:
         """Publish what the build has finished, so a run that dies resumes from it."""
-        archives.published_folder(project, root, published_as, DATASET_HELD)
+        published_dataset(project, root, published_as)
 
     failed = build_dataset(force, workers, checkpoint)
-    published = archives.published_folder(project, root, published_as, DATASET_HELD)
+    published = published_dataset(project, root, published_as)
     if failed:
         raise RuntimeError(
             "the build had failures; what was published holds what finished"

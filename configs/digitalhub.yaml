@@ -30,7 +30,7 @@ resources:
   # build that misjudges what it holds overruns the first and still fits the second.
   build:
     cpu: 8
-    memory: 48Gi
+    memory: 64Gi
     budget: 32Gi
     disk: 500Gi
 

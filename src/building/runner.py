@@ -24,6 +24,7 @@ from building.models.job import Job, Outcome, Plan
 from building.models.progress import BUILDING, FETCHING, HOLDING, QUEUED, Progress
 from building.models.settings import Settings
 from building.preprocessing.common import store
+from shared.console import named_failure
 
 # How much of the box's memory a build may hold. The rest is not spare: the box is
 # charged for the downloads in flight and for the cache of every file written and
@@ -108,15 +109,21 @@ def _checkpointed(
         outcome: Each outcome as it came in, unchanged.
     """
     collected: list[Outcome] = []
+    failed = 0
     for outcome in outcomes:
         collected.append(outcome)
         yield outcome
         # The last products are published by the run itself, so they wait here.
         if len(collected) % CHECKPOINT_PRODUCTS:
             continue
-        # An index is written first, so what is published is readable on its own.
-        _indexed(plan, collected, settings, root)
-        checkpoint()
+        try:
+            # An index is written first, so what is published is readable on its own.
+            _indexed(plan, collected, settings, root)
+            checkpoint()
+        except Exception as error:  # noqa: BLE001
+            # A checkpoint is insurance: a build outlives one it could not write.
+            failed += 1
+            named_failure("the checkpoint", error, failed)
 
 
 def _outcomes(
