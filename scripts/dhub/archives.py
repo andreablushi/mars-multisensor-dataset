@@ -5,7 +5,9 @@ from __future__ import annotations
 import shutil
 import tarfile
 from pathlib import Path
+from urllib.parse import urlparse
 
+from digitalhub import get_s3_client
 from digitalhub.stores.data.api import get_default_store
 from digitalhub.utils.exceptions import BackendError
 
@@ -64,8 +66,10 @@ def published_archive(project, root: Path, name: str, description: str):
         packed.unlink(missing_ok=True)
 
 
-def published_folder(project, root: Path, name: str, description: str):
-    """Publish one tree file by file, each addressable where it lands.
+def published_folder(
+    project, root: Path, name: str, description: str, written_once: str
+):
+    """Publish one tree file by file, sending only what the store does not hold.
 
     Args:
         project: The DigitalHub project to log the folder into.
@@ -73,18 +77,46 @@ def published_folder(project, root: Path, name: str, description: str):
             inside it, which is what the index names them by.
         name: The name the folder is published under.
         description: What the folder holds, and how it is read.
+        written_once: The suffix of the files a build writes once and never
+            again. One of those the store holds at the size it was written is
+            left where it is; everything else goes up every time, the index
+            being rewritten at every checkpoint.
 
     Returns:
         artifact: The logged artifact.
     """
+    destination = published_at(project, name, "")
+    bucket = urlparse(destination).netloc
+    prefix = urlparse(destination).path.lstrip("/")
+    client = get_s3_client()
+
+    held = {}
+    pages = client.get_paginator("list_objects_v2")
+    for page in pages.paginate(Bucket=bucket, Prefix=prefix):
+        for one in page.get("Contents", []):
+            held[one["Key"]] = one["Size"]
+
     files = [one for one in root.rglob("*") if one.is_file()]
-    held = sum(one.stat().st_size for one in files)
-    print(f"uploading {name}, {len(files):,} files, {held / 1e6:.0f} MB", flush=True)
-    return project.log_artifact(
+    sending = []
+    for path in files:
+        key = prefix + path.relative_to(root).as_posix()
+        if path.suffix == written_once and held.get(key) == path.stat().st_size:
+            continue
+        sending.append((path, key))
+
+    going = sum(path.stat().st_size for path, _ in sending)
+    print(
+        f"uploading {name}, {len(sending):,} of {len(files):,} files, "
+        f"{going / 1e6:.0f} MB",
+        flush=True,
+    )
+    for path, key in sending:
+        client.upload_file(Filename=str(path), Bucket=bucket, Key=key)
+
+    return project.new_artifact(
         name=name,
         kind="artifact",
-        source=str(root),
-        path=published_at(project, name, ""),
+        path=destination,
         description=description,
     )
 

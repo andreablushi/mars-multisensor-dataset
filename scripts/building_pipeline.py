@@ -75,7 +75,9 @@ def published_dataset(project, root, name):
     # The store hands back a refusal for a lapsed token as for anything else.
     if not credentials.refreshed():
         print("no credentials were minted, asking on the ones held", flush=True)
-    return archives.published_folder(project, root, name, DATASET_HELD)
+    return archives.published_folder(
+        project, root, name, DATASET_HELD, paths.SAMPLE_SUFFIX
+    )
 
 
 @handler(outputs=[_DATASET])
