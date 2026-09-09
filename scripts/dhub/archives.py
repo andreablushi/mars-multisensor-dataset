@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import tarfile
+import warnings
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -15,6 +16,9 @@ from dhub import credentials
 from shared import paths
 
 ANALYSIS_DIR = "analysis"
+
+# The platform says twice per publish that 0.16 renames what it is called by.
+warnings.filterwarnings("ignore", ".*0\\.16", UserWarning)
 
 
 def published_at(project, *parts: str) -> str:
@@ -46,11 +50,10 @@ def published_archive(project, root: Path, name: str, description: str):
         artifact: The logged artifact.
     """
     credentials.refresh()
-    packed = Path(
-        shutil.make_archive(
-            str(paths.DATA_ROOT / name), "gztar", root.parent, root.name
-        )
+    made = shutil.make_archive(
+        str(paths.DATA_ROOT / name), "gztar", root.parent, root.name
     )
+    packed = Path(made)
     print(f"uploading {name}, {packed.stat().st_size / 1e6:.0f} MB", flush=True)
     try:
         return project.log_artifact(
@@ -105,11 +108,8 @@ def published_folder(
         sending.append((path, key))
 
     going = sum(path.stat().st_size for path, _ in sending)
-    print(
-        f"uploading {name}, {len(sending):,} of {len(files):,} files, "
-        f"{going / 1e6:.0f} MB",
-        flush=True,
-    )
+    told = f"{len(sending):,} of {len(files):,} files, {going / 1e6:.0f} MB"
+    print(f"uploading {name}, {told}", flush=True)
     for path, key in sending:
         client.upload_file(Filename=str(path), Bucket=bucket, Key=key)
 

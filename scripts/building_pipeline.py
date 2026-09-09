@@ -17,7 +17,7 @@ from rich.console import Console
 from analysis import paths as analysis_paths
 from building import console, paths, runner
 from building.configs import overall
-from shared.console import PLAIN_LOG_ENV
+from shared.console import PLAIN_LOG_ENV, print_interrupted
 
 BUILD_HANDLER = "scripts.building_pipeline:run_build"
 
@@ -51,12 +51,9 @@ def build_dataset(
     choices = overall.load(workers=workers)
     printing = Console()
     started_at = time.monotonic()
+    root = paths.dataset_root(choices.name)
     outcomes = runner.run_build(
-        choices,
-        printing,
-        paths.dataset_root(choices.name),
-        force=force,
-        checkpoint=checkpoint,
+        choices, printing, root, force=force, checkpoint=checkpoint
     )
     console.print_summary(outcomes, time.monotonic() - started_at, printing)
     return 1 if any(one.error for one in outcomes) else 0
@@ -83,10 +80,8 @@ def run_build(project, force: bool = False, workers: int | None = None):
     choices = overall.load(workers=workers)
     # The platform clones the repo alone, so the selection comes off its archive
     print("fetching the selection", flush=True)
-    archives.unpack_archive(
-        project.get_artifact(_SELECTION).download(overwrite=True),
-        analysis_paths.SELECTION_ROOT,
-    )
+    downloaded = project.get_artifact(_SELECTION).download(overwrite=True)
+    archives.unpack_archive(downloaded, analysis_paths.SELECTION_ROOT)
     # The build's own name is carried through, so one never overwrites another
     published_as = f"{_DATASET}-{choices.name}"
     root = paths.dataset_root(choices.name)
@@ -143,5 +138,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except KeyboardInterrupt:
-        console.print_interrupted()
+        print_interrupted("written crops")
         raise SystemExit(130) from None

@@ -19,7 +19,7 @@ from analysis.models.progress import CoverageSummary, DownloadSummary
 from analysis.selector import select
 from analysis.stats.artifacts import store
 from analysis.stats.dataset import aggregate, read
-from shared.console import PLAIN_LOG_ENV
+from shared.console import PLAIN_LOG_ENV, print_interrupted
 
 PIPELINE_HANDLER = "scripts.analysis_pipeline:run_pipeline"
 SELECTION_HANDLER = "scripts.analysis_pipeline:run_selection"
@@ -172,13 +172,11 @@ def run_selection(project, workers: int | None = None):
     """
     os.environ[PLAIN_LOG_ENV] = "1"
     print("fetching the measurements", flush=True)
-    archives.unpack_archive(
-        project.get_artifact(_COVERAGE).download(overwrite=True), paths.COVERAGE_ROOT
-    )
+    measured = project.get_artifact(_COVERAGE).download(overwrite=True)
+    archives.unpack_archive(measured, paths.COVERAGE_ROOT)
     # The selection writes each feature's own ground, which it reads here
-    archives.unpack_archive(
-        project.get_artifact(_CATALOG).download(overwrite=True), paths.CATALOG_ROOT
-    )
+    catalogued = project.get_artifact(_CATALOG).download(overwrite=True)
+    archives.unpack_archive(catalogued, paths.CATALOG_ROOT)
     compute_selection(workers)
     print("done", flush=True)
     return archived(project, _SELECTION), archived(project, _STATS)
@@ -221,5 +219,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except KeyboardInterrupt:
-        console.print_interrupted()
+        print_interrupted("finished files")
         raise SystemExit(130) from None

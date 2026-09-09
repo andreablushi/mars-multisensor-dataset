@@ -163,8 +163,3 @@ def print_summary(
         return
     console.print(f"[yellow]{len(failed)} products failed:[/yellow]")
     printing.print_listed([f"{one.job.label}: {one.error}" for one in failed], console)
-
-
-def print_interrupted() -> None:
-    """Print the notice shown when a build is stopped with Ctrl-C."""
-    printing.print_interrupted("written crops")
