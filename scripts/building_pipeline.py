@@ -8,8 +8,7 @@ import os
 import time
 from collections.abc import Callable
 
-import digitalhub as dh
-from dhub import archives, submit
+from dhub import archives, credentials, submit
 from dhub import configs as platform
 from digitalhub_runtime_python import handler
 from rich.console import Console
@@ -26,12 +25,6 @@ DATASET_HELD = (
     "The cropped observations and their index, one object per crop; read "
     "observations.parquet and ask the store for the crops it names."
 )
-
-# How many times to try one publish, the credentials refreshed between attempts.
-PUBLISH_TRIES = 4
-
-# How long to wait after a failed publish, doubled by each failure after it.
-PUBLISH_BACKOFF = 30.0
 
 _PUBLISHED = platform.load().publishes
 _DATASET = _PUBLISHED["dataset"]
@@ -69,7 +62,7 @@ def build_dataset(
 
 
 def published_dataset(project, root, name):
-    """Publish the dataset, refreshing the credentials and asking again on failure.
+    """Publish the dataset, on credentials minted for the publish itself.
 
     Args:
         project: The DigitalHub project the dataset is logged into.
@@ -78,24 +71,11 @@ def published_dataset(project, root, name):
 
     Returns:
         artifact: The logged artifact.
-
-    Raises:
-        Exception: Whatever the last attempt raised, every one having failed.
     """
-    for attempt in range(1, PUBLISH_TRIES + 1):
-        try:
-            return archives.published_folder(project, root, name, DATASET_HELD)
-        except Exception as error:  # noqa: BLE001
-            if attempt == PUBLISH_TRIES:
-                raise
-            print(f"publishing {name} failed: {error}", flush=True)
-            # The store hands back a refusal for a lapsed token as for anything else.
-            try:
-                dh.refresh_token()
-            except Exception as refused:  # noqa: BLE001
-                print(f"the token was not refreshed: {refused}", flush=True)
-            time.sleep(PUBLISH_BACKOFF * 2 ** (attempt - 1))
-    raise RuntimeError(f"{name} was not published")
+    # The store hands back a refusal for a lapsed token as for anything else.
+    if not credentials.refreshed():
+        print("no credentials were minted, asking on the ones held", flush=True)
+    return archives.published_folder(project, root, name, DATASET_HELD)
 
 
 @handler(outputs=[_DATASET])

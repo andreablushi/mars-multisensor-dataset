@@ -1316,6 +1316,7 @@ dev = [
 digitalhub = [
     { name = "digitalhub" },
     { name = "digitalhub-runtime-python" },
+    { name = "python-dotenv" },
 ]
 notebook = [
     { name = "ipywidgets" },
@@ -1342,6 +1343,7 @@ dev = [{ name = "ruff", specifier = ">=0.16.2" }]
 digitalhub = [
     { name = "digitalhub", specifier = ">=0.15,<0.16" },
     { name = "digitalhub-runtime-python", specifier = ">=0.15,<0.16" },
+    { name = "python-dotenv", specifier = ">=1.2.3" },
 ]
 notebook = [
     { name = "ipywidgets", specifier = ">=8.1.5" },

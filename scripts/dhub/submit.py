@@ -7,7 +7,7 @@ import tomllib
 import digitalhub as dh
 
 from building.models import budget
-from dhub import configs
+from dhub import configs, credentials
 from shared import paths
 
 UNITS = {"Ki": 1024, "Mi": 1024**2, "Gi": 1024**3, "Ti": 1024**4}
@@ -68,8 +68,10 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
     run = function.run(
         action="job",
         resources={"cpu": asked["cpu"], "mem": asked["memory"], "disk": asked["disk"]},
+        secrets=[credentials.TOKEN],
         envs=[
             {"name": "PYTHONPATH", "value": f"{root}:{root}/src:{root}/scripts"},
+            *credentials.minting_envs(),
             # What the build plans against, which is under the box so it may misjudge
             {
                 "name": budget.MEMORY_ENV,
