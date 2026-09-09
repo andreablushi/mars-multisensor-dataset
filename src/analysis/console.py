@@ -96,11 +96,6 @@ def logged(description: str) -> Callable[[int, int], None]:
     return moved
 
 
-def print_interrupted() -> None:
-    """Print the notice shown when a run is stopped with Ctrl-C."""
-    printing.print_interrupted("finished files")
-
-
 def print_summary(
     download: DownloadSummary,
     coverage: CoverageSummary,

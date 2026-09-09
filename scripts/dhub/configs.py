@@ -23,7 +23,8 @@ class Platform:
         source_root: Where that clone lands on the job.
         python_version: The interpreter the image is built on.
         image_extras: What the platform itself asks for, beyond the pipeline.
-        resources: The cores, memory and disk each stage asks for, by stage.
+        resources: The cores, the memory, the budget it plans against and the disk
+            each stage asks for, by stage.
         functions: The function each stage is registered as, by stage.
         publishes: What each stage publishes, by the name a download asks for.
     """

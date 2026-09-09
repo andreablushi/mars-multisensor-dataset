@@ -72,8 +72,9 @@ def build[Row](model: type[Row], row: Mapping[str, Any]) -> Row:
         if is_dataclass(kind):
             held[field.name] = build(kind, row)
         elif get_origin(kind) is tuple:
-            # A field the model holds as a tuple is written as a list.
-            held[field.name] = tuple(row[field.name])
+            # A field the model holds as a tuple is written as a list, unset as a null.
+            written = row[field.name]
+            held[field.name] = None if written is None else tuple(written)
         else:
             held[field.name] = row[field.name]
     return model(**held)

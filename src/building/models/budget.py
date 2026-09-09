@@ -16,6 +16,11 @@ CGROUP_LIMITS = (
     Path("/sys/fs/cgroup/memory/memory.limit_in_bytes"),
 )
 
+CGROUP_PEAKS = (
+    Path("/sys/fs/cgroup/memory.peak"),
+    Path("/sys/fs/cgroup/memory/memory.max_usage_in_bytes"),
+)
+
 
 class Budget:
     """The memory a run hands out to its builds, in the order they ask for it.
@@ -89,3 +94,27 @@ def memory_bytes() -> int:
         if held <= machine:
             return held
     return os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
+
+
+def peak_bytes() -> int | None:
+    """Return the most memory the box has held at once, as its cgroup counted it.
+
+    Returns:
+        peak: The high water mark in bytes, and None where no cgroup counts one,
+            which is where nothing was measuring.
+    """
+    counted = list(CGROUP_PEAKS)
+    try:
+        # A container reads its own cgroup as the root, and a host process does not
+        for line in Path("/proc/self/cgroup").read_text().splitlines():
+            if line.startswith("0::"):
+                own = line.partition("::")[2].strip().lstrip("/")
+                counted.append(Path("/sys/fs/cgroup") / own / "memory.peak")
+    except OSError:
+        pass
+    for path in counted:
+        try:
+            return int(path.read_text().split()[0])
+        except (OSError, ValueError):
+            continue
+    return None

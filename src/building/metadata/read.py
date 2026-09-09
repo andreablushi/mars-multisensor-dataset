@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pyarrow.parquet as pq
@@ -23,14 +24,17 @@ def read_feature_metadata(
         root: The directory the metadata was written in.
 
     Returns:
-        features: Each feature's own row, by class and name.
+        features: Each feature's own row, by class and name, the centre of each
+            taken from its own box rather than from a file that may predate it.
 
     Raises:
         FileNotFoundError: When no features have been written there.
     """
     held = pq.read_table(root / paths.FEATURE_METADATA_NAME, schema=features.SCHEMA)
     return {
-        one.identity: one
+        one.identity: replace(
+            one, centre_lon=one.frame.centre_lon, centre_lat=one.frame.centre_lat
+        )
         for one in (parquet.build(FeatureMetadata, row) for row in held.to_pylist())
     }
 

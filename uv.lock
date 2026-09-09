@@ -515,7 +515,7 @@ wheels = [
 
 [[package]]
 name = "digitalhub"
-version = "0.15.6"
+version = "0.15.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3" },
@@ -531,9 +531,9 @@ dependencies = [
     { name = "requests" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b0/7c/8017e653bb16f33276490f835190139971c73f62dd1f36bb76d8de0226b1/digitalhub-0.15.6.tar.gz", hash = "sha256:ef24dc41a5379e9703fc14a53837d46e95c6e306a96644797018335180cff96a", size = 142128, upload-time = "2026-07-14T07:45:08.63Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fe/33/f3cc49dc5e0757f206740bfa95ba84305b026d9e205de18b5e325cda22e3/digitalhub-0.15.8.tar.gz", hash = "sha256:e904a929395c25dbaef727cfe5f282ef003191c3d2615272dcab5a1770eb085e", size = 142006, upload-time = "2026-09-07T11:41:19.701Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c9/98/d40784920f3ca8c0f59b471481936dd90cc2337de86c8861909ed1bd1029/digitalhub-0.15.6-py3-none-any.whl", hash = "sha256:a36ea43faad7ceceb191136e3083ce8816a47fbb1fb8e5e7fd79a7428b13b0b9", size = 292334, upload-time = "2026-07-14T07:45:07.305Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/e9/1774142cc70f6b8d007c5ea857245f36e3b19224c1ea4bb7c706128f1f70/digitalhub-0.15.8-py3-none-any.whl", hash = "sha256:48a69b4598f9b1cf31fb915f69392406f85e1d7eb41da1b69c5c53ffb841e47d", size = 292295, upload-time = "2026-09-07T11:41:18.288Z" },
 ]
 
 [package.optional-dependencies]
@@ -1316,6 +1316,7 @@ dev = [
 digitalhub = [
     { name = "digitalhub" },
     { name = "digitalhub-runtime-python" },
+    { name = "python-dotenv" },
 ]
 notebook = [
     { name = "ipywidgets" },
@@ -1340,8 +1341,9 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [{ name = "ruff", specifier = ">=0.16.2" }]
 digitalhub = [
-    { name = "digitalhub", specifier = ">=0.15,<0.16" },
+    { name = "digitalhub", specifier = ">=0.15.8,<0.16" },
     { name = "digitalhub-runtime-python", specifier = ">=0.15,<0.16" },
+    { name = "python-dotenv", specifier = ">=1.2.3" },
 ]
 notebook = [
     { name = "ipywidgets", specifier = ">=8.1.5" },

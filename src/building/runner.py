@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import queue
 import threading
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import Future, ProcessPoolExecutor, ThreadPoolExecutor
 from contextlib import closing
 from functools import partial
@@ -14,7 +14,7 @@ import httpx
 from rich.console import Console
 
 from building import console as printing
-from building import planner
+from building import paths, planner
 from building.dispatcher import INSTRUMENTS
 from building.metadata import read as metadata_read
 from building.metadata import write as metadata
@@ -24,11 +24,14 @@ from building.models.job import Job, Outcome, Plan
 from building.models.progress import BUILDING, FETCHING, HOLDING, QUEUED, Progress
 from building.models.settings import Settings
 from building.preprocessing.common import store
+from shared.console import named_failure
 
 # How much of the box's memory a build may hold. The rest is not spare: the box is
 # charged for the downloads in flight and for the cache of every file written and
 # read back, none of which this budget meters.
 MEMORY_SHARE = 0.45
+
+CHECKPOINT_PRODUCTS = 500
 
 
 def run_build(
@@ -37,6 +40,7 @@ def run_build(
     root: Path,
     *,
     force: bool = False,
+    checkpoint: Callable[[], None] | None = None,
 ) -> list[Outcome]:
     """Fetch every product a build needs and cut each to the features that kept it.
 
@@ -45,6 +49,8 @@ def run_build(
         console: The console to render on.
         root: The directory this build of the dataset is written in.
         force: Whether to rebuild crops that are already written.
+        checkpoint: What publishes the dataset as it stands, so a run that dies
+            is resumed from what it left, or None to publish only at the end.
 
     Returns:
         collected: Every finished outcome, in completion order.
@@ -60,6 +66,11 @@ def run_build(
         max_keepalive_connections=settings.downloads * 2,
     )
     with httpx.Client(limits=limits) as ode:
+        # A crop the index cannot name is unreadable, so it is built again.
+        if not force:
+            dropped = _unindexed(root)
+            if dropped:
+                console.print(f"dropping {dropped:,} crops the index does not name")
         plan = planner.build_plan(settings, root, ode, force=force)
         printing.describe(plan, settings, budget, console)
         progress = Progress(len(plan.jobs))
@@ -74,11 +85,71 @@ def run_build(
                 plan.jobs, ode, fetching, building, root, settings, budget, progress
             )
             with closing(held) as outcomes:
+                if checkpoint is not None:
+                    outcomes = _checkpointed(outcomes, plan, settings, root, checkpoint)
                 collected = printing.render(
                     outcomes, len(plan.jobs), "building", console
                 )
     _indexed(plan, collected, settings, root)
     return collected
+
+
+def _unindexed(root: Path) -> int:
+    """Delete every crop on disk the index does not name, so a build writes it again.
+
+    Args:
+        root: The dataset's own root directory.
+
+    Returns:
+        dropped: How many crops were deleted, and none where no index was written.
+    """
+    try:
+        named = {one.path for one in metadata_read.read_observation_metadata(root)}
+    except FileNotFoundError:
+        return 0
+    dropped = 0
+    for path in root.rglob(f"*{paths.SAMPLE_SUFFIX}"):
+        if str(path.relative_to(root)) not in named:
+            path.unlink()
+            dropped += 1
+    return dropped
+
+
+def _checkpointed(
+    outcomes: Iterator[Outcome],
+    plan: Plan,
+    settings: Settings,
+    root: Path,
+    checkpoint: Callable[[], None],
+) -> Iterator[Outcome]:
+    """Hand on every outcome, publishing what is built every so many products.
+
+    Args:
+        outcomes: The outcomes as the runner finishes them.
+        plan: What the build set out to do, whose features the index covers.
+        settings: The settled choices for the build.
+        root: The dataset's own root directory.
+        checkpoint: What publishes the dataset as it stands.
+
+    Yields:
+        outcome: Each outcome as it came in, unchanged.
+    """
+    collected: list[Outcome] = []
+    failed = 0
+    for outcome in outcomes:
+        collected.append(outcome)
+        yield outcome
+        # The last products are published by the run itself, so they wait here.
+        if len(collected) % CHECKPOINT_PRODUCTS:
+            continue
+        try:
+            # An index is written first, so what is published is readable on its own.
+            _indexed(plan, collected, settings, root)
+            checkpoint()
+        except Exception as error:  # noqa: BLE001
+            # A checkpoint is insurance: a build outlives one it could not write.
+            failed += 1
+            named_failure("the checkpoint", error, failed)
 
 
 def _outcomes(

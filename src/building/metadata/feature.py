@@ -17,6 +17,9 @@ class FeatureMetadata:
     Attributes:
         frame: The local frame every observation of it is placed against, which
             is the only place its absolute position is written down.
+        centre_lon: The longitude that frame is centred on, which is the centre
+            every crop of the feature was cut against.
+        centre_lat: The latitude it is centred on, for the same reason.
         area_km2: How much ground the catalogue box covers.
         kept: Whether the filter gave the feature a place at all.
         window_start: When the earliest observation it keeps was taken, or None
@@ -29,6 +32,8 @@ class FeatureMetadata:
     """
 
     frame: Feature
+    centre_lon: float
+    centre_lat: float
     area_km2: float
     kept: bool
     window_start: datetime | None
@@ -56,15 +61,18 @@ def feature_metadata(feature: SelectedFeature) -> FeatureMetadata:
     Returns:
         metadata: The metadata, its frame carrying the catalogue box.
     """
+    frame = Feature(
+        feature_class=feature.feature_class,
+        feature_name=feature.feature_name,
+        min_lat=feature.min_lat,
+        max_lat=feature.max_lat,
+        west_lon=feature.west_lon,
+        east_lon=feature.east_lon,
+    )
     return FeatureMetadata(
-        frame=Feature(
-            feature_class=feature.feature_class,
-            feature_name=feature.feature_name,
-            min_lat=feature.min_lat,
-            max_lat=feature.max_lat,
-            west_lon=feature.west_lon,
-            east_lon=feature.east_lon,
-        ),
+        frame=frame,
+        centre_lon=frame.centre_lon,
+        centre_lat=frame.centre_lat,
         area_km2=feature.area_km2,
         kept=feature.kept,
         window_start=feature.start,

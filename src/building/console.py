@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn
 from rich.progress import Progress as Bar
 
+from building.models import budget as memory
 from building.models.budget import Budget
 from building.models.job import Outcome, Plan
 from building.models.progress import Progress
@@ -80,6 +81,17 @@ def watch(progress: Progress) -> Iterator[None]:
         watcher.join()
 
 
+def _high_water() -> str:
+    """Return the most memory the box has held, to read against what it was given.
+
+    Returns:
+        held: The high water mark to print, and an empty string where nothing
+            counts one, so a run outside a container says nothing of it.
+    """
+    peak = memory.peak_bytes()
+    return f", peak {peak / 1024**3:.1f} GiB" if peak else ""
+
+
 def render(
     outcomes: Iterable[Outcome], total: int, description: str, console: Console
 ) -> list[Outcome]:
@@ -107,7 +119,10 @@ def render(
             if len(collected) % step == 0 or len(collected) == total:
                 # The one named is the one just finished, never the one under way
                 printing.reached(
-                    description, len(collected), total, f"{outcome.job.label} done"
+                    description,
+                    len(collected),
+                    total,
+                    f"{outcome.job.label} done{_high_water()}",
                 )
         return collected
     with Bar(
@@ -148,8 +163,3 @@ def print_summary(
         return
     console.print(f"[yellow]{len(failed)} products failed:[/yellow]")
     printing.print_listed([f"{one.job.label}: {one.error}" for one in failed], console)
-
-
-def print_interrupted() -> None:
-    """Print the notice shown when a build is stopped with Ctrl-C."""
-    printing.print_interrupted("written crops")

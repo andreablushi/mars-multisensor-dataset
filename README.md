@@ -20,6 +20,8 @@ uv sync --group digitalhub
 dhcli register <your-digitalhub-core-endpoint>
 dhcli login                                    # opens a browser tab
 
+cp .env.example .env                           # once, then fill it in
+
 uv run --group digitalhub python scripts/analysis_pipeline.py --dh
 uv run --group digitalhub python scripts/analysis_pipeline.py --dh --only-stats
 ```
@@ -27,6 +29,16 @@ uv run --group digitalhub python scripts/analysis_pipeline.py --dh --only-stats
 Everything a submission needs, from the project name to the memory a job asks
 for, is in `configs/digitalhub.yaml`. The pip requirements are taken straight
 from `pyproject.toml`, so the image always matches this repository.
+
+A run outlasts the credentials it is started with: those lapse after some six
+hours, and a build that is still going then can publish nothing. So a job mints
+its own instead. It presents a personal access token, which the platform holds
+as a secret named `DHCORE_PERSONAL_ACCESS_TOKEN` and hands the job under that
+name; create one from the console, under your username, then Configuration, then
+Personal Access Tokens. The token names neither who issues credentials nor who
+asks for them, so `.env` carries those two, and a submission forwards them to
+the job. It is not committed, `.env.example` says what it holds, and a
+submission stops before it starts anything if either is missing.
 
 It's possible to run the pipeline locally, by simply omitting the `--dh` flag. The local run will use the same configs and produce the same outputs, but it will not be versioned or managed by DigitalHub.
 

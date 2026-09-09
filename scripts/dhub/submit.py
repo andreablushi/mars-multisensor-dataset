@@ -7,25 +7,10 @@ import tomllib
 import digitalhub as dh
 
 from building.models import budget
-from dhub import configs
+from dhub import configs, credentials
 from shared import paths
 
 UNITS = {"Ki": 1024, "Mi": 1024**2, "Gi": 1024**3, "Ti": 1024**4}
-
-
-def given_bytes(memory: str) -> int:
-    """Return how many bytes the memory a box was asked for comes to.
-
-    Args:
-        memory: The memory as the platform config spells it, such as `32Gi`.
-
-    Returns:
-        held: That memory in bytes.
-    """
-    unit = memory[-2:]
-    if unit in UNITS:
-        return int(memory[:-2]) * UNITS[unit]
-    return int(memory)
 
 
 def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
@@ -65,13 +50,19 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
     # Start the job, told where the clone lands and what the box holds
     asked = platform.resources[stage]
     root = platform.source_root
+    budgeted = asked.get("budget", asked["memory"])
     run = function.run(
         action="job",
         resources={"cpu": asked["cpu"], "mem": asked["memory"], "disk": asked["disk"]},
+        secrets=[credentials.TOKEN],
         envs=[
             {"name": "PYTHONPATH", "value": f"{root}:{root}/src:{root}/scripts"},
-            # The box's own cap, which nothing inside a container reads reliably
-            {"name": budget.MEMORY_ENV, "value": str(given_bytes(asked["memory"]))},
+            *credentials.minting_envs(),
+            # What the build plans against, which is under the box so it may misjudge
+            {
+                "name": budget.MEMORY_ENV,
+                "value": str(int(budgeted[:-2]) * UNITS[budgeted[-2:]]),
+            },
         ],
         parameters=parameters | {"workers": int(asked["cpu"])},
         wait=False,
