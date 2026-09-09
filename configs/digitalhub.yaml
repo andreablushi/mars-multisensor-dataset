@@ -10,7 +10,7 @@ source_root: /shared
 # The image a job is built on, its extras what the platform itself asks for
 python_version: PYTHON3_13
 image_extras:
-  - digitalhub>=0.15.6,<0.16
+  - digitalhub>=0.15.8,<0.16
   - pandas
 
 # What the platform gives each stage, which asks for what that stage is held up by.
