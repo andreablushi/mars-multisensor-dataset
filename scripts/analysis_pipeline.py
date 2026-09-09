@@ -32,6 +32,45 @@ _SELECTION = _PUBLISHED["selection"]
 _STATS = _PUBLISHED["stats"]
 _SUMMARY = _PUBLISHED["summary"]
 
+# Where each archive is packed from and what it holds, said once since two
+# handlers publish the same ones.
+ARCHIVED = {
+    _COVERAGE: (
+        paths.COVERAGE_ROOT,
+        "Coverage events and summaries; unpack under data/analysis/.",
+    ),
+    _CATALOG: (
+        paths.CATALOG_ROOT,
+        "The ODE feature and instrument sets; unpack under data/.",
+    ),
+    _METADATA: (
+        paths.METADATA_ROOT,
+        "The ODE records behind each measurement; unpack under data/analysis/.",
+    ),
+    _SELECTION: (
+        paths.SELECTION_ROOT,
+        "The features and observations the filter keeps; unpack under data/analysis/.",
+    ),
+    _STATS: (
+        paths.STATS_ROOT,
+        "What the filter left of the dataset; unpack under data/analysis/.",
+    ),
+}
+
+
+def archived(project, name: str):
+    """Publish one archive this pipeline leaves, by the name it is published under.
+
+    Args:
+        project: The DigitalHub project the archive is logged into.
+        name: The name it goes up as, which is what says where it is packed from.
+
+    Returns:
+        artifact: The logged artifact.
+    """
+    root, held = ARCHIVED[name]
+    return archives.published_archive(project, root, name, held)
+
 
 def compute_coverage(force: bool = False, workers: int | None = None) -> int:
     """Download the ODE metadata still missing and measure the coverage it left.
@@ -100,12 +139,7 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
     os.environ[PLAIN_LOG_ENV] = "1"
     print("measuring coverage", flush=True)
     failed = compute_coverage(force, workers)
-    coverage = archives.published_archive(
-        project,
-        paths.COVERAGE_ROOT,
-        _COVERAGE,
-        "Coverage events and summaries; unpack under data/analysis/.",
-    )
+    coverage = archived(project, _COVERAGE)
     print("uploading the summary", flush=True)
     summary = project.log_artifact(
         name=_SUMMARY,
@@ -114,25 +148,14 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
         path=archives.published_at(project, archives.ANALYSIS_DIR, paths.SUMMARY_NAME),
         description="One row per feature and instrument set.",
     )
-    archives.published_archive(
-        project,
-        paths.CATALOG_ROOT,
-        _CATALOG,
-        "The ODE feature and instrument sets; unpack under data/.",
-    )
-    archives.published_archive(
-        project,
-        paths.METADATA_ROOT,
-        _METADATA,
-        "The ODE records behind each measurement; unpack under data/analysis/.",
-    )
+    archived(project, _CATALOG)
+    archived(project, _METADATA)
     # Report a failure only once uploaded, and never select from short coverage
     if failed:
         raise RuntimeError("the run had failures; the archives hold what finished")
     compute_selection(workers)
-    selection, published = _published_selection(project)
     print("done", flush=True)
-    return coverage, summary, selection, published
+    return coverage, summary, archived(project, _SELECTION), archived(project, _STATS)
 
 
 @handler(outputs=[_SELECTION, _STATS])
@@ -157,36 +180,8 @@ def run_selection(project, workers: int | None = None):
         project.get_artifact(_CATALOG).download(overwrite=True), paths.CATALOG_ROOT
     )
     compute_selection(workers)
-    selection, published = _published_selection(project)
     print("done", flush=True)
-    return selection, published
-
-
-def _published_selection(project):
-    """Publish what the filter keeps of the features, and what it left of them.
-
-    Args:
-        project: The DigitalHub project the archives are logged into.
-
-    Returns:
-        selection: The archive of the features and observations kept.
-        stats: The archive of what the filter left of the dataset.
-    """
-    return (
-        archives.published_archive(
-            project,
-            paths.SELECTION_ROOT,
-            _SELECTION,
-            "The features and observations the filter keeps; "
-            "unpack under data/analysis/.",
-        ),
-        archives.published_archive(
-            project,
-            paths.STATS_ROOT,
-            _STATS,
-            "What the filter left of the dataset; unpack under data/analysis/.",
-        ),
-    )
+    return archived(project, _SELECTION), archived(project, _STATS)
 
 
 def main() -> int:

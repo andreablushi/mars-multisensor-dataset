@@ -36,11 +36,6 @@ def minting_envs() -> list[dict[str, str]]:
     return told
 
 
-def refreshed() -> bool:
-    """Mint the run's credentials again, the platform's and the store's alike.
-
-    Returns:
-        minted: Whether fresh ones were had, which a run holding a token to mint
-            from always is, and a run holding only what it was started with never.
-    """
-    return get_client().eval_retry()
+def refresh() -> None:
+    """Mint the run's credentials again, the platform's and the store's alike."""
+    get_client().eval_retry()

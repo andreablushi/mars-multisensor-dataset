@@ -7,8 +7,9 @@ import argparse
 import os
 import time
 from collections.abc import Callable
+from functools import partial
 
-from dhub import archives, credentials, submit
+from dhub import archives, submit
 from dhub import configs as platform
 from digitalhub_runtime_python import handler
 from rich.console import Console
@@ -61,25 +62,6 @@ def build_dataset(
     return 1 if any(one.error for one in outcomes) else 0
 
 
-def published_dataset(project, root, name):
-    """Publish the dataset, on credentials minted for the publish itself.
-
-    Args:
-        project: The DigitalHub project the dataset is logged into.
-        root: The directory holding the crops and their index.
-        name: The name the dataset is published under.
-
-    Returns:
-        artifact: The logged artifact.
-    """
-    # The store hands back a refusal for a lapsed token as for anything else.
-    if not credentials.refreshed():
-        print("no credentials were minted, asking on the ones held", flush=True)
-    return archives.published_folder(
-        project, root, name, DATASET_HELD, paths.SAMPLE_SUFFIX
-    )
-
-
 @handler(outputs=[_DATASET])
 def run_build(project, force: bool = False, workers: int | None = None):
     """Build the dataset on DigitalHub and publish what it left on disk.
@@ -107,20 +89,21 @@ def run_build(project, force: bool = False, workers: int | None = None):
     )
     # The build's own name is carried through, so one never overwrites another
     published_as = f"{_DATASET}-{choices.name}"
+    root = paths.dataset_root(choices.name)
     # A job starts on an empty disk, so what is already built comes off the platform
     if not force:
-        archives.download_folder(
-            project, published_as, paths.dataset_root(choices.name)
-        )
+        archives.download_folder(project, published_as, root)
     print(f"building {choices.share:.0%} of the dataset as {choices.name}", flush=True)
-    root = paths.dataset_root(choices.name)
-
-    def checkpoint() -> None:
-        """Publish what the build has finished, so a run that dies resumes from it."""
-        published_dataset(project, root, published_as)
-
+    checkpoint = partial(
+        archives.published_folder,
+        project,
+        root,
+        published_as,
+        DATASET_HELD,
+        paths.SAMPLE_SUFFIX,
+    )
     failed = build_dataset(force, workers, checkpoint)
-    published = published_dataset(project, root, published_as)
+    published = checkpoint()
     if failed:
         raise RuntimeError(
             "the build had failures; what was published holds what finished"

@@ -13,21 +13,6 @@ from shared import paths
 UNITS = {"Ki": 1024, "Mi": 1024**2, "Gi": 1024**3, "Ti": 1024**4}
 
 
-def given_bytes(memory: str) -> int:
-    """Return how many bytes the memory a box was asked for comes to.
-
-    Args:
-        memory: The memory as the platform config spells it, such as `32Gi`.
-
-    Returns:
-        held: That memory in bytes.
-    """
-    unit = memory[-2:]
-    if unit in UNITS:
-        return int(memory[:-2]) * UNITS[unit]
-    return int(memory)
-
-
 def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
     """Register a version of one stage from a pushed commit, and run it.
 
@@ -65,6 +50,7 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
     # Start the job, told where the clone lands and what the box holds
     asked = platform.resources[stage]
     root = platform.source_root
+    budgeted = asked.get("budget", asked["memory"])
     run = function.run(
         action="job",
         resources={"cpu": asked["cpu"], "mem": asked["memory"], "disk": asked["disk"]},
@@ -75,7 +61,7 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
             # What the build plans against, which is under the box so it may misjudge
             {
                 "name": budget.MEMORY_ENV,
-                "value": str(given_bytes(asked.get("budget", asked["memory"]))),
+                "value": str(int(budgeted[:-2]) * UNITS[budgeted[-2:]]),
             },
         ],
         parameters=parameters | {"workers": int(asked["cpu"])},

@@ -3,11 +3,8 @@ set -euo pipefail
 
 # The dataset is big enough to ask for on its own, so dh_download.sh leaves it
 here="$(dirname "$0")"
-platform="$here/../configs/digitalhub.yaml"
+source "$here/dh_download.sh"
 building="$here/../configs/building.yaml"
-
-project="$(sed -n 's/^project: *//p' "$platform")"
-published="$(sed -n "/^publishes:/,/^[^ #]/{s/^  dataset: *//p;}" "$platform")"
 # The build to bring down, this run's own unless one is named.
 name="${1-$(sed -n 's/^name: *//p' "$building")}"
 
@@ -28,23 +25,6 @@ if [[ ${1-} == -h || ${1-} == --help ]]; then
 fi
 
 dest="data/building/dataset/$name"
-# Everything lands beside the destination first, so a failure touches nothing
-staged="$dest.incoming"
-rm -rf "$staged"
-mkdir -p "$staged"
-
-echo "downloading $published-$name"
-dhcli download -p "$project" artifact -n "$published-$name" -d "$staged"
-
-if [[ -z $(ls -A "$staged" 2>/dev/null) ]]; then
-    echo "nothing came down for \`$published-$name\`, leaving $dest as it was" >&2
-    rm -rf "$staged"
-    exit 1
-fi
-
-# The build owns the directory it fills, so it replaces rather than merges
-rm -rf "$dest"
-mkdir -p "$dest"
-cp -a "$staged"/. "$dest"/
-rm -rf "$staged"
+echo "downloading $(published dataset)-$name"
+download_one "$(published dataset)-$name" "$dest"
 echo "brought down into $dest"
