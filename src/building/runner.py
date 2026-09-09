@@ -14,7 +14,7 @@ import httpx
 from rich.console import Console
 
 from building import console as printing
-from building import planner
+from building import paths, planner
 from building.dispatcher import INSTRUMENTS
 from building.metadata import read as metadata_read
 from building.metadata import write as metadata
@@ -66,6 +66,11 @@ def run_build(
         max_keepalive_connections=settings.downloads * 2,
     )
     with httpx.Client(limits=limits) as ode:
+        # A crop the index cannot name is unreadable, so it is built again.
+        if not force:
+            dropped = _unindexed(root)
+            if dropped:
+                console.print(f"dropping {dropped:,} crops the index does not name")
         plan = planner.build_plan(settings, root, ode, force=force)
         printing.describe(plan, settings, budget, console)
         progress = Progress(len(plan.jobs))
@@ -87,6 +92,27 @@ def run_build(
                 )
     _indexed(plan, collected, settings, root)
     return collected
+
+
+def _unindexed(root: Path) -> int:
+    """Delete every crop on disk the index does not name, so a build writes it again.
+
+    Args:
+        root: The dataset's own root directory.
+
+    Returns:
+        dropped: How many crops were deleted, and none where no index was written.
+    """
+    try:
+        named = {one.path for one in metadata_read.read_observation_metadata(root)}
+    except FileNotFoundError:
+        return 0
+    dropped = 0
+    for path in root.rglob(f"*{paths.SAMPLE_SUFFIX}"):
+        if str(path.relative_to(root)) not in named:
+            path.unlink()
+            dropped += 1
+    return dropped
 
 
 def _checkpointed(
