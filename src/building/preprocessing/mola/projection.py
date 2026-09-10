@@ -38,7 +38,7 @@ def grid_axes(
     resolution = float(label["MAP_RESOLUTION"])
     lines, samples = int(label["LINES"]), int(label["LINE_SAMPLES"])
     if named == POLAR:
-        # A cap is placed from its middle, its arc the projection's own metres
+        # A cap is placed from its middle, in the stereographic metres MAP_SCALE names
         radius = float(label["A_AXIS_RADIUS"]) * physics.METRES_PER_KM
         down = np.radians((lines / 2.0 - 0.5 - np.arange(lines)) / resolution) * radius
         across = (

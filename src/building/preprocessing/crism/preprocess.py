@@ -245,14 +245,15 @@ def clean_detectors(identifier: str) -> dict[str, Detector]:
 
 
 def read_observation(identifier: str) -> CrismObservation:
-    """Read one observation, clean it, and join the detectors it has into a cube.
+    """Read one observation, clean it, and join the detectors it has onto the grid.
 
     Args:
         identifier: The observation, whose files must already be in the cache
             that `download.fetch` puts them in.
 
     Returns:
-        observation: The observation, its bands ascending in wavelength.
+        observation: The observation, read onto the one grid every observation of the
+            survey is laid out on.
 
     Raises:
         FileNotFoundError: When any file the observation needs is missing.
@@ -282,15 +283,12 @@ def crop(observation: CrismObservation, frame: Feature) -> CrismSample | None:
     )
     if held is None:
         return None
-    # Calibrated column by column, so only that axis cuts and the bands stay whole.
-    columns = held.bounds[1]
     return CrismSample(
         identifier=observation.identifier,
         position=held.position,
         label=observation.label,
         inside=held.inside,
         valid=marked(taken(observation.valid, held.bounds)),
+        valid_bands=observation.valid_bands,
         cube=taken(observation.cube, held.bounds),
-        wavelengths=observation.wavelengths[columns],
-        columns=observation.columns[columns],
     )

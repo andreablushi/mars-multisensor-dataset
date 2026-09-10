@@ -11,6 +11,12 @@ from shared.models.feature import Feature
 # How many neighbouring pairs of one axis to measure a ground sample over.
 MEASURED = 512
 
+# How many samples of a crop become metres at once, since a scan can be huge.
+BLOCK = 1_000_000
+
+# What the offsets are stored as, which holds a centimetre over any feature.
+STORED = np.float32
+
 
 def degrees(
     position: RelativePosition, frame: Feature, taken: tuple = ()
@@ -42,6 +48,39 @@ def degrees(
     if position.separable:
         x, y = x[None, :], y[:, None]
     return geodesy.stereographic_inverse(x, y, *position.polar)
+
+
+def ground_metres(
+    position: RelativePosition, frame: Feature
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return how far north and east of its feature centre every sample sits.
+
+    Args:
+        position: Where the samples sit, in degrees from the feature centre or
+            in the metres of the projection it was placed on.
+        frame: The feature's local frame, which the offsets are measured from.
+
+    Returns:
+        north: The ground metres north of that centre, one per sample, in the
+            azimuthal equidistant frame it is the middle of.
+        east: The ground metres east of it, in the same frame.
+    """
+    sizes = position.ground_sizes
+    north = np.empty(sizes, dtype=STORED)
+    east = np.empty(sizes, dtype=STORED)
+    # A whole scan crossed at once would hold more than the crop itself does.
+    reach = max(1, BLOCK // int(np.prod(sizes[1:], dtype=int)))
+    plain = position.separable and position.polar is None
+    for start in range(0, sizes[0], reach):
+        block = slice(start, start + reach)
+        lon, lat = degrees(position, frame, (block, *(slice(None),) * (len(sizes) - 1)))
+        if plain:
+            # One axis holds latitude and the other longitude, so the two are crossed.
+            lon, lat = lon[None, :], lat[:, None]
+        east[block], north[block] = geodesy.aeqd_forward(
+            lon, lat, frame.centre_lon, frame.centre_lat
+        )
+    return north, east
 
 
 def ground_sample_m(position: RelativePosition, frame: Feature) -> tuple[float, ...]:

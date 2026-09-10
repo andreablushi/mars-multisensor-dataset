@@ -44,7 +44,7 @@ def build_plan(
     Raises:
         FileNotFoundError: When no selection has been written to build from.
     """
-    picked, crowded = _sampled(dataset_list.read_dataset_list(), settings)
+    picked = _sampled(dataset_list.read_dataset_list(), settings)
     features = [feature_metadata(one.feature) for one in picked]
     wanted: dict[tuple[str, str], list[Feature]] = defaultdict(list)
     taken: dict[tuple[str, str], datetime] = {}
@@ -101,31 +101,24 @@ def build_plan(
         features=tuple(features),
         skipped_existing=skipped,
         unread=unread,
-        crowded=crowded,
     )
 
 
-def _sampled(
-    picked: Sequence[Selection], settings: Settings
-) -> tuple[list[Selection], int]:
+def _sampled(picked: Sequence[Selection], settings: Settings) -> list[Selection]:
     """Keep the share of the features one build covers, evenly across classes.
 
     Args:
         picked: What the search left of every feature it searched.
-        settings: The settled choices for the build, whose cap is read before the
-            draw, so a share is a share of what a build may cover.
+        settings: The settled choices for the build, whose share settles how much
+            of what the filter kept one build covers.
 
     Returns:
         kept: The selections to build, in the order the selection was written.
-        crowded: How many features were left out for holding too many observations.
     """
-    passed = [one for one in picked if one.feature.kept]
-    cap = settings.max_observations
-    kept = [one for one in passed if len(one.observations) <= cap]
-    crowded = len(passed) - len(kept)
+    kept = [one for one in picked if one.feature.kept]
     wanted = round(settings.share * len(kept))
     if wanted >= len(kept):
-        return kept, crowded
+        return kept
     classes: dict[str, list[int]] = defaultdict(list)
     for at, one in enumerate(kept):
         classes[one.feature.feature_class].append(at)
@@ -137,4 +130,4 @@ def _sampled(
     # One from each class in turn, so every class is reached before any is drawn twice.
     rounds = zip_longest(*(classes[name] for name in order))
     taken = [at for at in chain.from_iterable(rounds) if at is not None]
-    return [kept[at] for at in sorted(taken[:wanted])], crowded
+    return [kept[at] for at in sorted(taken[:wanted])]

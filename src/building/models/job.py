@@ -65,12 +65,9 @@ class Plan:
             already written.
         unread: Observations the selection kept that no instrument here could read,
             and which were therefore never planned.
-        crowded: Features the filter passed that the build left out whole, for
-            holding more observations than one feature may carry into it.
     """
 
     jobs: tuple[Job, ...]
     features: tuple[FeatureMetadata, ...] = ()
     skipped_existing: int = 0
     unread: int = 0
-    crowded: int = 0

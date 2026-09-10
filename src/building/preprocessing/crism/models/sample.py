@@ -14,12 +14,8 @@ class CrismSample(Sample):
     """The spectra one observation measured over one feature.
 
     Attributes:
-        cube: Lines by columns by bands, bands ascending in wavelength.
-        wavelengths: The centre wavelength of every column and band, in that
-            same order.
-        columns: Which of the original 64 samples these columns are.
+        cube: Lines by columns by bands, one band per wavelength the survey is
+            centred on.
     """
 
     cube: np.ndarray
-    wavelengths: np.ndarray
-    columns: np.ndarray

@@ -26,7 +26,6 @@ def load(path: Path = paths.CONFIG_PATH, workers: int | None = None) -> Settings
         name=config["name"],
         share=config["share"],
         seed=config["seed"],
-        max_observations=config["max_observations"],
         workers=workers or config["workers"],
         downloads=config["downloads"],
     )

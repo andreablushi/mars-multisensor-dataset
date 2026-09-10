@@ -20,6 +20,7 @@ NORTH = "north"
 EAST = "east"
 INSIDE = "inside"
 VALID = "valid"
+MEASURED = "measured"
 
 # What the placing arrays are measured in, degrees from the centre or a grid's metres.
 DEGREES = "degrees"
@@ -93,14 +94,16 @@ def write_sample(
         layout.measurement: layout.dims,
         NORTH: north,
         EAST: east,
+        MEASURED: ground,
         **layout.beside,
     }
     arrays = {name: native(getattr(held, name)) for name in layout.beside}
     arrays[layout.measurement] = native(getattr(held, layout.measurement))
     arrays[NORTH] = native(held.position.north)
     arrays[EAST] = native(held.position.east)
+    arrays[MEASURED] = native(held.measured)
     for name, mask in ((INSIDE, held.inside), (VALID, held.valid)):
-        # A mask marking every sample was never stored, so it is never read.
+        # The two the rooted mask is made of, kept for whoever wants them apart.
         if mask is not None:
             arrays[name] = native(mask)
             along[name] = ground
@@ -116,6 +119,12 @@ def write_sample(
         "separable": held.position.separable,
         "centre_lon": frame.centre_lon,
         "centre_lat": frame.centre_lat,
+        "box": {
+            "min_lat": frame.min_lat,
+            "max_lat": frame.max_lat,
+            "west_lon": frame.west_lon,
+            "east_lon": frame.east_lon,
+        },
         "position_units": DEGREES if grid is None else METRES,
         "radii_m": [physics.EQUATORIAL_RADIUS_M, physics.POLAR_RADIUS_M],
         "polar": None if grid is None else list(grid),
