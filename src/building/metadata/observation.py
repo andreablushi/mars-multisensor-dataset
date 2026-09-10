@@ -33,8 +33,9 @@ class ObservationMetadata:
         shape: The value array's shape, in that same order.
         ground_sample_m: How much ground one sample spans along each ground axis,
             in the order those axes run, measured rather than claimed.
-        separable: Whether the position holds one axis each rather than a
-            value per sample.
+        separable: Whether the grid it was placed on holds one ground axis each
+            rather than a pair per sample, which the stored offsets no longer
+            do either way.
         valid_count: How many of the stored values are measurements, which is what
             the statistics beside it were measured over and pool by.
         value_min: The smallest of those values, or None where the crop holds
@@ -46,8 +47,9 @@ class ObservationMetadata:
             ground axes alone, for an instrument whose axes hold a wavelength,
             and None for every other and where the crop measures nothing.
         band_std: Each band's standard deviation, or None for the same reasons.
-        band_valid_count: How many measurements each of those bands pools, or
-            None for the same reasons.
+        band_valid_count: How many measurements each of those bands pools, which
+            is none for a band the instrument never measured, or None for the
+            same reasons.
         t_start: When the observation started, or None where the archive
             publishes no time for it.
         t_end: When it ended, or None for the same reason.
@@ -127,10 +129,7 @@ def observation_metadata(
         size if holds == GROUND else 1
         for size, holds in zip(values.shape, layout.axes, strict=True)
     )
-    measured = np.ones(ground, dtype=bool)
-    for mask in (held.inside, held.valid):
-        if mask is not None:
-            measured = measured & mask.reshape(ground)
+    measured = held.measured.reshape(ground)
     low, high = altitude if altitude else (None, None)
     # An integer holds no infinite identity, so the reduction starts at its type's edge.
     limits = (
@@ -153,11 +152,16 @@ def observation_metadata(
     # A band is the one axis a reader normalises against, so it survives the reduction.
     over = tuple(axis for axis, holds in enumerate(layout.axes) if holds == GROUND)
     banded = counted and WAVELENGTH in layout.axes
+    pools = 1 if held.valid_bands is None else held.valid_bands
     band_mean, band_std, band_valid_count = (
         (
             tuple(np.mean(values, axis=over, where=measured).tolist()),
             tuple(np.std(values, axis=over, where=measured).tolist()),
-            tuple(np.broadcast_to(measured, values.shape).sum(axis=over).tolist()),
+            tuple(
+                (
+                    np.broadcast_to(measured, values.shape).sum(axis=over) * pools
+                ).tolist()
+            ),
         )
         if banded
         else (None, None, None)

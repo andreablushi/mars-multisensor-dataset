@@ -17,6 +17,9 @@ MIN_COSINE = 0.05
 # How near the antipode the projection is allowed to divide by
 LAEA_MIN_DENOMINATOR = 1e-12
 
+# How often the equidistant inverse re-reads a radius that moves by under a percent
+AEQD_PASSES = 3
+
 
 def normalise_longitude(lon: np.ndarray | float) -> np.ndarray:
     """Wrap longitudes into the -180 to 180 degree range.
@@ -307,4 +310,88 @@ def stereographic_inverse(
     angle = 2.0 * np.arctan2(np.hypot(x, y), 2.0 * radius)
     lat = np.degrees(math.pi / 2.0 - angle) * (1.0 if north else -1.0)
     lon = centre_lon + np.degrees(np.arctan2(x, -y if north else y))
+    return normalise_longitude(lon), lat
+
+
+def aeqd_forward(
+    lon: np.ndarray | float,
+    lat: np.ndarray | float,
+    centre_lon: float,
+    centre_lat: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Project lon/lat degrees into azimuthal equidistant metres about one centre.
+
+    Args:
+        lon: The longitudes in degrees.
+        lat: The latitudes in degrees.
+        centre_lon: The longitude the frame is centred on, in degrees.
+        centre_lat: The latitude it is centred on, in degrees.
+
+    Returns:
+        eastings: The eastings in ground metres.
+        northings: The northings in ground metres.
+    """
+    held = np.asarray(lat, dtype=float)
+    lam = np.radians(normalise_longitude(np.asarray(lon, dtype=float) - centre_lon))
+    phi = np.radians(held)
+    phi0 = math.radians(centre_lat)
+    hav = (
+        np.sin((phi - phi0) / 2.0) ** 2
+        + math.cos(phi0) * np.cos(phi) * np.sin(lam / 2.0) ** 2
+    )
+    # The walk `haversine_steps` takes, on the spheroid each pair's middle stands at.
+    span = (
+        2.0
+        * local_radius_m((held + centre_lat) / 2.0)
+        * np.arcsin(np.sqrt(np.clip(hav, 0.0, 1.0)))
+    )
+    bearing = np.arctan2(
+        np.cos(phi) * np.sin(lam),
+        math.cos(phi0) * np.sin(phi) - math.sin(phi0) * np.cos(phi) * np.cos(lam),
+    )
+    return span * np.sin(bearing), span * np.cos(bearing)
+
+
+def aeqd_inverse(
+    x: np.ndarray | float,
+    y: np.ndarray | float,
+    centre_lon: float,
+    centre_lat: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Turn azimuthal equidistant ground metres back into lon/lat degrees.
+
+    Args:
+        x: The eastings in ground metres.
+        y: The northings in ground metres.
+        centre_lon: The longitude the frame is centred on, in degrees.
+        centre_lat: The latitude it is centred on, in degrees.
+
+    Returns:
+        longitudes: The longitudes in -180 to 180 degrees.
+        latitudes: The latitudes in degrees.
+    """
+    phi0 = math.radians(centre_lat)
+    span = np.hypot(np.asarray(x, dtype=float), np.asarray(y, dtype=float))
+    bearing = np.arctan2(x, y)
+    lat = np.full_like(span, float(centre_lat))
+    angle = span
+    # The radius stands where the pair's middle does, which only the answer says.
+    for _ in range(AEQD_PASSES):
+        angle = span / local_radius_m((lat + centre_lat) / 2.0)
+        lat = np.degrees(
+            np.arcsin(
+                np.clip(
+                    math.sin(phi0) * np.cos(angle)
+                    + math.cos(phi0) * np.sin(angle) * np.cos(bearing),
+                    -1.0,
+                    1.0,
+                )
+            )
+        )
+    lon = centre_lon + np.degrees(
+        np.arctan2(
+            np.sin(bearing) * np.sin(angle) * math.cos(phi0),
+            np.cos(angle) - math.sin(phi0) * np.sin(np.radians(lat)),
+        )
+    )
     return normalise_longitude(lon), lat

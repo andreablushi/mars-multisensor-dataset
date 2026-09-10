@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from building.preprocessing.crism.correction import bands_calibration
+from building.configs import crism as configs
+from building.preprocessing.crism.correction import resample
 from building.preprocessing.crism.models.detector import Detector
 from building.preprocessing.crism.models.observation import CrismObservation
 
@@ -20,7 +21,7 @@ def merge_detectors(
     geometry: np.ndarray,
     label: dict[str, str],
 ) -> CrismObservation:
-    """Join the detectors of a cleaned observation into one cube.
+    """Join the detectors of a cleaned observation onto the survey's own grid.
 
     Args:
         identifier: The observation the detectors are halves of.
@@ -30,7 +31,8 @@ def merge_detectors(
         label: What every product the observation was published as says of it.
 
     Returns:
-        observation: The joined observation, its bands ascending in wavelength.
+        observation: The joined observation, holding every band of the survey's grid
+            whether this one measured it or not, the rest filled.
 
     Raises:
         ValueError: When no half was delivered, or one has not been cleaned.
@@ -46,35 +48,26 @@ def merge_detectors(
     # Only the samples no half refused.
     columns = ~np.logical_or.reduce([detectors[name].mask.columns for name in halves])
 
-    kept = np.flatnonzero(columns)
-    bands = {name: ~detectors[name].mask.bands for name in halves}
-    table = np.concatenate(
-        [detectors[name].wavelengths[columns][:, bands[name]] for name in halves],
-        axis=1,
-    )
-    # The two overlap around a micron, so ordering is a sort and not a join.
-    order = np.argsort(bands_calibration.centres(table))
-    # Where each band lands once ordered, so each half writes straight into the cube.
-    lands = np.empty(order.size, dtype="i8")
-    lands[order] = np.arange(order.size)
-
-    joined = np.empty((lines, kept.size, order.size), dtype="f4")
-    at = 0
+    joined = np.empty((lines, int(columns.sum()), configs.BANDS), dtype="f4")
+    measured = np.zeros(configs.BANDS, dtype=bool)
     for name in halves:
-        live = np.flatnonzero(bands[name])
-        joined[:, :, lands[at : at + live.size]] = detectors[name].cube[
-            np.ix_(np.arange(lines), kept, live)
-        ]
-        at += live.size
+        grid = np.asarray(configs.DETECTOR_BANDS_NM[name])
+        lands = np.searchsorted(configs.WAVELENGTHS_NM, grid)
+        held = detectors[name]
+        read, live = resample.resample_bands(
+            held.cube[:lines, columns], held.mask, held.wavelengths[columns], grid
+        )
+        joined[:, :, lands] = read
+        measured[lands] = live
+
+    # A pixel any half could not read is no measurement of the observation.
+    valid = ~np.logical_or.reduce(
+        [detectors[name].mask.pixels[:lines] for name in halves]
+    )[:, columns]
+    known = valid[:, :, None] & measured
+    joined[:, :, ~measured] = (
+        float(np.mean(joined, where=known)) if known.any() else 0.0
+    )
     return CrismObservation(
-        identifier,
-        label,
-        joined,
-        table[:, order],
-        geometry[:lines, columns],
-        kept,
-        # A pixel any half could not read is no measurement of the observation.
-        ~np.logical_or.reduce([detectors[name].mask.pixels[:lines] for name in halves])[
-            :, columns
-        ],
+        identifier, label, joined, geometry[:lines, columns], valid, measured
     )

@@ -18,23 +18,21 @@ class CrismObservation:
     Attributes:
         label: What every product it was published as says about it, merged.
         identifier: The observation id.
-        cube: Lines by columns by bands, bands ascending in wavelength, holding
-            only what both detectors kept.
-        wavelengths: The centre wavelength of every column and band, in that
-            same order.
+        cube: Lines by columns by bands, one band per wavelength the survey is
+            centred on, holding only the columns both detectors kept.
         geometry: The backplanes on the same grid, as lines by columns by 14.
-        columns: Which of the original 64 samples these columns are.
         valid: Lines by columns, True where the pixel carries a measurement
             rather than a cell the cleaning filled.
+        valid_bands: One flag per band, True where this observation measured it
+            rather than being filled for having no reading of it at all.
     """
 
     identifier: str
     label: dict[str, str]
     cube: np.ndarray
-    wavelengths: np.ndarray
     geometry: np.ndarray
-    columns: np.ndarray
     valid: np.ndarray
+    valid_bands: np.ndarray
 
     # A pushbroom swath bends, so every pixel carries its own backplanes' pair.
     separable = False
