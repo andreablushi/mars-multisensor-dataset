@@ -128,10 +128,7 @@ def observation_metadata(
         size if holds == GROUND else 1
         for size, holds in zip(values.shape, layout.axes, strict=True)
     )
-    measured = np.ones(ground, dtype=bool)
-    for mask in (held.inside, held.valid):
-        if mask is not None:
-            measured = measured & mask.reshape(ground)
+    measured = held.measured.reshape(ground)
     low, high = altitude if altitude else (None, None)
     # An integer holds no infinite identity, so the reduction starts at its type's edge.
     limits = (

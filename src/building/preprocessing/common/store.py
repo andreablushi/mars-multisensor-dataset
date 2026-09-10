@@ -21,6 +21,7 @@ NORTH = "north"
 EAST = "east"
 INSIDE = "inside"
 VALID = "valid"
+MEASURED = "measured"
 
 # The frame the placing arrays hold, ground metres from the feature's own centre.
 FRAME = "aeqd_m"
@@ -93,14 +94,16 @@ def write_sample(
         layout.measurement: layout.dims,
         NORTH: ground,
         EAST: ground,
+        MEASURED: ground,
         **layout.beside,
     }
     arrays = {name: native(getattr(held, name)) for name in layout.beside}
     arrays[layout.measurement] = native(getattr(held, layout.measurement))
     arrays[NORTH] = north
     arrays[EAST] = east
+    arrays[MEASURED] = native(held.measured)
     for name, mask in ((INSIDE, held.inside), (VALID, held.valid)):
-        # A mask marking every sample was never stored, so it is never read.
+        # The two the rooted mask is made of, kept for whoever wants them apart.
         if mask is not None:
             arrays[name] = native(mask)
             along[name] = ground
