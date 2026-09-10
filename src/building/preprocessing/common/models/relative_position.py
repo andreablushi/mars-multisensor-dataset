@@ -58,20 +58,3 @@ class RelativePosition:
         if self.separable:
             return self.north[taken[0]], self.east[taken[1]]
         return self.north[taken], self.east[taken]
-
-    def dims_along(
-        self, ground: tuple[str, ...]
-    ) -> tuple[tuple[str, ...], tuple[str, ...]]:
-        """Return which ground axes the northing and the easting each run along.
-
-        Args:
-            ground: The instrument's ground axes, in the order they run.
-
-        Returns:
-            north: The axes of the northing, one where separable and every ground axis
-                where not.
-            east: The axes of the easting, holding the same.
-        """
-        if self.separable:
-            return ground[:1], ground[1:]
-        return ground, ground

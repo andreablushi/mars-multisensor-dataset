@@ -9,6 +9,7 @@ import numpy as np
 
 from building import paths
 from building.common.layout import GROUND, Layout
+from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.sample import Sample
 from shared.disk.files import atomic_path
 from shared.disk.slugify import slugify
@@ -21,11 +22,10 @@ EAST = "east"
 INSIDE = "inside"
 VALID = "valid"
 
-# What the placing arrays are measured in, degrees from the centre or a grid's metres.
-DEGREES = "degrees"
-METRES = "metres"
+# The frame the placing arrays hold, ground metres from the feature's own centre.
+FRAME = "aeqd_m"
 
-# What the crop is described by: its axes, its feature, its units and its label.
+# What the crop is described by: its axes, its feature, its frame and its label.
 META = "meta"
 
 
@@ -87,18 +87,18 @@ def write_sample(
         for name, holds in zip(layout.dims, layout.axes, strict=True)
         if holds == GROUND
     )
-    # A separable position holds one ground axis each, any other a value per sample.
-    north, east = held.position.dims_along(ground)
+    # The frame is not separable, so both offsets run over every ground axis.
+    north, east = relative_positioning.ground_metres(held.position, frame)
     along = {
         layout.measurement: layout.dims,
-        NORTH: north,
-        EAST: east,
+        NORTH: ground,
+        EAST: ground,
         **layout.beside,
     }
     arrays = {name: native(getattr(held, name)) for name in layout.beside}
     arrays[layout.measurement] = native(getattr(held, layout.measurement))
-    arrays[NORTH] = native(held.position.north)
-    arrays[EAST] = native(held.position.east)
+    arrays[NORTH] = north
+    arrays[EAST] = east
     for name, mask in ((INSIDE, held.inside), (VALID, held.valid)):
         # A mask marking every sample was never stored, so it is never read.
         if mask is not None:
@@ -106,7 +106,6 @@ def write_sample(
             along[name] = ground
 
     path = sample_path(frame, layout.instrument, held.identifier, root)
-    grid = held.position.polar
     described = {
         "instrument": layout.instrument,
         "identifier": held.identifier,
@@ -116,9 +115,8 @@ def write_sample(
         "separable": held.position.separable,
         "centre_lon": frame.centre_lon,
         "centre_lat": frame.centre_lat,
-        "position_units": DEGREES if grid is None else METRES,
+        "frame": FRAME,
         "radii_m": [physics.EQUATORIAL_RADIUS_M, physics.POLAR_RADIUS_M],
-        "polar": None if grid is None else list(grid),
         "dims": {name: list(axes) for name, axes in along.items()},
         "axes": list(layout.axes),
         "ground": list(ground),

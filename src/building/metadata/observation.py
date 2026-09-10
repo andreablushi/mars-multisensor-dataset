@@ -33,8 +33,9 @@ class ObservationMetadata:
         shape: The value array's shape, in that same order.
         ground_sample_m: How much ground one sample spans along each ground axis,
             in the order those axes run, measured rather than claimed.
-        separable: Whether the position holds one axis each rather than a
-            value per sample.
+        separable: Whether the grid it was placed on holds one ground axis each
+            rather than a pair per sample, which the stored offsets no longer
+            do either way.
         valid_count: How many of the stored values are measurements, which is what
             the statistics beside it were measured over and pool by.
         value_min: The smallest of those values, or None where the crop holds

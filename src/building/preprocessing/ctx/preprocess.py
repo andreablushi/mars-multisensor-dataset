@@ -19,8 +19,8 @@ from shared.models.feature import Feature
 # Nothing here reads ASU's no-data tag: what a scan left blank is `BLANK`
 logging.getLogger("tifffile").setLevel(logging.ERROR)
 
-# What one build holds per byte of scan; measured peaks were 1.2 and 0.4 times
-HELD_PER_BYTE = 2
+# What one build holds per byte of scan; the two offset planes are eight of it
+HELD_PER_BYTE = 10
 
 # What the reader, the label and the grids cost whatever size the scan is.
 HELD_FLOOR = 256 * 1024**2
