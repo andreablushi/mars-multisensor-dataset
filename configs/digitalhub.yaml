@@ -13,21 +13,34 @@ image_extras:
   - digitalhub>=0.15.8,<0.16
   - pandas
 
-# What the platform gives each stage, which asks for what that stage is held up by.
+# Whether every stage queues on the shared pool rather than the reserved one,
+# which marks each profile below with -shared.
+shared: true
+
+# What the platform gives each stage, which asks for what that stage is held up
+# by. A profile settles the cores and the memory of the box: cpu exists on both
+# pools. What is asked for here is what the job is scheduled on; the profile
+# settles the limit it is killed at. The image build reads none of the stages,
+# so it names a profile alone.
 resources:
+  image:
+    profile: cpu
   pipeline:
+    profile: cpu
     cpu: 8
     memory: 32Gi
     disk: 64Gi
   selection:
+    profile: cpu
     cpu: 8
     memory: 32Gi
     disk: 64Gi
   # A build waits on the archives, not the cores, and its disk holds the whole dataset
   build:
-    cpu: 8
-    memory: 42Gi
-    budget: 32Gi
+    profile: cpu
+    cpu: 5
+    memory: 40Gi
+    budget: 24Gi
     disk: 360Gi
 
 # The function each run is registered as, the project scoping it so it needs no prefix

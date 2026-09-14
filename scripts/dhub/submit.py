@@ -41,7 +41,9 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
     )
 
     # Build the image first, since the job cannot install anything itself.
-    built = function.run(action="build", wait=True)
+    built = function.run(
+        action="build", profile=platform.resources["image"]["profile"], wait=True
+    )
     if built.status.state != "COMPLETED":
         print(f"the image did not build: {built.status.state}")
         return 1
@@ -53,6 +55,7 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
     budgeted = asked.get("budget", asked["memory"])
     run = function.run(
         action="job",
+        profile=asked["profile"],
         resources={"cpu": asked["cpu"], "mem": asked["memory"], "disk": asked["disk"]},
         secrets=[credentials.TOKEN],
         envs=[
