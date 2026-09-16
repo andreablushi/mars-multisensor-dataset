@@ -30,6 +30,8 @@ RETAINED_FIELDS = (
     "Westernmost_longitude",
     "Easternmost_longitude",
     "Footprint_C0_geometry",
+    "Footprint_NP_geometry",
+    "Footprint_SP_geometry",
 )
 
 ProductRecord: TypeAlias = dict[str, Any]

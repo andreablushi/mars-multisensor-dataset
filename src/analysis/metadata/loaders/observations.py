@@ -31,6 +31,13 @@ def load_observations(path: Path) -> ObservationSet:
             discarded += 1
             continue
         stop, scale = item.get("UTC_stop_time"), item.get("Map_scale")
+        north, south = (
+            None if not held or held.endswith("EMPTY") else held
+            for held in (
+                item.get("Footprint_NP_geometry"),
+                item.get("Footprint_SP_geometry"),
+            )
+        )
         observations.append(
             Observation(
                 pdsid=item["pdsid"],
@@ -41,6 +48,8 @@ def load_observations(path: Path) -> ObservationSet:
                 stop=provenance.as_utc(stop) if stop else None,
                 wkt=wkt,
                 map_scale_m=float(scale) if scale else None,
+                north_wkt=north,
+                south_wkt=south,
             )
         )
     observations.sort(key=lambda observation: (observation.start, observation.pdsid))
