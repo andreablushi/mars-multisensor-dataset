@@ -15,8 +15,8 @@ def final(read: DatasetStats) -> widgets.Widget:
     """Tabulate the dataset the filter leaves behind."""
     held = read.held
     rows: list[Row] = [
-        ("Features searched", f"{held.searched:,}"),
-        ("Features kept", f"{held.kept:,}"),
+        ("Tiles searched", f"{held.searched:,}"),
+        ("Tiles kept", f"{held.kept:,}"),
         ("Mean window", wording.spread(held.days, quantities.duration)),
         ("Longest window", quantities.duration(held.days.high)),
     ]

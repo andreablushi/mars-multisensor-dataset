@@ -5,7 +5,7 @@ from __future__ import annotations
 import ipywidgets as widgets
 from matplotlib.figure import Figure
 
-from analysis.stats.feature import series
+from analysis.stats.tile import series
 from analysis.visualization.common import panels
 from analysis.visualization.common.models.coverage import Coverage
 
@@ -13,11 +13,11 @@ UNOBSERVED_LINESTYLE = (0, (1, 3))
 CUMULATIVE_FIGURE_SIZE = (13, 5)
 CUMULATIVE_WIDTH_RATIOS = [3, 1]
 
-_GROUND = "Share of the feature covered so far"
+_GROUND = "Share of the tile covered so far"
 
 
 def plot(coverage: Coverage) -> widgets.Widget:
-    """Draw the running coverage of the whole feature, beside its total."""
+    """Draw the running coverage of the whole tile, beside its total."""
     if not coverage:
         return panels.unavailable()
     drawn = series.coverage_over_time(coverage)

@@ -1,4 +1,4 @@
-"""The mosaic under a feature: fetching one crop of it, and drawing it."""
+"""The mosaic under a tile, or under Mars: fetching one crop of it, and drawing it."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from matplotlib import image as reading
 from matplotlib.axes import Axes
 
 from analysis.visualization.common import panels
-from analysis.visualization.feature.models.placing import Box
+from analysis.visualization.common.models.box import Box
 from shared.maths import geodesy
 
 BASEMAP_URL = "https://planetarymaps.usgs.gov/cgi-bin/mapserv"
@@ -28,10 +28,12 @@ BASEMAP_CACHE = 32
 
 PLACEHOLDER = "320px"
 
-NO_BOX = "this feature has no lon/lat box to crop the mosaic to"
+NO_BOX = "this tile has no lon/lat box to crop the mosaic to"
 
 
-def fetched(box: Box, draw: Callable[[bytes], widgets.Widget]) -> widgets.Box:
+def fetched(
+    box: Box, draw: Callable[[bytes], widgets.Widget], pixels: int = BASEMAP_PIXELS
+) -> widgets.Box:
     """Claim the space one crop goes in and fill it off the thread that fetches it."""
     space = widgets.Box(
         [
@@ -50,7 +52,7 @@ def fetched(box: Box, draw: Callable[[bytes], widgets.Widget]) -> widgets.Box:
     def fill() -> None:
         """Crop the mosaic and put what it draws in the claimed space."""
         try:
-            image = crop(box)
+            image = crop(box, pixels)
         except Exception as exc:
             space.children = (panels.unavailable(BASEMAP_FAILED.format(reason=exc)),)
             return
@@ -76,7 +78,7 @@ def draw(axis: Axes, box: Box, image: bytes) -> None:
 
 
 @lru_cache(maxsize=BASEMAP_CACHE)
-def crop(box: Box) -> bytes:
+def crop(box: Box, pixels: int = BASEMAP_PIXELS) -> bytes:
     """Fetch the mosaic over one lon/lat box, held for the panels sharing it."""
     tall = box.north - box.south
     wide = (box.east - box.west) * geodesy.longitude_stretch(box.centre_lat)
@@ -94,8 +96,8 @@ def crop(box: Box) -> bytes:
             "BBOX": ",".join(
                 f"{bound:.4f}" for bound in (box.west, box.south, box.east, box.north)
             ),
-            "WIDTH": max(1, round(BASEMAP_PIXELS * wide / longest)),
-            "HEIGHT": max(1, round(BASEMAP_PIXELS * tall / longest)),
+            "WIDTH": max(1, round(pixels * wide / longest)),
+            "HEIGHT": max(1, round(pixels * tall / longest)),
             "FORMAT": "image/png",
         },
         timeout=BASEMAP_TIMEOUT,

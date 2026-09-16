@@ -1,27 +1,27 @@
-"""The feature on show, and everything the search left on it."""
+"""The tile on show, and everything the search left on it."""
 
 from __future__ import annotations
 
 import ipywidgets as widgets
 
-from analysis.stats.feature import measure, read
+from analysis.stats.tile import measure, read
 from analysis.visualization.common import panels, quantities, tables, wording
 from analysis.visualization.common.models.coverage import Coverage
 from analysis.visualization.common.models.tables import Row
 
-_HEADINGS = ("On this feature", "What it holds")
-_NOTHING = "No instrument set filled a cell of this feature."
+_HEADINGS = ("On this tile", "What it holds")
+_NOTHING = "No instrument set filled a cell of this tile."
 _NONE = "-"
 
 
 def plot(coverage: Coverage) -> widgets.Widget:
-    """Summarise what the search left on the feature on show."""
+    """Summarise what the search left on the tile on show."""
     if not coverage:
         return panels.unavailable()
-    looks = read.read_feature(coverage)
+    looks = read.read_tile(coverage)
     if looks is None:
         return panels.unavailable(_NOTHING)
-    stats = measure.measured_feature(looks)
+    stats = measure.measured_tile(looks)
     window = looks.window
     # A window it earned always says when it opened, so only a refusal reads as none
     lasted = (
@@ -31,7 +31,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
         else _NONE
     )
     rows: list[Row] = [
-        ("Ground the feature covers", quantities.area(window.area_km2)),
+        ("Ground the tile covers", quantities.area(window.area_km2)),
         ("How long its window lasts", lasted),
     ]
     for iid in sorted(stats.reached):

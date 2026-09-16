@@ -110,7 +110,7 @@ def rendered(figure: Figure) -> widgets.Image:
 
 
 def unavailable(
-    message: str = "Confirm a feature with local data above to fill this in.",
+    message: str = "Confirm a tile with local data above to fill this in.",
 ) -> widgets.HTML:
     """Build the grey panel shown when there is nothing to draw."""
     return widgets.HTML(
@@ -126,6 +126,5 @@ def unavailable(
 
 
 def title(coverage: Coverage) -> str:
-    """Return the feature class and name a loaded coverage belongs to."""
-    summary = coverage[0].summary
-    return f"{summary.feature_class} / {summary.feature_name}"
+    """Return the tile a loaded coverage belongs to."""
+    return f"Tile {coverage[0].summary.tile}"

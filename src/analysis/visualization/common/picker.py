@@ -1,4 +1,4 @@
-"""Picking what is drawn, which is one whole feature and nothing else."""
+"""Picking what is drawn, which is one whole tile and nothing else."""
 
 from __future__ import annotations
 
@@ -9,55 +9,53 @@ from IPython.display import display
 
 from analysis import configs
 from analysis.coverage.artifacts import index
-from analysis.metadata.loaders.features import load_features
 from analysis.stats.artifacts import selection
 from analysis.visualization.common import panels
 from analysis.visualization.common.models.coverage import Coverage
-from shared.disk.slugify import slugify
+from shared.maths import tessellate
 
-DEFAULT_CLASS = "Crater"
-NO_DATA_SUFFIX = "  (no data)"
-KEPT_SUFFIX = "  (kept)"
-NO_WINDOW_SUFFIX = "  (no window)"
-DROPDOWN = widgets.Layout(width="300px")
+DEFAULT_LAT = 18.4
+DEFAULT_LON = 77.5
+KEPT = "kept"
+NO_WINDOW = "no window"
+UNSEARCHED = "not in the selection"
+COORDINATE = widgets.Layout(width="200px")
 
 
-class FeaturePicker:
-    """A feature picker, and the areas it fills below itself.
+class TilePicker:
+    """A picker taking a point on Mars, and the areas it fills below itself.
 
     Attributes:
-        coverage: The confirmed feature's instrument sets, widest coverage first.
+        coverage: The confirmed tile's instrument sets, widest coverage first.
     """
 
     def __init__(self) -> None:
-        """Build the picker from the catalogue and what is computed on disk."""
-        self._names: dict[str, list[str]] = {}
-        for feature in load_features():
-            self._names.setdefault(feature.feature_class, []).append(feature.name)
-        for names in self._names.values():
-            names.sort()
-        self._computed = index.computed_features()
-        self._kept = _kept_features()
+        """Build the picker, which reads nothing until a point is confirmed."""
         self.coverage: Coverage = []
         self._areas: list[tuple[widgets.Box, Callable[[Coverage], widgets.Widget]]] = []
-        self._class = widgets.Dropdown(
-            description="Type:",
-            options=sorted(self._names),
-            value=DEFAULT_CLASS,
-            layout=DROPDOWN,
+        self._lat = widgets.BoundedFloatText(
+            description="Latitude:",
+            value=DEFAULT_LAT,
+            min=-90.0,
+            max=90.0,
+            layout=COORDINATE,
         )
-        self._name = widgets.Dropdown(description="Name:", layout=DROPDOWN)
+        self._lon = widgets.BoundedFloatText(
+            description="Longitude:",
+            value=DEFAULT_LON,
+            min=-180.0,
+            max=360.0,
+            layout=COORDINATE,
+        )
         self._confirm = widgets.Button(
             description="Confirm", button_style="primary", icon="check"
         )
         self._status = widgets.VBox()
-        self._class.observe(self._refresh_names, names="value")
         self._confirm.on_click(self._confirmed)
-        self._refresh_names()
 
     def choose(self) -> None:
         """Display the picker."""
-        controls = widgets.HBox([self._class, self._name, self._confirm])
+        controls = widgets.HBox([self._lat, self._lon, self._confirm])
         display(widgets.VBox([controls, self._status]))
 
     def show_panel(self, render: Callable[[Coverage], widgets.Widget]) -> None:
@@ -68,61 +66,38 @@ class FeaturePicker:
         display(area)
         area.children = (render(self.coverage),)
 
-    def _refresh_names(self, _change=None) -> None:
-        """Repopulate the name dropdown for the selected feature class."""
-        feature_class = self._class.value
-
-        def marked(name: str) -> str:
-            """Say what a name is marked with: what it holds, then what it earned."""
-            if (slugify(feature_class), slugify(name)) not in self._computed:
-                return name + NO_DATA_SUFFIX
-            kept = self._kept.get((feature_class, name))
-            if kept is None:
-                return name
-            return name + (KEPT_SUFFIX if kept else NO_WINDOW_SUFFIX)
-
-        self._name.options = [
-            (marked(name), name) for name in self._names[feature_class]
-        ]
-
     def _confirmed(self, _button=None) -> None:
-        """Load the confirmed feature and refill every claimed area."""
-        feature_class, name = self._class.value, self._name.value
-        if (slugify(feature_class), slugify(name)) in self._computed:
-            # The config says in what order the sets are drawn
-            ranks = {
-                chosen.key: rank
-                for rank, chosen in enumerate(configs.load().instrument_sets)
-            }
-            self.coverage = sorted(
-                index.load_feature(feature_class, name),
-                key=lambda one: ranks.get(one.summary.set_key, len(ranks)),
-            )
+        """Load the tile holding the confirmed point and refill every claimed area."""
+        settings = configs.load()
+        tile = tessellate.tile_at(self._lat.value, self._lon.value, settings.tile_km)
+        # The config says in what order the sets are drawn
+        ranks = {
+            chosen.key: rank for rank, chosen in enumerate(settings.instrument_sets)
+        }
+        self.coverage = sorted(
+            index.load_tile(tile),
+            key=lambda one: ranks.get(one.summary.set_key, len(ranks)),
+        )
+        try:
+            picked = selection.selection_by_tile().get(tile.name)
+        except FileNotFoundError:
+            picked = None
+        if picked is None:
+            verdict = UNSEARCHED
+        else:
+            verdict = KEPT if picked.tile.kept else NO_WINDOW
+        if self.coverage:
             note = widgets.HTML(
-                f"Loaded <b>{feature_class} / {name}</b>. "
-                f"The cells below have filled in."
+                f"Loaded <b>tile {tile.name}</b>, {tile.min_lat:.3f} to "
+                f"{tile.max_lat:.3f} lat, {tile.west_lon:.3f} to {tile.east_lon:.3f} "
+                f"lon, {verdict}. The cells below have filled in."
             )
         else:
-            self.coverage = []
             note = panels.unavailable(
-                f"Nothing has been downloaded or computed for {feature_class} / {name}."
+                f"Nothing has been downloaded or computed for tile {tile.name}."
             )
         self._status.children = (note,)
         for area, _ in self._areas:
             area.children = ()
         for area, render in self._areas:
             area.children = (render(self.coverage),)
-
-
-def _kept_features() -> dict[tuple[str, str], bool]:
-    """Say which searched features earned a window.
-
-    Returns:
-        kept: Whether each searched feature was kept, by class and name, and nothing at
-            all where no selection has been written to read it off.
-    """
-    try:
-        picked = selection.selection_by_feature()
-    except FileNotFoundError:
-        return {}
-    return {key: one.feature.kept for key, one in picked.items()}

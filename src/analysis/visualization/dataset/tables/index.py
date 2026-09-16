@@ -8,12 +8,12 @@ import ipywidgets as widgets
 
 from analysis.stats.models.catalogue import CatalogueStats
 from analysis.stats.models.dataset import DatasetStats
-from analysis.visualization.common import tables, wording
+from analysis.visualization.common import quantities, tables, wording
 
-_FEATURES = ("Statistic", "Value")
+_TILES = ("Statistic", "Value")
 _INSTRUMENTS = (
     "Instrument",
-    "Features reached",
+    "Tiles reached",
     "Observations",
     "Resolution",
     "First look",
@@ -25,12 +25,12 @@ def measured(stats: CatalogueStats) -> widgets.Widget:
     """Tabulate how big the measured dataset is."""
     return tables.written(
         "The ODE dataset that was measured",
-        _FEATURES,
+        _TILES,
         [
-            ("Features catalogued", f"{stats.catalogued:,}"),
-            ("Features dropped as points", f"{stats.points:,}"),
-            ("Features measured", f"{stats.features:,}"),
-            ("Feature classes", f"{len(stats.classes):,}"),
+            ("Tiles Mars is split into", f"{stats.tiles:,}"),
+            ("Tile side", f"{stats.tile_km:,.0f} km"),
+            ("Tiles measured", f"{stats.measured:,}"),
+            ("Mean tile size", wording.spread(stats.tile_km2, quantities.area)),
         ],
     )
 
@@ -43,7 +43,7 @@ def instruments(stats: CatalogueStats, read: DatasetStats) -> widgets.Widget:
         [
             (
                 instrument.iid,
-                f"{instrument.features:,}",
+                f"{instrument.tiles:,}",
                 f"{instrument.observations:,}",
                 _resolution(read, instrument.iid),
                 instrument.first.date().isoformat(),

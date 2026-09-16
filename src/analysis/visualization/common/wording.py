@@ -18,7 +18,7 @@ def counted(number: float, noun: str) -> str:
 
 
 def spread(measured: Spread, written: Callable[[float], str]) -> str:
-    """Write a measurement read off many features, and how far they sit from it."""
+    """Write a measurement read off many tiles, and how far they sit from it."""
     if not measured.counted:
         return NOTHING
     middle = written(measured.mean)
