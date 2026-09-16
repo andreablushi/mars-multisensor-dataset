@@ -52,7 +52,6 @@ functions:
 # What each stage publishes, which is what dh_download.sh brings back down.
 publishes:
   coverage: coverage
-  catalog: catalog
   metadata: metadata
   selection: selection
   stats: stats

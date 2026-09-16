@@ -55,11 +55,10 @@ Brings down what the pipelines published and unpacks it under data/.
 With no name, every one of them comes down.
 
   coverage     the coverage measurements       -> data/analysis/coverage
-  catalog      the ODE feature and set lists   -> data/_catalog
   metadata     the ODE records behind them     -> data/analysis/metadata
-  selection    the features and looks kept    -> data/analysis/selection
+  selection    the tiles and looks kept       -> data/analysis/selection
   stats        what the filter left of it     -> data/analysis/stats
-  summary      one row per feature and set     -> data/analysis/coverage
+  summary      one row per tile and set        -> data/analysis/coverage
 EOF
 }
 
@@ -70,13 +69,12 @@ fi
 
 names=("$@")
 if [[ ${#names[@]} -eq 0 ]]; then
-    names=(coverage catalog metadata selection stats summary)
+    names=(coverage metadata selection stats summary)
 fi
 
 for name in "${names[@]}"; do
     case "$name" in
         coverage) download_one "$(published coverage)" data/analysis/coverage ;;
-        catalog) download_one "$(published catalog)" data/_catalog ;;
         metadata) download_one "$(published metadata)" data/analysis/metadata ;;
         selection) download_one "$(published selection)" data/analysis/selection ;;
         stats) download_one "$(published stats)" data/analysis/stats ;;

@@ -26,7 +26,6 @@ SELECTION_HANDLER = "scripts.analysis_pipeline:run_selection"
 
 _PUBLISHED = platform.load().publishes
 _COVERAGE = _PUBLISHED["coverage"]
-_CATALOG = _PUBLISHED["catalog"]
 _METADATA = _PUBLISHED["metadata"]
 _SELECTION = _PUBLISHED["selection"]
 _STATS = _PUBLISHED["stats"]
@@ -39,17 +38,13 @@ ARCHIVED = {
         paths.COVERAGE_ROOT,
         "Coverage events and summaries; unpack under data/analysis/.",
     ),
-    _CATALOG: (
-        paths.CATALOG_ROOT,
-        "The ODE feature and instrument sets; unpack under data/.",
-    ),
     _METADATA: (
         paths.METADATA_ROOT,
         "The ODE records behind each measurement; unpack under data/analysis/.",
     ),
     _SELECTION: (
         paths.SELECTION_ROOT,
-        "The features and observations the filter keeps; unpack under data/analysis/.",
+        "The tiles and observations the filter keeps; unpack under data/analysis/.",
     ),
     _STATS: (
         paths.STATS_ROOT,
@@ -100,19 +95,19 @@ def compute_coverage(force: bool = False, workers: int | None = None) -> int:
 
 
 def compute_selection(workers: int | None = None) -> None:
-    """Search every measured feature under the filter and read what it left.
+    """Search every measured tile under the filter and read what it left.
 
     Args:
         workers: How many processes to run on at once, or None for the config.
     """
     workers = configs.load(workers=workers).workers
     picked = select.select_dataset(workers, console.logged("selection"))
-    kept = sum(1 for one in picked if one.feature.kept)
-    print(f"{kept:,} of {len(picked):,} features earned a place", flush=True)
+    kept = sum(1 for one in picked if one.tile.kept)
+    print(f"{kept:,} of {len(picked):,} tiles earned a place", flush=True)
     # Read off the selection just written, so they never stand for an old filter
     store.write_stats_file(
         aggregate.dataset_stats(
-            read.measure_every_feature(picked, workers, console.logged("stats"))
+            read.measure_every_tile(picked, workers, console.logged("stats"))
         )
     )
 
@@ -128,8 +123,8 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
 
     Returns:
         coverage: The archive of the coverage events and summaries.
-        summary: The table of one row per feature and instrument set.
-        selection: The archive of the features and observations kept.
+        summary: The table of one row per tile and instrument set.
+        selection: The archive of the tiles and observations kept.
         stats: The archive of what the filter left of the dataset.
 
     Raises:
@@ -146,9 +141,8 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
         kind="artifact",
         source=str(paths.COVERAGE_ROOT / paths.SUMMARY_NAME),
         path=archives.published_at(project, archives.ANALYSIS_DIR, paths.SUMMARY_NAME),
-        description="One row per feature and instrument set.",
+        description="One row per tile and instrument set.",
     )
-    archived(project, _CATALOG)
     archived(project, _METADATA)
     # Report a failure only once uploaded, and never select from short coverage
     if failed:
@@ -167,16 +161,13 @@ def run_selection(project, workers: int | None = None):
         workers: How many processes to run on at once, as the job was sized.
 
     Returns:
-        selection: The archive of the features and observations kept.
+        selection: The archive of the tiles and observations kept.
         stats: The archive of what the filter left of the dataset.
     """
     os.environ[PLAIN_LOG_ENV] = "1"
     print("fetching the measurements", flush=True)
     measured = project.get_artifact(_COVERAGE).download(overwrite=True)
     archives.unpack_archive(measured, paths.COVERAGE_ROOT)
-    # The selection writes each feature's own ground, which it reads here
-    catalogued = project.get_artifact(_CATALOG).download(overwrite=True)
-    archives.unpack_archive(catalogued, paths.CATALOG_ROOT)
     compute_selection(workers)
     print("done", flush=True)
     return archived(project, _SELECTION), archived(project, _STATS)
