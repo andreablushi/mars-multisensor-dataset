@@ -1,1 +1,1 @@
-"""Cleaning one CRISM multispectral survey observation, ported from crism_ml."""
+"""Cleaning one CRISM survey observation, ported from crism_ml."""
