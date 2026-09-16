@@ -39,7 +39,7 @@ def describe(plan: Plan, settings: Settings, budget: Budget, console: Console) -
     """
     crops = sum(len(job.frames) for job in plan.jobs)
     console.print(
-        f"building {len(plan.features)} features from {len(plan.jobs)} products, "
+        f"building {len(plan.tiles)} tiles from {len(plan.jobs)} products, "
         f"{crops} crops to write, {plan.skipped_existing} already written, "
         f"{plan.unread} kept observations no instrument here reads"
     )
@@ -155,7 +155,7 @@ def print_summary(
     if missed:
         console.print(
             f"[yellow]{missed:,} crops came out empty, the product reaching "
-            f"none of the feature it was kept for[/yellow]"
+            f"none of the tile it was kept for[/yellow]"
         )
     if not failed:
         return

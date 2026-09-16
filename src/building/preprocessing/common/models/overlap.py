@@ -1,4 +1,4 @@
-"""Which samples of an observation fall on the ground a feature covers."""
+"""Which samples of an observation fall on the ground a tile covers."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from building.preprocessing.common.models.relative_position import RelativePosit
 
 @dataclass(frozen=True, slots=True)
 class Overlap:
-    """What one feature's box keeps of one observation.
+    """What one tile's box keeps of one observation.
 
     Attributes:
         bounds: The samples to keep of each ground axis, in the position's
@@ -19,7 +19,7 @@ class Overlap:
         inside: Which of the samples that survives the cut truly falls in the box,
             or None where every one of them does.
         position: Where the samples that are kept sit, in degrees from the
-            feature centre.
+            tile centre.
     """
 
     bounds: tuple[np.ndarray, ...]

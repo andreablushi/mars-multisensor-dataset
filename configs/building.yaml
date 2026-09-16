@@ -3,7 +3,7 @@
 # The directory it is written in and the name it is published under.
 name: full
 
-# What share of the features the selection kept to build, above zero and up to one.
+# What share of the tiles the selection kept to build, above zero and up to one.
 share: 1.0
 
 # The number every draw is made with, so a smaller build is a reproducible subset.

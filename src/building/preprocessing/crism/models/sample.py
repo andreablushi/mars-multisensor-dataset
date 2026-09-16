@@ -1,4 +1,4 @@
-"""One CRISM observation cut to the feature it was kept for."""
+"""One CRISM observation cut to the tile it was kept for."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from building.preprocessing.common.models.sample import Sample
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CrismSample(Sample):
-    """The spectra one observation measured over one feature.
+    """The spectra one observation measured over one tile.
 
     Attributes:
         cube: Lines by columns by bands, one band per wavelength the survey is

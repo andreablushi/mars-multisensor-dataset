@@ -12,7 +12,7 @@ class Settings:
     Attributes:
         name: What this build is called, the directory it is written in and the
             name it is published under, so one build never overwrites another.
-        share: What share of the features the selection kept to build, from above
+        share: What share of the tiles the selection kept to build, from above
             zero to one, drawn evenly across their classes.
         seed: The number every draw is made with, so a smaller build is a
             reproducible subset of the full one.

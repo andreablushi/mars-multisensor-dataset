@@ -35,7 +35,7 @@ def altitude_m(sample: SharadSample) -> tuple[float, float]:
     """Return how low and how high the spacecraft was above the ground.
 
     Args:
-        sample: The track cut to the feature it was kept for.
+        sample: The track cut to the tile it was kept for.
 
     Returns:
         lowest: The lowest height above the ground in metres, over the traces the track

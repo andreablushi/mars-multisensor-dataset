@@ -13,7 +13,7 @@ from building.preprocessing.common.models.sample import Sample
 from shared.disk.files import atomic_path
 from shared.disk.slugify import slugify
 from shared.maths import physics
-from shared.models.feature import Feature
+from shared.models.tile import Tile
 
 # What the arrays placing a crop are called, and what the masks beside them are.
 NORTH = "north"
@@ -26,15 +26,15 @@ MEASURED = "measured"
 DEGREES = "degrees"
 METRES = "metres"
 
-# What the crop is described by: its axes, its feature, its units and its label.
+# What the crop is described by: its axes, its tile, its units and its label.
 META = "meta"
 
 
-def sample_path(frame: Feature, instrument: str, identifier: str, root: Path) -> Path:
+def sample_path(frame: Tile, instrument: str, identifier: str, root: Path) -> Path:
     """Return where one cropped observation's arrays belong.
 
     Args:
-        frame: The feature it was cut to.
+        frame: The tile it was cut to.
         instrument: The instrument that took it, as ODE names it.
         identifier: What that instrument was asked for.
         root: The dataset's own root directory.
@@ -44,8 +44,8 @@ def sample_path(frame: Feature, instrument: str, identifier: str, root: Path) ->
     """
     return (
         root
-        / slugify(frame.feature_class)
-        / slugify(frame.feature_name)
+        / frame.band_name
+        / frame.column_name
         / slugify(instrument)
         / f"{slugify(identifier)}{paths.SAMPLE_SUFFIX}"
     )
@@ -68,7 +68,7 @@ def native(values: np.ndarray) -> np.ndarray:
 def write_sample(
     held: Sample,
     layout: Layout,
-    frame: Feature,
+    frame: Tile,
     root: Path,
 ) -> Path:
     """Write one sample down, its arrays and what describes them in one file.
@@ -77,7 +77,7 @@ def write_sample(
         held: The sample, whose position and masks are written beside the values.
         layout: How that instrument's arrays are laid out, which names every
             one of them the sample is read for.
-        frame: The feature it was cut to.
+        frame: The tile it was cut to.
         root: The dataset's own root directory.
 
     Returns:
@@ -113,8 +113,9 @@ def write_sample(
     described = {
         "instrument": layout.instrument,
         "identifier": held.identifier,
-        "feature_class": frame.feature_class,
-        "feature_name": frame.feature_name,
+        "tile": frame.name,
+        "band": frame.band,
+        "column": frame.column,
         "measurement": layout.measurement,
         "separable": held.position.separable,
         "centre_lon": frame.centre_lon,

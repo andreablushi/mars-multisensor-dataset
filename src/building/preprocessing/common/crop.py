@@ -1,4 +1,4 @@
-"""Cutting one observation down to the ground its own feature covers."""
+"""Cutting one observation down to the ground its own tile covers."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from building.preprocessing.common.models.relative_position import (
 )
 from shared.maths import geodesy
 from shared.maths.geodesy import TURN
-from shared.models.feature import Feature
+from shared.models.tile import Tile
 
 # The longest segment the box is walked in, a chord leaving its arc by under a pixel.
 STEP = 0.1
@@ -24,9 +24,9 @@ def overlap(
     latitude: np.ndarray,
     longitude: np.ndarray,
     separable: bool,
-    frame: Feature,
+    frame: Tile,
 ) -> Overlap | None:
-    """Return what one feature's box keeps of one observation.
+    """Return what one tile's box keeps of one observation.
 
     Args:
         latitude: The latitude of every sample in degrees, or of every line
@@ -34,7 +34,7 @@ def overlap(
         longitude: The longitude of every sample, or of every sample of a line.
         separable: Whether those two hold one axis each rather than a value for
             every sample.
-        frame: The feature's local frame, carrying the box the catalogue gives
+        frame: The tile's local frame, carrying the box the catalogue gives
             it, which is read as the same degrees from that centre.
 
     Returns:
@@ -118,15 +118,15 @@ def taken(array: np.ndarray, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
 
 
 def polar_overlap(
-    down: np.ndarray, across: np.ndarray, grid: PolarGrid, frame: Feature
+    down: np.ndarray, across: np.ndarray, grid: PolarGrid, frame: Tile
 ) -> Overlap | None:
-    """Return what one feature's box keeps of one grid projected onto a pole.
+    """Return what one tile's box keeps of one grid projected onto a pole.
 
     Args:
         down: The northing of every line, in the projection's own metres.
         across: The easting of every sample, in the same metres.
         grid: The pole the two are measured on.
-        frame: The feature's local frame, carrying the box the catalogue gives
+        frame: The tile's local frame, carrying the box the catalogue gives
             it.
 
     Returns:

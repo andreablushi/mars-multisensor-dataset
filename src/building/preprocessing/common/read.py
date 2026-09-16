@@ -1,4 +1,4 @@
-"""Reading one crop back out of the store, placed where its feature stands."""
+"""Reading one crop back out of the store, placed where its tile stands."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import numpy as np
 from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.relative_position import RelativePosition
 from building.preprocessing.common.store import EAST, META, NORTH
-from shared.models.feature import Feature
+from shared.models.tile import Tile
 
 
 def read_sample(path: Path) -> tuple[dict[str, np.ndarray], dict]:
@@ -21,7 +21,7 @@ def read_sample(path: Path) -> tuple[dict[str, np.ndarray], dict]:
 
     Returns:
         arrays: Every array it holds, by the name it was written as.
-        described: What the crop is, its axes, its feature and its units.
+        described: What the crop is, its axes, its tile and its units.
     """
     with np.load(path) as held:
         described = json.loads(str(held[META]))
@@ -32,7 +32,7 @@ def read_sample(path: Path) -> tuple[dict[str, np.ndarray], dict]:
 def ground_metres(
     arrays: dict[str, np.ndarray], described: dict
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return how far north and east of its feature centre every sample sits.
+    """Return how far north and east of its tile centre every sample sits.
 
     Args:
         arrays: The crop's arrays, holding the two the position was written as.
@@ -50,7 +50,5 @@ def ground_metres(
         separable=described["separable"],
         polar=None if grid is None else tuple(grid),
     )
-    frame = Feature(
-        described["feature_class"], described["feature_name"], **described["box"]
-    )
+    frame = Tile(described["band"], described["column"], **described["box"])
     return relative_positioning.ground_metres(position, frame)

@@ -1,4 +1,4 @@
-"""One CTX scan cut to the feature it was kept for."""
+"""One CTX scan cut to the tile it was kept for."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ BLANK = 0
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CtxSample(Sample):
-    """The brightness one scan measured over one feature.
+    """The brightness one scan measured over one tile.
 
     Attributes:
         image: The brightness as lines by samples.

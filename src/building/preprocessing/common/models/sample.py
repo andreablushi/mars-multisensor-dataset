@@ -11,16 +11,16 @@ from building.preprocessing.common.models.relative_position import RelativePosit
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Sample:
-    """One observation cut to its feature, in the shape its instrument publishes.
+    """One observation cut to its tile, in the shape its instrument publishes.
 
     Attributes:
-        identifier: What the instrument was asked for, its observation or tile.
+        identifier: What the instrument was asked for, its observation or sheet.
         position: Where the samples that are left sit, in degrees from the
-            feature's own centre or in the metres of the projection they
+            tile's own centre or in the metres of the projection they
             were placed on.
         label: What every product the observation was published as says about
             it, merged into one.
-        inside: Which of them truly falls in the feature's box, or None where
+        inside: Which of them truly falls in the tile's box, or None where
             every one of them does.
         valid: Which of them is a measurement rather than a filled cell, or
             None where every one of them is.
@@ -37,7 +37,7 @@ class Sample:
 
     @property
     def measured(self) -> np.ndarray:
-        """Return which samples are both in the feature's box and measurements.
+        """Return which samples are both in the tile's box and measurements.
 
         Returns:
             measured: One flag per sample over the ground axes, the two masks

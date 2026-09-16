@@ -1,4 +1,4 @@
-"""Turning the coordinates an observation carries into offsets from its feature."""
+"""Turning the coordinates an observation carries into offsets from its tile."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import numpy as np
 
 from building.preprocessing.common.models.relative_position import RelativePosition
 from shared.maths import geodesy
-from shared.models.feature import Feature
+from shared.models.tile import Tile
 
 # How many neighbouring pairs of one axis to measure a ground sample over.
 MEASURED = 512
@@ -14,19 +14,19 @@ MEASURED = 512
 # How many samples of a crop become metres at once, since a scan can be huge.
 BLOCK = 1_000_000
 
-# What the offsets are stored as, which holds a centimetre over any feature.
+# What the offsets are stored as, which holds a centimetre over any tile.
 STORED = np.float32
 
 
 def degrees(
-    position: RelativePosition, frame: Feature, taken: tuple = ()
+    position: RelativePosition, frame: Tile, taken: tuple = ()
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return the longitude and latitude the samples of one position sit at.
 
     Args:
-        position: Where the samples sit, in degrees from the feature centre or
+        position: Where the samples sit, in degrees from the tile centre or
             in the metres of the projection it was placed on.
-        frame: The feature's local frame, which those offsets are relative to.
+        frame: The tile's local frame, which those offsets are relative to.
         taken: Which of each ground axis to read, outermost first, and empty for
             all of them.
 
@@ -40,7 +40,7 @@ def degrees(
             geodesy.normalise_longitude(frame.centre_lon + across),
             frame.centre_lat + down,
         )
-    # The offsets stand from the feature centre, so where that falls is worked again.
+    # The offsets stand from the tile centre, so where that falls is worked again.
     centre_x, centre_y = geodesy.stereographic_forward(
         frame.centre_lon, frame.centre_lat, *position.polar
     )
@@ -51,14 +51,14 @@ def degrees(
 
 
 def ground_metres(
-    position: RelativePosition, frame: Feature
+    position: RelativePosition, frame: Tile
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return how far north and east of its feature centre every sample sits.
+    """Return how far north and east of its tile centre every sample sits.
 
     Args:
-        position: Where the samples sit, in degrees from the feature centre or
+        position: Where the samples sit, in degrees from the tile centre or
             in the metres of the projection it was placed on.
-        frame: The feature's local frame, which the offsets are measured from.
+        frame: The tile's local frame, which the offsets are measured from.
 
     Returns:
         north: The ground metres north of that centre, one per sample, in the
@@ -83,13 +83,13 @@ def ground_metres(
     return north, east
 
 
-def ground_sample_m(position: RelativePosition, frame: Feature) -> tuple[float, ...]:
+def ground_sample_m(position: RelativePosition, frame: Tile) -> tuple[float, ...]:
     """Return how much ground one sample spans, along each of its ground axes.
 
     Args:
-        position: Where the samples sit, in degrees from the feature centre or
+        position: Where the samples sit, in degrees from the tile centre or
             in the metres of the projection it was placed on.
-        frame: The feature's local frame, which the offsets are relative to.
+        frame: The tile's local frame, which the offsets are relative to.
 
     Returns:
         sample: The median great-circle metres between neighbouring samples along each

@@ -1,4 +1,4 @@
-"""Reading one CRISM observation off disk, cleaning it, and cutting it to a feature."""
+"""Reading one CRISM observation off disk, cleaning it, and cutting it to a tile."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from building.preprocessing.crism.correction import (
 from building.preprocessing.crism.models.detector import Detector
 from building.preprocessing.crism.models.observation import CrismObservation
 from building.preprocessing.crism.models.sample import CrismSample
-from shared.models.feature import Feature
+from shared.models.tile import Tile
 
 # What a wavelength file writes where the detector was never calibrated.
 UNCALIBRATED = 65535.0
@@ -267,15 +267,15 @@ def read_observation(identifier: str) -> CrismObservation:
     )
 
 
-def crop(observation: CrismObservation, frame: Feature) -> CrismSample | None:
-    """Return one observation holding only the pixels its feature's box keeps.
+def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
+    """Return one observation holding only the pixels its tile's box keeps.
 
     Args:
         observation: The observation with its two detectors joined.
-        frame: The local frame of the feature it was kept for.
+        frame: The local frame of the tile it was kept for.
 
     Returns:
-        sample: The observation cut to that feature, its bands left whole, or None where
+        sample: The observation cut to that tile, its bands left whole, or None where
             it reaches none of it.
     """
     held = overlap(

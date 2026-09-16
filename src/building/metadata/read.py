@@ -8,34 +8,34 @@ from pathlib import Path
 import pyarrow.parquet as pq
 
 from building import paths
-from building.metadata import feature as features
 from building.metadata import observation as records
-from building.metadata.feature import FeatureMetadata
+from building.metadata import tile as tiles
 from building.metadata.observation import ObservationMetadata
+from building.metadata.tile import TileMetadata
 from shared.disk import parquet
 
 
-def read_feature_metadata(
+def read_tile_metadata(
     root: Path,
-) -> dict[tuple[str, str], FeatureMetadata]:
-    """Read what the dataset holds about every feature, keyed by the feature.
+) -> dict[str, TileMetadata]:
+    """Read what the dataset holds about every tile, keyed by the tile.
 
     Args:
         root: The directory the metadata was written in.
 
     Returns:
-        features: Each feature's own row, by class and name, the centre of each
+        tiles: Each tile's own row, by name, the centre of each
             taken from its own box rather than from a file that may predate it.
 
     Raises:
-        FileNotFoundError: When no features have been written there.
+        FileNotFoundError: When no tiles have been written there.
     """
-    held = pq.read_table(root / paths.FEATURE_METADATA_NAME, schema=features.SCHEMA)
+    held = pq.read_table(root / paths.TILE_METADATA_NAME, schema=tiles.SCHEMA)
     return {
         one.identity: replace(
             one, centre_lon=one.frame.centre_lon, centre_lat=one.frame.centre_lat
         )
-        for one in (parquet.build(FeatureMetadata, row) for row in held.to_pylist())
+        for one in (parquet.build(TileMetadata, row) for row in held.to_pylist())
     }
 
 
@@ -48,7 +48,7 @@ def read_observation_metadata(
         root: The directory the metadata was written in.
 
     Returns:
-        records: One row per feature and observation.
+        records: One row per tile and observation.
 
     Raises:
         FileNotFoundError: When no observations have been written there.
