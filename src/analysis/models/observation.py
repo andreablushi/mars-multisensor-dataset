@@ -5,8 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from shared.models.feature import Feature
-
 
 @dataclass(frozen=True, slots=True)
 class Observation:
@@ -53,16 +51,14 @@ class Observation:
 
 @dataclass(frozen=True, slots=True)
 class ObservationSet:
-    """One instrument set's observations, and what they belong to.
+    """One instrument set's observations over one group.
 
     Attributes:
-        feature: The feature box the records were downloaded for.
         set_key: The instrument set identifier the records were asked for by.
         observations: The set's observations, in chronological order.
         discarded: How many records could not be used.
     """
 
-    feature: Feature
     set_key: str
     observations: list[Observation]
     discarded: int

@@ -26,12 +26,13 @@ def load(path: Path = paths.CONFIG_PATH, workers: int | None = None) -> Settings
     config = yaml.safe_load(path.read_text(encoding="utf-8"))
     workers = workers or config["workers"]
     return Settings(
+        tile_km=float(config["tile_km"]),
+        tile_group_deg=float(config["tile_group_deg"]),
         grid_cells=config["grid_cells"],
         instrument_sets=tuple(
             InstrumentSet.from_key(key) for key in config["instruments"]
         ),
         loc=config["loc"],
-        refresh_catalog=config["refresh_catalog"],
         workers=workers,
         # The coverage jobs run side by side, so each takes a share of the machine
         union_threads=max(1, (os.process_cpu_count() or 1) // workers),

@@ -5,106 +5,72 @@ from __future__ import annotations
 from pathlib import Path
 
 from analysis.models.instrument import InstrumentSet
-from shared.disk.slugify import slugify
-from shared.models.feature import Feature
 from shared.paths import CONFIGS_ROOT, DATA_ROOT
 
 CONFIG_PATH = CONFIGS_ROOT / "analysis.yaml"
 
-CATALOG_ROOT = DATA_ROOT / "_catalog"
-
 ANALYSIS_ROOT = DATA_ROOT / "analysis"
 METADATA_ROOT = ANALYSIS_ROOT / "metadata"
 COVERAGE_ROOT = ANALYSIS_ROOT / "coverage"
-FEATURES_ROOT = COVERAGE_ROOT / "features"
+GROUPS_ROOT = COVERAGE_ROOT / "groups"
 STATS_ROOT = ANALYSIS_ROOT / "stats"
 SELECTION_ROOT = ANALYSIS_ROOT / "selection"
 
 STATS_NAME = "stats.json"
-SELECTED_FEATURES_NAME = "features.parquet"
+SELECTED_TILES_NAME = "tiles.parquet"
 SELECTED_OBSERVATIONS_NAME = "observations.parquet"
-FEATURES_CACHE_NAME = "features.jsonl"
 SUMMARY_NAME = "summary.parquet"
 EVENTS_SUFFIX = ".events.parquet"
 SET_SUMMARY_SUFFIX = ".summary.parquet"
 
 
-def metadata_file(root: Path, feature: Feature, instrument_set: InstrumentSet) -> Path:
-    """Return the JSONL path for one feature and instrument set.
+def metadata_file(root: Path, group: str, instrument_set: InstrumentSet) -> Path:
+    """Return the JSONL path for one group and instrument set.
 
     Args:
         root: The metadata root directory.
-        feature: The feature being stored.
+        group: The name of the group being stored.
         instrument_set: The instrument set being stored.
 
     Returns:
         path: The path to the JSONL output file.
     """
-    directory = root / slugify(feature.feature_class) / slugify(feature.name)
-    return directory / f"{instrument_set.slug}.jsonl"
-
-
-def feature_coverage_dir(root: Path, feature_class: str, name: str) -> Path:
-    """Return where one feature's artifacts live, from its catalogue names.
-
-    Args:
-        root: The artifacts subtree the path is built under.
-        feature_class: The feature class, such as Crater.
-        name: The feature name as ODE spells it.
-
-    Returns:
-        path: The feature's directory under that root, which need not exist.
-    """
-    return root / slugify(feature_class) / slugify(name)
+    return root / group / f"{instrument_set.slug}.jsonl"
 
 
 def events_path(root: Path, source: Path) -> Path:
     """Return the per-observation events file for one instrument set.
 
     Args:
-        root: The per-feature coverage root directory.
+        root: The per-group coverage root directory.
         source: The instrument set's metadata JSONL file.
 
     Returns:
         path: The path to the events parquet file.
     """
-    held = source.parent
-    return root / held.parent.name / held.name / f"{source.stem}{EVENTS_SUFFIX}"
+    return root / source.parent.name / f"{source.stem}{EVENTS_SUFFIX}"
 
 
 def set_summary_path(root: Path, source: Path) -> Path:
     """Return the summary file for one instrument set.
 
     Args:
-        root: The per-feature coverage root directory.
+        root: The per-group coverage root directory.
         source: The instrument set's metadata JSONL file.
 
     Returns:
         path: The path to the summary parquet file.
     """
-    held = source.parent
-    return root / held.parent.name / held.name / f"{source.stem}{SET_SUMMARY_SUFFIX}"
+    return root / source.parent.name / f"{source.stem}{SET_SUMMARY_SUFFIX}"
 
 
 def catalog_summary_path(root: Path = COVERAGE_ROOT) -> Path:
-    """Return the file holding every feature's summary rows together.
+    """Return the file holding every tile's summary rows together.
 
     Args:
         root: The coverage root directory.
 
     Returns:
-        path: The path to the catalogue-wide summary parquet file.
+        path: The path to the grid-wide summary parquet file.
     """
     return root / SUMMARY_NAME
-
-
-def features_path(cache_dir: Path = CATALOG_ROOT) -> Path:
-    """Return where the cached feature catalogue lives.
-
-    Args:
-        cache_dir: Directory holding the cached catalogue files.
-
-    Returns:
-        path: The path to the features JSONL file, which need not exist.
-    """
-    return cache_dir / FEATURES_CACHE_NAME

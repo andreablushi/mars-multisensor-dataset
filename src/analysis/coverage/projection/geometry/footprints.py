@@ -1,4 +1,4 @@
-"""The feature box a footprint is cut to, and the ground each footprint covers."""
+"""The tile box a footprint is cut to, and the ground each footprint covers."""
 
 from __future__ import annotations
 
@@ -21,9 +21,9 @@ from shapely import (
 )
 from shapely.geometry.base import BaseGeometry
 
-from analysis.coverage.models.region import FeatureRegion
+from analysis.coverage.models.region import TileRegion
 from shared.maths import geodesy
-from shared.models.feature import Feature
+from shared.models.tile import Tile
 
 _EMPTY = Polygon()
 _LINESTRING = 1
@@ -40,17 +40,17 @@ MAX_SEGMENT_DEG = 0.25
 BUFFER_QUAD_SEGMENTS = 16
 
 
-def feature_region(feature: Feature) -> FeatureRegion:
-    """Project one feature's box, with the lon/lat regions footprints are cut to.
+def tile_region(tile: Tile) -> TileRegion:
+    """Project one tile's box, with the lon/lat regions footprints are cut to.
 
     Args:
-        feature: The feature whose box the coverage is measured against.
+        tile: The tile whose box the coverage is measured against.
 
     Returns:
         region: The projected box and the two clipping regions built from its bounds.
     """
-    min_lat, max_lat = feature.min_lat, feature.max_lat
-    west_lon, east_lon = feature.west_lon, feature.east_lon
+    min_lat, max_lat = tile.min_lat, tile.max_lat
+    west_lon, east_lon = tile.west_lon, tile.east_lon
     centre_lon, centre_lat = geodesy.bbox_centre(min_lat, max_lat, west_lon, east_lon)
     lons, lats = geodesy.bbox_ring(
         min_lat, max_lat, west_lon, east_lon, MAX_SEGMENT_DEG
@@ -61,7 +61,7 @@ def feature_region(feature: Feature) -> FeatureRegion:
     if not is_valid(shape):
         shape = make_valid(shape, method="structure", keep_collapsed=False)
     prepare(shape)
-    return FeatureRegion(
+    return TileRegion(
         centre_lon=centre_lon,
         centre_lat=centre_lat,
         shape=shape,
@@ -114,12 +114,12 @@ def clip_boxes(
 
 
 def projected_footprints(
-    region: FeatureRegion, geoms: np.ndarray, swath_widths_m: np.ndarray
+    region: TileRegion, geoms: np.ndarray, swath_widths_m: np.ndarray
 ) -> np.ndarray:
-    """Return the ground a whole set of observations covers on the feature.
+    """Return the ground a whole set of observations covers on the tile.
 
     Args:
-        region: The projected feature the footprints are cut to.
+        region: The projected tile the footprints are cut to.
         geoms: The parsed footprint geometries in lon/lat degrees.
         swath_widths_m: The cross-track width for each track, ignored for areas.
 
@@ -170,7 +170,7 @@ def projected_footprints(
     shapes[counts == 1] = projected[starts[counts == 1]]
     for index in np.nonzero(counts > 1)[0]:
         shapes[index] = union_all(projected[starts[index] : ends[index]])
-    # Whatever reached past the feature is cut back to it
+    # Whatever reached past the tile is cut back to it
     outside = ~covers(region.shape, shapes)
     if outside.any():
         shapes[outside] = intersection(shapes[outside], region.shape)

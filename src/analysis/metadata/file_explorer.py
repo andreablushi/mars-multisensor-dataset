@@ -15,26 +15,23 @@ def find_sets(root: Path = paths.METADATA_ROOT) -> list[Path]:
         root: The metadata root directory.
 
     Returns:
-        files: The non-empty JSONL files, sorted, one per feature and instrument set.
+        files: The non-empty JSONL files, sorted, one per group and instrument set.
     """
-    return sorted(path for path in root.glob("*/*/*.jsonl") if path.stat().st_size > 0)
+    return sorted(path for path in root.glob("*/*.jsonl") if path.stat().st_size > 0)
 
 
 def has_metadata(
-    feature_dir: Path, instrument_set: InstrumentSet, root: Path = paths.METADATA_ROOT
+    group: str, instrument_set: InstrumentSet, root: Path = paths.METADATA_ROOT
 ) -> bool:
-    """Report whether one feature holds downloaded records for an instrument set.
+    """Report whether one group holds downloaded records for an instrument set.
 
     Args:
-        feature_dir: The feature's artifacts directory
+        group: The name of the group.
         instrument_set: The instrument set to look for.
         root: The metadata root directory.
 
     Returns:
         found: True when a non-empty metadata file for that set exists.
     """
-    directory = root / feature_dir.parent.name / feature_dir.name
-    return any(
-        path.stat().st_size > 0
-        for path in directory.glob(f"{instrument_set.slug}*.jsonl")
-    )
+    held = paths.metadata_file(root, group, instrument_set)
+    return held.exists() and held.stat().st_size > 0

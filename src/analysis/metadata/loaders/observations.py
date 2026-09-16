@@ -11,7 +11,7 @@ from shared.disk.files import read_jsonl
 
 
 def load_observations(path: Path) -> ObservationSet:
-    """Read the observations stored for one feature and instrument set.
+    """Read the observations stored for one group and instrument set.
 
     Args:
         path: The JSONL file holding the set's observations.
@@ -21,7 +21,7 @@ def load_observations(path: Path) -> ObservationSet:
     """
     stored = read_jsonl(path)
     first = next(stored)
-    box, set_key = provenance.feature_of(first), provenance.set_key_of(first)
+    set_key = provenance.set_key_of(first)
     observations: list[Observation] = []
     discarded = 0
     for item in chain([first], stored):
@@ -45,5 +45,5 @@ def load_observations(path: Path) -> ObservationSet:
         )
     observations.sort(key=lambda observation: (observation.start, observation.pdsid))
     return ObservationSet(
-        feature=box, set_key=set_key, observations=observations, discarded=discarded
+        set_key=set_key, observations=observations, discarded=discarded
     )

@@ -1,64 +1,76 @@
-"""Putting one instrument set's stored footprints onto the ground of its feature."""
+"""Putting one instrument set's stored footprints onto the ground of every tile."""
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
-from shapely import from_wkt
+from shapely import STRtree, from_wkt
 
 from analysis.coverage.models.observation import ProjectedObservation, ProjectedSet
 from analysis.coverage.projection.geometry import footprints, sizing
 from analysis.models.observation import ObservationSet
+from shared.models.tile import Tile
 
 
-def project(loaded: ObservationSet) -> ProjectedSet:
-    """Project one set's footprints onto its feature and cut them to it.
+def project_every_tile(
+    loaded: ObservationSet, tiles: Sequence[Tile]
+) -> tuple[list[ProjectedSet], int]:
+    """Project one set's footprints onto every tile they reach and cut them to it.
 
     Args:
-        loaded: The set's stored observations, in chronological order.
+        loaded: The set's stored observations over one tile group, in time order.
+        tiles: The tiles of that group.
 
     Returns:
-        projected: The observations that landed on the feature, and the region they were
-            cut to.
+        projected: One set per tile at least one observation landed on, in tile order.
+        discarded: How many stored records could not be measured or reached no tile.
     """
-    region = footprints.feature_region(loaded.feature)
-    widths = sizing.track_widths(loaded.observations)
-    shapes = footprints.projected_footprints(
-        region,
-        from_wkt(
-            np.asarray(
-                [observation.wkt for observation in loaded.observations], dtype=object
-            )
-        ),
-        np.asarray([width or 0.0 for width in widths], dtype=float),
-    )
-    projected = []
-    missed = 0
-    for observation, width_m, shape in zip(
-        loaded.observations, widths, shapes, strict=True
-    ):
-        if shape.is_empty:
-            missed += 1
+    observations = loaded.observations
+    if not observations:
+        return [], loaded.discarded
+    geoms = from_wkt(np.asarray([one.wkt for one in observations], dtype=object))
+    widths = sizing.track_widths(observations)
+    radii = np.asarray([width or 0.0 for width in widths], dtype=float)
+    index = STRtree(geoms)
+    reached = np.zeros(len(observations), dtype=bool)
+    projected: list[ProjectedSet] = []
+    for tile in tiles:
+        region = footprints.tile_region(tile)
+        # The widened region, so a track buffered into the tile is not missed
+        near = np.sort(index.query(region.wide))
+        if not near.size:
             continue
-        width_km = width_m / 1000.0 if width_m is not None else None
-        projected.append(
-            ProjectedObservation(
-                pdsid=observation.pdsid,
-                ihid=observation.ihid,
-                iid=observation.iid,
-                pt=observation.pt,
-                start=observation.start,
-                stop=observation.stop,
-                shape=shape,
-                width_km=width_km,
-                pixel_km2=sizing.ground_pixel_km2(
-                    loaded.set_key, observation.map_scale_m, width_km
-                ),
+        shapes = footprints.projected_footprints(region, geoms[near], radii[near])
+        landed = []
+        for at, shape in zip(near.tolist(), shapes, strict=True):
+            if shape.is_empty:
+                continue
+            reached[at] = True
+            observation, width_m = observations[at], widths[at]
+            width_km = width_m / 1000.0 if width_m is not None else None
+            landed.append(
+                ProjectedObservation(
+                    pdsid=observation.pdsid,
+                    ihid=observation.ihid,
+                    iid=observation.iid,
+                    pt=observation.pt,
+                    start=observation.start,
+                    stop=observation.stop,
+                    shape=shape,
+                    width_km=width_km,
+                    pixel_km2=sizing.ground_pixel_km2(
+                        loaded.set_key, observation.map_scale_m, width_km
+                    ),
+                )
             )
-        )
-    return ProjectedSet(
-        feature=loaded.feature,
-        set_key=loaded.set_key,
-        region=region,
-        observations=projected,
-        discarded=loaded.discarded + missed,
-    )
+        if landed:
+            projected.append(
+                ProjectedSet(
+                    tile=tile,
+                    set_key=loaded.set_key,
+                    region=region,
+                    observations=landed,
+                )
+            )
+    return projected, loaded.discarded + int(np.count_nonzero(~reached))

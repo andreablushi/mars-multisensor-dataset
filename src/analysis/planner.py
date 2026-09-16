@@ -9,7 +9,7 @@ from analysis import paths
 from analysis.models.instrument import InstrumentSet
 from analysis.models.job import Job, Plan
 from analysis.paths import events_path, metadata_file, set_summary_path
-from shared.models.feature import Feature
+from shared.models.tile_group import TileGroup
 
 
 def _outstanding[T, R](
@@ -43,41 +43,39 @@ def _outstanding[T, R](
 
 
 def download_plan(
-    features: Sequence[Feature],
+    groups: Sequence[TileGroup],
     instrument_sets: Sequence[InstrumentSet],
     out_root: Path = paths.METADATA_ROOT,
     *,
     force: bool = False,
 ) -> Plan:
-    """Select features and build the download jobs still needed for a run.
+    """Build the download jobs still needed for a run.
 
     Args:
-        features: The full feature catalog.
-        instrument_sets: The instrument sets to download for each feature.
+        groups: Every group the tiles are grouped into.
+        instrument_sets: The instrument sets to download for each group.
         out_root: The metadata output root directory.
         force: When True, include jobs whose output file already exists.
 
     Returns:
         plan: The plan describing the selection and the jobs to run.
     """
-    # Feature selection: a feature the catalogue gives no extent at all is dropped
-    usable = [feature for feature in features if not feature.is_point]
     pairs = [
-        (feature, instrument_set)
-        for feature in usable
+        (group, instrument_set)
+        for group in groups
         for instrument_set in instrument_sets
     ]
     jobs, skipped = _outstanding(
         pairs,
-        lambda pair: metadata_file(out_root, *pair),
+        lambda pair: metadata_file(out_root, pair[0].name, pair[1]),
         lambda pair, output: Job(
-            feature=pair[0], instrument_set=pair[1], output_path=output
+            group=pair[0], instrument_set=pair[1], output_path=output
         ),
         force=force,
     )
     return Plan(
         jobs=jobs,
-        feature_count=len(usable),
+        group_count=len(groups),
         set_count=len(instrument_sets),
         skipped_existing=skipped,
     )
@@ -85,7 +83,8 @@ def download_plan(
 
 def coverage_plan(
     sources: Sequence[Path],
-    features_root: Path = paths.FEATURES_ROOT,
+    groups: Sequence[TileGroup],
+    groups_root: Path = paths.GROUPS_ROOT,
     *,
     force: bool = False,
 ) -> Plan:
@@ -93,45 +92,49 @@ def coverage_plan(
 
     Args:
         sources: The instrument set metadata files discovered on disk.
-        features_root: The per-feature coverage root directory.
+        groups: Every group the tiles are grouped into, which each source is
+            matched to by the directory it sits in.
+        groups_root: The per-group coverage root directory.
         force: When True, recompute sets that are already done.
 
     Returns:
         plan: The plan describing the discovery and the jobs to run.
     """
+    named = {group.name: group for group in groups}
     jobs, skipped = _outstanding(
         sorted(sources, key=lambda path: -path.stat().st_size),
-        lambda source: set_summary_path(features_root, source),
+        lambda source: set_summary_path(groups_root, source),
         lambda source, output: Job(
+            group=named[source.parent.name],
             source=source,
-            events_path=events_path(features_root, source),
+            events_path=events_path(groups_root, source),
             summary_path=output,
         ),
         force=force,
     )
     return Plan(
         jobs=jobs,
-        feature_count=len({source.parent for source in sources}),
+        group_count=len({source.parent for source in sources}),
         set_count=len(sources),
         skipped_existing=skipped,
     )
 
 
 def unfinished(
-    sources: Sequence[Path], features_root: Path = paths.FEATURES_ROOT
+    sources: Sequence[Path], groups_root: Path = paths.GROUPS_ROOT
 ) -> tuple[Path, ...]:
     """Return the instrument sets that still have no coverage artifact.
 
     Args:
         sources: The instrument set metadata files discovered on disk.
-        features_root: The per-feature coverage root directory.
+        groups_root: The per-group coverage root directory.
 
     Returns:
         files: The metadata files with no summary beside them, in discovery order.
     """
     sources_left, _ = _outstanding(
         sources,
-        lambda source: set_summary_path(features_root, source),
+        lambda source: set_summary_path(groups_root, source),
         lambda source, _output: source,
         force=False,
     )

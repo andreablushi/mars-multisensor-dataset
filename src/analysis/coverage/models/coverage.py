@@ -1,4 +1,4 @@
-"""What one instrument set covered of one feature, observation by observation."""
+"""What one instrument set covered of one tile, observation by observation."""
 
 from __future__ import annotations
 
@@ -14,25 +14,23 @@ class Event:
     """One row of the per-observation coverage record.
 
     Attributes:
-        feature_class: The feature class, such as Crater or Collis.
-        feature_name: The feature name as ODE spells it.
+        tile: The tile's name, such as "b123_c0456".
         ihid: The instrument host identifier.
         iid: The instrument identifier.
         pt: The product type.
         pdsid: The PDS product identifier.
         t_start: When the observation started.
         t_stop: When the observation finished, or None when none was published.
-        own_km2: Ground this footprint covers inside the feature.
+        own_km2: Ground this footprint covers inside the tile.
         new_km2: Ground its instrument set had not covered before.
         cum_km2: Ground its instrument set has covered including this one.
-        cum_frac: The same as a share of the feature.
+        cum_frac: The same as a share of the tile.
         width_km: The swath width used, or None when the footprint had area.
-        pixels: How many of the instrument's pixels landed inside the feature.
-        mask: The feature's cells this footprint fills, packed as a bitmap or a list.
+        pixels: How many of the instrument's pixels landed inside the tile.
+        mask: The tile's cells this footprint fills, packed as a bitmap or a list.
     """
 
-    feature_class: str
-    feature_name: str
+    tile: str
     ihid: str
     iid: str
     pt: str
@@ -50,7 +48,7 @@ class Event:
 
 @dataclass(frozen=True, slots=True)
 class SetCoverage:
-    """What one instrument set covered of one feature, read back off disk.
+    """What one instrument set covered of one tile, read back off disk.
 
     Attributes:
         events: The set's observations in chronological order.
@@ -73,7 +71,7 @@ class SetCoverage:
 
     @property
     def observed(self) -> bool:
-        """Report whether the set holds any observation of this feature.
+        """Report whether the set holds any observation of this tile.
 
         Returns:
             observed: True when the set has at least one observation.

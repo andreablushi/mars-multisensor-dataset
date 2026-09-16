@@ -1,4 +1,4 @@
-"""The feature a coverage measurement is made against, projected once."""
+"""The tile a coverage measurement is made against, projected once."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ from shapely.geometry.base import BaseGeometry
 
 
 @dataclass(frozen=True, slots=True)
-class FeatureRegion:
-    """One feature's bounding box, projected into equal-area metres.
+class TileRegion:
+    """One tile's bounding box, projected into equal-area metres.
 
     Attributes:
         centre_lon: The projection centre longitude in degrees.

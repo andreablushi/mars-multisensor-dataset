@@ -1,4 +1,4 @@
-"""Splitting a feature into cells about the size of a footprint, for speed alone."""
+"""Splitting a tile into cells about the size of a footprint, for speed alone."""
 
 from __future__ import annotations
 
@@ -10,18 +10,18 @@ from shapely import STRtree, area, bounds, intersection, is_empty
 from shapely.geometry.base import BaseGeometry
 
 from analysis.coverage.models.grid import Grid
-from analysis.coverage.models.region import FeatureRegion
+from analysis.coverage.models.region import TileRegion
 
 # The union is kept per cell so each insert touches a small shape, not as a unit
 MIN_UNION_CELLS = 4
 MAX_UNION_CELLS = 32
 
 
-def grid_over(region: FeatureRegion, shapes: Sequence[BaseGeometry]) -> Grid:
-    """Size a grid to the footprints it will hold, and lay it over the feature.
+def grid_over(region: TileRegion, shapes: Sequence[BaseGeometry]) -> Grid:
+    """Size a grid to the footprints it will hold, and lay it over the tile.
 
     Args:
-        region: The projected feature the cells cover.
+        region: The projected tile the cells cover.
         shapes: The projected footprints the grid will hold.
 
     Returns:
@@ -31,7 +31,7 @@ def grid_over(region: FeatureRegion, shapes: Sequence[BaseGeometry]) -> Grid:
     boxes = bounds(np.asarray(shapes, dtype=object))
     spans = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
     side = MAX_UNION_CELLS
-    # A set whose every footprint met the feature edge on has no span to size by
+    # A set whose every footprint met the tile edge on has no span to size by
     if (spans > 0.0).any():
         typical = float(np.sqrt(np.median(spans[spans > 0.0])))
         wanted = round(math.sqrt((east - west) * (north - south)) / typical)
@@ -40,13 +40,13 @@ def grid_over(region: FeatureRegion, shapes: Sequence[BaseGeometry]) -> Grid:
 
 
 def cells(
-    grid: Grid, region: FeatureRegion, shapes: np.ndarray
+    grid: Grid, region: TileRegion, shapes: np.ndarray
 ) -> Iterator[tuple[BaseGeometry, float, np.ndarray]]:
     """Walk the cells that can hold ground, with what reaches each one.
 
     Args:
-        grid: The grid laid over the feature.
-        region: The projected feature, which bounds what a cell can hold.
+        grid: The grid laid over the tile.
+        region: The projected tile, which bounds what a cell can hold.
         shapes: The projected footprints, in the order they are walked.
 
     Yields:

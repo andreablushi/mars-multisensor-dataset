@@ -1,4 +1,4 @@
-"""Fetching one feature and instrument set's product records, a page at a time."""
+"""Fetching one group and instrument set's product records, a page at a time."""
 
 from __future__ import annotations
 
@@ -10,9 +10,9 @@ from analysis.metadata.ode import ODEClient
 from analysis.models.instrument import InstrumentSet
 from shared.fetch import ode
 from shared.fetch.ode import ODEError
-from shared.models.feature import Feature
+from shared.models.tile_group import TileGroup
 
-# A feature circling the planet is asked in two halves, no ODE box reaching round
+# A group circling a pole is asked in two halves, no ODE box reaching round
 LONGITUDE_HALVES = ((0.0, 180.0), (180.0, 360.0))
 
 PAGE_SIZE = 5000
@@ -37,21 +37,21 @@ Box = tuple[float, float, float, float]
 ProductRecord: TypeAlias = dict[str, Any]
 
 
-def _boxes(feature: Feature) -> tuple[Box, ...]:
-    """Return the lat/lon boxes a feature has to be asked for in.
+def _boxes(group: TileGroup) -> tuple[Box, ...]:
+    """Return the lat/lon boxes a group has to be asked for in.
 
     Args:
-        feature: The feature to query.
+        group: The group to query.
 
     Returns:
         boxes: One box as (min_lat, max_lat, west_lon, east_lon), or two around a pole.
     """
-    if feature.circles_a_pole:
+    if group.circles_a_pole:
         return tuple(
-            (feature.min_lat, feature.max_lat, west, east)
+            (group.min_lat, group.max_lat, west, east)
             for west, east in LONGITUDE_HALVES
         )
-    return ((feature.min_lat, feature.max_lat, feature.west_lon, feature.east_lon),)
+    return ((group.min_lat, group.max_lat, group.west_lon, group.east_lon),)
 
 
 def _params(box: Box, instrument_set: InstrumentSet, loc: str) -> dict[str, str]:
@@ -125,26 +125,26 @@ def _pages(client: ODEClient, params: dict[str, str]) -> Iterator[list[Any]]:
 
 def fetch_products(
     client: ODEClient,
-    feature: Feature,
+    group: TileGroup,
     instrument_set: InstrumentSet,
     loc: str,
 ) -> list[ProductRecord]:
-    """Fetch all product metadata for a feature and instrument set.
+    """Fetch all product metadata for a group and instrument set.
 
     Args:
         client: The ODE client to query with.
-        feature: The feature whose box the query is built from.
+        group: The group whose box the query is built from.
         instrument_set: The instrument host, instrument, and product type.
         loc: Which products the box returns, recorded with each one.
 
     Returns:
         products: One record per distinct product, in the order ODE returned them.
     """
-    stamped = provenance.stamp(feature, instrument_set, loc)
+    stamped = provenance.stamp(group, instrument_set, loc)
     records: list[ProductRecord] = []
-    # The two boxes a polar feature is asked in overlap, so a product returns twice
+    # The two boxes a polar group is asked in overlap, so a product returns twice
     seen: set[tuple[str, str]] = set()
-    for box in _boxes(feature):
+    for box in _boxes(group):
         for items in _pages(client, _params(box, instrument_set, loc)):
             for item in items:
                 identity = (item["Footprint_C0_geometry"], item["UTC_start_time"])

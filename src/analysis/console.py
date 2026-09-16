@@ -29,12 +29,12 @@ def describe(
         console: The console to print on.
     """
     console.print(
-        f"download: {download.feature_count} features x {download.set_count} sets, "
+        f"download: {download.group_count} groups x {download.set_count} sets, "
         f"{len(download.jobs)} to run, {download.skipped_existing} already "
         f"downloaded, {settings.workers} workers"
     )
     console.print(
-        f"coverage: {coverage.feature_count} features, "
+        f"coverage: {coverage.group_count} groups, "
         f"{coverage.set_count} instrument sets, {len(coverage.jobs)} to compute, "
         f"{coverage.skipped_existing} already done, "
         f"{settings.workers} workers x {settings.union_threads} threads"

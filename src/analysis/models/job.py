@@ -6,23 +6,23 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from analysis.models.instrument import InstrumentSet
-from shared.models.feature import Feature
+from shared.models.tile_group import TileGroup
 
 
 @dataclass(frozen=True, slots=True)
 class Job:
-    """One feature and instrument set to download, or to compute coverage for.
+    """One group and instrument set to download, or to compute coverage for.
 
     Attributes:
-        feature: The feature to query, on a download job.
+        group: The group of tiles the job is run over.
         instrument_set: The instrument set to query, on a download job.
         output_path: The JSONL file the results are written to.
         source: The JSONL file holding one instrument set's observations.
         events_path: The parquet file the per-observation rows go to.
-        summary_path: The parquet file the set's one summary row goes to, written last.
+        summary_path: The parquet file the set's summary rows go to, written last.
     """
 
-    feature: Feature | None = None
+    group: TileGroup
     instrument_set: InstrumentSet | None = None
     output_path: Path | None = None
     source: Path | None = None
@@ -34,12 +34,12 @@ class Job:
         """Return a short human readable name for this job.
 
         Returns:
-            label: The feature and instrument set, named as the job's own stage spells
+            label: The group and instrument set, named as the job's own stage spells
                 them.
         """
-        if self.feature is not None and self.instrument_set is not None:
-            return f"{self.feature.name} [{self.instrument_set.key}]"
-        return f"{self.source.parent.name}/{self.source.stem}"
+        if self.instrument_set is not None:
+            return f"{self.group.name} [{self.instrument_set.key}]"
+        return f"{self.group.name}/{self.source.stem}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,12 +92,12 @@ class Plan:
 
     Attributes:
         jobs: The jobs that still need running.
-        feature_count: Features selected, or discovered on disk.
+        group_count: Tile groups selected, or discovered on disk.
         set_count: Instrument sets selected, or discovered on disk.
         skipped_existing: Outputs left in place because they already exist.
     """
 
     jobs: tuple[Job, ...]
-    feature_count: int
+    group_count: int
     set_count: int
     skipped_existing: int

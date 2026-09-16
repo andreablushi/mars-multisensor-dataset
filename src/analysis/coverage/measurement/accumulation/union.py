@@ -11,7 +11,7 @@ from shapely.errors import GEOSException
 from shapely.geometry.base import BaseGeometry
 
 from analysis.coverage.measurement.accumulation import coarse_split
-from analysis.coverage.models.region import FeatureRegion
+from analysis.coverage.models.region import TileRegion
 
 # How many observations a sector folds in before its union is rebuilt in one
 UNION_CHUNK = 64
@@ -24,12 +24,12 @@ SNAP_GRID_M = 1e-6
 
 
 def new_ground(
-    region: FeatureRegion, shapes: Sequence[BaseGeometry], threads: int
+    region: TileRegion, shapes: Sequence[BaseGeometry], threads: int
 ) -> np.ndarray:
     """Measure the new ground every observation covers.
 
     Args:
-        region: The projected feature the footprints are cut to.
+        region: The projected tile the footprints are cut to.
         shapes: The projected footprints, in chronological order.
         threads: How many cells to accumulate at once, this job's share of the machine.
 
