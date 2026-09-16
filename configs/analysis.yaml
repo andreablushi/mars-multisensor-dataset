@@ -26,8 +26,8 @@ loc: f
 window:
   # The coverage each instrument is asked of a tile, in percent of its area.
   constraints:
-    - {CTX: 0.90}
-    - {CRISM: 0.60}
+    - {CTX: 0.50}
+    - {CRISM: 0.50}
     - {SHARAD: 0.0}
 
   # The pixels an instrument has to land on a tile to count, powers of two preferred
