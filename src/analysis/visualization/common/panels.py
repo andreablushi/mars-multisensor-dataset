@@ -37,10 +37,10 @@ def colours(labels: Sequence[str]) -> dict[str, Colour]:
     return dict(zip(labels, cycle(plt.cm.tab10.colors), strict=False))
 
 
-def board(size: tuple[float, float]) -> tuple[Figure, Axes]:
+def board(size: tuple[float, float], projection: object = None) -> tuple[Figure, Axes]:
     """Open a figure off pyplot's registry, so a thread may draw on it."""
     figure = Figure(figsize=size)
-    return figure, figure.subplots()
+    return figure, figure.subplots(subplot_kw={"projection": projection})
 
 
 def stacked(count: int, height: float, **shared) -> tuple[Figure, list[Axes]]:
