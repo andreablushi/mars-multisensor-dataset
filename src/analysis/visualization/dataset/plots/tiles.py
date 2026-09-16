@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import io
 from collections.abc import Sequence
 
 import ipywidgets as widgets
 import numpy as np
 from cartopy import crs
-from matplotlib import image as reading
 from matplotlib.colors import to_rgba
 from matplotlib.patches import Patch
 
@@ -23,7 +21,7 @@ MAP_FIGURE_SIZE = (14.0, 7.6)
 MARS = Box(-180.0, -90.0, 180.0, 90.0)
 BASEMAP_PIXELS = 2400
 RASTER_DEG = 0.1
-REGRID = (2400, 1200)
+REGRID = (BASEMAP_PIXELS, BASEMAP_PIXELS // 2)
 
 GLOBE = crs.Globe(semimajor_axis=RADIUS_M, semiminor_axis=RADIUS_M, ellipse=None)
 LONLAT = crs.PlateCarree(globe=GLOBE)
@@ -63,19 +61,15 @@ def figure(kept: np.ndarray, tile_km: float, image: bytes) -> widgets.Widget:
     )
     drawn, axis = panels.board(MAP_FIGURE_SIZE, ROBINSON)
     axis.set_global()
-    for layer, cmap in (
-        (reading.imread(io.BytesIO(image), format="png"), "gray"),
-        (painted, None),
-    ):
-        axis.imshow(
-            layer,
-            extent=MARS.extent,
-            origin="upper",
-            cmap=cmap,
-            interpolation="nearest",
-            transform=LONLAT,
-            regrid_shape=REGRID,
-        )
+    laid = dict(
+        extent=MARS.extent,
+        origin="upper",
+        interpolation="nearest",
+        transform=LONLAT,
+        regrid_shape=REGRID,
+    )
+    axis.imshow(mosaic.read_mosaic(image), cmap="gray", **laid)
+    axis.imshow(painted, **laid)
     lines = axis.gridlines(
         LONLAT, draw_labels=True, color=GRATICULE, linewidth=0.4, alpha=0.5
     )

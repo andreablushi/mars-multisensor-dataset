@@ -9,7 +9,7 @@ from building.preprocessing.crism.correction import resample
 from building.preprocessing.crism.models.detector import Detector
 from building.preprocessing.crism.models.observation import CrismObservation
 
-# Which detector carries which half, and the order their bands are laid out in.
+# Which detector carries which half.
 VISIBLE = "s"
 INFRARED = "l"
 HALVES = (VISIBLE, INFRARED)
@@ -48,19 +48,25 @@ def merge_detectors(
     # Only the samples no half refused.
     columns = ~np.logical_or.reduce([detectors[name].mask.columns for name in halves])
 
-    reads = []
+    grids = {}
     for name in halves:
         grid = np.asarray(configs.DETECTOR_BANDS_NM[name])
         held = detectors[name]
-        read, live = resample.resample_bands(
-            held.cube[:lines, columns], held.mask, held.wavelengths[columns], grid
-        )
-        reads.append((grid[live], read[:, :, live]))
+        live = resample.measured_bands(held.mask, held.wavelengths[columns], grid)
+        grids[name] = grid[live]
 
-    wavelengths = np.sort(np.concatenate([grid for grid, _ in reads]))
+    wavelengths = np.sort(np.concatenate(list(grids.values())))
     joined = np.empty((lines, int(columns.sum()), wavelengths.size), dtype="f4")
-    for grid, read in reads:
-        joined[:, :, np.searchsorted(wavelengths, grid)] = read
+    for name, grid in grids.items():
+        held = detectors[name]
+        resample.resample_bands(
+            held.cube[:lines, columns],
+            held.mask,
+            held.wavelengths[columns],
+            grid,
+            joined,
+            np.searchsorted(wavelengths, grid),
+        )
 
     # A pixel any half could not read is no measurement of the observation.
     valid = ~np.logical_or.reduce(

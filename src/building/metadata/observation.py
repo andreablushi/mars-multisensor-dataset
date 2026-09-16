@@ -46,9 +46,9 @@ class ObservationMetadata:
             ground axes alone, for an instrument whose axes hold a wavelength,
             and None for every other and where the crop measures nothing.
         band_std: Each band's standard deviation, or None for the same reasons.
-        band_wavelengths: The nominal centre in nm of each of those bands, or None
-            for the same reasons.
         band_valid_count: How many measurements each of those bands pools, or None
+            for the same reasons.
+        band_wavelengths: The nominal centre in nm of each of those bands, or None
             for the same reasons.
         t_start: When the observation started, or None where the archive
             publishes no time for it.

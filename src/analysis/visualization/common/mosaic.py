@@ -10,6 +10,7 @@ from html import escape
 
 import httpx
 import ipywidgets as widgets
+import numpy as np
 from matplotlib import image as reading
 from matplotlib.axes import Axes
 
@@ -62,10 +63,22 @@ def fetched(
     return space
 
 
+def read_mosaic(image: bytes) -> np.ndarray:
+    """Decode one mosaic crop as fetched.
+
+    Args:
+        image: The crop, as `crop` hands it back.
+
+    Returns:
+        pixels: Its pixels, rows from the north.
+    """
+    return reading.imread(io.BytesIO(image), format="png")
+
+
 def draw(axis: Axes, box: Box, image: bytes) -> None:
     """Draw one mosaic crop onto an axis, labelled in lon and lat."""
     axis.imshow(
-        reading.imread(io.BytesIO(image), format="png"),
+        read_mosaic(image),
         extent=box.extent,
         origin="upper",
         cmap="gray",

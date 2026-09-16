@@ -99,7 +99,9 @@ def write_sample(
     }
     arrays = {name: native(getattr(held, name)) for name in layout.beside}
     values = native(getattr(held, layout.measurement))
-    arrays[layout.measurement] = values.astype(layout.stored or values.dtype)
+    arrays[layout.measurement] = values.astype(
+        layout.stored or values.dtype, copy=False
+    )
     arrays[NORTH] = native(held.position.north)
     arrays[EAST] = native(held.position.east)
     arrays[MEASURED] = native(held.measured)
