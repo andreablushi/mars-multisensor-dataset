@@ -18,12 +18,14 @@ def load(path: Path = paths.CONFIG_PATH, workers: int | None = None) -> Settings
     Args:
         path: The config file, which carries every setting a run turns on.
         workers: How many jobs each half runs at once, standing in for the
-            config where a run was given a number of cores of its own.
+            config where a run was given a number of cores of its own, which
+            are then every core the jobs share.
 
     Returns:
         choices: The settled choices for the run.
     """
     config = yaml.safe_load(path.read_text(encoding="utf-8"))
+    cores = workers or os.process_cpu_count() or 1
     workers = workers or config["workers"]
     return Settings(
         tile_km=float(config["tile_km"]),
@@ -35,5 +37,5 @@ def load(path: Path = paths.CONFIG_PATH, workers: int | None = None) -> Settings
         loc=config["loc"],
         workers=workers,
         # The coverage jobs run side by side, so each takes a share of the machine
-        union_threads=max(1, (os.process_cpu_count() or 1) // workers),
+        union_threads=max(1, cores // workers),
     )
