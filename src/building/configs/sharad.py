@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from building import paths
-from building.common.layout import ELEVATION, GROUND, Layout
+from building.common.layout import DELAY, GROUND, Layout
 from building.common.naming import Naming
 from building.common.product_cache import ProductCache
 
@@ -27,10 +27,14 @@ NAMING = Naming(
 LAYOUT = Layout(
     instrument="SHARAD",
     dims=("delay", "trace"),
-    axes=(ELEVATION, GROUND),
+    axes=(DELAY, GROUND),
     measurement="power",
-    beside={"traces": ("trace",), "elevation": ("delay",)},
+    beside={"traces": ("trace",)},
 )
+
+DELAY_INTERVAL_S = 0.0375e-6
+
+AREOID_ROW = 1799
 
 # Where each product is kept. The geometry is a table, in a subdirectory of its own.
 CACHE = ProductCache(

@@ -20,7 +20,6 @@ from building.download import sharad as sharad_download
 from building.preprocessing.crism import preprocess as crism
 from building.preprocessing.ctx import preprocess as ctx
 from building.preprocessing.mola import preprocess as mola
-from building.preprocessing.sharad import elevation
 from building.preprocessing.sharad import preprocess as sharad
 
 if TYPE_CHECKING:
@@ -44,8 +43,6 @@ class Instrument:
             belongs to, or None for an instrument the selection can never name.
         identifiers: What asks an archive what covers one tile's ground, and
             None for every instrument named by a product id.
-        altitude: What reads how high the spacecraft flew, for a sounder whose
-            delay axis is read through it, and None for every other instrument.
         worker_bytes: What one build holds of its largest product at once, given
             where nothing measures the product itself.
         held_bytes: What reads how much one downloaded product holds, for an
@@ -59,7 +56,6 @@ class Instrument:
     discard: Callable[[str], None] | None = None
     observation_id: Callable[[str], str | None] | None = None
     identifiers: Callable[[Tile, httpx.Client], list[str]] | None = None
-    altitude: Callable[[Any], tuple[float, float]] | None = None
     worker_bytes: int = 512 * 1024**2
     held_bytes: Callable[[str], int] | None = None
 
@@ -102,7 +98,6 @@ INSTRUMENTS = {
         sharad.crop,
         discard=sharad_configs.CACHE.discard,
         observation_id=sharad_configs.NAMING.parse,
-        altitude=elevation.altitude_m,
         # A radargram and its geometry measured 135 MB.
         worker_bytes=256 * 1024**2,
     ),

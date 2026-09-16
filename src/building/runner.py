@@ -287,7 +287,6 @@ def build_product(job: Job, root: Path) -> Outcome:
                     steps.layout,
                     str(path.relative_to(root)),
                     t_start=job.t_start,
-                    altitude=steps.altitude(held) if steps.altitude else None,
                 )
             )
     finally:

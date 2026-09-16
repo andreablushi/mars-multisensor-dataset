@@ -10,10 +10,6 @@ import numpy as np
 LATITUDE_FIELD = "LATITUDE"
 LONGITUDE_FIELD = "LONGITUDE"
 
-# Which fields the height above ground is read between, in km, for the delay axis.
-GROUND_RADIUS_FIELD = "MARS RADIUS"
-SPACECRAFT_RADIUS_FIELD = "SPACECRAFT RADIUS"
-
 
 @dataclass(frozen=True, slots=True)
 class SharadObservation:
@@ -26,8 +22,6 @@ class SharadObservation:
         geometry: One row per kept trace, in the same order.
         traces: Which of the original radargram columns these traces are,
             counted from zero.
-        elevation: How high above the areoid every delay sample stands, in
-            metres, which is one axis for every trace of the track.
     """
 
     identifier: str
@@ -35,7 +29,6 @@ class SharadObservation:
     power: np.ndarray
     geometry: np.recarray
     traces: np.ndarray
-    elevation: np.ndarray
 
     # A sounder walks a line, so every trace carries its own geometry's pair.
     separable = False

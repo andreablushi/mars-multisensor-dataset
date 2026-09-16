@@ -7,7 +7,6 @@ import numpy as np
 from building.common.pds import images, labels, tables
 from building.configs import sharad as configs
 from building.preprocessing.common.crop import overlap
-from building.preprocessing.sharad import elevation
 from building.preprocessing.sharad.models.observation import SharadObservation
 from building.preprocessing.sharad.models.sample import SharadSample
 from shared.models.tile import Tile
@@ -49,7 +48,6 @@ def read_observation(identifier: str) -> SharadObservation:
         power[:, traces],
         geometry,
         traces,
-        elevation.elevation_m(power.shape[0]),
     )
 
 
@@ -79,7 +77,5 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
         # The archive sounds a trace or fills it whole, so one flag covers its delays.
         valid=np.isfinite(power).all(axis=0),
         power=power,
-        geometry=observation.geometry[traces],
         traces=observation.traces[traces],
-        elevation=observation.elevation,
     )
