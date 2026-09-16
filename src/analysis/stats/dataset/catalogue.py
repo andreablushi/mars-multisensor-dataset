@@ -2,38 +2,34 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from collections.abc import Sequence
 
+from analysis import configs
 from analysis.coverage.artifacts import index
 from analysis.coverage.models.summary import Summary
-from analysis.metadata.loaders.features import load_features
 from analysis.stats.models.catalogue import CatalogueStats, InstrumentStats
 from analysis.stats.models.spread import Spread
+from shared.maths import tessellate
 
 
 def read_catalogue() -> CatalogueStats:
-    """Read the catalogue index as one dataset.
+    """Read the grid-wide index as one dataset.
 
     Returns:
-        stats: What it holds, and nothing at all when no feature was measured.
+        stats: What it holds, and nothing measured at all when no tile was.
     """
-    catalogued = load_features()
-    # One row per feature carries the grid, which every set of it shares
-    by_feature: dict[tuple[str, str], Summary] = {}
+    tile_km = configs.load().tile_km
+    # One row per tile carries its area, which every set of it shares
+    by_tile: dict[str, Summary] = {}
     by_instrument: dict[str, list[Summary]] = {}
     for row in index.catalogued_rows():
-        by_feature.setdefault((row.feature_class, row.feature_name), row)
+        by_tile.setdefault(row.tile, row)
         by_instrument.setdefault(row.iid, []).append(row)
-    km2_by_class: dict[str, list[float]] = {}
-    for (feature_class, _), row in by_feature.items():
-        km2_by_class.setdefault(feature_class, []).append(row.feature_area_km2)
     return CatalogueStats(
-        catalogued=len(catalogued),
-        features=len(by_feature),
-        points=sum(1 for feature in catalogued if feature.is_point),
-        classes=dict(Counter(name for name, _ in by_feature).most_common()),
-        class_km2={name: Spread.over(km2) for name, km2 in km2_by_class.items()},
+        tiles=sum(tessellate.band_columns(tile_km)),
+        tile_km=tile_km,
+        measured=len(by_tile),
+        tile_km2=Spread.over([row.tile_area_km2 for row in by_tile.values()]),
         instruments=sorted(
             (_instrument(iid, rows) for iid, rows in by_instrument.items()),
             key=lambda instrument: -instrument.observations,
@@ -42,19 +38,18 @@ def read_catalogue() -> CatalogueStats:
 
 
 def _instrument(iid: str, rows: Sequence[Summary]) -> InstrumentStats:
-    """Read what one instrument holds of every feature it reached.
+    """Read what one instrument holds of every tile it reached.
 
     Args:
         iid: The instrument the rows belong to.
-        rows: Its rows, one per feature and instrument set it measured.
+        rows: Its rows, one per tile and instrument set it measured.
 
     Returns:
         stats: What it holds.
     """
-    reached = {(row.feature_class, row.feature_name) for row in rows}
     return InstrumentStats(
         iid=iid,
-        features=len(reached),
+        tiles=len({row.tile for row in rows}),
         observations=sum(row.n_obs for row in rows),
         first=min(row.t_first for row in rows),
         last=max(row.t_last for row in rows),

@@ -1,1 +1,1 @@
-"""The statistics read off what the pipeline published, one feature and all of them."""
+"""The statistics read off what the pipeline published, one tile and all of them."""

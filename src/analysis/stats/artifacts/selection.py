@@ -6,14 +6,14 @@ from analysis import dataset_list
 from analysis.selector.models.selection import Selection
 
 _picked: list[Selection] | None = None
-_by_feature: dict[tuple[str, str], Selection] | None = None
+_by_tile: dict[str, Selection] | None = None
 
 
 def read_selection() -> list[Selection]:
-    """Read what the selection left of every feature it searched, once.
+    """Read what the selection left of every tile it searched, once.
 
     Returns:
-        selections: One entry per feature searched, in the order they were written.
+        selections: One entry per tile searched, in the order they were written.
 
     Raises:
         FileNotFoundError: When no selection has been written.
@@ -24,19 +24,16 @@ def read_selection() -> list[Selection]:
     return _picked
 
 
-def selection_by_feature() -> dict[tuple[str, str], Selection]:
-    """Read the same selection keyed by the feature each row belongs to.
+def selection_by_tile() -> dict[str, Selection]:
+    """Read the same selection keyed by the tile each row belongs to.
 
     Returns:
-        selections: What the selection left of each feature, by class and name.
+        selections: What the selection left of each tile, by tile name.
 
     Raises:
         FileNotFoundError: When no selection has been written.
     """
-    global _by_feature
-    if _by_feature is None:
-        _by_feature = {
-            (one.feature.feature_class, one.feature.feature_name): one
-            for one in read_selection()
-        }
-    return _by_feature
+    global _by_tile
+    if _by_tile is None:
+        _by_tile = {one.tile.tile: one for one in read_selection()}
+    return _by_tile

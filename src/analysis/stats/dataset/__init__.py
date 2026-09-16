@@ -1,1 +1,1 @@
-"""Statistics read over every feature the selection searched, as one dataset."""
+"""Statistics read over every tile the selection searched, as one dataset."""

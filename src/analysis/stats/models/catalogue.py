@@ -14,14 +14,15 @@ class InstrumentStats:
 
     Attributes:
         iid: The instrument, such as CTX.
-        features: How many features it reached.
-        observations: How many observations of them it took.
+        tiles: How many tiles it reached.
+        observations: How many observations of them it took, a look counted once
+            per tile it reached.
         first: When the earliest of its observations was taken.
         last: When the latest of them was taken.
     """
 
     iid: str
-    features: int
+    tiles: int
     observations: int
     first: datetime
     last: datetime
@@ -32,18 +33,15 @@ class CatalogueStats:
     """What the measured dataset holds, whatever the filter would make of it.
 
     Attributes:
-        catalogued: How many features the ODE catalogue holds altogether.
-        features: How many of them were measured.
-        points: How many the catalogue gives no extent, so none could be measured.
-        classes: How many features each class holds, most features first.
-        class_km2: How much ground a feature of each class holds, feature by
-            feature, by class.
+        tiles: How many tiles Mars is split into altogether.
+        tile_km: The side every tile is sized to, in kilometres.
+        measured: How many of them any instrument reached.
+        tile_km2: How much ground a measured tile holds, tile by tile.
         instruments: What each instrument holds, most observations first.
     """
 
-    catalogued: int
-    features: int
-    points: int
-    classes: dict[str, int]
-    class_km2: dict[str, Spread]
+    tiles: int
+    tile_km: float
+    measured: int
+    tile_km2: Spread
     instruments: list[InstrumentStats]

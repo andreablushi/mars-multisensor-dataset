@@ -1,4 +1,4 @@
-"""What the looks a feature keeps left on it, instrument by instrument."""
+"""What the looks a tile keeps left on it, instrument by instrument."""
 
 from __future__ import annotations
 
@@ -6,11 +6,11 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 
 from analysis.selector.models.track import Track
-from analysis.stats.models.feature import FeatureLooks, FeatureStats, InstrumentReach
+from analysis.stats.models.tile import InstrumentReach, TileLooks, TileStats
 
 
-def measured_feature(looks: FeatureLooks) -> FeatureStats:
-    """Read what the instruments left on one feature, given the looks it keeps.
+def measured_tile(looks: TileLooks) -> TileStats:
+    """Read what the instruments left on one tile, given the looks it keeps.
 
     Args:
         looks: Its timeline, the window it earned, and where its looks sit on it.
@@ -42,7 +42,7 @@ def measured_feature(looks: FeatureLooks) -> FeatureStats:
         observation = track.observations[index]
         if iid not in pixel_km2 and observation.pixels and observation.own_km2:
             pixel_km2[iid] = observation.own_km2 / observation.pixels
-    return FeatureStats(
+    return TileStats(
         window=window,
         iids=list(dict.fromkeys(track.iids)),
         offered=dict(Counter(track.iids[owner] for owner in track.owners)),
@@ -78,10 +78,10 @@ def ground_by_instrument_count(
 
 
 def _pixels_landed(track: Track, taken: Sequence[int], iid: str) -> float | None:
-    """Add up the pixels one instrument landed on the feature inside its window.
+    """Add up the pixels one instrument landed on the tile inside its window.
 
     Args:
-        track: The feature's admissible observations on one time axis.
+        track: The tile's admissible observations on one time axis.
         taken: Where the observations it keeps sit on that axis.
         iid: The instrument to count.
 

@@ -8,12 +8,12 @@ from pathlib import Path
 from typing import Any
 
 from analysis import paths
-from analysis.stats.models.dataset import Aggregate, ClassStats, DatasetStats
+from analysis.stats.models.dataset import Aggregate, DatasetStats
 from analysis.stats.models.spread import Spread
 from shared.disk.files import atomic_path
 
 # The layout of a published file, raised whenever what is written changes.
-STATS_SHAPE = 2
+STATS_SHAPE = 3
 
 
 def stats_path(root: Path = paths.STATS_ROOT) -> Path:
@@ -32,7 +32,7 @@ def write_stats_file(held: DatasetStats, root: Path = paths.STATS_ROOT) -> Path:
     """Write out what the filter left of the dataset.
 
     Args:
-        held: The stats read over every feature searched.
+        held: The stats read over every tile searched.
         root: The directory to write it in, made when it is missing.
 
     Returns:
@@ -65,10 +65,6 @@ def _as_json(stats: DatasetStats) -> dict[str, Any]:
     held = stats.held
     return {
         "shape": STATS_SHAPE,
-        "classes": {
-            name: [held.selected, _spreads(held.taken)]
-            for name, held in stats.classes.items()
-        },
         "iids": stats.iids,
         "held": {
             "searched": held.searched,
@@ -95,10 +91,6 @@ def _from_json(saved: Mapping[str, Any]) -> DatasetStats:
     """
     held = saved["held"]
     return DatasetStats(
-        classes={
-            name: ClassStats(int(selected), _spreads_back(taken))
-            for name, (selected, taken) in saved["classes"].items()
-        },
         held=Aggregate(
             searched=held["searched"],
             kept=held["kept"],
@@ -141,7 +133,7 @@ def _spread(measured: Spread) -> list[float]:
     """Write one measurement out as the numbers it holds.
 
     Args:
-        measured: The measurement read off many features.
+        measured: The measurement read off many tiles.
 
     Returns:
         numbers: Its numbers, in the order the spread names them.
