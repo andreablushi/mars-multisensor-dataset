@@ -46,15 +46,14 @@ def tile_of(band: int, column: int, tile_km: float) -> Tile:
     """
     columns = band_columns(tile_km)
     height = HALF_TURN / len(columns)
-    width = TURN / columns[band]
     circling = columns[band] == 1
     return Tile(
         band=band,
         column=column,
         min_lat=-90.0 + band * height,
         max_lat=-90.0 + (band + 1) * height,
-        west_lon=0.0 if circling else column * width,
-        east_lon=0.0 if circling else (column + 1) * width,
+        west_lon=0.0 if circling else TURN * column / columns[band],
+        east_lon=0.0 if circling else TURN * (column + 1) / columns[band],
     )
 
 
