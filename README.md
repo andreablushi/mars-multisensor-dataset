@@ -1,8 +1,22 @@
-# Multi-Sensor Dataset Pipeline for Mars Geological Features
+# Multi-Sensor Dataset Pipeline for Mars Tiles
 
-This repository provides an automated analysis pipeline to process and extract geological features and observations on Mars using data from NASA's [Orbital Data Explorer (ODE)](https://ode.rsl.wustl.edu/mars/).
+This repository provides an automated analysis pipeline that splits Mars into equal-area tiles and gathers the observations of each one, using data from NASA's [Orbital Data Explorer (ODE)](https://ode.rsl.wustl.edu/mars/).
 
-The pipeline checks feature availability and filters geological targets according to specific coverage and temporal window criteria. Selected features and their corresponding multi-sensor observations are then processed into standardized data, ready for training and evaluation of machine learning models.
+The pipeline measures what every instrument covers of each tile and filters the tiles according to specific coverage and temporal window criteria. Selected tiles and their corresponding multi-sensor observations are then processed into standardized data, ready for training and evaluation of machine learning models.
+
+## The tile grid
+
+Mars is split into non-overlapping tiles of `tile_km` a side, 32 km by default,
+just above the 64 SHARAD traces (about 465 m each) a tile is meant to hold. The
+grid is cut into latitude bands one tile tall, and each band into as many
+columns as its area has room for, so every tile is a lon/lat box holding about
+the same ground wherever it falls: 140,979 tiles of 1,004 to 1,071 km². A tile
+is named for its band and column, such as `b123_c0456`.
+
+Tiles are gathered into tile groups about `tile_group_deg` a side, 10° by
+default. ODE is asked once per group and instrument set, and each footprint is
+then handed to the tiles it reaches, so a run asks ODE a few thousand times
+rather than once per tile.
 
 ## Development commands
 
@@ -51,8 +65,8 @@ One entry point runs every stage, here by default:
 uv run python scripts/analysis_pipeline.py
 ```
 
-It downloads the ODE metadata, measures the coverage of every
-feature, searches each for its best window, and writes what the filter keeps.
+It downloads the ODE metadata of every tile group, measures the coverage of
+every tile, searches each for its best window, and writes what the filter keeps.
 Every other choice comes from `configs/`, so the same files describe what was run
 and what to run again.
 
@@ -78,16 +92,15 @@ publishes.
 | Name | What it holds | Where it lands |
 | --- | --- | --- |
 | `coverage` | the coverage measurements | `data/analysis/coverage/` |
-| `summary` | one row per feature and instrument set | `data/analysis/coverage/` |
-| `catalog` | the ODE feature set list | `data/_catalog/` |
+| `summary` | one row per tile and instrument set | `data/analysis/coverage/` |
 | `metadata` | the ODE records behind the measurements | `data/analysis/metadata/` |
-| `selection` | the features and observations the filter keeps | `data/analysis/selection/` |
+| `selection` | the tiles and observations the filter keeps | `data/analysis/selection/` |
 | `stats` | what the filter left of the dataset | `data/analysis/stats/` |
 | `dataset` | the cropped observations and their index | `data/building/dataset/` |
 
 ## Building the dataset
 
-Starting from the previous selection, the pipeline builds a dataset where a sample is defined as a geological feature and its corresponding multi-sensor observations.
+Starting from the previous selection, the pipeline builds a dataset where a sample is defined as a tile and its corresponding multi-sensor observations.
 
 ```bash
 uv run python scripts/building_pipeline.py          # here
@@ -103,21 +116,23 @@ The dataset is entirely self-contained within a single directory, consisting of 
 ```
 dataset/
   dataset.json          what this dataset is: format version, when, from what
-  features.parquet      one row per feature: where it is, and what was kept of it
+  tiles.parquet         one row per tile: where it is, and what was kept of it
   observations.parquet  one row per crop: its shape, its ground, its statistics
-  <class>/<feature>/<instrument>/<identifier>.npz
+  <band>/<column>/<instrument>/<identifier>.npz
 ```
 
-Each crop is stored as an .npz file containing spatial data arrays and an embedded meta JSON object. The metadata specifies axis names, indicates which axes correspond to ground coordinates, defines the cropped feature's location, and records the original publication labels for every product.
+Each crop is stored as an .npz file containing spatial data arrays and an embedded meta JSON object. The metadata specifies axis names, indicates which axes correspond to ground coordinates, defines the cropped tile's location, and records the original publication labels for every product.
 
 ## Notebooks
 
-`notebooks/qualitative.ipynb` reads one feature at a time, whole. Pick a feature,
-confirm, and the cells below fill themselves in. An instrument that reached none
+`notebooks/qualitative.ipynb` reads one tile at a time, whole. Type a latitude
+and longitude, confirm, and the cells below fill themselves in for the tile
+holding that point. An instrument that reached none
 of it is still drawn, at zero, so a missing line always means something.
 
 `notebooks/quantitative.ipynb` reads what the filter made of every measured
-feature rather than of a sample of them. It reads back what the pipeline
+tile rather than of a sample of them, and maps every tile of Mars, green where
+the filter kept it and red where it did not. It reads back what the pipeline
 published and builds no artifact of its own.
 
 `notebooks/crism_preprocessing.ipynb` takes one CRISM observation apart, a
@@ -129,7 +144,7 @@ on disk.
 
 ```
 configs/
-  analysis.yaml         # What a run downloads and measures, and what a window must hold
+  analysis.yaml         # The tile grid, what a run downloads and measures, and what a window must hold
   building.yaml         # How much of the dataset to build, and what to call it
   digitalhub.yaml       # What a submitted run is given, and what it publishes
 ```
