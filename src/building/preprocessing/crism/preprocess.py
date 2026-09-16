@@ -275,8 +275,8 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         frame: The local frame of the tile it was kept for.
 
     Returns:
-        sample: The observation cut to that tile, its bands left whole, or None where
-            it reaches none of it.
+        sample: The observation cut to that tile, its measured bands left whole, or
+            None where it reaches none of it.
     """
     held = overlap(
         observation.latitude, observation.longitude, observation.separable, frame
@@ -289,6 +289,6 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         label=observation.label,
         inside=held.inside,
         valid=marked(taken(observation.valid, held.bounds)),
-        valid_bands=observation.valid_bands,
         cube=taken(observation.cube, held.bounds),
+        wavelengths=observation.wavelengths,
     )

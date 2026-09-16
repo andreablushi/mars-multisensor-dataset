@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from itertools import chain
 
 from building import paths
 from building.common.layout import GROUND, WAVELENGTH, Layout
@@ -57,10 +56,6 @@ DETECTOR_BANDS_NM = {
 }
 # fmt: on
 
-WAVELENGTHS_NM = tuple(sorted(chain.from_iterable(DETECTOR_BANDS_NM.values())))
-
-BANDS = len(WAVELENGTHS_NM)
-
 # The two products one detector of a scan is published as.
 OBSERVATION = "observation"
 GEOMETRY = "geometry"
@@ -96,6 +91,8 @@ LAYOUT = Layout(
         WAVELENGTH,
     ),
     measurement="cube",
+    beside={"wavelengths": ("band",)},
+    stored="f2",
 )
 
 # The directory every wavelength file is kept in, shared by every observation.

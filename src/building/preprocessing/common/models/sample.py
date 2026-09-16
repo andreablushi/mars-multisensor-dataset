@@ -24,8 +24,8 @@ class Sample:
             every one of them does.
         valid: Which of them is a measurement rather than a filled cell, or
             None where every one of them is.
-        valid_bands: Which band of a spectral instrument is a measurement rather
-            than a filled one, or None where every band is or there are none.
+        wavelengths: The nominal centre in nm of every band a spectral instrument
+            holds, or None where it holds no band.
     """
 
     identifier: str
@@ -33,7 +33,7 @@ class Sample:
     label: dict[str, str]
     inside: np.ndarray | None = None
     valid: np.ndarray | None = None
-    valid_bands: np.ndarray | None = None
+    wavelengths: np.ndarray | None = None
 
     @property
     def measured(self) -> np.ndarray:

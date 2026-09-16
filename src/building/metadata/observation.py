@@ -46,9 +46,10 @@ class ObservationMetadata:
             ground axes alone, for an instrument whose axes hold a wavelength,
             and None for every other and where the crop measures nothing.
         band_std: Each band's standard deviation, or None for the same reasons.
-        band_valid_count: How many measurements each of those bands pools, which
-            is none for a band the instrument never measured, or None for the
-            same reasons.
+        band_wavelengths: The nominal centre in nm of each of those bands, or None
+            for the same reasons.
+        band_valid_count: How many measurements each of those bands pools, or None
+            for the same reasons.
         t_start: When the observation started, or None where the archive
             publishes no time for it.
         t_end: When it ended, or None for the same reason.
@@ -73,6 +74,7 @@ class ObservationMetadata:
     band_mean: tuple[float, ...] | None = None
     band_std: tuple[float, ...] | None = None
     band_valid_count: tuple[int, ...] | None = None
+    band_wavelengths: tuple[float, ...] | None = None
     t_start: datetime | None = None
     t_end: datetime | None = None
     altitude_min_m: float | None = None
@@ -141,19 +143,15 @@ def observation_metadata(
     # A band is the one axis a reader normalises against, so it survives the reduction.
     over = tuple(axis for axis, holds in enumerate(layout.axes) if holds == GROUND)
     banded = counted and WAVELENGTH in layout.axes
-    pools = 1 if held.valid_bands is None else held.valid_bands
-    band_mean, band_std, band_valid_count = (
+    band_mean, band_std, band_valid_count, band_wavelengths = (
         (
             tuple(np.mean(values, axis=over, where=measured).tolist()),
             tuple(np.std(values, axis=over, where=measured).tolist()),
-            tuple(
-                (
-                    np.broadcast_to(measured, values.shape).sum(axis=over) * pools
-                ).tolist()
-            ),
+            tuple(np.broadcast_to(measured, values.shape).sum(axis=over).tolist()),
+            tuple(held.wavelengths.tolist()),
         )
         if banded
-        else (None, None, None)
+        else (None, None, None, None)
     )
     return ObservationMetadata(
         tile=frame.name,
@@ -172,6 +170,7 @@ def observation_metadata(
         band_mean=band_mean,
         band_std=band_std,
         band_valid_count=band_valid_count,
+        band_wavelengths=band_wavelengths,
         t_start=_moment(held.label, STARTED) or t_start,
         t_end=_moment(held.label, STOPPED),
         altitude_min_m=low,

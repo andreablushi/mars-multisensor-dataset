@@ -31,8 +31,8 @@ def merge_detectors(
         label: What every product the observation was published as says of it.
 
     Returns:
-        observation: The joined observation, holding every band of the survey's grid
-            whether this one measured it or not, the rest filled.
+        observation: The joined observation, holding only the bands of the survey's
+            grid it measured.
 
     Raises:
         ValueError: When no half was delivered, or one has not been cleaned.
@@ -48,26 +48,29 @@ def merge_detectors(
     # Only the samples no half refused.
     columns = ~np.logical_or.reduce([detectors[name].mask.columns for name in halves])
 
-    joined = np.empty((lines, int(columns.sum()), configs.BANDS), dtype="f4")
-    measured = np.zeros(configs.BANDS, dtype=bool)
+    reads = []
     for name in halves:
         grid = np.asarray(configs.DETECTOR_BANDS_NM[name])
-        lands = np.searchsorted(configs.WAVELENGTHS_NM, grid)
         held = detectors[name]
         read, live = resample.resample_bands(
             held.cube[:lines, columns], held.mask, held.wavelengths[columns], grid
         )
-        joined[:, :, lands] = read
-        measured[lands] = live
+        reads.append((grid[live], read[:, :, live]))
+
+    wavelengths = np.sort(np.concatenate([grid for grid, _ in reads]))
+    joined = np.empty((lines, int(columns.sum()), wavelengths.size), dtype="f4")
+    for grid, read in reads:
+        joined[:, :, np.searchsorted(wavelengths, grid)] = read
 
     # A pixel any half could not read is no measurement of the observation.
     valid = ~np.logical_or.reduce(
         [detectors[name].mask.pixels[:lines] for name in halves]
     )[:, columns]
-    known = valid[:, :, None] & measured
-    joined[:, :, ~measured] = (
-        float(np.mean(joined, where=known)) if known.any() else 0.0
-    )
     return CrismObservation(
-        identifier, label, joined, geometry[:lines, columns], valid, measured
+        identifier,
+        label,
+        joined,
+        geometry[:lines, columns],
+        valid,
+        wavelengths.astype("f4"),
     )
