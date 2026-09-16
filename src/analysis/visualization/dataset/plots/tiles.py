@@ -40,7 +40,6 @@ def plot(picked: Sequence[Selection]) -> widgets.Widget:
 
 def figure(kept: np.ndarray, tile_km: float, image: bytes) -> widgets.Widget:
     """Draw the mosaic of Mars with every tile coloured by what the filter kept."""
-    # Every tile is painted where a fine lon/lat raster samples it, north row first
     lat = np.arange(MARS.north - RASTER_DEG / 2.0, MARS.south, -RASTER_DEG)
     lon = np.arange(MARS.west + RASTER_DEG / 2.0, MARS.east, RASTER_DEG)
     bands, columns = tessellate.tile_indices(

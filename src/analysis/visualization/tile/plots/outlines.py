@@ -27,7 +27,6 @@ def read(coverage: Coverage) -> dict[str, BaseGeometry]:
         settings.tile_group_deg,
     )
     found: dict[str, BaseGeometry] = {}
-    # A set that reached none of the tile may have no records downloaded at all
     for instrument in coverage:
         if instrument.observed:
             found.update(_published(group, instrument.summary.set_key))

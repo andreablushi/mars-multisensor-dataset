@@ -28,7 +28,6 @@ def compute(job: Job, grid_cells: int, union_threads: int) -> Outcome:
             measure.measure_set(one, grid_cells, union_threads) for one in projected
         ]
         events = [event for held, _ in measured for event in held]
-        # Written even when empty, so a group no footprint reached is not measured again
         write.write_coverage(job, events, [summary for _, summary in measured])
         return Outcome(job=job, events=len(events), discarded=discarded)
     except Exception as exc:

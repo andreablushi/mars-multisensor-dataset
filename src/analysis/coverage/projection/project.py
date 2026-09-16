@@ -37,7 +37,6 @@ def project_every_tile(
     projected: list[ProjectedSet] = []
     for tile in tiles:
         region = footprints.tile_region(tile)
-        # The widened region, so a track buffered into the tile is not missed
         near = np.sort(index.query(region.wide))
         if not near.size:
             continue

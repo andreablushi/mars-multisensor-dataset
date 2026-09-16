@@ -32,7 +32,6 @@ def measure_every_tile(
             leaving out a tile with no measured set on disk.
     """
     settings = configs.load()
-    # A group's files are read once for every tile of it, so the work is split by group
     by_group: dict[str, list[Selection]] = {}
     for one in picked:
         held = tessellate.tile_of(one.tile.band, one.tile.column, settings.tile_km)
