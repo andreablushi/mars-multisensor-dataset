@@ -20,7 +20,7 @@ SHARAD_WAVELENGTH_M = physics.SPEED_OF_LIGHT_M_S / SHARAD_CENTRE_FREQUENCY_HZ
 SHARAD_ALONG_TRACK_M = 460.0
 
 # Ground pixel size in metres for the sets ODE publishes no map scale for
-FALLBACK_PIXEL_M = {"MRO/CRISM/TRDR:msp*if*trr3": 180.0, "MRO/CTX/EDR": 5.4}
+FALLBACK_PIXEL_M = {"MRO/CRISM/TRDR:*sp*_if*_trr3": 180.0, "MRO/CTX/EDR": 5.4}
 
 
 def track_widths(observations: Sequence[Observation]) -> list[float | None]:
