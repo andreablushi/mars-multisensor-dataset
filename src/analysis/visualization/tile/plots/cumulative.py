@@ -55,7 +55,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
     running.set_xlim(right=last)
     panels.tidy(running, percent="y", grid="both")
     running.legend(fontsize=9, loc="upper left", frameon=False)
-    ranked = list(drawn)[::-1]
+    ranked = drawn[::-1]
     bars.barh(
         [one.label for one in ranked],
         [one.covered for one in ranked],

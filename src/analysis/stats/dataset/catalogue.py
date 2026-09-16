@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from analysis import configs
 from analysis.coverage.artifacts import index
 from analysis.coverage.models.summary import Summary
@@ -31,26 +29,16 @@ def read_catalogue() -> CatalogueStats:
         measured=len(by_tile),
         tile_km2=Spread.over([row.tile_area_km2 for row in by_tile.values()]),
         instruments=sorted(
-            (_instrument(iid, rows) for iid, rows in by_instrument.items()),
+            (
+                InstrumentStats(
+                    iid=iid,
+                    tiles=len({row.tile for row in rows}),
+                    observations=sum(row.n_obs for row in rows),
+                    first=min(row.t_first for row in rows),
+                    last=max(row.t_last for row in rows),
+                )
+                for iid, rows in by_instrument.items()
+            ),
             key=lambda instrument: -instrument.observations,
         ),
-    )
-
-
-def _instrument(iid: str, rows: Sequence[Summary]) -> InstrumentStats:
-    """Read what one instrument holds of every tile it reached.
-
-    Args:
-        iid: The instrument the rows belong to.
-        rows: Its rows, one per tile and instrument set it measured.
-
-    Returns:
-        stats: What it holds.
-    """
-    return InstrumentStats(
-        iid=iid,
-        tiles=len({row.tile for row in rows}),
-        observations=sum(row.n_obs for row in rows),
-        first=min(row.t_first for row in rows),
-        last=max(row.t_last for row in rows),
     )

@@ -96,10 +96,9 @@ def load_group(group: str, tile: str | None = None) -> dict[str, list[SetCoverag
     finished: set[str] = set()
     # A set whose summary never landed was never finished, so it is passed over
     for summary in sorted(directory.glob(f"*{paths.SET_SUMMARY_SUFFIX}")):
-        finished.add(summary.name.removesuffix(paths.SET_SUMMARY_SUFFIX))
-        events = summary.with_name(
-            summary.name.replace(paths.SET_SUMMARY_SUFFIX, paths.EVENTS_SUFFIX)
-        )
+        slug = summary.name.removesuffix(paths.SET_SUMMARY_SUFFIX)
+        finished.add(slug)
+        events = summary.with_name(f"{slug}{paths.EVENTS_SUFFIX}")
         by_tile: dict[str, list[Event]] = {}
         for row in pq.read_table(events, schema=EVENTS, filters=filters).to_pylist():
             by_tile.setdefault(row["tile"], []).append(Event(**row))

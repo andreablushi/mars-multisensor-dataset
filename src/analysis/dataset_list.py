@@ -36,9 +36,6 @@ def read_dataset_list(root: Path = paths.SELECTION_ROOT) -> list[Selection]:
         observation = SelectedObservation(**row)
         kept.setdefault(observation.tile, []).append(observation)
     return [
-        Selection(tile=tile, observations=kept.get(tile.tile, []))
-        for tile in (
-            SelectedTile(**row)
-            for row in pq.read_table(tiles, schema=TILES).to_pylist()
-        )
+        Selection(tile=SelectedTile(**row), observations=kept.get(row["tile"], []))
+        for row in pq.read_table(tiles, schema=TILES).to_pylist()
     ]

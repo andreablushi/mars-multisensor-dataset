@@ -38,10 +38,57 @@ def new_ground(
     """
     indexed = np.asarray(shapes, dtype=object)
     grid = coarse_split.grid_over(region, indexed)
+
+    def cell_contributions(
+        rectangle: BaseGeometry, cap: float, reaching: np.ndarray
+    ) -> list[tuple[int, float]]:
+        """Accumulate one cell and report what it contributes to each observation.
+
+        Args:
+            rectangle: The cell being accumulated.
+            cap: The ground in square metres the cell could ever hold.
+            reaching: The indices of the observations reaching it, in order.
+
+        Returns:
+            ground: The ground in square metres this cell saw each observation cover
+                first.
+        """
+        covered: BaseGeometry = Polygon()
+        arrived: list[BaseGeometry] = []
+        share: list[tuple[int, float]] = []
+        limit = cap * (1.0 - SATURATION_TOLERANCE)
+        for start in range(0, reaching.size, UNION_CHUNK):
+            indices, pieces = coarse_split.clip(
+                indexed, reaching[start : start + UNION_CHUNK], rectangle
+            )
+            if not indices.size:
+                continue
+            running = covered
+            for index, piece in zip(indices, pieces, strict=True):
+                # The first piece is its own union, which unioning it would round
+                if running.is_empty:
+                    merged, added = piece, area(piece)
+                elif covers(running, piece):
+                    continue
+                else:
+                    merged = union_of([running, piece])
+                    added = merged.area - running.area
+                    if added <= running.area * SATURATION_TOLERANCE:
+                        continue
+                share.append((int(index), added))
+                running = merged
+                prepare(running)
+            arrived.extend(pieces)
+            covered = union_of(arrived)
+            prepare(covered)
+            if covered.area >= limit:
+                break
+        return share
+
     fresh = np.zeros(len(shapes), dtype=float)
     with ThreadPoolExecutor(max_workers=threads) as pool:
         for share in pool.map(
-            lambda cell: _cell_contributions(indexed, *cell),
+            lambda cell: cell_contributions(*cell),
             coarse_split.cells(grid, region, indexed),
         ):
             for index, added in share:
@@ -49,78 +96,17 @@ def new_ground(
     return fresh
 
 
-def _cell_contributions(
-    shapes: np.ndarray,
-    rectangle: BaseGeometry,
-    cap: float,
-    reaching: np.ndarray,
-) -> list[tuple[int, float]]:
-    """Accumulate one cell and report what it contributes to each observation.
+def union_of(shapes: Sequence[BaseGeometry]) -> BaseGeometry:
+    """Union shapes, snapping them to a fine grid where exact arithmetic fails.
 
     Args:
-        shapes: Every projected footprint, indexed by the reaching indices.
-        rectangle: The cell being accumulated.
-        cap: The ground in square metres the cell could ever hold.
-        reaching: The indices of the observations reaching it, in order.
+        shapes: The shapes to union.
 
     Returns:
-        ground: The ground in square metres this cell saw each observation cover first.
+        union: The union of every shape.
     """
-    covered: BaseGeometry = Polygon()
-    arrived: list[BaseGeometry] = []
-    share: list[tuple[int, float]] = []
-    limit = cap * (1.0 - SATURATION_TOLERANCE)
-    for start in range(0, reaching.size, UNION_CHUNK):
-        indices, pieces = coarse_split.clip(
-            shapes, reaching[start : start + UNION_CHUNK], rectangle
-        )
-        if not indices.size:
-            continue
-        _record_first_cover(indices, pieces, covered, share)
-        arrived.extend(pieces)
-        try:
-            covered = union_all(arrived)
-        except GEOSException:
-            # Exact arithmetic can fail on an overlay, which a fine grid settles
-            covered = union_all(arrived, grid_size=SNAP_GRID_M)
-        prepare(covered)
-        if covered.area >= limit:
-            break
-    return share
-
-
-def _record_first_cover(
-    indices: np.ndarray,
-    pieces: np.ndarray,
-    covered: BaseGeometry,
-    share: list[tuple[int, float]],
-) -> None:
-    """Record what each footprint in one chunk newly covers.
-
-    Args:
-        indices: The observation index of every piece, in order.
-        pieces: The footprints clipped to the cell, in the same order.
-        covered: The cell's union before this chunk, empty for the first.
-        share: The cell's contributions so far, appended to in place.
-    """
-    running = covered
-    for index, piece in zip(indices, pieces, strict=True):
-        # The first piece is its own union, which unioning it would round
-        if running.is_empty:
-            share.append((int(index), area(piece)))
-            running = piece
-            prepare(running)
-            continue
-        if covers(running, piece):
-            continue
-        try:
-            merged = union_all([running, piece])
-        except GEOSException:
-            # Exact arithmetic can fail on an overlay, which a fine grid settles
-            merged = union_all([running, piece], grid_size=SNAP_GRID_M)
-        added = merged.area - running.area
-        if added <= running.area * SATURATION_TOLERANCE:
-            continue
-        share.append((int(index), added))
-        running = merged
-        prepare(running)
+    try:
+        return union_all(shapes)
+    except GEOSException:
+        # Exact arithmetic can fail on an overlay, which a fine grid settles
+        return union_all(shapes, grid_size=SNAP_GRID_M)

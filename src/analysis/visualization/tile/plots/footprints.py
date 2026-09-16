@@ -76,9 +76,6 @@ def figure(
     if not traced:
         panels.note(axis, _NOTHING, colour=NOTE_COLOUR, size=NOTE_SIZE)
     axis.set_title(title, fontsize=12, loc="left")
-    axis.set_xlabel("Longitude")
-    axis.set_ylabel("Latitude")
-    axis.tick_params(labelsize=8)
     panels.key_beside(
         drawn,
         [

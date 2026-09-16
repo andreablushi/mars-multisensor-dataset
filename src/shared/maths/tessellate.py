@@ -173,9 +173,8 @@ def every_tile_group(tile_km: float, tile_group_deg: float) -> list[TileGroup]:
     """
     grouped: dict[str, list[Tile]] = {}
     for tile in every_tile(tile_km):
-        grouped.setdefault(tile_group_name(tile, tile_km, tile_group_deg), []).append(
-            tile
-        )
+        name = tile_group_name(tile, tile_km, tile_group_deg)
+        grouped.setdefault(name, []).append(tile)
     groups = []
     for name, tiles in grouped.items():
         circling = any(tile.circles_a_pole for tile in tiles)

@@ -69,7 +69,17 @@ def aggregate_tiles(measured: Sequence[TileStats], iids: Sequence[str]) -> Aggre
             )
             for iid in iids
         },
-        pixels_per_look={iid: _pixels_per_look(kept, iid) for iid in iids},
+        pixels_per_look={
+            iid: Spread.over(
+                [
+                    tile.reached[iid].pixels_per_look
+                    for tile in kept
+                    if iid in tile.reached
+                    and tile.reached[iid].pixels_per_look is not None
+                ]
+            )
+            for iid in iids
+        },
         # A pixel is the same size wherever it falls, so every searched tile says
         pixel_km2={
             iid: Spread.over(
@@ -94,22 +104,3 @@ def plausible(tile: TileStats) -> bool:
     shares.append(sum(tile.overlaps.values()) / area_km2)
     shares.append(tile.window.geo_mean)
     return max(shares) <= SHARE_CEILING
-
-
-def _pixels_per_look(kept: Sequence[TileStats], iid: str) -> Spread:
-    """Read how many pixels one observation of an instrument lands on a tile.
-
-    Args:
-        kept: The tiles that earned a window.
-        iid: The instrument to read.
-
-    Returns:
-        pixels: The pixels one of its observations landed, tile by tile, leaving
-            out a tile carrying no pixel count.
-    """
-    per_look: list[float] = []
-    for tile in kept:
-        reach = tile.reached.get(iid)
-        if reach is not None and reach.pixels_per_look is not None:
-            per_look.append(reach.pixels_per_look)
-    return Spread.over(per_look)

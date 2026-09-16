@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from functools import cache
+
 from analysis import dataset_list
 from analysis.selector.models.selection import Selection
 
-_picked: list[Selection] | None = None
-_by_tile: dict[str, Selection] | None = None
 
-
+@cache
 def read_selection() -> list[Selection]:
     """Read what the selection left of every tile it searched, once.
 
@@ -18,12 +18,10 @@ def read_selection() -> list[Selection]:
     Raises:
         FileNotFoundError: When no selection has been written.
     """
-    global _picked
-    if _picked is None:
-        _picked = dataset_list.read_dataset_list()
-    return _picked
+    return dataset_list.read_dataset_list()
 
 
+@cache
 def selection_by_tile() -> dict[str, Selection]:
     """Read the same selection keyed by the tile each row belongs to.
 
@@ -33,7 +31,4 @@ def selection_by_tile() -> dict[str, Selection]:
     Raises:
         FileNotFoundError: When no selection has been written.
     """
-    global _by_tile
-    if _by_tile is None:
-        _by_tile = {one.tile.tile: one for one in read_selection()}
-    return _by_tile
+    return {one.tile.tile: one for one in read_selection()}

@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 
-from analysis.selector.models.track import Track
 from analysis.stats.models.tile import InstrumentReach, TileLooks, TileStats
 
 
@@ -23,12 +22,22 @@ def measured_tile(looks: TileLooks) -> TileStats:
     cells_by_iid: dict[str, set[int]] = {}
     observations_by_iid: dict[str, int] = {}
     iids_by_cell: dict[int, set[str]] = {}
+    pixels_by_iid: dict[str, float | None] = {}
     for index in taken:
         iid = track.iids[track.owners[index]]
         cells_by_iid.setdefault(iid, set()).update(track.cells[index])
         observations_by_iid[iid] = observations_by_iid.get(iid, 0) + 1
         for cell in track.cells[index].tolist():
             iids_by_cell.setdefault(cell, set()).add(iid)
+        observation = track.observations[index]
+        landed = pixels_by_iid.get(iid, 0.0)
+        if landed is None or observation.pixels is None or not observation.own_km2:
+            pixels_by_iid[iid] = None
+        else:
+            ground_km2 = len(track.cells[index]) * track.grid.cell_km2
+            pixels_by_iid[iid] = (
+                landed + observation.pixels * ground_km2 / observation.own_km2
+            )
     overlaps: dict[tuple[str, ...], float] = {}
     for cell in sorted(iids_by_cell):
         instrument_names = tuple(sorted(iids_by_cell[cell]))
@@ -50,7 +59,7 @@ def measured_tile(looks: TileLooks) -> TileStats:
         reached={
             iid: InstrumentReach(
                 km2=len(cells_reached) * track.grid.cell_km2,
-                pixels=_pixels_landed(track, taken, iid),
+                pixels=pixels_by_iid[iid],
                 observations_taken=observations_by_iid[iid],
             )
             for iid, cells_reached in cells_by_iid.items()
@@ -75,27 +84,3 @@ def ground_by_instrument_count(
     for instrument_names, km2 in overlaps.items():
         summed[len(instrument_names)] = summed.get(len(instrument_names), 0.0) + km2
     return dict(sorted(summed.items()))
-
-
-def _pixels_landed(track: Track, taken: Sequence[int], iid: str) -> float | None:
-    """Add up the pixels one instrument landed on the tile inside its window.
-
-    Args:
-        track: The tile's admissible observations on one time axis.
-        taken: Where the observations it keeps sit on that axis.
-        iid: The instrument to count.
-
-    Returns:
-        pixels: The pixels it landed there, or None when any of its observations carries
-            none.
-    """
-    total = 0.0
-    for index in taken:
-        if track.iids[track.owners[index]] != iid:
-            continue
-        observation = track.observations[index]
-        if observation.pixels is None or not observation.own_km2:
-            return None
-        ground_km2 = len(track.cells[index]) * track.grid.cell_km2
-        total += observation.pixels * ground_km2 / observation.own_km2
-    return total

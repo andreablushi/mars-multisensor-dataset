@@ -25,28 +25,17 @@ def arcs(when: Sequence[datetime]) -> list[float]:
     Returns:
         arcs: The angle Mars had swept by each, in degrees, one to each moment given.
     """
-    return [
-        _swept(moment.timestamp() / _DAY_SECONDS + _JD_UNIX_EPOCH - _J2000)
-        for moment in when
-    ]
-
-
-def _swept(offset: float) -> float:
-    """Work out the angle Mars has swept since J2000, without turning it over.
-
-    Args:
-        offset: The days the moment stands after the J2000 epoch.
-
-    Returns:
-        swept: The angle swept, in degrees, counted from a zero of no meaning.
-    """
-    # Allison and McEwen (1997), less its perturbers and terrestrial time
-    anomaly = math.radians(19.3871 + 0.52402073 * offset)
-    # Where the true sun stands against the mean one, on Mars' eccentric orbit
-    centre = (
-        10.691 * math.sin(anomaly)
-        + 0.623 * math.sin(2.0 * anomaly)
-        + 0.050 * math.sin(3.0 * anomaly)
-        + 0.005 * math.sin(4.0 * anomaly)
-    )
-    return 270.3871 + 0.524038496 * offset + centre
+    swept: list[float] = []
+    for moment in when:
+        offset = moment.timestamp() / _DAY_SECONDS + _JD_UNIX_EPOCH - _J2000
+        # Allison and McEwen (1997), less its perturbers and terrestrial time
+        anomaly = math.radians(19.3871 + 0.52402073 * offset)
+        # Where the true sun stands against the mean one, on Mars' eccentric orbit
+        centre = (
+            10.691 * math.sin(anomaly)
+            + 0.623 * math.sin(2.0 * anomaly)
+            + 0.050 * math.sin(3.0 * anomaly)
+            + 0.005 * math.sin(4.0 * anomaly)
+        )
+        swept.append(270.3871 + 0.524038496 * offset + centre)
+    return swept

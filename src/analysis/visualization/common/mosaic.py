@@ -63,7 +63,7 @@ def fetched(
 
 
 def draw(axis: Axes, box: Box, image: bytes) -> None:
-    """Draw one mosaic crop onto an axis in lon and lat."""
+    """Draw one mosaic crop onto an axis, labelled in lon and lat."""
     axis.imshow(
         reading.imread(io.BytesIO(image), format="png"),
         extent=box.extent,
@@ -73,6 +73,9 @@ def draw(axis: Axes, box: Box, image: bytes) -> None:
     axis.set_aspect(1.0 / geodesy.longitude_stretch(box.centre_lat))
     axis.set_xlim(box.west, box.east)
     axis.set_ylim(box.south, box.north)
+    axis.set_xlabel("Longitude")
+    axis.set_ylabel("Latitude")
+    axis.tick_params(labelsize=8)
     # A footprint reaching well past the crop is cut to it rather than framed
     axis.autoscale(False)
 

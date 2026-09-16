@@ -87,8 +87,5 @@ def figure(grid: Placed, box: Box, image: bytes, title: str) -> widgets.Widget:
     lon, lat = grid.outline()
     axis.plot(lon, lat, color=TILE_EDGE, linewidth=TILE_WIDTH, zorder=3)
     axis.set_title(title, fontsize=12, loc="left")
-    axis.set_xlabel("Longitude")
-    axis.set_ylabel("Latitude")
-    axis.tick_params(labelsize=8)
     drawn.tight_layout()
     return panels.rendered(drawn)

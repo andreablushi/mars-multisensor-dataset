@@ -57,9 +57,6 @@ def figure(kept: np.ndarray, tile_km: float, image: bytes) -> widgets.Widget:
     axis.set_title(
         f"{int(kept.sum()):,} of {kept.size:,} tiles kept", fontsize=12, loc="left"
     )
-    axis.set_xlabel("Longitude")
-    axis.set_ylabel("Latitude")
-    axis.tick_params(labelsize=8)
     axis.legend(
         handles=[
             Patch(color=KEPT, alpha=TILE_ALPHA, label="kept"),
