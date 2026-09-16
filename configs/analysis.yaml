@@ -26,7 +26,7 @@ loc: f
 window:
   # The coverage each instrument is asked of a tile, in percent of its area.
   constraints:
-    - {CTX: 0.50}
+    - {CTX: 0.60}
     - {CRISM: 0.50}
     - {SHARAD: 0.0}
 
