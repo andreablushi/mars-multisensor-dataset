@@ -1,7 +1,7 @@
 [project]
 name = "mars-multisensor-dataset"
 version = "0.1.0"
-description = "A multi-sensor dataset of Mars geological features: co-temporal CTX, CRISM and SHARAD observations cropped to each feature."
+description = "A multi-sensor dataset of Mars tiles: co-temporal CTX, CRISM and SHARAD observations cropped to each equal-area tile."
 readme = "README.md"
 authors = [
     { name = "Andrea Blushi", email = "andreablushi@gmail.com" }
@@ -34,6 +34,7 @@ dev = [
     "ruff>=0.16.2",
 ]
 notebook = [
+    "cartopy>=0.25.0",
     "ipywidgets>=8.1.5",
     "jupyterlab>=4.3.0",
     "matplotlib>=3.10.0",

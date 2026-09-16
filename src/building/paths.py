@@ -18,7 +18,7 @@ SHARAD_ROOT = PREPROCESSING_ROOT / "sharad"
 MOLA_ROOT = PREPROCESSING_ROOT / "mola"
 CTX_ROOT = PREPROCESSING_ROOT / "ctx"
 
-FEATURE_METADATA_NAME = "features.parquet"
+TILE_METADATA_NAME = "tiles.parquet"
 OBSERVATION_METADATA_NAME = "observations.parquet"
 DATASET_MANIFEST_NAME = "dataset.json"
 SAMPLE_SUFFIX = ".npz"

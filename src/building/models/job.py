@@ -5,26 +5,26 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from building.metadata.feature import FeatureMetadata
 from building.metadata.observation import ObservationMetadata
-from shared.models.feature import Feature
+from building.metadata.tile import TileMetadata
+from shared.models.tile import Tile
 
 
 @dataclass(frozen=True, slots=True)
 class Job:
-    """One product to bring down and cut to every feature that kept it.
+    """One product to bring down and cut to every tile that kept it.
 
     Attributes:
         instrument: The instrument that fetches it, as ODE names it.
-        identifier: What that instrument is asked for, its observation or tile.
-        frames: The features to cut it to, each with its own local frame.
+        identifier: What that instrument is asked for, its observation or sheet.
+        frames: The tiles to cut it to, each with its own local frame.
         t_start: When the product was taken, or None where its archive
             publishes no time for it.
     """
 
     instrument: str
     identifier: str
-    frames: tuple[Feature, ...] = ()
+    frames: tuple[Tile, ...] = ()
     t_start: datetime | None = None
 
     @property
@@ -44,7 +44,7 @@ class Outcome:
     Attributes:
         job: The job that was run.
         records: What each crop it wrote is, for the index to be built from.
-        missed: How many features it reached none of, which is not a failure.
+        missed: How many tiles it reached none of, which is not a failure.
         error: The error raised, or None on success.
     """
 
@@ -60,7 +60,7 @@ class Plan:
 
     Attributes:
         jobs: The products that still need building.
-        features: What the dataset holds about every feature the build covers.
+        tiles: What the dataset holds about every tile the build covers.
         skipped_existing: Products left alone because every crop of them is
             already written.
         unread: Observations the selection kept that no instrument here could read,
@@ -68,6 +68,6 @@ class Plan:
     """
 
     jobs: tuple[Job, ...]
-    features: tuple[FeatureMetadata, ...] = ()
+    tiles: tuple[TileMetadata, ...] = ()
     skipped_existing: int = 0
     unread: int = 0

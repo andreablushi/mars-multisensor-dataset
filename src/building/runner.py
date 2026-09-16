@@ -42,7 +42,7 @@ def run_build(
     force: bool = False,
     checkpoint: Callable[[], None] | None = None,
 ) -> list[Outcome]:
-    """Fetch every product a build needs and cut each to the features that kept it.
+    """Fetch every product a build needs and cut each to the tiles that kept it.
 
     Args:
         settings: The settled choices for the build.
@@ -126,7 +126,7 @@ def _checkpointed(
 
     Args:
         outcomes: The outcomes as the runner finishes them.
-        plan: What the build set out to do, whose features the index covers.
+        plan: What the build set out to do, whose tiles the index covers.
         settings: The settled choices for the build.
         root: The dataset's own root directory.
         checkpoint: What publishes the dataset as it stands.
@@ -249,10 +249,10 @@ def _outcomes(
 
 
 def build_product(job: Job, root: Path) -> Outcome:
-    """Cut one downloaded product to every feature that kept it, and write each.
+    """Cut one downloaded product to every tile that kept it, and write each.
 
     Args:
-        job: The product to build, and the features to cut it to.
+        job: The product to build, and the tiles to cut it to.
         root: The dataset's own root directory.
 
     Returns:
@@ -267,7 +267,7 @@ def build_product(job: Job, root: Path) -> Outcome:
     written: list[ObservationMetadata] = []
     missed = 0
     try:
-        # Read once however many features want it, which is why the product is the unit.
+        # Read once however many tiles want it, which is why the product is the unit.
         observation = steps.read_observation(job.identifier)
         for frame in job.frames:
             try:
@@ -275,7 +275,7 @@ def build_product(job: Job, root: Path) -> Outcome:
             except Exception as error:  # noqa: BLE001
                 # What is on disk is handed back, so no written sample misses the index.
                 return Outcome(job, records=tuple(written), error=error)
-            # Reaching none of a feature is no failure, coverage being a box overlap.
+            # Reaching none of a tile is no failure, coverage being a box overlap.
             if held is None:
                 missed += 1
                 continue
@@ -291,7 +291,7 @@ def build_product(job: Job, root: Path) -> Outcome:
                 )
             )
     finally:
-        # A product goes once every feature that wanted it is cut; it is a cache.
+        # A product goes once every tile that wanted it is cut; it is a cache.
         if steps.discard:
             steps.discard(job.identifier)
     return Outcome(job, records=tuple(written), missed=missed)
@@ -303,7 +303,7 @@ def _indexed(
     """Write the index over every crop the dataset holds, not this run's alone.
 
     Args:
-        plan: What the build set out to do, whose features this run covers.
+        plan: What the build set out to do, whose tiles this run covers.
         collected: What every job of this run left.
         settings: The settled choices for the build.
         root: The dataset's own root directory.
@@ -312,7 +312,7 @@ def _indexed(
     rewritten = {one.identity for one in written}
     try:
         standing = metadata_read.read_observation_metadata(root)
-        earlier = metadata_read.read_feature_metadata(root)
+        earlier = metadata_read.read_tile_metadata(root)
     except FileNotFoundError:
         standing, earlier = [], {}
     # What an earlier run left, less what this run rewrote and what has been deleted.
@@ -321,11 +321,11 @@ def _indexed(
         for one in standing
         if one.identity not in rewritten and (root / one.path).exists()
     ] + written
-    features = {one.identity: one for one in plan.features}
-    # A feature this run missed is carried forward, so no record names an unknown one.
+    tiles = {one.identity: one for one in plan.tiles}
+    # A tile this run missed is carried forward, so no record names an unknown one.
     for one in records:
-        if one.feature not in features and one.feature in earlier:
-            features[one.feature] = earlier[one.feature]
+        if one.tile not in tiles and one.tile in earlier:
+            tiles[one.tile] = earlier[one.tile]
     # What the dataset holds, which is every instrument in it and not a wish.
     held = tuple(sorted({one.instrument for one in records}))
-    metadata.write_metadata(list(features.values()), records, held, root)
+    metadata.write_metadata(list(tiles.values()), records, held, root)

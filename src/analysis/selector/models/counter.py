@@ -17,7 +17,7 @@ class Counter:
     Attributes:
         observations_per_cell: The window's observations filling each cell, per set,
             as one row of counts per set.
-        cells_reached: How many cells of the feature each set reaches.
+        cells_reached: How many cells of the tile each set reaches.
     """
 
     observations_per_cell: np.ndarray
@@ -28,8 +28,8 @@ class Counter:
         """Open a counter on a window holding nothing at all.
 
         Args:
-            iids: The instrument each set of the feature belongs to, by set.
-            grid_cells: How many cells the feature holds.
+            iids: The instrument each set of the tile belongs to, by set.
+            grid_cells: How many cells the tile holds.
 
         Returns:
             counter: The counter, counting nothing.
@@ -44,7 +44,7 @@ class Counter:
         """Count afresh everything one stretch of the axis holds.
 
         Args:
-            track: The feature's observations on one time axis.
+            track: The tile's observations on one time axis.
             first: The index of the earliest observation the stretch holds.
             last: The index of the latest one.
 
@@ -61,7 +61,7 @@ class Counter:
 
         Args:
             owner: The instrument set the observation belongs to.
-            cells: The feature's cells it fills, each of them named once.
+            cells: The tile's cells it fills, each of them named once.
         """
         filled = self.observations_per_cell[owner]
         held = filled[cells]
@@ -74,7 +74,7 @@ class Counter:
 
         Args:
             owner: The instrument set the observation belongs to.
-            cells: The feature's cells it fills, each of them named once.
+            cells: The tile's cells it fills, each of them named once.
         """
         filled = self.observations_per_cell[owner]
         left = filled[cells]

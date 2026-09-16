@@ -9,7 +9,7 @@ from building.preprocessing.crism.correction import resample
 from building.preprocessing.crism.models.detector import Detector
 from building.preprocessing.crism.models.observation import CrismObservation
 
-# Which detector carries which half, and the order their bands are laid out in.
+# Which detector carries which half.
 VISIBLE = "s"
 INFRARED = "l"
 HALVES = (VISIBLE, INFRARED)
@@ -31,8 +31,8 @@ def merge_detectors(
         label: What every product the observation was published as says of it.
 
     Returns:
-        observation: The joined observation, holding every band of the survey's grid
-            whether this one measured it or not, the rest filled.
+        observation: The joined observation, holding only the bands of the survey's
+            grid it measured.
 
     Raises:
         ValueError: When no half was delivered, or one has not been cleaned.
@@ -48,26 +48,35 @@ def merge_detectors(
     # Only the samples no half refused.
     columns = ~np.logical_or.reduce([detectors[name].mask.columns for name in halves])
 
-    joined = np.empty((lines, int(columns.sum()), configs.BANDS), dtype="f4")
-    measured = np.zeros(configs.BANDS, dtype=bool)
+    grids = {}
     for name in halves:
         grid = np.asarray(configs.DETECTOR_BANDS_NM[name])
-        lands = np.searchsorted(configs.WAVELENGTHS_NM, grid)
         held = detectors[name]
-        read, live = resample.resample_bands(
-            held.cube[:lines, columns], held.mask, held.wavelengths[columns], grid
+        live = resample.measured_bands(held.mask, held.wavelengths[columns], grid)
+        grids[name] = grid[live]
+
+    wavelengths = np.sort(np.concatenate(list(grids.values())))
+    joined = np.empty((lines, int(columns.sum()), wavelengths.size), dtype="f4")
+    for name, grid in grids.items():
+        held = detectors[name]
+        resample.resample_bands(
+            held.cube[:lines, columns],
+            held.mask,
+            held.wavelengths[columns],
+            grid,
+            joined,
+            np.searchsorted(wavelengths, grid),
         )
-        joined[:, :, lands] = read
-        measured[lands] = live
 
     # A pixel any half could not read is no measurement of the observation.
     valid = ~np.logical_or.reduce(
         [detectors[name].mask.pixels[:lines] for name in halves]
     )[:, columns]
-    known = valid[:, :, None] & measured
-    joined[:, :, ~measured] = (
-        float(np.mean(joined, where=known)) if known.any() else 0.0
-    )
     return CrismObservation(
-        identifier, label, joined, geometry[:lines, columns], valid, measured
+        identifier,
+        label,
+        joined,
+        geometry[:lines, columns],
+        valid,
+        wavelengths.astype("f4"),
     )

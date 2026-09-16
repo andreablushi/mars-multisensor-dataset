@@ -1,4 +1,4 @@
-"""Laying the tiles one feature stands on onto the single grid they share."""
+"""Laying the sheets one tile stands on onto the single grid they share."""
 
 from __future__ import annotations
 
@@ -12,25 +12,25 @@ from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.observation import MolaObservation
 from shared.maths import geodesy
 from shared.maths.geodesy import TURN
-from shared.models.feature import Feature
+from shared.models.tile import Tile
 
 
-def merge_tiles(grid: MolaGrid, frame: Feature) -> MolaObservation:
-    """Return the one grid every tile a feature stands on writes its part of.
+def merge_sheets(grid: MolaGrid, frame: Tile) -> MolaObservation:
+    """Return the one grid every sheet a tile stands on writes its part of.
 
     Args:
-        grid: The tiles of the grid that landed, and how fine it is.
-        frame: The local frame of the feature the tiles are merged for.
+        grid: The sheets of the grid that landed, and how fine it is.
+        frame: The local frame of the tile the sheets are merged for.
 
     Returns:
-        observation: The observation holding that feature's own box and no more of the
+        observation: The observation holding that tile's own box and no more of the
             grid.
 
     Raises:
-        FileNotFoundError: When a tile's label is missing.
+        FileNotFoundError: When a sheet's label is missing.
         KeyError: When a label names a sample type this cannot read.
         ValueError: When a label names a projection this cannot read, or the
-            tiles that landed leave any part of the box unwritten.
+            sheets that landed leave any part of the box unwritten.
     """
     resolution = grid.resolution
     whole = round(TURN) * resolution
@@ -47,15 +47,15 @@ def merge_tiles(grid: MolaGrid, frame: Feature) -> MolaObservation:
     height: np.ndarray | None = None
     written = np.zeros((len(down), len(across)), dtype=bool)
     read = []
-    for tile, image in sorted(grid.files.items()):
+    for sheet, image in sorted(grid.files.items()):
         label = labels.load(image.with_suffix(".lbl"))
         read.append(label)
         latitude, longitude, _ = projection.grid_axes(label)
-        # Where the tile's own first bin sits on the grid every tile shares.
+        # Where the sheet's own first bin sits on the grid every sheet shares.
         line = round((90.0 - float(latitude[0])) * resolution - 0.5)
         sample = round(float(longitude[0]) * resolution - 0.5) % whole
         lines, samples = int(label["LINES"]), int(label["LINE_SAMPLES"])
-        # A box running over the meridian meets a tile a whole turn along, too.
+        # A box running over the meridian meets a sheet a whole turn along, too.
         for shift in (0, whole):
             first, last = max(down.start, line), min(down.stop, line + lines)
             starts = max(across.start, sample + shift)
@@ -77,9 +77,7 @@ def merge_tiles(grid: MolaGrid, frame: Feature) -> MolaObservation:
             height[at] = part
             written[at] = True
     if height is None or not written.all():
-        raise ValueError(
-            f"{frame.feature_name} reaches ground no tile of {grid.name} holds."
-        )
+        raise ValueError(f"{frame.name} reaches ground no sheet of {grid.name} holds.")
     return MolaObservation(
         grid.name,
         labels.merge(*read),

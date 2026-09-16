@@ -18,11 +18,11 @@ from analysis import planner
 from analysis.console import describe, render
 from analysis.coverage import compute
 from analysis.metadata import download, file_explorer
-from analysis.metadata.loaders.features import load_features
 from analysis.metadata.ode import ODEClient
 from analysis.models.job import Job, Outcome
 from analysis.models.progress import ProgressEvent
 from analysis.models.settings import Settings
+from shared.maths import tessellate
 
 
 def run_jobs(
@@ -61,11 +61,11 @@ def run_pipeline(
     futures: list[Future[Outcome]] = []
     fetched: list[Outcome] = []
     with ODEClient() as client:
-        features = load_features(client, refresh=settings.refresh_catalog)
-        plan = planner.download_plan(features, settings.instrument_sets, force=force)
+        groups = tessellate.every_tile_group(settings.tile_km, settings.tile_group_deg)
+        plan = planner.download_plan(groups, settings.instrument_sets, force=force)
         rewriting = {job.output_path for job in plan.jobs}
         stored = [held for held in file_explorer.find_sets() if held not in rewriting]
-        backlog = planner.coverage_plan(stored, force=force)
+        backlog = planner.coverage_plan(stored, groups, force=force)
         describe(plan, backlog, settings, console)
         with (
             ProcessPoolExecutor(max_workers=settings.workers) as measuring,
@@ -91,7 +91,9 @@ def run_pipeline(
                     if not event.outcome.failed and source.stat().st_size:
                         futures.extend(
                             measure(job)
-                            for job in planner.coverage_plan([source], force=force).jobs
+                            for job in planner.coverage_plan(
+                                [source], groups, force=force
+                            ).jobs
                         )
                     yield event
 

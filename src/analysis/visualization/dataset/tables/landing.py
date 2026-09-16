@@ -1,4 +1,4 @@
-"""What each instrument lands on a feature, and how far it reaches on it."""
+"""What each instrument lands on a tile, and how far it reaches on it."""
 
 from __future__ import annotations
 
@@ -15,14 +15,14 @@ _LANDED = (
     "Mean observations offered",
     "Mean pixels landed per observation",
     "Pixels asked",
-    "Mean coverage inside a feature",
+    "Mean coverage inside a tile",
     "Least",
 )
 _BLANK = ""
 
 
 def landed(read: DatasetStats) -> widgets.Widget:
-    """Tabulate what each instrument lands on a feature and how far it reaches."""
+    """Tabulate what each instrument lands on a tile and how far it reaches."""
     rows: list[Row] = []
     for iid in read.iids:
         asked = filtering.FILTER.admits.get(iid)
@@ -53,19 +53,19 @@ def landed(read: DatasetStats) -> widgets.Widget:
         )
     )
     return tables.written(
-        "What each instrument lands on a feature and how far it reaches", _LANDED, rows
+        "What each instrument lands on a tile and how far it reaches", _LANDED, rows
     )
 
 
 def _share(measured: Spread) -> tuple[str, str]:
-    """Write how much of a feature something reaches.
+    """Write how much of a tile something reaches.
 
     Args:
-        measured: The share read off every feature that earned a window.
+        measured: The share read off every tile that earned a window.
 
     Returns:
         mean: The mean share with its spread.
-        least: The least any feature gave it.
+        least: The least any tile gave it.
     """
     return (
         wording.spread(measured, lambda share: f"{share:.1%}"),

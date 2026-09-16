@@ -1,4 +1,4 @@
-"""Every instrument's observations of one feature, merged onto one time axis."""
+"""Every instrument's observations of one tile, merged onto one time axis."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ DAY_SECONDS = 86400.0
 
 @dataclass(frozen=True, slots=True)
 class Track:
-    """One feature's observations, from every instrument set, in time order.
+    """One tile's observations, from every instrument set, in time order.
 
     Attributes:
         observations: The observations the search may pick from, oldest first.
@@ -28,10 +28,10 @@ class Track:
         ls: How far round its year Mars had turned as each was taken, in degrees,
             which is what a window's width is held to.
         owners: The instrument set each belongs to, as its index into labels.
-        cells: The feature's cells each fills, in the same order, each named once.
+        cells: The tile's cells each fills, in the same order, each named once.
         labels: The name of each set, in the order owners index them.
         iids: The instrument each set belongs to, in the same order.
-        grid: The grid the feature is searched over.
+        grid: The grid the tile is searched over.
         refused: The observations left off the axis, each with the set it belongs
             to and the cells it fills, oldest first.
     """
@@ -50,15 +50,15 @@ class Track:
 def build(
     coverage: Sequence[SetCoverage], grid: Grid, criteria: Filter
 ) -> Track | None:
-    """Merge a feature's instrument sets onto one timeline.
+    """Merge a tile's instrument sets onto one timeline.
 
     Args:
-        coverage: The feature's instrument sets, in any order.
-        grid: The grid the feature is searched over.
-        criteria: The filter read against the feature, read once.
+        coverage: The tile's instrument sets, in any order.
+        grid: The grid the tile is searched over.
+        criteria: The filter read against the tile, read once.
 
     Returns:
-        track: The timeline, or None when the feature holds nothing measurable.
+        track: The timeline, or None when the tile holds nothing measurable.
     """
     held, refused = admissible.admit_observation(coverage, grid, criteria)
     if not held:
@@ -82,14 +82,14 @@ def build(
 def over(
     coverage: Sequence[SetCoverage], criteria: Filter
 ) -> tuple[Filter, Track | None]:
-    """Read one feature's filter and timeline off the sets it holds.
+    """Read one tile's filter and timeline off the sets it holds.
 
     Args:
-        coverage: The feature's instrument sets, in any order.
+        coverage: The tile's instrument sets, in any order.
         criteria: Which instruments a window has to hold, and how much ground each.
 
     Returns:
-        criteria: The filter as it was read against the feature.
+        criteria: The filter as it was read against the tile.
         track: The timeline it is searched on, None where it holds nothing measurable.
     """
     summary = coverage[0].summary

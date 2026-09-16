@@ -1,4 +1,4 @@
-"""Which observations are a look at the feature rather than a clip of its edge."""
+"""Which observations are a look at the tile rather than a clip of its edge."""
 
 from __future__ import annotations
 
@@ -16,15 +16,15 @@ Held = list[tuple[Event, int, list[int]]]
 def admit_observation(
     coverage: Sequence[SetCoverage], grid: Grid, criteria: Filter
 ) -> tuple[Held, Held]:
-    """Keep every observation big enough for the feature, and turn the rest away.
+    """Keep every observation big enough for the tile, and turn the rest away.
 
     Args:
-        coverage: The feature's instrument sets, in any order.
-        grid: The grid the feature is searched over.
-        criteria: The filter read against the feature, holding the pixel floors.
+        coverage: The tile's instrument sets, in any order.
+        grid: The grid the tile is searched over.
+        criteria: The filter read against the tile, holding the pixel floors.
 
     Returns:
-        held: What the feature keeps, with the set each belongs to and the cells it
+        held: What the tile keeps, with the set each belongs to and the cells it
             fills.
         refused: What it turned away, carrying the same.
     """

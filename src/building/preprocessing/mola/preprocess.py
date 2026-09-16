@@ -1,27 +1,27 @@
-"""Reading the tiles that landed and cutting them to the feature they are merged for."""
+"""Reading the sheets that landed and cutting them to the tile they are merged for."""
 
 from __future__ import annotations
 
 from building.configs import mola as configs
 from building.preprocessing.common.models.relative_position import RelativePosition
 from building.preprocessing.mola import projection
-from building.preprocessing.mola.merge_tiles import merge_tiles
+from building.preprocessing.mola.merge_sheets import merge_sheets
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
 from shared.maths import geodesy
-from shared.models.feature import Feature
+from shared.models.tile import Tile
 
 
 def read_observation(grid: str) -> MolaGrid:
-    """Read which tiles of one grid a feature could be merged from.
+    """Read which sheets of one grid a tile could be merged from.
 
     Args:
-        grid: The grid, as `configs.GRIDS` names it, whose tiles must already
+        grid: The grid, as `configs.GRIDS` names it, whose sheets must already
             be in the cache that `download.fetch` puts them in.
 
     Returns:
-        grid: The tiles of it that landed, no more than a label of which is read until a
-            box says which bins to take.
+        grid: The sheets of it that landed, no more than a label of which is read
+            until a box says which bins to take.
     """
     held = configs.GRIDS[grid]
     files = {}
@@ -44,22 +44,22 @@ def read_observation(grid: str) -> MolaGrid:
     return MolaGrid(grid, held.resolution, files, held.north is not None)
 
 
-def crop(grid: MolaGrid, frame: Feature) -> MolaSample | None:
-    """Return the bins of one grid its feature's box keeps, merged into one.
+def crop(grid: MolaGrid, frame: Tile) -> MolaSample | None:
+    """Return the bins of one grid its tile's box keeps, merged into one.
 
     Args:
-        grid: The tiles of the grid that landed.
-        frame: The local frame of the feature they are merged for.
+        grid: The sheets of the grid that landed.
+        frame: The local frame of the tile they are merged for.
 
     Returns:
-        sample: The height over that feature, or None where a cap reaches none of it.
+        sample: The height over that tile, or None where a cap reaches none of it.
 
     Raises:
-        ValueError: When the tiles that landed leave part of its box unwritten.
+        ValueError: When the sheets that landed leave part of its box unwritten.
     """
     if grid.polar:
         return projection.crop_cap(grid, frame)
-    observation = merge_tiles(grid, frame)
+    observation = merge_sheets(grid, frame)
     return MolaSample(
         identifier=observation.identifier,
         position=RelativePosition(

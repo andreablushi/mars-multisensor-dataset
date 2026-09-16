@@ -5,20 +5,20 @@ from __future__ import annotations
 import ipywidgets as widgets
 from matplotlib.lines import Line2D
 
-from analysis.stats.feature import read, series
+from analysis.stats.tile import read, series
 from analysis.visualization.common import panels
 from analysis.visualization.common.models.coverage import Coverage
 
 PANEL_HEIGHT = 2.5
 
-_GROUND = "Share of the feature covered by one observation"
+_GROUND = "Share of the tile covered by one observation"
 
 
 def plot(coverage: Coverage) -> widgets.Widget:
-    """Draw one stacked panel per instrument set, over the whole feature."""
+    """Draw one stacked panel per instrument set, over the whole tile."""
     if not coverage:
         return panels.unavailable()
-    looks = read.read_feature(coverage)
+    looks = read.read_tile(coverage)
     open_for = looks.open_for if looks else []
     timeless = looks.criteria.timeless if looks else frozenset()
     drawn = series.coverage_over_time(coverage)
@@ -53,7 +53,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
             color=panels.SURVEY_LINE,
             linestyle=panels.SURVEY_STYLE,
             linewidth=panels.SURVEY_WIDTH,
-            label="the window the feature earned",
+            label="the window the tile earned",
         )
         axes[0].legend(handles=[marker], fontsize=8, loc="upper right", frameon=False)
     if not any(one.observed for one in drawn):

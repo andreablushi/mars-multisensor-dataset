@@ -1,4 +1,4 @@
-"""One MOLA tile cut to the feature it was kept for."""
+"""One MOLA sheet cut to the tile it was kept for."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from building.preprocessing.common.models.sample import Sample
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class MolaSample(Sample):
-    """The height one tile holds over one feature.
+    """The height one sheet holds over one tile.
 
     Attributes:
         topography: The height of the ground above the areoid in metres, as

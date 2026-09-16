@@ -8,26 +8,28 @@ import numpy as np
 from shapely import wkt as reading
 from shapely.geometry.base import BaseGeometry
 
-from analysis import paths
+from analysis import configs, paths
 from analysis.metadata.loaders.observations import load_observations
 from analysis.models.instrument import InstrumentSet
 from analysis.visualization.common.models.coverage import Coverage
-from analysis.visualization.feature.models.outlines import Trace
-from shared.disk.slugify import slugify
+from analysis.visualization.tile.models.outlines import Trace
+from shared.maths import tessellate
 
 OUTLINE_CACHE = 4
 
 
 def read(coverage: Coverage) -> dict[str, BaseGeometry]:
-    """Read the published footprint of every observation of one feature."""
-    summary = coverage[0].summary
+    """Read the published footprint of every observation of one tile."""
+    settings = configs.load()
+    group = tessellate.tile_group_name(
+        tessellate.tile_named(coverage[0].summary.tile, settings.tile_km),
+        settings.tile_km,
+        settings.tile_group_deg,
+    )
     found: dict[str, BaseGeometry] = {}
     for instrument in coverage:
-        found.update(
-            _published(
-                summary.feature_class, summary.feature_name, instrument.summary.set_key
-            )
-        )
+        if instrument.observed:
+            found.update(_published(group, instrument.summary.set_key))
     return found
 
 
@@ -43,13 +45,10 @@ def traced(shape: BaseGeometry) -> list[Trace]:
 
 
 @lru_cache(maxsize=OUTLINE_CACHE)
-def _published(feature_class: str, name: str, set_key: str) -> dict[str, BaseGeometry]:
+def _published(group: str, set_key: str) -> dict[str, BaseGeometry]:
     """Read one instrument set's published footprints, held for its panels."""
-    path = (
-        paths.METADATA_ROOT
-        / slugify(feature_class)
-        / slugify(name)
-        / f"{InstrumentSet.from_key(set_key).slug}.jsonl"
+    path = paths.metadata_file(
+        paths.METADATA_ROOT, group, InstrumentSet.from_key(set_key)
     )
     return {
         observation.pdsid: reading.loads(observation.wkt)

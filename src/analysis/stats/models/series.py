@@ -1,4 +1,4 @@
-"""One instrument set's observations of a feature over time, ready to draw."""
+"""One instrument set's observations of a tile over time, ready to draw."""
 
 from __future__ import annotations
 

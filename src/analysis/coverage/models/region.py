@@ -1,4 +1,4 @@
-"""The feature a coverage measurement is made against, projected once."""
+"""The tile a coverage measurement is made against, projected once."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ from shapely.geometry.base import BaseGeometry
 
 
 @dataclass(frozen=True, slots=True)
-class FeatureRegion:
-    """One feature's bounding box, projected into equal-area metres.
+class TileRegion:
+    """One tile's bounding box, projected into equal-area metres.
 
     Attributes:
         centre_lon: The projection centre longitude in degrees.
@@ -18,6 +18,10 @@ class FeatureRegion:
         area_m2: The area of that box in square metres.
         tight: The box in lon/lat degrees, which a footprint with area is cut to.
         wide: The same box widened, which a track is cut to before it is buffered.
+        polar: The box in its pole's stereographic metres, which a polar footprint
+            is cut to, or None where the tile is not poleward enough.
+        polar_wide: The same box widened, or None for the same reason.
+        north: Whether the tile lies north of the equator.
     """
 
     centre_lon: float
@@ -26,3 +30,6 @@ class FeatureRegion:
     area_m2: float
     tight: BaseGeometry
     wide: BaseGeometry
+    polar: BaseGeometry | None
+    polar_wide: BaseGeometry | None
+    north: bool

@@ -1,4 +1,4 @@
-"""The feature itself: the ground it covers, and what the search made of it."""
+"""The tile itself: the ground it covers, and what the search made of it."""
 
 from __future__ import annotations
 
@@ -7,30 +7,31 @@ from html import escape
 import ipywidgets as widgets
 
 from analysis.selector import configs as filtering
-from analysis.stats.feature import read
-from analysis.visualization.common import panels, wording
+from analysis.stats.tile import read
+from analysis.visualization.common import mosaic, panels, wording
+from analysis.visualization.common.models.box import Box
 from analysis.visualization.common.models.coverage import Coverage
-from analysis.visualization.feature.models.placing import Box, Placed
-from analysis.visualization.feature.plots import mosaic, placing
+from analysis.visualization.tile.models.placing import Placed
+from analysis.visualization.tile.plots import placing
 
 MAP_FIGURE_SIZE = (7.0, 6.0)
 REPORT_WIDTH = "360px"
 
-FEATURE_EDGE = "#ffffff"
-FEATURE_WIDTH = 1.4
+TILE_EDGE = "#ffffff"
+TILE_WIDTH = 1.4
 
-WINDOW_FOUND = "There is a window that covers the geological feature"
+WINDOW_FOUND = "There is a window that covers the tile"
 WINDOW_MISSING = "No window available that respects the requirements"
 ASKED_HEADING = "What the filter asks"
 
 
 def plot(coverage: Coverage) -> widgets.Widget:
-    """Show the ground the feature covers, and what the filter asked of it."""
+    """Show the ground the tile covers, and what the filter asked of it."""
     if not coverage:
         return panels.unavailable()
     summary = coverage[0].summary
-    looks = read.read_feature(coverage)
-    grid = placing.placed(summary.feature_class, summary.feature_name)
+    looks = read.read_tile(coverage)
+    grid = placing.placed(summary.tile)
     if grid is None:
         return panels.unavailable(mosaic.BASEMAP_FAILED.format(reason=mosaic.NO_BOX))
     title = panels.title(coverage)
@@ -60,7 +61,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
     )
     report = widgets.HTML(
         f"<b>{escape(title)}</b><br>"
-        f"{summary.feature_area_km2:,.1f} km2 bounding box, "
+        f"{summary.tile_area_km2:,.1f} km2 bounding box, "
         f"{box.south:.3f} to {box.north:.3f} lat, "
         f"{box.west:.3f} to {box.east:.3f} lon<br>"
         f"{escape(verdict)}"
@@ -80,14 +81,11 @@ def plot(coverage: Coverage) -> widgets.Widget:
 
 
 def figure(grid: Placed, box: Box, image: bytes, title: str) -> widgets.Widget:
-    """Draw the feature's crop of the mosaic, with the ground it covers outlined."""
+    """Draw the tile's crop of the mosaic, with the ground it covers outlined."""
     drawn, axis = panels.board(MAP_FIGURE_SIZE)
     mosaic.draw(axis, box, image)
     lon, lat = grid.outline()
-    axis.plot(lon, lat, color=FEATURE_EDGE, linewidth=FEATURE_WIDTH, zorder=3)
+    axis.plot(lon, lat, color=TILE_EDGE, linewidth=TILE_WIDTH, zorder=3)
     axis.set_title(title, fontsize=12, loc="left")
-    axis.set_xlabel("Longitude")
-    axis.set_ylabel("Latitude")
-    axis.tick_params(labelsize=8)
     drawn.tight_layout()
     return panels.rendered(drawn)

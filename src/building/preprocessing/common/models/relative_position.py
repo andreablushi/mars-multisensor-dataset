@@ -1,4 +1,4 @@
-"""Where every sample of one observation sits, relative to its own feature."""
+"""Where every sample of one observation sits, relative to its own tile."""
 
 from __future__ import annotations
 
@@ -12,10 +12,10 @@ PolarGrid = tuple[float, bool, float]
 
 @dataclass(frozen=True, slots=True)
 class RelativePosition:
-    """Where each sample of one observation sits on the feature it was kept for.
+    """Where each sample of one observation sits on the tile it was kept for.
 
     Attributes:
-        north: How far north of the feature centre, in degrees or a projection's own
+        north: How far north of the tile centre, in degrees or a projection's own
             metres, one per line where the grid is separable and per sample where not.
         east: How far east of it, in the same unit, wrapped so the meridian is no
             jump, one per sample of a line where the grid is separable.

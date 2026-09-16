@@ -1,16 +1,15 @@
-"""What the looks a feature keeps left on it, instrument by instrument."""
+"""What the looks a tile keeps left on it, instrument by instrument."""
 
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 
-from analysis.selector.models.track import Track
-from analysis.stats.models.feature import FeatureLooks, FeatureStats, InstrumentReach
+from analysis.stats.models.tile import InstrumentReach, TileLooks, TileStats
 
 
-def measured_feature(looks: FeatureLooks) -> FeatureStats:
-    """Read what the instruments left on one feature, given the looks it keeps.
+def measured_tile(looks: TileLooks) -> TileStats:
+    """Read what the instruments left on one tile, given the looks it keeps.
 
     Args:
         looks: Its timeline, the window it earned, and where its looks sit on it.
@@ -23,12 +22,22 @@ def measured_feature(looks: FeatureLooks) -> FeatureStats:
     cells_by_iid: dict[str, set[int]] = {}
     observations_by_iid: dict[str, int] = {}
     iids_by_cell: dict[int, set[str]] = {}
+    pixels_by_iid: dict[str, float | None] = {}
     for index in taken:
         iid = track.iids[track.owners[index]]
         cells_by_iid.setdefault(iid, set()).update(track.cells[index])
         observations_by_iid[iid] = observations_by_iid.get(iid, 0) + 1
         for cell in track.cells[index].tolist():
             iids_by_cell.setdefault(cell, set()).add(iid)
+        observation = track.observations[index]
+        landed = pixels_by_iid.get(iid, 0.0)
+        if landed is None or observation.pixels is None or not observation.own_km2:
+            pixels_by_iid[iid] = None
+        else:
+            ground_km2 = len(track.cells[index]) * track.grid.cell_km2
+            pixels_by_iid[iid] = (
+                landed + observation.pixels * ground_km2 / observation.own_km2
+            )
     overlaps: dict[tuple[str, ...], float] = {}
     for cell in sorted(iids_by_cell):
         instrument_names = tuple(sorted(iids_by_cell[cell]))
@@ -42,7 +51,7 @@ def measured_feature(looks: FeatureLooks) -> FeatureStats:
         observation = track.observations[index]
         if iid not in pixel_km2 and observation.pixels and observation.own_km2:
             pixel_km2[iid] = observation.own_km2 / observation.pixels
-    return FeatureStats(
+    return TileStats(
         window=window,
         iids=list(dict.fromkeys(track.iids)),
         offered=dict(Counter(track.iids[owner] for owner in track.owners)),
@@ -50,7 +59,7 @@ def measured_feature(looks: FeatureLooks) -> FeatureStats:
         reached={
             iid: InstrumentReach(
                 km2=len(cells_reached) * track.grid.cell_km2,
-                pixels=_pixels_landed(track, taken, iid),
+                pixels=pixels_by_iid[iid],
                 observations_taken=observations_by_iid[iid],
             )
             for iid, cells_reached in cells_by_iid.items()
@@ -75,27 +84,3 @@ def ground_by_instrument_count(
     for instrument_names, km2 in overlaps.items():
         summed[len(instrument_names)] = summed.get(len(instrument_names), 0.0) + km2
     return dict(sorted(summed.items()))
-
-
-def _pixels_landed(track: Track, taken: Sequence[int], iid: str) -> float | None:
-    """Add up the pixels one instrument landed on the feature inside its window.
-
-    Args:
-        track: The feature's admissible observations on one time axis.
-        taken: Where the observations it keeps sit on that axis.
-        iid: The instrument to count.
-
-    Returns:
-        pixels: The pixels it landed there, or None when any of its observations carries
-            none.
-    """
-    total = 0.0
-    for index in taken:
-        if track.iids[track.owners[index]] != iid:
-            continue
-        observation = track.observations[index]
-        if observation.pixels is None or not observation.own_km2:
-            return None
-        ground_km2 = len(track.cells[index]) * track.grid.cell_km2
-        total += observation.pixels * ground_km2 / observation.own_km2
-    return total

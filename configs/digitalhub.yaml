@@ -15,7 +15,7 @@ image_extras:
 
 # Whether every stage queues on the shared pool rather than the reserved one,
 # which marks each profile below with -shared.
-shared: true
+shared: false
 
 # What the platform gives each stage, which asks for what that stage is held up
 # by. A profile settles the cores and the memory of the box: cpu exists on both
@@ -52,7 +52,6 @@ functions:
 # What each stage publishes, which is what dh_download.sh brings back down.
 publishes:
   coverage: coverage
-  catalog: catalog
   metadata: metadata
   selection: selection
   stats: stats

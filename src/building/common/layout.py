@@ -22,6 +22,7 @@ class Layout:
             the sample calls it.
         beside: What else of the sample is stored, keyed by the name it is written
             as and read off the sample by, each with its own axes.
+        stored: The type the measurement is written as, or None to keep its own.
     """
 
     instrument: str
@@ -29,3 +30,4 @@ class Layout:
     axes: tuple[str, ...]
     measurement: str
     beside: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    stored: str | None = None

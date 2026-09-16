@@ -7,8 +7,8 @@ from datetime import datetime
 
 from shapely.geometry.base import BaseGeometry
 
-from analysis.coverage.models.region import FeatureRegion
-from shared.models.feature import Feature
+from analysis.coverage.models.region import TileRegion
+from shared.models.tile import Tile
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,7 +22,7 @@ class ProjectedObservation:
         pt: The product type.
         start: When the observation started.
         stop: When the observation finished, or None when none was published.
-        shape: The projected footprint, clipped to the feature.
+        shape: The projected footprint, clipped to the tile.
         width_km: The swath width used, or None when the footprint had area.
         pixel_km2: The ground one of its pixels covers.
     """
@@ -40,18 +40,16 @@ class ProjectedObservation:
 
 @dataclass(frozen=True, slots=True)
 class ProjectedSet:
-    """One instrument set's ground on one feature, ready to be measured.
+    """One instrument set's ground on one tile, ready to be measured.
 
     Attributes:
-        feature: The feature the footprints were cut to.
+        tile: The tile the footprints were cut to.
         set_key: The instrument set identifier the records were asked for by.
-        region: That feature projected into equal-area metres.
+        region: That tile projected into equal-area metres.
         observations: The observations that landed on it, in chronological order.
-        discarded: How many stored records could not be measured.
     """
 
-    feature: Feature
+    tile: Tile
     set_key: str
-    region: FeatureRegion
+    region: TileRegion
     observations: list[ProjectedObservation]
-    discarded: int

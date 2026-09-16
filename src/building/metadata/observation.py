@@ -12,7 +12,7 @@ from building.common.pds import times
 from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.sample import Sample
 from shared.disk import parquet
-from shared.models.feature import Feature
+from shared.models.tile import Tile
 
 # What a label calls the two ends of the time a product was taken over.
 STARTED = "START_TIME"
@@ -21,13 +21,12 @@ STOPPED = "STOP_TIME"
 
 @dataclass(frozen=True, slots=True)
 class ObservationMetadata:
-    """One observation of one feature, and how to read the arrays beside it.
+    """One observation of one tile, and how to read the arrays beside it.
 
     Attributes:
-        feature_class: The feature the observation was kept for.
-        feature_name: The feature name as ODE spells it.
+        tile: The name of the tile the observation was kept for.
         instrument: The instrument that took it, as ODE names it.
-        identifier: What that instrument was asked for, its observation or tile.
+        identifier: What that instrument was asked for, its observation or sheet.
         path: Where its arrays were written, relative to the dataset's own root.
         axes: What each axis of the value array holds, in the array's own order.
         shape: The value array's shape, in that same order.
@@ -47,9 +46,10 @@ class ObservationMetadata:
             ground axes alone, for an instrument whose axes hold a wavelength,
             and None for every other and where the crop measures nothing.
         band_std: Each band's standard deviation, or None for the same reasons.
-        band_valid_count: How many measurements each of those bands pools, which
-            is none for a band the instrument never measured, or None for the
-            same reasons.
+        band_valid_count: How many measurements each of those bands pools, or None
+            for the same reasons.
+        band_wavelengths: The nominal centre in nm of each of those bands, or None
+            for the same reasons.
         t_start: When the observation started, or None where the archive
             publishes no time for it.
         t_end: When it ended, or None for the same reason.
@@ -58,8 +58,7 @@ class ObservationMetadata:
         altitude_max_m: How high it was, for the same instrument.
     """
 
-    feature_class: str
-    feature_name: str
+    tile: str
     instrument: str
     identifier: str
     path: str
@@ -75,33 +74,25 @@ class ObservationMetadata:
     band_mean: tuple[float, ...] | None = None
     band_std: tuple[float, ...] | None = None
     band_valid_count: tuple[int, ...] | None = None
+    band_wavelengths: tuple[float, ...] | None = None
     t_start: datetime | None = None
     t_end: datetime | None = None
     altitude_min_m: float | None = None
     altitude_max_m: float | None = None
 
     @property
-    def feature(self) -> tuple[str, str]:
-        """Return the feature this observation was kept for.
-
-        Returns:
-            feature: Its class and its name.
-        """
-        return (self.feature_class, self.feature_name)
-
-    @property
-    def identity(self) -> tuple[str, str, str, str]:
+    def identity(self) -> tuple[str, str, str]:
         """Return what tells this stored observation from every other.
 
         Returns:
-            identity: The feature it was kept for, and the product it was cut from.
+            identity: The tile it was kept for, and the product it was cut from.
         """
-        return (*self.feature, self.instrument, self.identifier)
+        return (self.tile, self.instrument, self.identifier)
 
 
 def observation_metadata(
     held: Sample,
-    frame: Feature,
+    frame: Tile,
     layout: Layout,
     path: str,
     t_start: datetime | None = None,
@@ -112,7 +103,7 @@ def observation_metadata(
     Args:
         held: The sample that was written, whose position the ground sample is
             measured off and whose label the times are read from.
-        frame: The local frame of the feature it was kept for.
+        frame: The local frame of the tile it was kept for.
         layout: What its instrument's arrays hold.
         path: Where its arrays were written, relative to the dataset's own root.
         t_start: When it started, for an archive whose label publishes no time.
@@ -152,23 +143,18 @@ def observation_metadata(
     # A band is the one axis a reader normalises against, so it survives the reduction.
     over = tuple(axis for axis, holds in enumerate(layout.axes) if holds == GROUND)
     banded = counted and WAVELENGTH in layout.axes
-    pools = 1 if held.valid_bands is None else held.valid_bands
-    band_mean, band_std, band_valid_count = (
+    band_mean, band_std, band_valid_count, band_wavelengths = (
         (
             tuple(np.mean(values, axis=over, where=measured).tolist()),
             tuple(np.std(values, axis=over, where=measured).tolist()),
-            tuple(
-                (
-                    np.broadcast_to(measured, values.shape).sum(axis=over) * pools
-                ).tolist()
-            ),
+            tuple(np.broadcast_to(measured, values.shape).sum(axis=over).tolist()),
+            tuple(held.wavelengths.tolist()),
         )
         if banded
-        else (None, None, None)
+        else (None, None, None, None)
     )
     return ObservationMetadata(
-        feature_class=frame.feature_class,
-        feature_name=frame.feature_name,
+        tile=frame.name,
         instrument=layout.instrument,
         identifier=held.identifier,
         path=path,
@@ -184,6 +170,7 @@ def observation_metadata(
         band_mean=band_mean,
         band_std=band_std,
         band_valid_count=band_valid_count,
+        band_wavelengths=band_wavelengths,
         t_start=_moment(held.label, STARTED) or t_start,
         t_end=_moment(held.label, STOPPED),
         altitude_min_m=low,

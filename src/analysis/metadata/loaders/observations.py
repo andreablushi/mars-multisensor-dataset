@@ -11,7 +11,7 @@ from shared.disk.files import read_jsonl
 
 
 def load_observations(path: Path) -> ObservationSet:
-    """Read the observations stored for one feature and instrument set.
+    """Read the observations stored for one group and instrument set.
 
     Args:
         path: The JSONL file holding the set's observations.
@@ -21,7 +21,7 @@ def load_observations(path: Path) -> ObservationSet:
     """
     stored = read_jsonl(path)
     first = next(stored)
-    box, set_key = provenance.feature_of(first), provenance.set_key_of(first)
+    set_key = provenance.set_key_of(first)
     observations: list[Observation] = []
     discarded = 0
     for item in chain([first], stored):
@@ -31,6 +31,13 @@ def load_observations(path: Path) -> ObservationSet:
             discarded += 1
             continue
         stop, scale = item.get("UTC_stop_time"), item.get("Map_scale")
+        north, south = (
+            None if not held or held.endswith("EMPTY") else held
+            for held in (
+                item.get("Footprint_NP_geometry"),
+                item.get("Footprint_SP_geometry"),
+            )
+        )
         observations.append(
             Observation(
                 pdsid=item["pdsid"],
@@ -41,9 +48,11 @@ def load_observations(path: Path) -> ObservationSet:
                 stop=provenance.as_utc(stop) if stop else None,
                 wkt=wkt,
                 map_scale_m=float(scale) if scale else None,
+                north_wkt=north,
+                south_wkt=south,
             )
         )
     observations.sort(key=lambda observation: (observation.start, observation.pdsid))
     return ObservationSet(
-        feature=box, set_key=set_key, observations=observations, discarded=discarded
+        set_key=set_key, observations=observations, discarded=discarded
     )

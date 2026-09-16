@@ -52,7 +52,7 @@ class ProductCache:
 
         Args:
             directory: The directory under the root the product was kept in,
-                which is the observation or tile it belongs to.
+                which is the observation or sheet it belongs to.
         """
         # Only its own directory, so what every observation shares is left alone.
         shutil.rmtree(self.root / directory, ignore_errors=True)

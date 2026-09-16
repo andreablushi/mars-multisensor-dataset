@@ -1,14 +1,14 @@
-"""What every observation offered to a feature landed on it, and the bar it faced."""
+"""What every observation offered to a tile landed on it, and the bar it faced."""
 
 from __future__ import annotations
 
 from analysis.coverage.models.coverage import Event
-from analysis.stats.models.feature import FeatureLooks
 from analysis.stats.models.landing import Landed
+from analysis.stats.models.tile import TileLooks
 
 
-def landed_per_set(looks: FeatureLooks) -> list[Landed]:
-    """Read what every observation offered to one feature landed on it.
+def landed_per_set(looks: TileLooks) -> list[Landed]:
+    """Read what every observation offered to one tile landed on it.
 
     Args:
         looks: Its timeline and the filter it was read under.
@@ -41,15 +41,15 @@ def landed_per_set(looks: FeatureLooks) -> list[Landed]:
 
 
 def _pixels(observation: Event, cells: int, cell_km2: float) -> float:
-    """Read how many pixels one observation landed inside the feature.
+    """Read how many pixels one observation landed inside the tile.
 
     Args:
         observation: The observation, carrying what it covered and what it landed.
-        cells: How many of the feature's own cells its footprint fills.
+        cells: How many of the tile's own cells its footprint fills.
         cell_km2: How much ground one of those cells covers.
 
     Returns:
-        pixels: Its pixels, scaled to the part of its footprint the feature holds.
+        pixels: Its pixels, scaled to the part of its footprint the tile holds.
     """
     if not observation.own_km2:
         return 0.0

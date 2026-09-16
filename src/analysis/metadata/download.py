@@ -1,4 +1,4 @@
-"""Downloading one instrument set's metadata of one feature, start to finish."""
+"""Downloading one instrument set's metadata of one group, start to finish."""
 
 from __future__ import annotations
 
@@ -12,15 +12,15 @@ def download(job: Job, client: ODEClient, loc: str) -> Outcome:
     """Download one instrument set's metadata and write it out.
 
     Args:
-        job: The feature and instrument set to download.
+        job: The group and instrument set to download.
         client: The shared ODE client.
-        loc: Which products a feature box returns.
+        loc: Which products a group box returns.
 
     Returns:
         outcome: The outcome, carrying the error when the job failed.
     """
     try:
-        records = fetch_products(client, job.feature, job.instrument_set, loc)
+        records = fetch_products(client, job.group, job.instrument_set, loc)
         write_jsonl(job.output_path, records)
         return Outcome(job=job)
     except Exception as exc:

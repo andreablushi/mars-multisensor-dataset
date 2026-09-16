@@ -1,4 +1,4 @@
-"""The grid a coverage measurement counts cells on, over one feature's box."""
+"""The grid a coverage measurement counts cells on, over one tile's box."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from shapely import box
 
 @dataclass(frozen=True)
 class Grid:
-    """A regular grid of cells covering one feature's projected bounding box.
+    """A regular grid of cells covering one tile's projected bounding box.
 
     Attributes:
         west: The westernmost easting the grid spans, in metres.

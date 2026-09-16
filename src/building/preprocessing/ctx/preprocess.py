@@ -1,4 +1,4 @@
-"""Reading one CTX scan off disk and cutting it to the feature it was kept for."""
+"""Reading one CTX scan off disk and cutting it to the tile it was kept for."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from building.preprocessing.common.crop import marked, overlap, polar_overlap, t
 from building.preprocessing.ctx import projection
 from building.preprocessing.ctx.models.observation import CtxObservation
 from building.preprocessing.ctx.models.sample import BLANK, CtxSample
-from shared.models.feature import Feature
+from shared.models.tile import Tile
 
 # Nothing here reads ASU's no-data tag: what a scan left blank is `BLANK`
 logging.getLogger("tifffile").setLevel(logging.ERROR)
@@ -79,8 +79,8 @@ def windowed(image: Path, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     """Return the pixels one cut keeps, reading no more of the scan than holds them.
 
     Args:
-        image: The TIFF the scan was published as, tiled, so a window of it
-            costs the tiles it covers and not the whole file.
+        image: The TIFF the scan was published as, in chunks, so a window of it
+            costs the chunks it covers and not the whole file.
         bounds: The lines to keep and then the samples, as the cut left them.
 
     Returns:
@@ -99,15 +99,15 @@ def windowed(image: Path, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     return taken(window, (lines - top, samples - left))
 
 
-def crop(observation: CtxObservation, frame: Feature) -> CtxSample | None:
-    """Return one scan holding only the pixels its feature's box keeps.
+def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
+    """Return one scan holding only the pixels its tile's box keeps.
 
     Args:
         observation: The scan as it was read off disk.
-        frame: The local frame of the feature it was kept for.
+        frame: The local frame of the tile it was kept for.
 
     Returns:
-        sample: The scan cut to that feature, or None where it reaches none of it.
+        sample: The scan cut to that tile, or None where it reaches none of it.
     """
     held = (
         polar_overlap(observation.down, observation.across, observation.polar, frame)

@@ -1,4 +1,4 @@
-"""The tiles one feature stands on, laid onto the single cylindrical grid they share."""
+"""The sheets one tile stands on, laid onto the single cylindrical grid they share."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import numpy as np
 
 @dataclass(frozen=True, slots=True)
 class MolaObservation:
-    """The height over one box, on the tiles' own grid of latitude and longitude.
+    """The height over one box, on the sheets' own grid of latitude and longitude.
 
     Attributes:
         label: What the products it was read from say about it, merged.

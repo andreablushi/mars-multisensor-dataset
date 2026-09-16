@@ -1,4 +1,4 @@
-"""Bringing down the gridded record one feature's ground is mosaicked from."""
+"""Bringing down the gridded record one tile's ground is mosaicked from."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from building.configs import mola as configs
 from building.download import archive
 
 if TYPE_CHECKING:
-    from shared.models.feature import Feature
+    from shared.models.tile import Tile
 
 # What ODE publishes MOLA under.
 ODE = {"ihid": "MGS", "iid": "MOLA"}
@@ -23,7 +23,7 @@ PRODUCT_TYPE = "MEGDR"
 # ODE names a gridded product by its image file, suffix included.
 ODE_SUFFIX = ".img"
 
-# Each tile's extent beside its files, so no feature is queried for on its own.
+# Each sheet's extent beside its files, so no tile is queried for on its own.
 FIELDS = "opmf"
 
 # How many to ask at once. The record is under a hundred, so one page holds it all.
@@ -63,35 +63,35 @@ def record(client: httpx.Client) -> dict[str, tuple[str, Box]]:
     return _RECORD
 
 
-def grids(feature: Feature, client: httpx.Client) -> list[str]:
-    """Read which grid one feature's ground is mosaicked from.
+def grids(tile: Tile, client: httpx.Client) -> list[str]:
+    """Read which grid one tile's ground is mosaicked from.
 
     Args:
-        feature: The frame of the feature the grid has to cover.
+        tile: The frame of the tile the grid has to cover.
         client: The client whose connections a query would be asked over.
 
     Returns:
         grids: The one grid that covers it, since a merge is never joined across two.
     """
-    if feature.max_lat > configs.TILED_REACH:
-        held = feature.min_lat >= configs.CAP_FLOOR
+    if tile.max_lat > configs.SHEETED_REACH:
+        held = tile.min_lat >= configs.CAP_FLOOR
         return [configs.NORTH_CAP if held else configs.COARSE]
-    if feature.min_lat < -configs.TILED_REACH:
-        held = feature.max_lat <= -configs.CAP_FLOOR
+    if tile.min_lat < -configs.SHEETED_REACH:
+        held = tile.max_lat <= -configs.CAP_FLOOR
         return [configs.SOUTH_CAP if held else configs.COARSE]
     return [configs.CYLINDRICAL]
 
 
-def tiles(grid: str, client: httpx.Client) -> list[str]:
-    """Read which tiles one grid is published as.
+def sheets(grid: str, client: httpx.Client) -> list[str]:
+    """Read which sheets one grid is published as.
 
     Args:
         grid: The grid, as `configs.GRIDS` names it.
         client: The client whose connections the query is asked over.
 
     Returns:
-        tiles: The tile ids the height is published for, sorted and without repeats, and
-            none for a grid published whole.
+        sheets: The sheet ids the height is published for, sorted and without
+            repeats, and none for a grid published whole.
     """
     held = configs.GRIDS[grid]
     if held.product:
@@ -100,12 +100,12 @@ def tiles(grid: str, client: httpx.Client) -> list[str]:
     for name in record(client):
         if not name.endswith(ODE_SUFFIX):
             continue
-        # Keep only wanted tiles, which drops the polar stereographic ones.
+        # Keep only wanted sheets, which drops the polar stereographic ones.
         parts = configs.NAMING.parts(Path(name).stem)
         if not parts or not parts["marker"]:
             continue
         if configs.RESOLUTIONS[parts["step"]] == held.resolution:
-            found.add(parts["tile"])
+            found.add(parts["sheet"])
     return sorted(found)
 
 
@@ -125,15 +125,15 @@ def fetch(grid: str, client: httpx.Client) -> None:
         [(grid, held.product)]
         if held.product
         else [
-            (tile, configs.NAMING.product(tile, configs.TOPOGRAPHY))
-            for tile in tiles(grid, client)
+            (sheet, configs.NAMING.product(sheet, configs.TOPOGRAPHY))
+            for sheet in sheets(grid, client)
         ]
     )
     for directory, product in wanted:
         files = configs.CACHE.files(directory, product, configs.TOPOGRAPHY)
         if all(path.exists() for path in files.values()):
             continue
-        # One product carries many features, so only the first to want it fetches.
+        # One product carries many tiles, so only the first to want it fetches.
         with _GUARD:
             fetching = _FETCHING.setdefault(product, threading.Lock())
         with fetching:

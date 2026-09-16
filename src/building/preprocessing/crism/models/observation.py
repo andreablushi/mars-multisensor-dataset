@@ -18,13 +18,12 @@ class CrismObservation:
     Attributes:
         label: What every product it was published as says about it, merged.
         identifier: The observation id.
-        cube: Lines by columns by bands, one band per wavelength the survey is
-            centred on, holding only the columns both detectors kept.
+        cube: Lines by columns by bands, one band per wavelength of the survey's
+            grid it measured, holding only the columns both detectors kept.
         geometry: The backplanes on the same grid, as lines by columns by 14.
         valid: Lines by columns, True where the pixel carries a measurement
             rather than a cell the cleaning filled.
-        valid_bands: One flag per band, True where this observation measured it
-            rather than being filled for having no reading of it at all.
+        wavelengths: The nominal centre in nm of every band the cube holds.
     """
 
     identifier: str
@@ -32,7 +31,7 @@ class CrismObservation:
     cube: np.ndarray
     geometry: np.ndarray
     valid: np.ndarray
-    valid_bands: np.ndarray
+    wavelengths: np.ndarray
 
     # A pushbroom swath bends, so every pixel carries its own backplanes' pair.
     separable = False

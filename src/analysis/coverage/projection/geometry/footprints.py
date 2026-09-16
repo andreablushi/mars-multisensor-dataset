@@ -1,4 +1,4 @@
-"""The feature box a footprint is cut to, and the ground each footprint covers."""
+"""The tile box a footprint is cut to, and the ground each footprint covers."""
 
 from __future__ import annotations
 
@@ -21,9 +21,9 @@ from shapely import (
 )
 from shapely.geometry.base import BaseGeometry
 
-from analysis.coverage.models.region import FeatureRegion
-from shared.maths import geodesy
-from shared.models.feature import Feature
+from analysis.coverage.models.region import TileRegion
+from shared.maths import geodesy, physics
+from shared.models.tile import Tile
 
 _EMPTY = Polygon()
 _LINESTRING = 1
@@ -39,18 +39,24 @@ MAX_SEGMENT_DEG = 0.25
 # Segments per quarter circle when a track is buffered to its swath.
 BUFFER_QUAD_SEGMENTS = 16
 
+POLAR_REACH_DEG = 60.0
 
-def feature_region(feature: Feature) -> FeatureRegion:
-    """Project one feature's box, with the lon/lat regions footprints are cut to.
+MAX_SEGMENT_M = 1000.0
+
+
+def tile_region(tile: Tile) -> TileRegion:
+    """Project one tile's box, with the lon/lat regions footprints are cut to.
 
     Args:
-        feature: The feature whose box the coverage is measured against.
+        tile: The tile whose box the coverage is measured against.
 
     Returns:
-        region: The projected box and the two clipping regions built from its bounds.
+        region: The projected box and the clipping regions built from its bounds, in
+            lon/lat and, for a tile poleward of every lon/lat footprint's reach, in
+            its pole's stereographic metres.
     """
-    min_lat, max_lat = feature.min_lat, feature.max_lat
-    west_lon, east_lon = feature.west_lon, feature.east_lon
+    min_lat, max_lat = tile.min_lat, tile.max_lat
+    west_lon, east_lon = tile.west_lon, tile.east_lon
     centre_lon, centre_lat = geodesy.bbox_centre(min_lat, max_lat, west_lon, east_lon)
     lons, lats = geodesy.bbox_ring(
         min_lat, max_lat, west_lon, east_lon, MAX_SEGMENT_DEG
@@ -61,7 +67,19 @@ def feature_region(feature: Feature) -> FeatureRegion:
     if not is_valid(shape):
         shape = make_valid(shape, method="structure", keep_collapsed=False)
     prepare(shape)
-    return FeatureRegion(
+    north = min_lat >= 0.0
+    polar = None
+    if min(abs(min_lat), abs(max_lat)) >= POLAR_REACH_DEG:
+        polar = Polygon(
+            np.column_stack(
+                geodesy.stereographic_forward(
+                    lons, lats, 0.0, north, physics.POLAR_RADIUS_M
+                )
+            )
+        )
+        if not is_valid(polar):
+            polar = make_valid(polar, method="structure", keep_collapsed=False)
+    return TileRegion(
         centre_lon=centre_lon,
         centre_lat=centre_lat,
         shape=shape,
@@ -74,6 +92,11 @@ def feature_region(feature: Feature) -> FeatureRegion:
             east_lon,
             margin_deg=LINE_CLIP_MARGIN_DEG,
         ),
+        polar=polar,
+        polar_wide=None
+        if polar is None
+        else buffer(polar, geodesy.northward_m(LINE_CLIP_MARGIN_DEG)),
+        north=north,
     )
 
 
@@ -114,14 +137,20 @@ def clip_boxes(
 
 
 def projected_footprints(
-    region: FeatureRegion, geoms: np.ndarray, swath_widths_m: np.ndarray
+    region: TileRegion,
+    geoms: np.ndarray,
+    swath_widths_m: np.ndarray,
+    stereographic: bool = False,
 ) -> np.ndarray:
-    """Return the ground a whole set of observations covers on the feature.
+    """Return the ground a whole set of observations covers on the tile.
 
     Args:
-        region: The projected feature the footprints are cut to.
-        geoms: The parsed footprint geometries in lon/lat degrees.
+        region: The projected tile the footprints are cut to.
+        geoms: The parsed footprint geometries, in lon/lat degrees or in the
+            stereographic metres of the tile's pole.
         swath_widths_m: The cross-track width for each track, ignored for areas.
+        stereographic: Whether the geometries are in the stereographic metres ODE
+            publishes on the polar radius, which only a polar region can cut.
 
     Returns:
         footprints: One projected, clipped footprint per input, empty where it falls
@@ -134,17 +163,34 @@ def projected_footprints(
     areal[owners[kinds == _POLYGON]] = True
     keep = np.where(areal[owners], kinds == _POLYGON, kinds == _LINESTRING)
     parts, owners = parts[keep], owners[keep]
-    regions = np.asarray([region.wide, region.tight], dtype=object)
+    regions = np.asarray(
+        [region.polar_wide, region.polar]
+        if stereographic
+        else [region.wide, region.tight],
+        dtype=object,
+    )
     clipped = intersection(parts, regions[areal[owners].astype(int)])
     alive = ~is_empty(clipped)
     parts, owners = clipped[alive], owners[alive]
     radii = np.where(areal[owners], 0.0, np.asarray(swath_widths_m)[owners] / 2.0)
 
     projected = transform(
-        segmentize(parts, MAX_SEGMENT_DEG),
+        segmentize(parts, MAX_SEGMENT_M if stereographic else MAX_SEGMENT_DEG),
         lambda coords: np.column_stack(
             geodesy.laea_forward(
-                coords[:, 0], coords[:, 1], region.centre_lon, region.centre_lat
+                *(
+                    geodesy.stereographic_inverse(
+                        coords[:, 0],
+                        coords[:, 1],
+                        0.0,
+                        region.north,
+                        physics.POLAR_RADIUS_M,
+                    )
+                    if stereographic
+                    else (coords[:, 0], coords[:, 1])
+                ),
+                region.centre_lon,
+                region.centre_lat,
             )
         ),
     )
@@ -170,7 +216,7 @@ def projected_footprints(
     shapes[counts == 1] = projected[starts[counts == 1]]
     for index in np.nonzero(counts > 1)[0]:
         shapes[index] = union_all(projected[starts[index] : ends[index]])
-    # Whatever reached past the feature is cut back to it
+    # Whatever reached past the tile is cut back to it
     outside = ~covers(region.shape, shapes)
     if outside.any():
         shapes[outside] = intersection(shapes[outside], region.shape)

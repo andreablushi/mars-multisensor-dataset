@@ -17,7 +17,7 @@ def trimmed(
     """Drop the observations a window does not need, oldest first.
 
     Args:
-        track: The feature's observations on one time axis.
+        track: The tile's observations on one time axis.
         window: The window they are counted inside.
         constraints: The cells each instrument insisted on has to reach.
         gain: The cells an observation has to bring that its own set does not reach.
@@ -33,36 +33,16 @@ def trimmed(
     reached = coverage_constraints(constraints, counter.cells_reached)
     # Try to drop each observation, oldest first, and keep the rest
     for index in list(kept):
-        spared = _without(track, counter, constraints, index, gain)
+        owner, cells = track.owners[index], track.cells[index]
+        filled = counter.observations_per_cell[owner]
+        if int(np.count_nonzero(filled[cells] == 1)) >= gain:
+            continue
+        counter.release(owner, cells)
+        spared = coverage_constraints(constraints, counter.cells_reached)
         # If the window can do without the observation
         if spared is not None:
             reached = spared
             kept.remove(index)
+        else:
+            counter.hold(owner, cells)
     return kept, reached
-
-
-def _without(
-    track: Track, counter: Counter, constraints: Constraints, index: int, gain: int
-) -> list[int] | None:
-    """Take one observation out of a window, unless the window needs it.
-
-    Args:
-        track: The feature's observations on one time axis.
-        counter: What the window holds, which the observation is taken out of.
-        constraints: The cells each instrument insisted on has to reach.
-        index: The observation to try the window without.
-        gain: The cells it has to bring that its own set does not already reach.
-
-    Returns:
-        counts: The cells each constraint reaches without it, or None when it is needed.
-    """
-    owner, cells = track.owners[index], track.cells[index]
-    filled = counter.observations_per_cell[owner]
-    if int(np.count_nonzero(filled[cells] == 1)) >= gain:
-        return None
-    counter.release(owner, cells)
-    counts = coverage_constraints(constraints, counter.cells_reached)
-    if counts is None:
-        counter.hold(owner, cells)
-        return None
-    return counts

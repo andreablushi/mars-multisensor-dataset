@@ -1,61 +1,33 @@
-"""Where a feature's ground falls back onto lon and lat."""
+"""Where a tile's ground falls back onto lon and lat."""
 
 from __future__ import annotations
-
-from dataclasses import dataclass
 
 import numpy as np
 
 from analysis.coverage.projection.geometry import footprints
+from analysis.visualization.common.models.box import Box
 from shared.maths import geodesy
-from shared.models.feature import Feature
+from shared.models.tile import Tile
 
 MIN_SPAN_DEG = 0.5
 RING_SAMPLES = 17
 
 
-@dataclass(frozen=True, slots=True)
-class Box:
-    """One lon/lat box, as a mosaic crop is asked for and drawn over.
-
-    Attributes:
-        west: Its western edge in degrees.
-        south: Its southern edge in degrees.
-        east: Its eastern edge in degrees.
-        north: Its northern edge in degrees.
-    """
-
-    west: float
-    south: float
-    east: float
-    north: float
-
-    @property
-    def extent(self) -> tuple[float, float, float, float]:
-        """Return the box as an image extent."""
-        return self.west, self.east, self.south, self.north
-
-    @property
-    def centre_lat(self) -> float:
-        """Return the latitude the box is centred on."""
-        return (self.south + self.north) / 2.0
-
-
 class Placed:
-    """Where one feature's ground falls on the mosaic, in lon and lat."""
+    """Where one tile's ground falls on the mosaic, in lon and lat."""
 
-    def __init__(self, feature: Feature) -> None:
-        """Project one feature and lay its bounds back onto lon and lat.
+    def __init__(self, tile: Tile) -> None:
+        """Project one tile and lay its bounds back onto lon and lat.
 
         Args:
-            feature: The catalogued feature to place.
+            tile: The tile to place.
         """
-        region = footprints.feature_region(feature)
+        region = footprints.tile_region(tile)
         self._centre = (region.centre_lon, region.centre_lat)
         self._bounds = region.shape.bounds
 
     def outline(self) -> tuple[np.ndarray, np.ndarray]:
-        """Trace the whole feature as a closed lon/lat ring.
+        """Trace the whole tile as a closed lon/lat ring.
 
         Returns:
             longitudes: The longitudes of the ring, closing where it opened.
@@ -73,18 +45,18 @@ class Placed:
         return self.around(lon), lat
 
     def around(self, lon: np.ndarray) -> np.ndarray:
-        """Bring longitudes onto the same turn as the feature's own.
+        """Bring longitudes onto the same turn as the tile's own.
 
         Args:
             lon: The longitudes to bring around, in degrees.
 
         Returns:
-            longitudes: The same longitudes, on the feature's own turn.
+            longitudes: The same longitudes, on the tile's own turn.
         """
         return self._centre[0] + geodesy.normalise_longitude(lon - self._centre[0])
 
     def box(self) -> Box:
-        """Return the lon/lat box the whole feature falls in, held open to a minimum.
+        """Return the lon/lat box the whole tile falls in, held open to a minimum.
 
         Returns:
             box: The box a mosaic crop is asked for over.

@@ -10,10 +10,10 @@ from analysis.selector.models.track import Track
 def fresh_looks(
     track: Track, instruments: Container[str], gain: int
 ) -> tuple[int, ...]:
-    """Keep every look a timeless instrument left on the feature, whenever it came.
+    """Keep every look a timeless instrument left on the tile, whenever it came.
 
     Args:
-        track: The feature's admissible observations on one time axis.
+        track: The tile's admissible observations on one time axis.
         instruments: The instruments the ground answers for whenever they came.
         gain: The cells a look has to bring that its own set has not reached.
 

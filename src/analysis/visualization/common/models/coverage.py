@@ -1,4 +1,4 @@
-"""The feature every panel is drawn for."""
+"""The tile every panel is drawn for."""
 
 from __future__ import annotations
 

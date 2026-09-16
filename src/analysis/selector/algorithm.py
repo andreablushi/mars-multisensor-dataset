@@ -10,7 +10,7 @@ from analysis.coverage import ground
 from analysis.selector.filters import redundancy, timeless
 from analysis.selector.filters.coverage_constraints import coverage_constraints
 from analysis.selector.models.counter import Counter
-from analysis.selector.models.filter import Constraints, Filter
+from analysis.selector.models.filter import Filter
 from analysis.selector.models.survey import Survey
 from analysis.selector.models.track import Track
 from analysis.selector.models.window import Window
@@ -18,7 +18,7 @@ from analysis.selector.models.window import Window
 # How far Mars may turn for one more point of ground, in degrees; ten days at mean
 LS_PER_PERCENT = 5.25
 
-# The cells a look must bring that its own set has not, as a share of the feature
+# The cells a look must bring that its own set has not, as a share of the tile
 GAIN_SHARE = 0.001
 
 _PRICE_PER_DEGREE = 0.01 / LS_PER_PERCENT
@@ -29,57 +29,35 @@ def search(track: Track, criteria: Filter) -> Survey | None:
 
     Args:
         track: The admissible observations on one time axis.
-        criteria: The filter read against the feature, holding what it is asked.
+        criteria: The filter read against the tile, holding what it is asked.
 
     Returns:
         survey: The chosen window, or None when no window is worth keeping.
     """
-    # What the filter asks of this feature, worked out once when it was read
+    # What the filter asks of this tile, worked out once when it was read
     windowed, standing = criteria.windowed, criteria.standing
     # What time cannot change is asked of the whole record rather than a window
     if standing:
         whole = Counter.over(track, 0, len(track.observations) - 1)
         if coverage_constraints(standing, whole.cells_reached) is None:
             return None
+    looked: list[list[int]] = []
+    seen: list[dict[int, int]] = [{} for _ in track.iids]
+    for index, owner in enumerate(track.owners):
+        last = seen[owner]
+        before: list[int] = []
+        for cell in track.cells[index].tolist():
+            before.append(last.get(cell, -1))
+            last[cell] = index
+        before.sort()
+        looked.append(before)
     # Take the best window
-    picked = _best(track, windowed, criteria)
-    if picked is None:
-        return None
-    # What a look has to bring the feature, which its own size is read for
-    gain = max(1, round(GAIN_SHARE * len(track.grid.inside)))
-    # Clean up the record to only what is worth keeping, and report reached
-    kept, reached = redundancy.trimmed(track, picked, windowed, gain)
-    return Survey(
-        area_km2=track.grid.area_km2,
-        start=track.observations[kept[0]].t_start,
-        end=track.observations[kept[-1]].t_start,
-        days=track.times[kept[-1]] - track.times[kept[0]],
-        geo_mean=_scored(track, reached),
-        kept=tuple(kept),
-        standing=timeless.fresh_looks(track, criteria.timeless, gain),
-    )
-
-
-def _best(track: Track, windowed: Constraints, criteria: Filter) -> Window | None:
-    """Take the window worth the most, at the price Mars' own turning costs.
-
-    Args:
-        track: The admissible observations on one time axis.
-        windowed: The cells each instrument insisted on has to reach.
-        criteria: What the window is asked for, which caps how far it turns.
-
-    Returns:
-        window: The window worth the most, or None when no window is worth keeping.
-    """
     span_ls = criteria.span_ls
-    looked = _looked_before(track)
-    reached = [0] * len(track.iids)
-    best: Window | None = None
+    picked: Window | None = None
     worth = float("-inf")
     # Loop over the observation as bound of the window
     for left in range(len(track.observations)):
-        for owner in range(len(reached)):
-            reached[owner] = 0
+        reached = [0] * len(track.iids)
         for right in range(left, len(track.observations)):
             arc = track.ls[right] - track.ls[left]
             if arc > span_ls:
@@ -94,31 +72,22 @@ def _best(track: Track, windowed: Constraints, criteria: Filter) -> Window | Non
             paid = _scored(track, counts, arc)
             if paid > worth:
                 days = track.times[right] - track.times[left]
-                best, worth = Window(left, right, days), paid
-    return best
-
-
-def _looked_before(track: Track) -> list[list[int]]:
-    """Say where each observation's own set last reached each cell it fills.
-
-    Args:
-        track: The admissible observations on one time axis.
-
-    Returns:
-        looked: For each observation, where its own set last reached each of its cells,
-            or -1 for a cell it had never reached.
-    """
-    seen: list[dict[int, int]] = [{} for _ in track.iids]
-    looked: list[list[int]] = []
-    for index, owner in enumerate(track.owners):
-        last = seen[owner]
-        before: list[int] = []
-        for cell in track.cells[index].tolist():
-            before.append(last.get(cell, -1))
-            last[cell] = index
-        before.sort()
-        looked.append(before)
-    return looked
+                picked, worth = Window(left, right, days), paid
+    if picked is None:
+        return None
+    # What a look has to bring the tile, which its own size is read for
+    gain = max(1, round(GAIN_SHARE * len(track.grid.inside)))
+    # Clean up the record to only what is worth keeping, and report reached
+    kept, reached = redundancy.trimmed(track, picked, windowed, gain)
+    return Survey(
+        area_km2=track.grid.area_km2,
+        start=track.observations[kept[0]].t_start,
+        end=track.observations[kept[-1]].t_start,
+        days=track.times[kept[-1]] - track.times[kept[0]],
+        geo_mean=_scored(track, reached),
+        kept=tuple(kept),
+        standing=timeless.fresh_looks(track, criteria.timeless, gain),
+    )
 
 
 def _scored(track: Track, counts: Sequence[int], arc: float = 0.0) -> float:
@@ -130,7 +99,7 @@ def _scored(track: Track, counts: Sequence[int], arc: float = 0.0) -> float:
         arc: How far Mars turns inside the window, charged against its ground.
 
     Returns:
-        worth: The constraints rooted together as a share of the feature, less their
+        worth: The constraints rooted together as a share of the tile, less their
             arc.
     """
     rooted = math.prod(counts) ** (1.0 / len(counts))

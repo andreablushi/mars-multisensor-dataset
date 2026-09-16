@@ -1,4 +1,4 @@
-"""One instrument set's observations of a feature, as a line over time."""
+"""One instrument set's observations of a tile, as a line over time."""
 
 from __future__ import annotations
 
@@ -9,15 +9,15 @@ from analysis.stats.models.series import Series
 
 
 def coverage_over_time(coverage: Sequence[SetCoverage]) -> list[Series]:
-    """Read every instrument set's observations of the whole feature.
+    """Read every instrument set's observations of the whole tile.
 
     Args:
-        coverage: The feature's instrument sets, in the order they are drawn.
+        coverage: The tile's instrument sets, in the order they are drawn.
 
     Returns:
         series: One series per set, in the same order.
     """
-    area_km2 = coverage[0].summary.feature_area_km2
+    area_km2 = coverage[0].summary.tile_area_km2
     first = min(instrument.summary.t_first for instrument in coverage)
     last = max(instrument.summary.t_last for instrument in coverage)
     return [

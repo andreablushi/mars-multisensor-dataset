@@ -6,7 +6,6 @@ import random
 from collections import defaultdict
 from collections.abc import Sequence
 from datetime import datetime
-from itertools import chain, zip_longest
 from pathlib import Path
 
 import httpx
@@ -14,11 +13,11 @@ import httpx
 from analysis import dataset_list
 from analysis.selector.models.selection import Selection
 from building.dispatcher import INSTRUMENTS
-from building.metadata.feature import feature_metadata
+from building.metadata.tile import tile_metadata
 from building.models.job import Job, Plan
 from building.models.settings import Settings
 from building.preprocessing.common.store import sample_path
-from shared.models.feature import Feature
+from shared.models.tile import Tile
 
 
 def build_plan(
@@ -45,20 +44,20 @@ def build_plan(
         FileNotFoundError: When no selection has been written to build from.
     """
     picked = _sampled(dataset_list.read_dataset_list(), settings)
-    features = [feature_metadata(one.feature) for one in picked]
-    wanted: dict[tuple[str, str], list[Feature]] = defaultdict(list)
+    tiles = [tile_metadata(one.tile) for one in picked]
+    wanted: dict[tuple[str, str], list[Tile]] = defaultdict(list)
     taken: dict[tuple[str, str], datetime] = {}
     unread = 0
-    for one, feature in zip(picked, features, strict=True):
-        # A feature is built whole, every observation this build has an instrument for.
+    for one, tile in zip(picked, tiles, strict=True):
+        # A tile is built whole, every observation this build has an instrument for.
         for kept in one.observations:
             named = INSTRUMENTS.get(kept.iid)
             # Skip a product no instrument builds, and an id naming no observation.
             read = named.observation_id if named else None
             if read and (held := read(kept.pdsid)):
                 # Both detectors name one observation, so it is cut from once
-                if feature.frame not in wanted[(kept.iid, held)]:
-                    wanted[(kept.iid, held)].append(feature.frame)
+                if tile.frame not in wanted[(kept.iid, held)]:
+                    wanted[(kept.iid, held)].append(tile.frame)
                 taken.setdefault((kept.iid, held), kept.t_start)
             else:
                 unread += 1
@@ -71,10 +70,10 @@ def build_plan(
         for name, named in INSTRUMENTS.items():
             if not named.identifiers:
                 continue
-            for feature in features:
+            for tile in tiles:
                 # What it names is mosaicked to one box, so it is asked for alone.
-                for held in named.identifiers(feature.frame, ode):
-                    asked.append((name, held, (feature.frame,)))
+                for held in named.identifiers(tile.frame, ode):
+                    asked.append((name, held, (tile.frame,)))
 
     jobs, skipped = [], 0
     for instrument, identifier, held in asked:
@@ -88,7 +87,7 @@ def build_plan(
             when = taken.get((instrument, identifier))
             jobs.append(Job(instrument, identifier, left, when))
     return Plan(
-        # Heaviest first, weighed by the product and not by how many features want it.
+        # Heaviest first, weighed by the product and not by how many tiles want it.
         jobs=tuple(
             sorted(
                 jobs,
@@ -98,36 +97,26 @@ def build_plan(
                 ),
             )
         ),
-        features=tuple(features),
+        tiles=tuple(tiles),
         skipped_existing=skipped,
         unread=unread,
     )
 
 
 def _sampled(picked: Sequence[Selection], settings: Settings) -> list[Selection]:
-    """Keep the share of the features one build covers, evenly across classes.
+    """Keep the share of the tiles one build covers, drawn at random.
 
     Args:
-        picked: What the search left of every feature it searched.
+        picked: What the search left of every tile it searched.
         settings: The settled choices for the build, whose share settles how much
             of what the filter kept one build covers.
 
     Returns:
         kept: The selections to build, in the order the selection was written.
     """
-    kept = [one for one in picked if one.feature.kept]
+    kept = [one for one in picked if one.tile.kept]
     wanted = round(settings.share * len(kept))
     if wanted >= len(kept):
         return kept
-    classes: dict[str, list[int]] = defaultdict(list)
-    for at, one in enumerate(kept):
-        classes[one.feature.feature_class].append(at)
-    draw = random.Random(settings.seed)
-    for held in classes.values():
-        draw.shuffle(held)
-    order = sorted(classes)
-    draw.shuffle(order)
-    # One from each class in turn, so every class is reached before any is drawn twice.
-    rounds = zip_longest(*(classes[name] for name in order))
-    taken = [at for at in chain.from_iterable(rounds) if at is not None]
-    return [kept[at] for at in sorted(taken[:wanted])]
+    taken = random.Random(settings.seed).sample(range(len(kept)), wanted)
+    return [kept[at] for at in sorted(taken)]

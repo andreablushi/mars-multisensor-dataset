@@ -1,4 +1,4 @@
-"""One feature read back off the selection, on the timeline its looks sit on."""
+"""One tile read back off the selection, on the timeline its looks sit on."""
 
 from __future__ import annotations
 
@@ -9,20 +9,20 @@ from analysis.selector import configs as filtering
 from analysis.selector.models import track as timeline
 from analysis.selector.models.selection import Selection
 from analysis.stats.artifacts import selection
-from analysis.stats.models.feature import FeatureLooks
+from analysis.stats.models.tile import TileLooks
 
-# How many features are held read at once, so every panel of one shares it.
-FEATURE_CACHE = 8
+# How many tiles are held read at once, so every panel of one shares it.
+TILE_CACHE = 8
 
-# How many features are held read, so every panel of one shares the reading
-_read: dict[tuple[str, str], FeatureLooks | None] = {}
+# How many tiles are held read, so every panel of one shares the reading
+_read: dict[str, TileLooks | None] = {}
 
 
-def read_feature(coverage: Sequence[SetCoverage]) -> FeatureLooks | None:
-    """Read one feature as the selection left it, however many panels ask for it.
+def read_tile(coverage: Sequence[SetCoverage]) -> TileLooks | None:
+    """Read one tile as the selection left it, however many panels ask for it.
 
     Args:
-        coverage: The feature's instrument sets, in the order they are drawn.
+        coverage: The tile's instrument sets, in the order they are drawn.
 
     Returns:
         looks: Its timeline and the looks the selection keeps, or None where the
@@ -31,37 +31,36 @@ def read_feature(coverage: Sequence[SetCoverage]) -> FeatureLooks | None:
     Raises:
         FileNotFoundError: When no selection has been written to read it off.
     """
-    summary = coverage[0].summary
-    key = (summary.feature_class, summary.feature_name)
+    key = coverage[0].summary.tile
     if key not in _read:
-        if len(_read) >= FEATURE_CACHE:
+        if len(_read) >= TILE_CACHE:
             _read.clear()
-        picked = selection.selection_by_feature().get(key)
+        picked = selection.selection_by_tile().get(key)
         _read[key] = None if picked is None else place_kept_looks(coverage, picked)
     return _read[key]
 
 
 def place_kept_looks(
     coverage: Sequence[SetCoverage], picked: Selection
-) -> FeatureLooks | None:
-    """Place the looks one feature keeps on the timeline they were taken over.
+) -> TileLooks | None:
+    """Place the looks one tile keeps on the timeline they were taken over.
 
     Args:
-        coverage: The feature's instrument sets, in any order.
+        coverage: The tile's instrument sets, in any order.
         picked: What the selection left of it, and the observations it keeps.
 
     Returns:
-        looks: Its timeline and where those looks sit on it, or None where the feature
+        looks: Its timeline and where those looks sit on it, or None where the tile
             holds nothing measurable.
     """
     criteria, track = timeline.over(coverage, filtering.FILTER)
     if track is None:
         return None
     at = {one.pdsid: index for index, one in enumerate(track.observations)}
-    return FeatureLooks(
+    return TileLooks(
         criteria=criteria,
         track=track,
-        window=picked.feature,
+        window=picked.tile,
         taken=tuple(
             sorted(at[one.pdsid] for one in picked.observations if one.pdsid in at)
         ),

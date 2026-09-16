@@ -1,4 +1,4 @@
-"""What one grid of the record landed as, which a feature's box is read from."""
+"""What one grid of the record landed as, which a tile's box is read from."""
 
 from __future__ import annotations
 
@@ -14,9 +14,9 @@ class MolaGrid:
         name: The grid, as `configs.GRIDS` names it, which is also what every
             crop read from it is stored under.
         resolution: How many bins of the grid one degree holds.
-        files: The image of every product of it that landed, keyed by the tile
+        files: The image of every product of it that landed, keyed by the sheet
             or the product it is, each with its own label beside it.
-        polar: Whether it is projected onto a pole rather than tiled in
+        polar: Whether it is projected onto a pole rather than split into sheets in
             longitude and latitude.
     """
 

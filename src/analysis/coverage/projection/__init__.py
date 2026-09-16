@@ -1,1 +1,1 @@
-"""Putting an instrument set's footprints on the ground of its feature."""
+"""Putting an instrument set's footprints on the ground of every tile."""

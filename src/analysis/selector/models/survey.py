@@ -13,14 +13,14 @@ from analysis.selector.models.filter import Filter
 
 @dataclass(frozen=True, slots=True)
 class Survey:
-    """The stretch of time one feature is best studied over.
+    """The stretch of time one tile is best studied over.
 
     Attributes:
-        area_km2: How much ground the feature covers.
+        area_km2: How much ground the tile covers.
         start: When the earliest observation inside it was taken.
         end: When the latest one was taken.
         days: How long it lasts.
-        geo_mean: The insisted shares rooted together, as a share of the feature.
+        geo_mean: The insisted shares rooted together, as a share of the tile.
         kept: The observations it holds, as their places on the timeline, oldest first.
         standing: The observations kept from outside the window, oldest first.
     """
@@ -35,7 +35,7 @@ class Survey:
 
     @property
     def taken(self) -> tuple[int, ...]:
-        """Name every observation the feature keeps, in time order.
+        """Name every observation the tile keeps, in time order.
 
         Returns:
             taken: The window's own observations and what came from outside it, oldest
@@ -46,29 +46,27 @@ class Survey:
 
 @dataclass(frozen=True, slots=True)
 class Study:
-    """What the search found over one feature.
+    """What the search found over one tile.
 
     Attributes:
-        feature_class: The feature class, such as Crater.
-        feature_name: The feature name as ODE spells it.
-        criteria: What the feature was asked for.
+        tile: The tile's name, such as "b123_c0456".
+        criteria: What the tile was asked for.
         track: Its admissible observations on one time axis, or None where it
             holds nothing measurable.
         survey: The window it earned, or None where it earned none.
     """
 
-    feature_class: str
-    feature_name: str
+    tile: str
     criteria: Filter
     track: timeline.Track | None
     survey: Survey | None
 
     @classmethod
     def over(cls, coverage: Sequence[SetCoverage], criteria: Filter) -> Study:
-        """Search one feature under the filter.
+        """Search one tile under the filter.
 
         Args:
-            coverage: The feature's instrument sets, in any order.
+            coverage: The tile's instrument sets, in any order.
             criteria: Which instruments a window has to hold, and how much ground each.
 
         Returns:
@@ -81,8 +79,7 @@ class Study:
         summary = coverage[0].summary
         settled, track = timeline.over(coverage, criteria)
         return cls(
-            feature_class=summary.feature_class,
-            feature_name=summary.feature_name,
+            tile=summary.tile,
             criteria=settled,
             track=track,
             survey=algorithm.search(track, settled) if track else None,

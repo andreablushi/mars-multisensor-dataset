@@ -66,7 +66,7 @@ def longitude_span(west_lon: float, east_lon: float) -> float:
 def bbox_centre(
     min_lat: float, max_lat: float, west_lon: float, east_lon: float
 ) -> tuple[float, float]:
-    """Return the centre of a feature bounding box.
+    """Return the centre of a bounding box.
 
     Args:
         min_lat: The southernmost latitude in degrees.

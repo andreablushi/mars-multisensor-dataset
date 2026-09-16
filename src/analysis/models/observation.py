@@ -5,8 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from shared.models.feature import Feature
-
 
 @dataclass(frozen=True, slots=True)
 class Observation:
@@ -21,6 +19,9 @@ class Observation:
         stop: When the observation finished, or None when none was published.
         wkt: The footprint as well-known text, left unparsed.
         map_scale_m: The ground size of one pixel, or None when unpublished.
+        north_wkt: The footprint in north polar stereographic metres, or None where
+            ODE publishes none, which it does only poleward of 60 degrees.
+        south_wkt: The same in south polar stereographic metres.
     """
 
     pdsid: str
@@ -31,6 +32,8 @@ class Observation:
     stop: datetime | None
     wkt: str
     map_scale_m: float | None
+    north_wkt: str | None = None
+    south_wkt: str | None = None
 
     @property
     def is_track(self) -> bool:
@@ -53,16 +56,14 @@ class Observation:
 
 @dataclass(frozen=True, slots=True)
 class ObservationSet:
-    """One instrument set's observations, and what they belong to.
+    """One instrument set's observations over one group.
 
     Attributes:
-        feature: The feature box the records were downloaded for.
         set_key: The instrument set identifier the records were asked for by.
         observations: The set's observations, in chronological order.
         discarded: How many records could not be used.
     """
 
-    feature: Feature
     set_key: str
     observations: list[Observation]
     discarded: int

@@ -1,4 +1,4 @@
-"""Placing one MOLA grid on its own projection, and cutting a cap to one feature."""
+"""Placing one MOLA grid on its own projection, and cutting a cap to one tile."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from building.preprocessing.common.models.relative_position import PolarGrid
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
 from shared.maths import physics
-from shared.models.feature import Feature
+from shared.models.tile import Tile
 
 # The two projections the gridded record is written in.
 CYLINDRICAL = "SIMPLE CYLINDRICAL"
@@ -65,15 +65,15 @@ def grid_axes(
     )
 
 
-def crop_cap(grid: MolaGrid, frame: Feature) -> MolaSample | None:
-    """Return the bins of one polar cap its feature's box keeps.
+def crop_cap(grid: MolaGrid, frame: Tile) -> MolaSample | None:
+    """Return the bins of one polar cap its tile's box keeps.
 
     Args:
         grid: The cap that landed, holding the one product it is published as.
-        frame: The local frame of the feature it is read for.
+        frame: The local frame of the tile it is read for.
 
     Returns:
-        sample: The height over that feature, or None where the cap reaches none of it.
+        sample: The height over that tile, or None where the cap reaches none of it.
 
     Raises:
         FileNotFoundError: When the cap or its label is missing.

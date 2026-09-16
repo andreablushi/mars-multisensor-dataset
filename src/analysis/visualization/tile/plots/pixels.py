@@ -1,4 +1,4 @@
-"""How many pixels one observation lands on a feature, instrument by instrument."""
+"""How many pixels one observation lands on a tile, instrument by instrument."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import ipywidgets as widgets
 import numpy as np
 from matplotlib.ticker import FuncFormatter, MaxNLocator
 
-from analysis.stats.feature import landing, read
+from analysis.stats.tile import landing, read
 from analysis.visualization.common import panels, quantities, wording
 from analysis.visualization.common.models.coverage import Coverage
 
@@ -27,15 +27,15 @@ BAR_WIDTH = 1.0
 
 _TRACES = "traces"
 _PIXELS = "px"
-_NOTHING = "nothing on this feature"
-_LANDED = "Pixels one observation lands on the feature"
+_NOTHING = "nothing on this tile"
+_LANDED = "Pixels one observation lands on the tile"
 
 
 def plot(coverage: Coverage) -> widgets.Widget:
-    """Draw what each instrument lands on the feature, one observation at a time."""
+    """Draw what each instrument lands on the tile, one observation at a time."""
     if not coverage:
         return panels.unavailable()
-    looks = read.read_feature(coverage)
+    looks = read.read_tile(coverage)
     if looks is None:
         return panels.unavailable(_NOTHING)
     drawn = landing.landed_per_set(looks)

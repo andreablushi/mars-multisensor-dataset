@@ -1,4 +1,4 @@
-"""One feature as the selection left it, and what the instruments left on it."""
+"""One tile as the selection left it, and what the instruments left on it."""
 
 from __future__ import annotations
 
@@ -6,16 +6,16 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from analysis.selector.models.filter import Filter
-from analysis.selector.models.selection import SelectedFeature
+from analysis.selector.models.selection import SelectedTile
 from analysis.selector.models.track import Track
 
 
 @dataclass(frozen=True, slots=True)
-class FeatureLooks:
-    """One feature's timeline, the window it earned, and the looks it keeps.
+class TileLooks:
+    """One tile's timeline, the window it earned, and the looks it keeps.
 
     Attributes:
-        criteria: The filter as it was read against the feature.
+        criteria: The filter as it was read against the tile.
         track: Its admissible observations on one time axis.
         window: The window the selection gave it, or refused it.
         taken: Where the observations it keeps sit on that axis, oldest first.
@@ -23,12 +23,12 @@ class FeatureLooks:
 
     criteria: Filter
     track: Track
-    window: SelectedFeature
+    window: SelectedTile
     taken: tuple[int, ...]
 
     @property
     def open_for(self) -> list[tuple[datetime, datetime]]:
-        """Return the stretch of time the feature's window is open over.
+        """Return the stretch of time the tile's window is open over.
 
         Returns:
             stretches: The one stretch it earned, and nothing at all when it earned
@@ -41,7 +41,7 @@ class FeatureLooks:
 
 @dataclass(frozen=True, slots=True)
 class InstrumentReach:
-    """What one instrument left on one feature inside its window.
+    """What one instrument left on one tile inside its window.
 
     Attributes:
         km2: The ground it reaches, counting a cell once however often it was revisited.
@@ -55,7 +55,7 @@ class InstrumentReach:
 
     @property
     def pixels_per_look(self) -> float | None:
-        """Return the pixels one of its observations lands on the feature.
+        """Return the pixels one of its observations lands on the tile.
 
         Returns:
             pixels: The mean over the observations the window keeps, or None where any
@@ -67,21 +67,21 @@ class InstrumentReach:
 
 
 @dataclass(frozen=True, slots=True)
-class FeatureStats:
-    """One feature, and what the looks it keeps left on it.
+class TileStats:
+    """One tile, and what the looks it keeps left on it.
 
     Attributes:
-        window: The window the selection gave it, carrying its class and name,
+        window: The window the selection gave it, carrying its name and box,
             how much ground it covers and how long its window runs.
         iids: The instruments it holds, in the order they are drawn.
         offered: How many observations of each instrument landed on it at all.
         pixel_km2: The ground one pixel of each instrument covers, read off the
-            observations offered to the feature rather than off the ones a window kept.
+            observations offered to the tile rather than off the ones a window kept.
         reached: What each instrument left on it, by instrument.
         overlaps: The ground each set of instruments reaches, most ground first.
     """
 
-    window: SelectedFeature
+    window: SelectedTile
     iids: list[str]
     offered: dict[str, int]
     pixel_km2: dict[str, float]
