@@ -15,7 +15,7 @@ SECTION = "window"
 
 
 def load(path: Path = paths.CONFIG_PATH) -> Filter:
-    """Read what the instruments are asked for before a feature earns a place.
+    """Read what the instruments are asked for before a tile earns a place.
 
     Args:
         path: The analysis config, whose window section has to carry every setting.

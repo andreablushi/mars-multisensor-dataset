@@ -7,44 +7,38 @@ from pathlib import Path
 import pyarrow.parquet as pq
 
 from analysis import paths
-from analysis.selector.artifacts.write import FEATURES, OBSERVATIONS
+from analysis.selector.artifacts.write import OBSERVATIONS, TILES
 from analysis.selector.models.selection import (
-    SelectedFeature,
     SelectedObservation,
+    SelectedTile,
     Selection,
 )
 
 
 def read_dataset_list(root: Path = paths.SELECTION_ROOT) -> list[Selection]:
-    """Read back every feature the selection stage searched, and what each keeps.
+    """Read back every tile the selection stage searched, and what each keeps.
 
     Args:
         root: The directory the selection was written in.
 
     Returns:
-        selections: One entry per feature searched, in the order they were written.
+        selections: One entry per tile searched, in the order they were written.
 
     Raises:
         FileNotFoundError: When no selection has been written there.
     """
-    features = root / paths.SELECTED_FEATURES_NAME
+    tiles = root / paths.SELECTED_TILES_NAME
     observations = root / paths.SELECTED_OBSERVATIONS_NAME
-    if not features.is_file() or not observations.is_file():
+    if not tiles.is_file() or not observations.is_file():
         raise FileNotFoundError(f"no selection was written in {root}")
-    kept: dict[tuple[str, str], list[SelectedObservation]] = {}
+    kept: dict[str, list[SelectedObservation]] = {}
     for row in pq.read_table(observations, schema=OBSERVATIONS).to_pylist():
         observation = SelectedObservation(**row)
-        held = kept.setdefault(
-            (observation.feature_class, observation.feature_name), []
-        )
-        held.append(observation)
+        kept.setdefault(observation.tile, []).append(observation)
     return [
-        Selection(
-            feature=feature,
-            observations=kept.get((feature.feature_class, feature.feature_name), []),
-        )
-        for feature in (
-            SelectedFeature(**row)
-            for row in pq.read_table(features, schema=FEATURES).to_pylist()
+        Selection(tile=tile, observations=kept.get(tile.tile, []))
+        for tile in (
+            SelectedTile(**row)
+            for row in pq.read_table(tiles, schema=TILES).to_pylist()
         )
     ]

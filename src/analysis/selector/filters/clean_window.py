@@ -1,4 +1,4 @@
-"""Reading the written filter against one feature, into what it asks of that one."""
+"""Reading the written filter against one tile, into what it asks of that one."""
 
 from __future__ import annotations
 
@@ -15,15 +15,15 @@ from analysis.selector.models.grid import Grid
 def clean_window(
     criteria: Filter, coverage: Sequence[SetCoverage], grid: Grid
 ) -> Filter:
-    """Settle everything the written filter asks of one feature.
+    """Settle everything the written filter asks of one tile.
 
     Args:
         criteria: What the instruments are asked for, and which of them are timeless.
-        coverage: The feature's instrument sets, in any order.
-        grid: The grid the feature is searched over.
+        coverage: The tile's instrument sets, in any order.
+        grid: The grid the tile is searched over.
 
     Returns:
-        criteria: The same filter, carrying what it asks of the feature.
+        criteria: The same filter, carrying what it asks of the tile.
     """
     iids = [instrument.summary.iid for instrument in coverage]
     windowed: Constraints = []

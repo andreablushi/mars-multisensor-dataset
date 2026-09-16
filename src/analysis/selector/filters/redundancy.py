@@ -17,7 +17,7 @@ def trimmed(
     """Drop the observations a window does not need, oldest first.
 
     Args:
-        track: The feature's observations on one time axis.
+        track: The tile's observations on one time axis.
         window: The window they are counted inside.
         constraints: The cells each instrument insisted on has to reach.
         gain: The cells an observation has to bring that its own set does not reach.
@@ -47,7 +47,7 @@ def _without(
     """Take one observation out of a window, unless the window needs it.
 
     Args:
-        track: The feature's observations on one time axis.
+        track: The tile's observations on one time axis.
         counter: What the window holds, which the observation is taken out of.
         constraints: The cells each instrument insisted on has to reach.
         index: The observation to try the window without.

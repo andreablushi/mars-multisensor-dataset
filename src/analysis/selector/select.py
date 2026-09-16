@@ -1,81 +1,71 @@
-"""Selecting the dataset: every measured feature searched, and what is kept."""
+"""Selecting the dataset: every measured tile searched, and what is kept."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 
+from analysis import configs
 from analysis.coverage.artifacts import index
-from analysis.metadata.loaders.features import load_features
 from analysis.selector import configs as filtering
 from analysis.selector.artifacts import write
 from analysis.selector.models.selection import (
-    SelectedFeature,
     SelectedObservation,
+    SelectedTile,
     Selection,
 )
 from analysis.selector.models.survey import Study
-from shared.models.feature import Feature
+from shared.maths import tessellate
+from shared.models.tile import Tile
 
-# One feature, as the catalogue spells its class and its name
-FeatureName = tuple[str, str]
-# Called with how many features are searched and how many there are
+# Called with how many tile groups are searched and how many there are
 Progress = Callable[[int, int], None]
 
 
 def select_dataset(workers: int, progress: Progress | None = None) -> list[Selection]:
-    """Search every measured feature under the filter, and write the selection out.
+    """Search every measured tile under the filter, and write the selection out.
 
     Args:
         workers: How many processes to search on at once, as the run is configured.
-        progress: Called with how many features are searched and how many there are.
+        progress: Called with how many tile groups are searched and how many there are.
 
     Returns:
-        picked: What the search left of each feature, in catalogue order, leaving out a
-            feature holding no measured set on disk.
+        picked: What the search left of each tile, band by band and west to east,
+            leaving out a tile no measured set reached.
     """
-    features = index.catalogued_features()
-    # Read here so the selection carries each feature's own ground, once for all
-    catalogued = {(one.feature_class, one.name): one for one in load_features()}
-    found: list[Selection | None] = [None for _ in features]
-    observations = index.catalogued_observations()
-    busiest_first = sorted(
-        range(len(features)), key=lambda at: -observations.get(features[at], 0)
-    )
+    groups = index.measured_groups()
+    picked: list[Selection] = []
     with ProcessPoolExecutor(max_workers=workers) as pool:
-        searched = pool.map(
-            _searched,
-            [catalogued[features[at]] for at in busiest_first],
-            chunksize=1,
-        )
-        for done, (at, one) in enumerate(zip(busiest_first, searched, strict=True), 1):
-            found[at] = one
+        searched = pool.map(_searched, groups, chunksize=1)
+        for done, found in enumerate(searched, 1):
+            picked.extend(found)
             if progress is not None:
-                progress(done, len(features))
-    picked = [one for one in found if one is not None]
+                progress(done, len(groups))
+    picked.sort(key=lambda one: (one.tile.band, one.tile.column))
     write.write_selection(picked)
     return picked
 
 
-def selected(study: Study, feature: Feature) -> Selection:
-    """Read one feature's search as the rows the selection is written from.
+def selected(study: Study, tile: Tile) -> Selection:
+    """Read one tile's search as the rows the selection is written from.
 
     Args:
         study: What the search found over it.
-        feature: The feature as the catalogue holds it, whose ground the row
-            carries so a later run reads it from the selection alone.
+        tile: The tile itself, whose box the row carries so a later run reads it
+            from the selection alone.
 
     Returns:
         selection: Its own row, and a row for each observation it keeps.
     """
     survey, track = study.survey, study.track
-    row = SelectedFeature(
-        feature_class=study.feature_class,
-        feature_name=study.feature_name,
-        min_lat=feature.min_lat,
-        max_lat=feature.max_lat,
-        west_lon=feature.west_lon,
-        east_lon=feature.east_lon,
+    row = SelectedTile(
+        tile=tile.name,
+        band=tile.band,
+        column=tile.column,
+        min_lat=tile.min_lat,
+        max_lat=tile.max_lat,
+        west_lon=tile.west_lon,
+        east_lon=tile.east_lon,
         kept=survey is not None,
         area_km2=track.grid.area_km2 if track else 0.0,
         start=survey.start if survey else None,
@@ -85,14 +75,13 @@ def selected(study: Study, feature: Feature) -> Selection:
         taken=len(survey.taken) if survey else 0,
     )
     if survey is None or track is None:
-        return Selection(feature=row)
+        return Selection(tile=row)
     standing = set(survey.standing)
     return Selection(
-        feature=row,
+        tile=row,
         observations=[
             SelectedObservation(
-                feature_class=study.feature_class,
-                feature_name=study.feature_name,
+                tile=tile.name,
                 ihid=track.observations[at].ihid,
                 iid=track.observations[at].iid,
                 pt=track.observations[at].pt,
@@ -105,16 +94,19 @@ def selected(study: Study, feature: Feature) -> Selection:
     )
 
 
-def _searched(feature: Feature) -> Selection | None:
-    """Search one feature and read it as the rows it is written as.
+def _searched(group: str) -> list[Selection]:
+    """Search every tile one group measured and read each as the rows it is written as.
 
     Args:
-        feature: The feature as the catalogue holds it.
+        group: The name of the tile group.
 
     Returns:
-        selection: Its rows, and None where it has no measured set on disk.
+        selections: The rows of every tile a measured set reached, in the order read.
     """
-    coverage = index.load_feature(feature.feature_class, feature.name)
-    if not coverage:
-        return None
-    return selected(Study.over(coverage, filtering.FILTER), feature)
+    tile_km = configs.load().tile_km
+    return [
+        selected(
+            Study.over(coverage, filtering.FILTER), tessellate.tile_named(name, tile_km)
+        )
+        for name, coverage in index.load_group(group).items()
+    ]

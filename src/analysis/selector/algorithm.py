@@ -18,7 +18,7 @@ from analysis.selector.models.window import Window
 # How far Mars may turn for one more point of ground, in degrees; ten days at mean
 LS_PER_PERCENT = 5.25
 
-# The cells a look must bring that its own set has not, as a share of the feature
+# The cells a look must bring that its own set has not, as a share of the tile
 GAIN_SHARE = 0.001
 
 _PRICE_PER_DEGREE = 0.01 / LS_PER_PERCENT
@@ -29,12 +29,12 @@ def search(track: Track, criteria: Filter) -> Survey | None:
 
     Args:
         track: The admissible observations on one time axis.
-        criteria: The filter read against the feature, holding what it is asked.
+        criteria: The filter read against the tile, holding what it is asked.
 
     Returns:
         survey: The chosen window, or None when no window is worth keeping.
     """
-    # What the filter asks of this feature, worked out once when it was read
+    # What the filter asks of this tile, worked out once when it was read
     windowed, standing = criteria.windowed, criteria.standing
     # What time cannot change is asked of the whole record rather than a window
     if standing:
@@ -45,7 +45,7 @@ def search(track: Track, criteria: Filter) -> Survey | None:
     picked = _best(track, windowed, criteria)
     if picked is None:
         return None
-    # What a look has to bring the feature, which its own size is read for
+    # What a look has to bring the tile, which its own size is read for
     gain = max(1, round(GAIN_SHARE * len(track.grid.inside)))
     # Clean up the record to only what is worth keeping, and report reached
     kept, reached = redundancy.trimmed(track, picked, windowed, gain)
@@ -130,7 +130,7 @@ def _scored(track: Track, counts: Sequence[int], arc: float = 0.0) -> float:
         arc: How far Mars turns inside the window, charged against its ground.
 
     Returns:
-        worth: The constraints rooted together as a share of the feature, less their
+        worth: The constraints rooted together as a share of the tile, less their
             arc.
     """
     rooted = math.prod(counts) ** (1.0 / len(counts))
