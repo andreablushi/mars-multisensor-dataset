@@ -25,15 +25,10 @@ def cut(samples: Samples, frame: Tile, span: float) -> Cut | None:
     Returns:
         held: What the box keeps, or None where the observation reaches none of it.
     """
-    north = samples.down - frame.centre_lat
-    east = geodesy.normalise_longitude(samples.across - frame.centre_lon)
-    west = geodesy.normalise_longitude(frame.west_lon - frame.centre_lon)
     # How far north and east of the box's own edges every sample lies.
-    upward = (north >= frame.min_lat - frame.centre_lat) & (
-        north <= frame.max_lat - frame.centre_lat
-    )
+    upward = (samples.down >= frame.min_lat) & (samples.down <= frame.max_lat)
     # Measured round the turn, so the meridian the box may run over is no edge.
-    eastward = (east - west) % TURN
+    eastward = (samples.across - frame.west_lon) % TURN
     if samples.separable:
         # The box is a rectangle here, so each axis is asked alone and keeps exactly it.
         lines = np.flatnonzero(upward)

@@ -33,11 +33,12 @@ def cut(samples: Samples, frame: Tile, span: float) -> Cut | None:
     Returns:
         held: What the box keeps, or None where the grid reaches none of it.
     """
+    grid = samples.grid
     ring = geodesy.stereographic_forward(
         *geodesy.bbox_ring(
             frame.min_lat, frame.max_lat, frame.west_lon, frame.east_lon, STEP
         ),
-        *samples.grid,
+        *grid,
     )
     # The box projects to a sector, and the ring its edge traces bounds it.
     lines = np.flatnonzero(
@@ -48,15 +49,23 @@ def cut(samples: Samples, frame: Tile, span: float) -> Cut | None:
     )
     if not lines.size or not across.size:
         return None
-    # Only the sector's rectangle is crossed back, a block of its lines at a time.
-    held = Samples(samples.down[lines], samples.across[across], True, samples.grid)
+    # A latitude is a radius here, so the box keeps one band of the sector alone.
+    band = sorted(
+        abs(float(geodesy.stereographic_forward(grid[0], lat, *grid)[1]))
+        for lat in (frame.min_lat, frame.max_lat)
+    )
+    # A south grid runs its eastings the other way round, so its turn does too.
+    sign = -1.0 if grid[1] else 1.0
+    held = Samples(samples.down[lines], samples.across[across], True, grid)
     inside = np.empty(held.sizes, dtype=bool)
     for block in cross.blocked(held.sizes):
-        lon, lat = cross.degrees(held, block)
+        down, east = cross.axes(held, block)
+        radius = np.hypot(down, east)
+        turned = np.degrees(np.arctan2(east, sign * down)) + grid[0]
         inside[block] = (
-            (lat >= frame.min_lat)
-            & (lat <= frame.max_lat)
-            & ((lon - frame.west_lon) % TURN <= span)
+            (radius >= band[0])
+            & (radius <= band[1])
+            & ((turned - frame.west_lon) % TURN <= span)
         )
     if not inside.any():
         return None

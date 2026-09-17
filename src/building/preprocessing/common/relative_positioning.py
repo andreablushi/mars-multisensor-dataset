@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from building.preprocessing.common import cross
 from building.preprocessing.common.models.relative_position import RelativePosition
 from shared.maths import geodesy
 from shared.models.tile import Tile
@@ -68,11 +69,8 @@ def ground_metres(
     sizes = position.ground_sizes
     north = np.empty(sizes, dtype=STORED)
     east = np.empty(sizes, dtype=STORED)
-    # A whole scan crossed at once would hold more than the crop itself does.
-    reach = max(1, BLOCK // int(np.prod(sizes[1:], dtype=int)))
     plain = position.separable and position.polar is None
-    for start in range(0, sizes[0], reach):
-        block = slice(start, start + reach)
+    for block in cross.blocked(sizes, BLOCK):
         lon, lat = degrees(position, frame, (block, *(slice(None),) * (len(sizes) - 1)))
         if plain:
             # One axis holds latitude and the other longitude, so the two are crossed.

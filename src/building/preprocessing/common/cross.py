@@ -13,16 +13,18 @@ from shared.maths import geodesy
 BLOCK = 4_000_000
 
 
-def blocked(sizes: tuple[int, ...]) -> Iterator[slice]:
+def blocked(sizes: tuple[int, ...], budget: int = BLOCK) -> Iterator[slice]:
     """Walk the lines of one cut in blocks of about as many samples as fit.
 
     Args:
         sizes: How many samples each ground axis holds.
+        budget: How many samples to read at once, which a heavier conversion
+            than a projection asks a smaller one of.
 
     Yields:
         block: Which lines of the cut to read.
     """
-    reach = max(1, BLOCK // max(1, int(np.prod(sizes[1:], dtype=int))))
+    reach = max(1, budget // max(1, int(np.prod(sizes[1:], dtype=int))))
     for start in range(0, sizes[0], reach):
         yield slice(start, start + reach)
 

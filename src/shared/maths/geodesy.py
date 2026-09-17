@@ -21,6 +21,10 @@ LAEA_MIN_DENOMINATOR = 1e-12
 AEQD_PASSES = 3
 
 
+# A polar grid: its centre longitude, whether north, and the sphere it is built on.
+PolarGrid = tuple[float, bool, float]
+
+
 def normalise_longitude(lon: np.ndarray | float) -> np.ndarray:
     """Wrap longitudes into the -180 to 180 degree range.
 

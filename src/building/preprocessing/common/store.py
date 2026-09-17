@@ -9,6 +9,7 @@ import numpy as np
 
 from building import paths
 from building.common.layout import GROUND, Layout
+from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.sample import Sample
 from shared.disk.files import atomic_path
 from shared.disk.slugify import slugify
@@ -102,8 +103,12 @@ def write_sample(
     arrays[layout.measurement] = values.astype(
         layout.stored or values.dtype, copy=False
     )
-    arrays[NORTH] = native(held.position.north)
-    arrays[EAST] = native(held.position.east)
+    arrays[NORTH] = native(held.position.north).astype(
+        relative_positioning.STORED, copy=False
+    )
+    arrays[EAST] = native(held.position.east).astype(
+        relative_positioning.STORED, copy=False
+    )
     arrays[MEASURED] = native(held.measured)
     for name, mask in ((INSIDE, held.inside), (VALID, held.valid)):
         # The two the rooted mask is made of, kept for whoever wants them apart.

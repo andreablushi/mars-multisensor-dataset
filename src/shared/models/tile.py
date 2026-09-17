@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from shared.maths import geodesy
+from shared.maths import geodesy, physics
+from shared.maths.geodesy import PolarGrid
+
+# From this latitude up a tile is read on its pole, below it in degrees.
+POLAR_LATITUDE = 70.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +58,21 @@ class Tile:
             name: The band and the column, such as "b123_c0456".
         """
         return f"{self.band_name}_{self.column_name}"
+
+    @property
+    def grid(self) -> PolarGrid | None:
+        """Return the grid this tile is read on, whatever is read for it.
+
+        Returns:
+            grid: The stereographic grid of the pole its whole box lies at,
+                centred on the meridian, and None where it is read in degrees
+                from its own centre instead.
+        """
+        if self.min_lat >= POLAR_LATITUDE:
+            return (0.0, True, physics.EQUATORIAL_RADIUS_M)
+        if self.max_lat <= -POLAR_LATITUDE:
+            return (0.0, False, physics.EQUATORIAL_RADIUS_M)
+        return None
 
     @property
     def centre_lon(self) -> float:

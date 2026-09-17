@@ -6,8 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-# A polar grid: its centre longitude, whether north, and the sphere it is built on.
-PolarGrid = tuple[float, bool, float]
+from shared.maths.geodesy import PolarGrid
 
 
 @dataclass(frozen=True, slots=True)
