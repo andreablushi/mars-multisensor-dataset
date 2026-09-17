@@ -96,7 +96,7 @@ def run_build(project, force: bool = False, workers: int | None = None):
         Returns:
             dataset: The published dataset.
         """
-        crops = list(root.rglob(f"*{paths.SAMPLE_SUFFIX}"))
+        crops = paths.crop_paths(root)
         index = [root / one for one in paths.INDEX_NAMES]
         dataset = archives.published_folder(
             project, root, crops, index, published_as, DATASET_HELD, _UPLOADS

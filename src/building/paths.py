@@ -36,3 +36,15 @@ def dataset_root(name: str, root: Path = DATASETS_ROOT) -> Path:
         path: The directory that build owns, which need not exist.
     """
     return root / slugify(name)
+
+
+def crop_paths(root: Path) -> list[Path]:
+    """Return every crop one build of the dataset holds on disk.
+
+    Args:
+        root: The dataset's own root directory.
+
+    Returns:
+        crops: The file of each crop written there, in no particular order.
+    """
+    return list(root.rglob(f"*{SAMPLE_SUFFIX}"))

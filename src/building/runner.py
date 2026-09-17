@@ -76,7 +76,7 @@ def run_build(
         # A crop the index cannot name is unreadable, so it is built again.
         if not force and named is not None:
             dropped = 0
-            for path in root.rglob(f"*{paths.SAMPLE_SUFFIX}"):
+            for path in paths.crop_paths(root):
                 if str(path.relative_to(root)) not in named:
                     path.unlink()
                     dropped += 1
