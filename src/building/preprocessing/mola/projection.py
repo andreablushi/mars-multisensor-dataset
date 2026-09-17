@@ -7,6 +7,7 @@ import numpy as np
 from building.common.pds import images, labels
 from building.preprocessing.common.crop import polar_overlap
 from building.preprocessing.common.models.relative_position import PolarGrid
+from building.preprocessing.mola import delay
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
 from shared.maths import physics
@@ -90,12 +91,14 @@ def crop_cap(grid: MolaGrid, frame: Tile) -> MolaSample | None:
     return MolaSample(
         identifier=grid.name,
         position=held.position,
-        label=labels.merge(label),
+        label=delay.row_label(labels.merge(label)),
         inside=held.inside,
-        topography=images.load_window(
-            image,
-            label,
-            (int(lines[0]), int(lines[-1]) + 1),
-            (int(samples[0]), int(samples[-1]) + 1),
+        delay=delay.radargram_rows(
+            images.load_window(
+                image,
+                label,
+                (int(lines[0]), int(lines[-1]) + 1),
+                (int(samples[0]), int(samples[-1]) + 1),
+            )
         ),
     )

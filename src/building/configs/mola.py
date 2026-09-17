@@ -30,7 +30,8 @@ LAYOUT = Layout(
     instrument="MOLA",
     dims=("line", "sample"),
     axes=(GROUND, GROUND),
-    measurement="topography",
+    measurement="delay",
+    stored="int16",
 )
 
 # Where a sheet is kept, in the one directory of the sheet.

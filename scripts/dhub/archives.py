@@ -5,12 +5,13 @@ from __future__ import annotations
 import shutil
 import tarfile
 import warnings
+from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import urlparse
 
 from digitalhub import get_s3_client
 from digitalhub.stores.data.api import get_default_store
-from digitalhub.utils.exceptions import BackendError
 
 from dhub import credentials
 from shared import paths
@@ -68,79 +69,94 @@ def published_archive(project, root: Path, name: str, description: str):
         packed.unlink(missing_ok=True)
 
 
+def stored_folder(project, name: str) -> tuple[object, str, str]:
+    """Return what one published folder is reached through, with fresh credentials.
+
+    Args:
+        project: The DigitalHub project the folder belongs to.
+        name: The name the folder is published under.
+
+    Returns:
+        client: The S3 client the store is asked through.
+        bucket: The bucket the folder is kept in.
+        prefix: The key every object of the folder starts with.
+    """
+    credentials.refresh()
+    place = urlparse(published_at(project, name, ""))
+    return get_s3_client(), place.netloc, place.path.lstrip("/")
+
+
 def published_folder(
-    project, root: Path, name: str, description: str, written_once: str
+    project,
+    root: Path,
+    files: Sequence[Path],
+    last: Sequence[Path],
+    name: str,
+    description: str,
+    uploads: int,
 ):
-    """Publish one tree file by file, sending only what the store does not hold.
+    """Publish some files of one tree, sending many at once, and a few after them.
 
     Args:
         project: The DigitalHub project to log the folder into.
-        root: The directory to publish, whose files keep the paths they hold
-            inside it, which is what the index names them by.
+        root: The directory they sit in, whose paths inside it they keep, which
+            is what the index names them by.
+        files: What to send, in any order.
+        last: What is sent one by one, only once every file is up.
         name: The name the folder is published under.
         description: What the folder holds, and how it is read.
-        written_once: The suffix of the files a build writes once and never
-            again. One of those the store holds at the size it was written is
-            left where it is; everything else goes up every time, the index
-            being rewritten at every checkpoint.
+        uploads: How many files are sent at once.
 
     Returns:
         artifact: The logged artifact.
     """
-    credentials.refresh()
-    destination = published_at(project, name, "")
-    bucket = urlparse(destination).netloc
-    prefix = urlparse(destination).path.lstrip("/")
-    client = get_s3_client()
-
-    held = {}
-    pages = client.get_paginator("list_objects_v2")
-    for page in pages.paginate(Bucket=bucket, Prefix=prefix):
-        for one in page.get("Contents", []):
-            held[one["Key"]] = one["Size"]
-
-    files = [one for one in root.rglob("*") if one.is_file()]
-    sending = []
-    for path in files:
-        key = prefix + path.relative_to(root).as_posix()
-        if path.suffix == written_once and held.get(key) == path.stat().st_size:
-            continue
-        sending.append((path, key))
-
-    going = sum(path.stat().st_size for path, _ in sending)
-    told = f"{len(sending):,} of {len(files):,} files, {going / 1e6:.0f} MB"
+    client, bucket, prefix = stored_folder(project, name)
+    going = sum(path.stat().st_size for path in [*files, *last])
+    told = f"{len(files) + len(last):,} files, {going / 1e6:.0f} MB"
     print(f"uploading {name}, {told}", flush=True)
-    for path, key in sending:
+
+    def send(path: Path) -> None:
+        """Send one file to the key its path inside the tree names.
+
+        Args:
+            path: The file to send.
+        """
+        key = prefix + path.relative_to(root).as_posix()
         client.upload_file(Filename=str(path), Bucket=bucket, Key=key)
 
+    with ThreadPoolExecutor(max_workers=uploads) as sending:
+        list(sending.map(send, files))
+    for path in last:
+        send(path)
     return project.new_artifact(
         name=name,
         kind="artifact",
-        path=destination,
+        path=published_at(project, name, ""),
         description=description,
     )
 
 
-def download_folder(project, name: str, into: Path) -> None:
-    """Put a published folder back where a run reads it, so it fills in the rest.
+def download_files(project, name: str, into: Path, names: Sequence[str]) -> None:
+    """Put the named files of a published folder back where a run reads them.
 
     Args:
         project: The DigitalHub project the folder was logged into.
         name: The name the folder was published under, which need not be published
             yet: a first run has nothing to fill in from.
-        into: The directory it fills, keeping whatever is already there.
+        into: The directory they land in, keeping whatever is already there.
+        names: The files to bring down, each at the top of the folder.
     """
-    try:
-        artifact = project.get_artifact(name)
-    # A name nothing is published under leaves the platform with no version to
-    # hand back, which it reports as a plain backend error and not a missing one.
-    except BackendError:
+    client, bucket, prefix = stored_folder(project, name)
+    listed = client.list_objects_v2(Bucket=bucket, Prefix=prefix, Delimiter="/")
+    held = {one["Key"].removeprefix(prefix) for one in listed.get("Contents", [])}
+    wanted = [one for one in names if one in held]
+    if not wanted:
         print(f"nothing is published as {name}, so this starts from none", flush=True)
         return
     into.mkdir(parents=True, exist_ok=True)
-    artifact.download(str(into), overwrite=True)
-    files = sum(1 for one in into.rglob("*") if one.is_file())
-    print(f"filling in from {name}, {files:,} files already built", flush=True)
+    for one in wanted:
+        client.download_file(Bucket=bucket, Key=prefix + one, Filename=str(into / one))
+    print(f"filling in from {name}, {len(wanted):,} files of its index", flush=True)
 
 
 def unpack_archive(downloaded: str, into: Path) -> None:

@@ -14,8 +14,8 @@ class MolaSample(Sample):
     """The height one sheet holds over one tile.
 
     Attributes:
-        topography: The height of the ground above the areoid in metres, as
-            lines by samples.
+        delay: The radargram row the ground's nadir echo lands on, as lines by
+            samples.
     """
 
-    topography: np.ndarray
+    delay: np.ndarray

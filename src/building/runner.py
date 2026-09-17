@@ -49,8 +49,10 @@ def run_build(
         console: The console to render on.
         root: The directory this build of the dataset is written in.
         force: Whether to rebuild crops that are already written.
-        checkpoint: What publishes the dataset as it stands, so a run that dies
-            is resumed from what it left, or None to publish only at the end.
+        checkpoint: What publishes the dataset as it stands and may take its
+            crops off disk, so a run that dies is resumed from what it left and
+            every crop its index names counts as built, or None to publish only
+            at the end.
 
     Returns:
         collected: Every finished outcome, in completion order.
@@ -66,12 +68,22 @@ def run_build(
         max_keepalive_connections=settings.downloads * 2,
     )
     with httpx.Client(limits=limits) as ode:
+        try:
+            indexed = metadata_read.read_observation_metadata(root)
+            named = frozenset(one.path for one in indexed)
+        except FileNotFoundError:
+            named = frozenset()
         # A crop the index cannot name is unreadable, so it is built again.
         if not force:
-            dropped = _unindexed(root)
+            dropped = 0
+            for path in paths.crop_paths(root):
+                if str(path.relative_to(root)) not in named:
+                    path.unlink()
+                    dropped += 1
             if dropped:
                 console.print(f"dropping {dropped:,} crops the index does not name")
-        plan = planner.build_plan(settings, root, ode, force=force)
+        published = named if checkpoint else frozenset()
+        plan = planner.build_plan(settings, root, ode, force=force, published=published)
         printing.describe(plan, settings, budget, console)
         progress = Progress(len(plan.jobs))
         # A download waits on the network and a build on the cores, so the pools differ.
@@ -86,39 +98,17 @@ def run_build(
             )
             with closing(held) as outcomes:
                 if checkpoint is not None:
-                    outcomes = _checkpointed(outcomes, plan, settings, root, checkpoint)
+                    outcomes = _checkpointed(outcomes, plan, root, checkpoint)
                 collected = printing.render(
                     outcomes, len(plan.jobs), "building", console
                 )
-    _indexed(plan, collected, settings, root)
+    _indexed(plan, collected, root, on_disk=checkpoint is None)
     return collected
-
-
-def _unindexed(root: Path) -> int:
-    """Delete every crop on disk the index does not name, so a build writes it again.
-
-    Args:
-        root: The dataset's own root directory.
-
-    Returns:
-        dropped: How many crops were deleted, and none where no index was written.
-    """
-    try:
-        named = {one.path for one in metadata_read.read_observation_metadata(root)}
-    except FileNotFoundError:
-        return 0
-    dropped = 0
-    for path in root.rglob(f"*{paths.SAMPLE_SUFFIX}"):
-        if str(path.relative_to(root)) not in named:
-            path.unlink()
-            dropped += 1
-    return dropped
 
 
 def _checkpointed(
     outcomes: Iterator[Outcome],
     plan: Plan,
-    settings: Settings,
     root: Path,
     checkpoint: Callable[[], None],
 ) -> Iterator[Outcome]:
@@ -127,7 +117,6 @@ def _checkpointed(
     Args:
         outcomes: The outcomes as the runner finishes them.
         plan: What the build set out to do, whose tiles the index covers.
-        settings: The settled choices for the build.
         root: The dataset's own root directory.
         checkpoint: What publishes the dataset as it stands.
 
@@ -144,7 +133,7 @@ def _checkpointed(
             continue
         try:
             # An index is written first, so what is published is readable on its own.
-            _indexed(plan, collected, settings, root)
+            _indexed(plan, collected, root, on_disk=False)
             checkpoint()
         except Exception as error:  # noqa: BLE001
             # A checkpoint is insurance: a build outlives one it could not write.
@@ -287,7 +276,6 @@ def build_product(job: Job, root: Path) -> Outcome:
                     steps.layout,
                     str(path.relative_to(root)),
                     t_start=job.t_start,
-                    altitude=steps.altitude(held) if steps.altitude else None,
                 )
             )
     finally:
@@ -298,15 +286,20 @@ def build_product(job: Job, root: Path) -> Outcome:
 
 
 def _indexed(
-    plan: Plan, collected: Sequence[Outcome], settings: Settings, root: Path
+    plan: Plan,
+    collected: Sequence[Outcome],
+    root: Path,
+    *,
+    on_disk: bool,
 ) -> None:
     """Write the index over every crop the dataset holds, not this run's alone.
 
     Args:
         plan: What the build set out to do, whose tiles this run covers.
         collected: What every job of this run left.
-        settings: The settled choices for the build.
         root: The dataset's own root directory.
+        on_disk: Whether an earlier run's record is kept only while its crop is
+            on disk, rather than for as long as the index names it.
     """
     written = [held for one in collected for held in one.records]
     rewritten = {one.identity for one in written}
@@ -319,7 +312,7 @@ def _indexed(
     records = [
         one
         for one in standing
-        if one.identity not in rewritten and (root / one.path).exists()
+        if one.identity not in rewritten and (not on_disk or (root / one.path).exists())
     ] + written
     tiles = {one.identity: one for one in plan.tiles}
     # A tile this run missed is carried forward, so no record names an unknown one.

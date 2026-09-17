@@ -26,6 +26,7 @@ def build_plan(
     ode: httpx.Client | None = None,
     *,
     force: bool = False,
+    published: frozenset[str] = frozenset(),
 ) -> Plan:
     """Work out every product one build has to fetch, and what to cut it to.
 
@@ -36,6 +37,8 @@ def build_plan(
         ode: The client an instrument searched by ground is looked up through,
             or None to leave those instruments out of the plan.
         force: When True, plan products every crop of which is already written.
+        published: The crops that count as written although no longer on disk,
+            by their path relative to the root.
 
     Returns:
         plan: The plan, its jobs heaviest first so no long one is picked up last.
@@ -80,7 +83,12 @@ def build_plan(
         left = tuple(
             frame
             for frame in held
-            if force or not sample_path(frame, instrument, identifier, root).exists()
+            if force
+            or not (
+                str(crop := sample_path(frame, instrument, identifier, Path()))
+                in published
+                or (root / crop).exists()
+            )
         )
         skipped += len(held) - len(left)
         if left:

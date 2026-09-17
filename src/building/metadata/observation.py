@@ -53,9 +53,6 @@ class ObservationMetadata:
         t_start: When the observation started, or None where the archive
             publishes no time for it.
         t_end: When it ended, or None for the same reason.
-        altitude_min_m: How low the spacecraft was above the ground, for a
-            sounder whose delay axis is read through it, and None otherwise.
-        altitude_max_m: How high it was, for the same instrument.
     """
 
     tile: str
@@ -77,8 +74,6 @@ class ObservationMetadata:
     band_wavelengths: tuple[float, ...] | None = None
     t_start: datetime | None = None
     t_end: datetime | None = None
-    altitude_min_m: float | None = None
-    altitude_max_m: float | None = None
 
     @property
     def identity(self) -> tuple[str, str, str]:
@@ -96,7 +91,6 @@ def observation_metadata(
     layout: Layout,
     path: str,
     t_start: datetime | None = None,
-    altitude: tuple[float, float] | None = None,
 ) -> ObservationMetadata:
     """Return what one stored observation is read back through.
 
@@ -107,8 +101,6 @@ def observation_metadata(
         layout: What its instrument's arrays hold.
         path: Where its arrays were written, relative to the dataset's own root.
         t_start: When it started, for an archive whose label publishes no time.
-        altitude: How low and how high the spacecraft was, for a sounder whose
-            delay axis is read through it, and None for every other instrument.
 
     Returns:
         metadata: The metadata, its ground sample and statistics measured rather than
@@ -121,7 +113,6 @@ def observation_metadata(
         for size, holds in zip(values.shape, layout.axes, strict=True)
     )
     measured = held.measured.reshape(ground)
-    low, high = altitude if altitude else (None, None)
     # An integer holds no infinite identity, so the reduction starts at its type's edge.
     limits = (
         np.iinfo(values.dtype)
@@ -173,8 +164,6 @@ def observation_metadata(
         band_wavelengths=band_wavelengths,
         t_start=_moment(held.label, STARTED) or t_start,
         t_end=_moment(held.label, STOPPED),
-        altitude_min_m=low,
-        altitude_max_m=high,
     )
 
 

@@ -7,7 +7,6 @@ import argparse
 import os
 import time
 from collections.abc import Callable
-from functools import partial
 
 from dhub import archives, submit
 from dhub import configs as platform
@@ -85,26 +84,34 @@ def run_build(project, force: bool = False, workers: int | None = None):
     # The build's own name is carried through, so one never overwrites another
     published_as = f"{_DATASET}-{choices.name}"
     root = paths.dataset_root(choices.name)
-    # A job starts on an empty disk, so what is already built comes off the platform
+    # A job starts on an empty disk, so only the index of what is built comes down
     if not force:
-        archives.download_folder(project, published_as, root)
+        archives.download_files(project, published_as, root, paths.INDEX_NAMES)
     print(f"building {choices.share:.0%} of the dataset as {choices.name}", flush=True)
-    checkpoint = partial(
-        archives.published_folder,
-        project,
-        root,
-        published_as,
-        DATASET_HELD,
-        paths.SAMPLE_SUFFIX,
-    )
-    failed = build_dataset(force, workers, checkpoint)
-    published = checkpoint()
+
+    def published():
+        """Publish the dataset as it stands, then delete the crops it sent from disk.
+
+        Returns:
+            dataset: The published dataset.
+        """
+        crops = paths.crop_paths(root)
+        index = [root / one for one in paths.INDEX_NAMES]
+        dataset = archives.published_folder(
+            project, root, crops, index, published_as, DATASET_HELD, choices.workers
+        )
+        for crop in crops:
+            crop.unlink()
+        return dataset
+
+    failed = build_dataset(force, workers, published)
+    dataset = published()
     if failed:
         raise RuntimeError(
             "the build had failures; what was published holds what finished"
         )
     print("done", flush=True)
-    return published
+    return dataset
 
 
 def main() -> int:

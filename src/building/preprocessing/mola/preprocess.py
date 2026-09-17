@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from building.configs import mola as configs
 from building.preprocessing.common.models.relative_position import RelativePosition
-from building.preprocessing.mola import projection
+from building.preprocessing.mola import delay, projection
 from building.preprocessing.mola.merge_sheets import merge_sheets
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
@@ -67,6 +67,6 @@ def crop(grid: MolaGrid, frame: Tile) -> MolaSample | None:
             geodesy.normalise_longitude(observation.across - frame.centre_lon),
             observation.separable,
         ),
-        label=observation.label,
-        topography=observation.topography,
+        label=delay.row_label(observation.label),
+        delay=delay.radargram_rows(observation.topography),
     )

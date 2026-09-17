@@ -1,1 +1,1 @@
-"""Reading one SHARAD radargram and the geometry published beside it."""
+"""Reading one SHARAD radargram and the geometry and clutter published beside it."""
