@@ -4,20 +4,6 @@ This repository provides an automated analysis pipeline that splits Mars into eq
 
 The pipeline measures what every instrument covers of each tile and filters the tiles according to specific coverage and temporal window criteria. Selected tiles and their corresponding multi-sensor observations are then processed into standardized data, ready for training and evaluation of machine learning models.
 
-## The tile grid
-
-Mars is split into non-overlapping tiles of `tile_km` a side, 32 km by default,
-just above the 64 SHARAD traces (about 465 m each) a tile is meant to hold. The
-grid is cut into latitude bands one tile tall, and each band into as many
-columns as its area has room for, so every tile is a lon/lat box holding about
-the same ground wherever it falls: 140,979 tiles of 1,004 to 1,071 km². A tile
-is named for its band and column, such as `b123_c0456`.
-
-Tiles are gathered into tile groups about `tile_group_deg` a side, 10° by
-default. ODE is asked once per group and instrument set, and each footprint is
-then handed to the tiles it reaches, so a run asks ODE a few thousand times
-rather than once per tile.
-
 ## Development commands
 
 ```bash
@@ -41,20 +27,14 @@ uv run --group digitalhub python scripts/analysis_pipeline.py --dh --only-stats
 ```
 
 Everything a submission needs, from the project name to the memory a job asks
-for, is in `configs/digitalhub.yaml`. The pip requirements are taken straight
-from `pyproject.toml`, so the image always matches this repository.
+for, is in `configs/digitalhub.yaml`.
+It's important to fill in the `.env` file with the correct values.
+Refer to the `.env.example` file for the required variables and their descriptions.
 
-A run outlasts the credentials it is started with: those lapse after some six
-hours, and a build that is still going then can publish nothing. So a job mints
-its own instead. It presents a personal access token, which the platform holds
-as a secret named `DHCORE_PERSONAL_ACCESS_TOKEN` and hands the job under that
-name; create one from the console, under your username, then Configuration, then
-Personal Access Tokens. The token names neither who issues credentials nor who
-asks for them, so `.env` carries those two, and a submission forwards them to
-the job. It is not committed, `.env.example` says what it holds, and a
-submission stops before it starts anything if either is missing.
+### Running it locally
 
-It's possible to run the pipeline locally, by simply omitting the `--dh` flag. The local run will use the same configs and produce the same outputs, but it will not be versioned or managed by DigitalHub.
+It's possible to run the pipeline locally, by simply omitting the `--dh` flag.
+The local run will use the same configs and produce the same outputs, but it will not be versioned or managed by DigitalHub.
 
 
 ## Running the analysis
@@ -139,15 +119,3 @@ published and builds no artifact of its own.
 correction at a time, drawing the cube after each one. It brings that
 observation down itself, so it waits on no pipeline and on nothing already
 on disk.
-
-## Configuration
-
-```
-configs/
-  analysis.yaml         # The tile grid, what a run downloads and measures, and what a window must hold
-  building.yaml         # How much of the dataset to build, and what to call it
-  digitalhub.yaml       # What a submitted run is given, and what it publishes
-```
-
-Each file is read as written and no setting is checked: the run that reads it is
-the check. What changes from one run to the next is a flag instead.
