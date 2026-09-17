@@ -72,9 +72,9 @@ def run_build(
             indexed = metadata_read.read_observation_metadata(root)
             named = frozenset(one.path for one in indexed)
         except FileNotFoundError:
-            named = None
+            named = frozenset()
         # A crop the index cannot name is unreadable, so it is built again.
-        if not force and named is not None:
+        if not force:
             dropped = 0
             for path in paths.crop_paths(root):
                 if str(path.relative_to(root)) not in named:
@@ -82,7 +82,7 @@ def run_build(
                     dropped += 1
             if dropped:
                 console.print(f"dropping {dropped:,} crops the index does not name")
-        published = (named or frozenset()) if checkpoint else frozenset()
+        published = named if checkpoint else frozenset()
         plan = planner.build_plan(settings, root, ode, force=force, published=published)
         printing.describe(plan, settings, budget, console)
         progress = Progress(len(plan.jobs))
