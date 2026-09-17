@@ -1,7 +1,7 @@
 # What a build of the dataset holds, and how much of it to build.
 
 # The directory it is written in and the name it is published under.
-name: full
+name: training-dataset
 
 # What share of the tiles the selection kept to build, above zero and up to one.
 share: 1.0

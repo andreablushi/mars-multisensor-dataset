@@ -38,10 +38,10 @@ resources:
   # A build waits on the archives, not the cores, and its disk holds the whole dataset
   build:
     profile: cpu
-    cpu: 5
+    cpu: 8
     memory: 40Gi
     budget: 24Gi
-    disk: 360Gi
+    disk: 660Gi
 
 # The function each run is registered as, the project scoping it so it needs no prefix
 functions:
