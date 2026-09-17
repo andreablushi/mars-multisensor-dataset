@@ -90,19 +90,19 @@ def published_folder(
     project,
     root: Path,
     files: Sequence[Path],
-    index: Sequence[Path],
+    last: Sequence[Path],
     name: str,
     description: str,
     uploads: int,
 ):
-    """Publish some files of one tree, sending many at once, and their index last.
+    """Publish some files of one tree, sending many at once, and a few after them.
 
     Args:
         project: The DigitalHub project to log the folder into.
         root: The directory they sit in, whose paths inside it they keep, which
             is what the index names them by.
         files: What to send, in any order.
-        index: What names those files, sent only once every one of them is up.
+        last: What is sent one by one, only once every file is up.
         name: The name the folder is published under.
         description: What the folder holds, and how it is read.
         uploads: How many files are sent at once.
@@ -111,8 +111,8 @@ def published_folder(
         artifact: The logged artifact.
     """
     client, bucket, prefix = stored_folder(project, name)
-    going = sum(path.stat().st_size for path in [*files, *index])
-    told = f"{len(files) + len(index):,} files, {going / 1e6:.0f} MB"
+    going = sum(path.stat().st_size for path in [*files, *last])
+    told = f"{len(files) + len(last):,} files, {going / 1e6:.0f} MB"
     print(f"uploading {name}, {told}", flush=True)
 
     def send(path: Path) -> None:
@@ -126,7 +126,7 @@ def published_folder(
 
     with ThreadPoolExecutor(max_workers=uploads) as sending:
         list(sending.map(send, files))
-    for path in index:
+    for path in last:
         send(path)
     return project.new_artifact(
         name=name,

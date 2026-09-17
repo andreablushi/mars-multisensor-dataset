@@ -29,7 +29,6 @@ DATASET_HELD = (
 _PUBLISHED = platform.load().publishes
 _DATASET = _PUBLISHED["dataset"]
 _SELECTION = _PUBLISHED["selection"]
-_UPLOADS = int(platform.load().resources["build"]["cpu"])
 
 
 def build_dataset(
@@ -99,7 +98,7 @@ def run_build(project, force: bool = False, workers: int | None = None):
         crops = paths.crop_paths(root)
         index = [root / one for one in paths.INDEX_NAMES]
         dataset = archives.published_folder(
-            project, root, crops, index, published_as, DATASET_HELD, _UPLOADS
+            project, root, crops, index, published_as, DATASET_HELD, choices.workers
         )
         for crop in crops:
             crop.unlink()
