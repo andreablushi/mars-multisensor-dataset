@@ -6,6 +6,7 @@ import shutil
 import tarfile
 import warnings
 from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -86,27 +87,47 @@ def stored_folder(project, name: str) -> tuple[object, str, str]:
 
 
 def published_folder(
-    project, root: Path, files: Sequence[Path], name: str, description: str
+    project,
+    root: Path,
+    files: Sequence[Path],
+    index: Sequence[Path],
+    name: str,
+    description: str,
+    uploads: int,
 ):
-    """Publish some files of one tree one by one, in the order given.
+    """Publish some files of one tree, sending many at once, and their index last.
 
     Args:
         project: The DigitalHub project to log the folder into.
         root: The directory they sit in, whose paths inside it they keep, which
             is what the index names them by.
-        files: What to send, in the order to send it.
+        files: What to send, in any order.
+        index: What names those files, sent only once every one of them is up.
         name: The name the folder is published under.
         description: What the folder holds, and how it is read.
+        uploads: How many files are sent at once.
 
     Returns:
         artifact: The logged artifact.
     """
     client, bucket, prefix = stored_folder(project, name)
-    going = sum(path.stat().st_size for path in files)
-    print(f"uploading {name}, {len(files):,} files, {going / 1e6:.0f} MB", flush=True)
-    for path in files:
+    going = sum(path.stat().st_size for path in [*files, *index])
+    told = f"{len(files) + len(index):,} files, {going / 1e6:.0f} MB"
+    print(f"uploading {name}, {told}", flush=True)
+
+    def send(path: Path) -> None:
+        """Send one file to the key its path inside the tree names.
+
+        Args:
+            path: The file to send.
+        """
         key = prefix + path.relative_to(root).as_posix()
         client.upload_file(Filename=str(path), Bucket=bucket, Key=key)
+
+    with ThreadPoolExecutor(max_workers=uploads) as sending:
+        list(sending.map(send, files))
+    for path in index:
+        send(path)
     return project.new_artifact(
         name=name,
         kind="artifact",
