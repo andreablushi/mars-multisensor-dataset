@@ -41,7 +41,7 @@ resources:
     cpu: 8
     memory: 40Gi
     budget: 24Gi
-    disk: 660Gi
+    disk: 400Gi
 
 # The function each run is registered as, the project scoping it so it needs no prefix
 functions:
