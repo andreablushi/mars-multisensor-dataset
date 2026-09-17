@@ -13,4 +13,4 @@ seed: 42
 workers: 8
 
 # Downloads at once, which wait on the archives and not on the cores.
-downloads: 48
+downloads: 144

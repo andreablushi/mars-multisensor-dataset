@@ -22,6 +22,7 @@ TILE_METADATA_NAME = "tiles.parquet"
 OBSERVATION_METADATA_NAME = "observations.parquet"
 DATASET_MANIFEST_NAME = "dataset.json"
 SAMPLE_SUFFIX = ".npz"
+INDEX_NAMES = (TILE_METADATA_NAME, OBSERVATION_METADATA_NAME, DATASET_MANIFEST_NAME)
 
 
 def dataset_root(name: str, root: Path = DATASETS_ROOT) -> Path:
