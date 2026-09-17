@@ -91,7 +91,7 @@ def crop_cap(grid: MolaGrid, frame: Tile) -> MolaSample | None:
     return MolaSample(
         identifier=grid.name,
         position=held.position,
-        label=labels.merge(label),
+        label=delay.row_label(labels.merge(label)),
         inside=held.inside,
         delay=delay.radargram_rows(
             images.load_window(

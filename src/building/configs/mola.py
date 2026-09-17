@@ -31,7 +31,7 @@ LAYOUT = Layout(
     dims=("line", "sample"),
     axes=(GROUND, GROUND),
     measurement="delay",
-    stored="float32",
+    stored="int16",
 )
 
 # Where a sheet is kept, in the one directory of the sheet.

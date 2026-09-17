@@ -67,6 +67,6 @@ def crop(grid: MolaGrid, frame: Tile) -> MolaSample | None:
             geodesy.normalise_longitude(observation.across - frame.centre_lon),
             observation.separable,
         ),
-        label=observation.label,
+        label=delay.row_label(observation.label),
         delay=delay.radargram_rows(observation.topography),
     )
