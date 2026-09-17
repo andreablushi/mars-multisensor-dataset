@@ -29,7 +29,8 @@ def read_observation(identifier: str) -> SharadObservation:
     Raises:
         FileNotFoundError: When any product or a label is missing.
         KeyError: When a label names a sample type this cannot read.
-        ValueError: When the geometry or the clutter holds less than the radargram.
+        ValueError: When the geometry holds fewer rows than its label promises, or
+            the clutter is not one array the radargram's size.
     """
     held = {
         kind: configs.CACHE.files(
@@ -42,20 +43,14 @@ def read_observation(identifier: str) -> SharadObservation:
     geometry, placing = tables.load_table(held[configs.GEOMETRY][".tab"])
     # The geometry counts columns from one, and the radargram from zero.
     traces = geometry[COLUMN_FIELD].astype("i8") - 1
-    clutter = np.memmap(
-        held[configs.CLUTTER][".img"],
-        dtype=configs.CLUTTER_TYPE,
-        mode="r",
-        offset=configs.CLUTTER_ARRAY
-        * power.size
-        * np.dtype(configs.CLUTTER_TYPE).itemsize,
-        shape=power.shape,
-    )
+    simulated = held[configs.CLUTTER][".img"]
+    if simulated.stat().st_size != power.size * np.dtype(configs.CLUTTER_TYPE).itemsize:
+        raise ValueError(f"{simulated.name} is not one array the radargram's size.")
     return SharadObservation(
         identifier,
         labels.merge(sounding, placing),
         power[:, traces],
-        np.asarray(clutter[:, traces]),
+        np.memmap(simulated, dtype=configs.CLUTTER_TYPE, mode="r", shape=power.shape),
         geometry,
         traces,
     )
@@ -87,6 +82,6 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
         # The archive sounds a trace or fills it whole, so one flag covers its delays.
         valid=np.isfinite(power).all(axis=0),
         power=power,
-        clutter=observation.clutter[:, traces],
+        clutter=observation.clutter[:, observation.traces[traces]],
         traces=observation.traces[traces],
     )

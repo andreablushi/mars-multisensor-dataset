@@ -92,22 +92,27 @@ def offers(client: httpx.Client, product_id: str, **params: str) -> dict[str, st
         params: What else names it, such as the instrument and its type.
 
     Returns:
-        urls: The download URL of each file suffix, a file named for the product
-            winning over the first offer of that suffix.
+        urls: The download URL of each file suffix, the file named for the product
+            where there is one, and the only offer of that suffix otherwise.
     """
     entries = query(client, productid=product_id, **params)
-    found: dict[str, str] = {}
+    named: dict[str, str] = {}
+    only: dict[str, str | None] = {}
     for name, url in published(entries[0] if entries else {}).items():
         path = Path(name)
-        if path.stem == product_id.lower() or path.suffix not in found:
-            found[path.suffix] = url
-    return found
+        if path.stem == product_id.lower():
+            named[path.suffix] = url
+        else:
+            only[path.suffix] = None if path.suffix in only else url
+    return {suffix: url for suffix, url in {**only, **named}.items() if url}
 
 
 def collect(
     client: httpx.Client,
     product_id: str,
     destination: dict[str, Path],
+    *,
+    span: tuple[int, int] | None = None,
     **params: str,
 ) -> None:
     """Download whichever halves of one ODE product are not on disk yet.
@@ -116,6 +121,8 @@ def collect(
         client: The client whose connections the query is asked over.
         product_id: The product to fetch.
         destination: Where each of its halves belongs, keyed by suffix.
+        span: The first byte of each half to keep and the byte after the last, or
+            None to keep them whole.
         params: What names the product to ODE, such as the instrument host, the
             instrument and the product type.
 
@@ -123,7 +130,12 @@ def collect(
         FileNotFoundError: When ODE offers no download for a missing half.
     """
     if any(not path.exists() for path in destination.values()):
-        bring(destination, offers(client, product_id, **params), client=client)
+        bring(
+            destination,
+            offers(client, product_id, **params),
+            client=client,
+            span=span,
+        )
 
 
 def bring(
@@ -132,6 +144,7 @@ def bring(
     timeout: float = TIMEOUT,
     *,
     client: httpx.Client | None = None,
+    span: tuple[int, int] | None = None,
 ) -> None:
     """Stream whichever halves of one product are not on disk yet.
 
@@ -141,6 +154,8 @@ def bring(
         timeout: How long to wait on each transfer.
         client: A client whose connections to reuse, or None to open one per
             transfer.
+        span: The first byte of each half to keep and the byte after the last, or
+            None to keep them whole.
 
     Raises:
         FileNotFoundError: When a missing half is served from nowhere.
@@ -150,4 +165,4 @@ def bring(
             continue
         if not urls.get(suffix):
             raise FileNotFoundError(f"No {suffix} offered for {path.stem}.")
-        http.streamed(urls[suffix], path, timeout, client=client)
+        http.streamed(urls[suffix], path, timeout, client=client, span=span)

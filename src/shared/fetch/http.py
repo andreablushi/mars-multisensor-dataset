@@ -127,6 +127,7 @@ def streamed(
     retries: int = STREAM_RETRIES,
     backoff: float = BACKOFF_BASE,
     deadline: float = STREAM_DEADLINE,
+    span: tuple[int, int] | None = None,
 ) -> None:
     """Stream one file to disk, asking again while the server keeps failing.
 
@@ -139,12 +140,15 @@ def streamed(
         retries: How many times to ask again after the first attempt.
         backoff: The base delay between attempts, in seconds.
         deadline: How long the whole transfer may run for, in seconds.
+        span: The first byte to keep and the byte after the last, or None to keep
+            the whole file.
 
     Raises:
-        FetchError: When the server refuses the file, when every attempt fails,
-            or when the deadline passed first.
+        FetchError: When the server refuses the file or the span, when every
+            attempt fails, or when the deadline passed first.
     """
     reading = client.stream if client else httpx.stream
+    headers = {"Range": f"bytes={span[0]}-{span[1] - 1}"} if span else None
     give_up_at = time.monotonic() + deadline
     last: Exception | None = None
     for attempt in range(retries + 1):
@@ -154,7 +158,7 @@ def streamed(
             break
         ARCHIVE.wait()
         try:
-            with reading("GET", url, timeout=timeout) as reply:
+            with reading("GET", url, timeout=timeout, headers=headers) as reply:
                 if reply.status_code in RETRYABLE_STATUS:
                     if reply.status_code in CROWDED_STATUS:
                         ARCHIVE.refused()
@@ -164,6 +168,8 @@ def streamed(
                     raise FetchError(
                         f"{url} refused the request: HTTP {reply.status_code}"
                     )
+                if span and reply.status_code != httpx.codes.PARTIAL_CONTENT:
+                    raise FetchError(f"{url} ignored the byte range it was asked for")
                 ARCHIVE.answered()
                 # Nothing is left behind when a transfer fails part way through.
                 with atomic_path(path) as tmp, tmp.open("wb") as handle:

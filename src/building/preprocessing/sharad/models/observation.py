@@ -19,8 +19,8 @@ class SharadObservation:
         label: What every product it was published as says about it, merged.
         identifier: The observation id.
         power: Delay samples by traces, holding only the placed traces.
-        clutter: The simulated surface clutter power on the same grid, zero where
-            no surface echo is predicted.
+        clutter: The simulated surface clutter power over every radargram column,
+            mapped from disk, zero where no surface echo is predicted.
         geometry: One row per kept trace, in the same order.
         traces: Which of the original radargram columns these traces are,
             counted from zero.
