@@ -1,86 +1,12 @@
-"""Cutting one observation down to the ground its own tile covers."""
+"""Cutting the arrays of one observation down to the samples a box keeps."""
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import numpy as np
 
-from building.preprocessing.common.models.overlap import Overlap
-from building.preprocessing.common.models.relative_position import (
-    PolarGrid,
-    RelativePosition,
-)
 from shared.maths import geodesy
-from shared.maths.geodesy import TURN
-from shared.models.tile import Tile
-
-# The longest segment the box is walked in, a chord leaving its arc by under a pixel.
-STEP = 0.1
-
-# How many pixels of a polar cut become degrees at once, since a grid can be huge.
-BLOCK = 4_000_000
-
-
-def overlap(
-    latitude: np.ndarray,
-    longitude: np.ndarray,
-    separable: bool,
-    frame: Tile,
-) -> Overlap | None:
-    """Return what one tile's box keeps of one observation.
-
-    Args:
-        latitude: The latitude of every sample in degrees, or of every line
-            where the grid is separable.
-        longitude: The longitude of every sample, or of every sample of a line.
-        separable: Whether those two hold one axis each rather than a value for
-            every sample.
-        frame: The tile's local frame, carrying the box the catalogue gives
-            it, which is read as the same degrees from that centre.
-
-    Returns:
-        held: What the box keeps, or None where the observation reaches none of it.
-    """
-    position = RelativePosition(
-        north=latitude - frame.centre_lat,
-        east=geodesy.normalise_longitude(longitude - frame.centre_lon),
-        separable=separable,
-    )
-    south = frame.min_lat - frame.centre_lat
-    north = frame.max_lat - frame.centre_lat
-    west = geodesy.normalise_longitude(frame.west_lon - frame.centre_lon)
-    span = geodesy.longitude_span(frame.west_lon, frame.east_lon)
-    # How far north and east of the box's own edges every sample lies.
-    upward = (position.north >= south) & (position.north <= north)
-    # Measured round the turn, so the meridian the box may run over is no edge.
-    eastward = (position.east - west) % TURN
-    if position.separable:
-        # The box is a rectangle here, so each axis is asked alone and keeps exactly it.
-        lines = np.flatnonzero(upward)
-        # A box over the meridian keeps two ends of one strip, joined by ordering east.
-        held = np.flatnonzero(eastward <= span)
-        samples = held[np.argsort(eastward[held], kind="stable")]
-        if not lines.size or not samples.size:
-            return None
-        return Overlap(
-            (lines, samples),
-            None,
-            RelativePosition(position.north[lines], position.east[samples], True),
-        )
-    inside = upward & (eastward <= span)
-    if not inside.any():
-        return None
-    where = np.argwhere(inside)
-    bounds = tuple(
-        np.arange(int(low), int(high) + 1)
-        for low, high in zip(where.min(axis=0), where.max(axis=0), strict=True)
-    )
-    return Overlap(
-        bounds,
-        marked(taken(inside, bounds)),
-        RelativePosition(
-            taken(position.north, bounds), taken(position.east, bounds), False
-        ),
-    )
 
 
 def marked(held: np.ndarray) -> np.ndarray | None:
@@ -117,59 +43,58 @@ def taken(array: np.ndarray, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     return array[np.ix_(*bounds)] if len(bounds) > 1 else array[bounds[0]]
 
 
-def polar_overlap(
-    down: np.ndarray, across: np.ndarray, grid: PolarGrid, frame: Tile
-) -> Overlap | None:
-    """Return what one tile's box keeps of one grid projected onto a pole.
+def sample_sizes(
+    down: np.ndarray, across: np.ndarray, separable: bool
+) -> tuple[int, ...]:
+    """Return how many samples each ground axis of one cut holds.
 
     Args:
-        down: The northing of every line, in the projection's own metres.
-        across: The easting of every sample, in the same metres.
-        grid: The pole the two are measured on.
-        frame: The tile's local frame, carrying the box the catalogue gives
-            it.
+        down: What places every line of it, or every sample where the two are
+            not separable.
+        across: What places every sample of a line, holding the same.
+        separable: Whether those two hold one axis each.
 
     Returns:
-        held: What the box keeps, or None where the grid reaches none of it.
+        sizes: One count per ground axis, in the order those axes run.
     """
-    ring = geodesy.stereographic_forward(
-        *geodesy.bbox_ring(
-            frame.min_lat, frame.max_lat, frame.west_lon, frame.east_lon, STEP
-        ),
-        *grid,
-    )
-    # The box projects to a sector, and the ring its edge traces bounds it.
-    lines = np.flatnonzero((down >= ring[1].min()) & (down <= ring[1].max()))
-    samples = np.flatnonzero((across >= ring[0].min()) & (across <= ring[0].max()))
-    if not lines.size or not samples.size:
-        return None
-    # Only the sector's rectangle is crossed back, a block of its lines at a time.
-    span = geodesy.longitude_span(frame.west_lon, frame.east_lon)
-    held = across[samples][None, :]
-    inside = np.empty((lines.size, samples.size), dtype=bool)
-    reach = max(1, BLOCK // samples.size)
-    for start in range(0, lines.size, reach):
+    return (down.size, across.size) if separable else down.shape
+
+
+def sampled(
+    down: np.ndarray,
+    across: np.ndarray,
+    separable: bool,
+    grid: tuple[float, bool, float] | None,
+    sizes: tuple[int, ...],
+    block_samples: int,
+) -> Iterator[tuple[slice, np.ndarray, np.ndarray]]:
+    """Walk the samples of one cut in blocks, as the longitude and latitude of each.
+
+    Args:
+        down: The latitude of every line in degrees, or its northing in the
+            metres of `grid`, one per sample where the two are not separable.
+        across: The longitude of every sample, or its easting, holding the same.
+        separable: Whether those two hold one axis each rather than a value for
+            every sample.
+        grid: The grid the two are measured on, and None where they are degrees.
+        sizes: How many samples each ground axis holds.
+        block_samples: How many samples to read at once, so a grid running to
+            gigabytes is never crossed whole.
+
+    Yields:
+        block: Which lines of the cut this hands back.
+        longitude: Their longitudes in degrees, one row per line of the block.
+        latitude: Their latitudes, holding the same.
+    """
+    reach = max(1, block_samples // max(1, int(np.prod(sizes[1:], dtype=int))))
+    for start in range(0, sizes[0], reach):
         block = slice(start, start + reach)
-        lon, lat = geodesy.stereographic_inverse(
-            held, down[lines[block]][:, None], *grid
-        )
-        inside[block] = (
-            (lat >= frame.min_lat)
-            & (lat <= frame.max_lat)
-            & ((lon - frame.west_lon) % TURN <= span)
-        )
-    if not inside.any():
-        return None
-    centre_x, centre_y = geodesy.stereographic_forward(
-        frame.centre_lon, frame.centre_lat, *grid
-    )
-    return Overlap(
-        (lines, samples),
-        marked(inside),
-        RelativePosition(
-            down[lines] - float(centre_y),
-            across[samples] - float(centre_x),
-            True,
-            grid,
-        ),
-    )
+        if separable:
+            first, second = down[block][:, None], across[None, :]
+        else:
+            first, second = down[block], across[block]
+        if grid is None:
+            yield block, second, first
+            continue
+        lon, lat = geodesy.stereographic_inverse(second, first, *grid)
+        yield block, lon, lat

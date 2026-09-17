@@ -19,12 +19,12 @@ class CtxObservation:
         identifier: The observation id.
         image: The TIFF the brightness was published as, read a window at a time
             rather than whole, a scan running to gigabytes.
-        down: What every line holds, its latitude in degrees on a cylindrical
+        down: What every line holds, its latitude in degrees on an equatorial
             grid and its northing in the projection's metres on a polar one.
         across: What every sample holds, its longitude or its easting, read the
             same way.
         polar: The grid the two are measured on, and None where they are the
-            degrees a cylindrical grid places directly.
+            degrees an equatorial grid places directly.
     """
 
     identifier: str

@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from building.configs import mola as configs
-from building.preprocessing.common.models.relative_position import RelativePosition
+from building.preprocessing.common import projection as placing
 from building.preprocessing.mola import delay, projection
 from building.preprocessing.mola.merge_sheets import merge_sheets
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
-from shared.maths import geodesy
 from shared.models.tile import Tile
 
 
@@ -52,20 +51,18 @@ def crop(grid: MolaGrid, frame: Tile) -> MolaSample | None:
         frame: The local frame of the tile they are merged for.
 
     Returns:
-        sample: The height over that tile, or None where a cap reaches none of it.
+        sample: The height over that tile, or None where a polar grid misses it.
 
     Raises:
         ValueError: When the sheets that landed leave part of its box unwritten.
     """
     if grid.polar:
-        return projection.crop_cap(grid, frame)
+        return projection.crop_polar(grid, frame)
     observation = merge_sheets(grid, frame)
     return MolaSample(
         identifier=observation.identifier,
-        position=RelativePosition(
-            observation.down - frame.centre_lat,
-            geodesy.normalise_longitude(observation.across - frame.centre_lon),
-            observation.separable,
+        position=placing.placed(
+            observation.down, observation.across, observation.separable, frame
         ),
         label=delay.row_label(observation.label),
         delay=delay.radargram_rows(observation.topography),

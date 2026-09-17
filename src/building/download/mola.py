@@ -74,12 +74,12 @@ def grids(tile: Tile, client: httpx.Client) -> list[str]:
         grids: The one grid that covers it, since a merge is never joined across two.
     """
     if tile.max_lat > configs.SHEETED_REACH:
-        held = tile.min_lat >= configs.CAP_FLOOR
-        return [configs.NORTH_CAP if held else configs.COARSE]
+        held = tile.min_lat >= configs.POLAR_FLOOR
+        return [configs.NORTH_POLAR if held else configs.COARSE]
     if tile.min_lat < -configs.SHEETED_REACH:
-        held = tile.max_lat <= -configs.CAP_FLOOR
-        return [configs.SOUTH_CAP if held else configs.COARSE]
-    return [configs.CYLINDRICAL]
+        held = tile.max_lat <= -configs.POLAR_FLOOR
+        return [configs.SOUTH_POLAR if held else configs.COARSE]
+    return [configs.EQUATORIAL]
 
 
 def sheets(grid: str, client: httpx.Client) -> list[str]:

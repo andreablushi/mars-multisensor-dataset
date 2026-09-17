@@ -32,7 +32,8 @@ DIRECTORIES = {configs.IMAGE: "prj_full", configs.LABEL: "stage"}
 # What ASU suffixes each with: one shared image, and a label per projection it writes.
 REMOTE_IMAGE = ".tiff"
 # Depending on the zone, projection are either polar stereographic or equirectangular
-REMOTE_LABELS = (".scyl.isis.hdr", ".ps.isis.hdr")
+EQUATORIAL_LABEL = ".scyl.isis.hdr"
+POLAR_LABEL = ".ps.isis.hdr"
 
 # How long to wait for the scan, which ASU builds on the way out.
 TIMEOUT = 900.0
@@ -59,8 +60,11 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
     if not archived:
         raise FileNotFoundError(f"ODE carries no raw scan for {observation_id}.")
     volume = str(archived).lower()
-    written = configs.polar(observation_id)
-    likely, otherwise = REMOTE_LABELS[written], REMOTE_LABELS[not written]
+    likely, otherwise = (
+        (POLAR_LABEL, EQUATORIAL_LABEL)
+        if configs.polar(observation_id)
+        else (EQUATORIAL_LABEL, POLAR_LABEL)
+    )
     try:
         archive.bring(
             destination, _asu(observation_id, volume, likely), TIMEOUT, client=client

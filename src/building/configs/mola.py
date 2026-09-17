@@ -44,7 +44,7 @@ RESOLUTIONS = {"c": 4, "e": 16, "f": 32, "g": 64, "h": 128}
 SHEETED_REACH = 88.0
 
 # The latitude a cap holds at every longitude, its corners alone reaching lower.
-CAP_FLOOR = 51.55
+POLAR_FLOOR = 51.55
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,7 +58,7 @@ class Grid:
         product: The single product it is published as, and None for a grid
             published as the sheets that cover it.
         north: Whether it is centred on the north pole, and None where it is
-            cylindrical and centred on no pole at all.
+            equatorial and centred on no pole at all.
     """
 
     name: str
@@ -68,14 +68,14 @@ class Grid:
 
 
 # The grid a tile is merged from, named for the record and how fine it is.
-CYLINDRICAL = "megdr128"
+EQUATORIAL = "megdr128"
 COARSE = "megdr64"
-NORTH_CAP = "megdr128n"
-SOUTH_CAP = "megdr128s"
+NORTH_POLAR = "megdr128n"
+SOUTH_POLAR = "megdr128s"
 
 GRIDS = {
-    CYLINDRICAL: Grid(CYLINDRICAL, 128),
+    EQUATORIAL: Grid(EQUATORIAL, 128),
     COARSE: Grid(COARSE, 64),
-    NORTH_CAP: Grid(NORTH_CAP, 128, "megt_n_128_1", north=True),
-    SOUTH_CAP: Grid(SOUTH_CAP, 128, "megt_s_128_1", north=False),
+    NORTH_POLAR: Grid(NORTH_POLAR, 128, "megt_n_128_1", north=True),
+    SOUTH_POLAR: Grid(SOUTH_POLAR, 128, "megt_s_128_1", north=False),
 }
