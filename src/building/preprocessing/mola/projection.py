@@ -7,6 +7,7 @@ import numpy as np
 from building.common.pds import images, labels
 from building.preprocessing.common import projection as placing
 from building.preprocessing.common.models.relative_position import PolarGrid
+from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.mola import delay
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
@@ -84,7 +85,7 @@ def crop_polar(grid: MolaGrid, frame: Tile) -> MolaSample | None:
     (image,) = grid.files.values()
     label = labels.load(image.with_suffix(".lbl"))
     down, across, polar = grid_axes(label)
-    held = placing.overlap(down, across, True, frame, polar)
+    held = placing.overlap(Samples(down, across, True, polar), frame)
     if held is None:
         return None
     lines, samples = held.bounds

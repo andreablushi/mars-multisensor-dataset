@@ -18,7 +18,7 @@ KINDS = (LABEL, IMAGE)
 SUFFIXES = {LABEL: ".isis.hdr", IMAGE: ".tiff"}
 
 # From this latitude up ASU writes a scan polar, below it simple cylindrical
-POLAR_LATITUDE = 70
+ASU_POLAR_LATITUDE = 70
 
 # Where a scan's own name carries the latitude it was taken at.
 LATITUDE = re.compile(r"_(\d{2})[ns]\d{3}[we]$")
@@ -35,7 +35,7 @@ def polar(identifier: str) -> bool:
             latitude is not.
     """
     found = LATITUDE.search(identifier.lower())
-    return bool(found) and int(found[1]) >= POLAR_LATITUDE
+    return bool(found) and int(found[1]) >= ASU_POLAR_LATITUDE
 
 
 # How a scan is named, for its mission phase, orbit, latitude and where it looked.

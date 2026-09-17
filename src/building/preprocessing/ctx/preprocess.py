@@ -12,6 +12,7 @@ from building.common.pds import labels
 from building.configs import ctx as configs
 from building.preprocessing.common import projection as placing
 from building.preprocessing.common.crop import marked, taken
+from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.ctx import projection
 from building.preprocessing.ctx.models.observation import CtxObservation
 from building.preprocessing.ctx.models.sample import BLANK, CtxSample
@@ -111,11 +112,13 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         sample: The scan cut to that tile, or None where it reaches none of it.
     """
     held = placing.overlap(
-        observation.down,
-        observation.across,
-        observation.separable,
+        Samples(
+            observation.down,
+            observation.across,
+            observation.separable,
+            observation.polar,
+        ),
         frame,
-        observation.polar,
     )
     if held is None:
         return None

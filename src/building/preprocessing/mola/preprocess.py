@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from building.configs import mola as configs
 from building.preprocessing.common import projection as placing
+from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.mola import delay, projection
 from building.preprocessing.mola.merge_sheets import merge_sheets
 from building.preprocessing.mola.models.grid import MolaGrid
@@ -62,7 +63,8 @@ def crop(grid: MolaGrid, frame: Tile) -> MolaSample | None:
     return MolaSample(
         identifier=observation.identifier,
         position=placing.placed(
-            observation.down, observation.across, observation.separable, frame
+            Samples(observation.down, observation.across, observation.separable, None),
+            frame,
         ),
         label=delay.row_label(observation.label),
         delay=delay.radargram_rows(observation.topography),

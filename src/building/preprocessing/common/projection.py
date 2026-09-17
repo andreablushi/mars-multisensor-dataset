@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import numpy as np
-
 from building.preprocessing.common import equatorial, polar
 from building.preprocessing.common.crop import taken
 from building.preprocessing.common.models.overlap import Overlap
@@ -11,6 +9,7 @@ from building.preprocessing.common.models.relative_position import (
     PolarGrid,
     RelativePosition,
 )
+from building.preprocessing.common.models.samples import Samples
 from shared.maths import geodesy, physics
 from shared.models.tile import Tile
 
@@ -36,24 +35,12 @@ def tile_grid(frame: Tile) -> PolarGrid | None:
     return None
 
 
-def placed(
-    down: np.ndarray,
-    across: np.ndarray,
-    separable: bool,
-    frame: Tile,
-    grid: PolarGrid | None = None,
-) -> RelativePosition:
+def placed(samples: Samples, frame: Tile) -> RelativePosition:
     """Return where the samples one cut keeps sit, on the grid their tile is read on.
 
     Args:
-        down: The latitude of every line it keeps in degrees, or its northing in
-            the metres of `grid`, one per sample where the two are not separable.
-        across: The longitude of every sample it keeps, or its easting, holding
-            the same.
-        separable: Whether those two hold one axis each rather than a value for
-            every sample.
+        samples: The samples the cut keeps, on the grid they were placed on.
         frame: The tile's local frame, whose centre the offsets stand from.
-        grid: The grid the samples sit on, and None where they are degrees.
 
     Returns:
         position: The offsets from that centre, in the metres of the tile's pole
@@ -61,27 +48,16 @@ def placed(
     """
     place = tile_grid(frame)
     if place is None:
-        return equatorial.placed(down, across, separable, frame, grid)
-    return polar.placed(down, across, separable, frame, grid, place)
+        return equatorial.placed(samples, frame)
+    return polar.placed(samples, frame, place)
 
 
-def overlap(
-    down: np.ndarray,
-    across: np.ndarray,
-    separable: bool,
-    frame: Tile,
-    grid: PolarGrid | None = None,
-) -> Overlap | None:
+def overlap(samples: Samples, frame: Tile) -> Overlap | None:
     """Return what one tile's box keeps of one observation, on the tile's own grid.
 
     Args:
-        down: The latitude of every line in degrees, or its northing in the
-            metres of `grid`, one per sample where the two are not separable.
-        across: The longitude of every sample, or its easting, holding the same.
-        separable: Whether those two hold one axis each rather than a value for
-            every sample.
+        samples: The samples of the observation, on the grid it was placed on.
         frame: The tile's local frame, carrying the box the catalogue gives it.
-        grid: The grid the two are measured on, and None for degrees.
 
     Returns:
         held: What the box keeps, or None where the observation reaches none of it.
@@ -89,15 +65,18 @@ def overlap(
     span = geodesy.longitude_span(frame.west_lon, frame.east_lon)
     # A cut is made where the samples sit; a placement is made where the tile is.
     held = (
-        polar.cut(down, across, grid, frame, span)
-        if grid is not None
-        else equatorial.cut(down, across, separable, frame, span)
+        polar.cut(samples, frame, span)
+        if samples.grid is not None
+        else equatorial.cut(samples, frame, span)
     )
     if held is None:
         return None
-    bounds, inside = held
-    if grid is not None or separable:
-        kept = down[bounds[0]], across[bounds[1]]
-        return Overlap(bounds, inside, placed(*kept, True, frame, grid))
-    kept = taken(down, bounds), taken(across, bounds)
-    return Overlap(bounds, inside, placed(*kept, False, frame, grid))
+    if held.separable:
+        kept = samples.down[held.bounds[0]], samples.across[held.bounds[1]]
+    else:
+        kept = taken(samples.down, held.bounds), taken(samples.across, held.bounds)
+    return Overlap(
+        held.bounds,
+        held.inside,
+        placed(Samples(*kept, held.separable, samples.grid), frame),
+    )

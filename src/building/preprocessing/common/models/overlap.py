@@ -18,8 +18,8 @@ class Overlap:
             order.
         inside: Which of the samples that survives the cut truly falls in the box,
             or None where every one of them does.
-        position: Where the samples that are kept sit, in degrees from the
-            tile centre.
+        position: Where the samples that are kept sit, in the degrees or the
+            metres of the grid their tile is read on.
     """
 
     bounds: tuple[np.ndarray, ...]

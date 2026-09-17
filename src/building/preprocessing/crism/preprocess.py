@@ -12,6 +12,7 @@ from building.common.pds import images, labels
 from building.configs import crism as configs
 from building.preprocessing.common import projection as placing
 from building.preprocessing.common.crop import marked, taken
+from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.crism.correction import (
     atmospheric,
     bands_calibration,
@@ -280,7 +281,10 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
             None where it reaches none of it.
     """
     held = placing.overlap(
-        observation.latitude, observation.longitude, observation.separable, frame
+        Samples(
+            observation.latitude, observation.longitude, observation.separable, None
+        ),
+        frame,
     )
     if held is None:
         return None
