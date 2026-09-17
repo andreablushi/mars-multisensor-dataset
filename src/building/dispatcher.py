@@ -98,7 +98,7 @@ INSTRUMENTS = {
         sharad.crop,
         discard=sharad_configs.CACHE.discard,
         observation_id=sharad_configs.NAMING.parse,
-        # A radargram and its geometry measured 135 MB.
-        worker_bytes=256 * 1024**2,
+        # A radargram, its geometry and its clutter measured 444 MB at peak.
+        worker_bytes=512 * 1024**2,
     ),
 }

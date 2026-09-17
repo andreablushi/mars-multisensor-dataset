@@ -10,12 +10,16 @@ from building.download import archive
 # What ODE publishes SHARAD under.
 ODE = {"ihid": "MRO", "iid": "SHARAD"}
 
-# The ODE product types a radargram and its geometry are published under.
-TYPES = {configs.OBSERVATION: "USRDRV2", configs.GEOMETRY: "USGEOMV2"}
+# The ODE product types a radargram, its geometry and its clutter are published under.
+TYPES = {
+    configs.OBSERVATION: "USRDRV2",
+    configs.GEOMETRY: "USGEOMV2",
+    configs.CLUTTER: "SHSIMU",
+}
 
 
 def fetch(observation_id: str, client: httpx.Client) -> None:
-    """Bring one radargram and its geometry down, or leave what is here.
+    """Bring one radargram, its geometry and its clutter down, or leave what is here.
 
     Args:
         observation_id: The observation to fetch.

@@ -24,12 +24,12 @@ def read_observation(identifier: str) -> SharadObservation:
 
     Returns:
         observation: The observation holding only the traces the geometry places, in the
-            radargram's own order.
+            radargram's own order, with the combined clutter simulation beside them.
 
     Raises:
-        FileNotFoundError: When either product or its label is missing.
+        FileNotFoundError: When any product or a label is missing.
         KeyError: When a label names a sample type this cannot read.
-        ValueError: When the geometry holds fewer rows than its label promises.
+        ValueError: When the geometry or the clutter holds less than the radargram.
     """
     held = {
         kind: configs.CACHE.files(
@@ -42,10 +42,20 @@ def read_observation(identifier: str) -> SharadObservation:
     geometry, placing = tables.load_table(held[configs.GEOMETRY][".tab"])
     # The geometry counts columns from one, and the radargram from zero.
     traces = geometry[COLUMN_FIELD].astype("i8") - 1
+    clutter = np.memmap(
+        held[configs.CLUTTER][".img"],
+        dtype=configs.CLUTTER_TYPE,
+        mode="r",
+        offset=configs.CLUTTER_ARRAY
+        * power.size
+        * np.dtype(configs.CLUTTER_TYPE).itemsize,
+        shape=power.shape,
+    )
     return SharadObservation(
         identifier,
         labels.merge(sounding, placing),
         power[:, traces],
+        np.asarray(clutter[:, traces]),
         geometry,
         traces,
     )
@@ -77,5 +87,6 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
         # The archive sounds a trace or fills it whole, so one flag covers its delays.
         valid=np.isfinite(power).all(axis=0),
         power=power,
+        clutter=observation.clutter[:, traces],
         traces=observation.traces[traces],
     )

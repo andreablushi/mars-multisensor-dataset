@@ -92,12 +92,15 @@ def offers(client: httpx.Client, product_id: str, **params: str) -> dict[str, st
         params: What else names it, such as the instrument and its type.
 
     Returns:
-        urls: The download URL of each file suffix, the first offer of a suffix winning.
+        urls: The download URL of each file suffix, a file named for the product
+            winning over the first offer of that suffix.
     """
     entries = query(client, productid=product_id, **params)
     found: dict[str, str] = {}
     for name, url in published(entries[0] if entries else {}).items():
-        found.setdefault(Path(name).suffix, url)
+        path = Path(name)
+        if path.stem == product_id.lower() or path.suffix not in found:
+            found[path.suffix] = url
     return found
 
 

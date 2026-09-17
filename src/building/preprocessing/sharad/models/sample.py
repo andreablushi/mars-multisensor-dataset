@@ -15,9 +15,12 @@ class SharadSample(Sample):
 
     Attributes:
         power: Delay samples by traces, holding only the traces that are left.
+        clutter: The simulated surface clutter power on the same grid, zero where
+            no surface echo is predicted.
         traces: Which of the original radargram columns these traces are,
             counted from zero.
     """
 
     power: np.ndarray
+    clutter: np.ndarray
     traces: np.ndarray
