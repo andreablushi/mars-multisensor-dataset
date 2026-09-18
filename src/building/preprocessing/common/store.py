@@ -21,7 +21,7 @@ NORTH = "north"
 EAST = "east"
 INSIDE = "inside"
 VALID = "valid"
-MEASURED = "measured"
+MEASURED = "measured_ground"
 
 # What the placing arrays are measured in, degrees from the centre or a grid's metres.
 DEGREES = "degrees"
@@ -109,7 +109,7 @@ def write_sample(
     arrays[EAST] = native(held.position.east).astype(
         relative_positioning.STORED, copy=False
     )
-    arrays[MEASURED] = native(held.measured)
+    arrays[MEASURED] = native(held.measured_ground)
     for name, mask in ((INSIDE, held.inside), (VALID, held.valid)):
         # The two the rooted mask is made of, kept for whoever wants them apart.
         if mask is not None:

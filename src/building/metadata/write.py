@@ -20,6 +20,7 @@ def write_metadata(
     held: Sequence[TileMetadata],
     taken: Sequence[ObservationMetadata],
     instruments: tuple[str, ...],
+    band_centres_nm: dict[str, tuple[float, ...]],
     root: Path,
 ) -> None:
     """Write down what the dataset is, every tile in it, and every observation.
@@ -28,10 +29,12 @@ def write_metadata(
         held: One row per tile, in the order to write them.
         taken: One record per tile and observation, in the same manner.
         instruments: The instruments the build covered.
+        band_centres_nm: The grid every crop of an instrument is laid out on,
+            keyed by instrument, for those holding a wavelength.
         root: The directory the files are written in, made when missing.
     """
     root.mkdir(parents=True, exist_ok=True)
     parquet.write(held, tiles.SCHEMA, root / paths.TILE_METADATA_NAME)
     parquet.write(taken, records.SCHEMA, root / paths.OBSERVATION_METADATA_NAME)
-    manifest = asdict(dataset.dataset_manifest(instruments))
+    manifest = asdict(dataset.dataset_manifest(instruments, band_centres_nm))
     (root / paths.DATASET_MANIFEST_NAME).write_text(json.dumps(manifest, indent=2))

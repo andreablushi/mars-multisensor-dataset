@@ -35,6 +35,12 @@ GROUND_SOFTWARE = ("MRO:IKF_", "MRO:RSC_", "MRO:REFZ_", "MRO:FRAM_STAT_")
 # Which detector places a merged observation, in order so a lone half places itself
 PLACING_ORDER = ("l", "s")
 
+# What one build holds whatever it reads, the survey's whole band grid included.
+HELD_FLOOR = 256 * 1024**2
+
+# What it holds of the product itself, over the cleaning chain and the grid it joins on.
+HELD_PER_BYTE = 3
+
 
 def product_files(identifier: str, detector: str, kind: str) -> dict[str, Path]:
     """Return where each half of one detector's product of an observation belongs.
@@ -78,6 +84,27 @@ def cached_detectors(identifier: str) -> tuple[str, ...]:
     if not found:
         raise FileNotFoundError(f"No detector of {identifier} is in the cache.")
     return found
+
+
+def held_bytes(identifier: str) -> int:
+    """Return how much memory one build of this observation holds at its peak.
+
+    Args:
+        identifier: The observation, whose files must already be in the cache
+            that `download.fetch` puts them in.
+
+    Returns:
+        held: How many bytes to hold for it, floor included.
+
+    Raises:
+        FileNotFoundError: When neither detector landed whole.
+    """
+    # Read off what landed, a hyperspectral half running to several times a survey one.
+    landed = sum(
+        product_files(identifier, name, configs.OBSERVATION)[".img"].stat().st_size
+        for name in cached_detectors(identifier)
+    )
+    return HELD_FLOOR + HELD_PER_BYTE * landed
 
 
 def placing_detector(identifier: str) -> str:
@@ -214,12 +241,12 @@ def cleaning_steps(detector: Detector) -> Iterator[tuple[str, Detector]]:
     yield "atmosphere dropped", replace(detector, mask=mask)
     mask = destripe.remove_spike_columns(cube, mask, table, name)
     yield "destriped", replace(detector, mask=mask)
-    ratio.ratio_colmed(cube, mask.pixels)
+    mask = ratio.ratio_colmed(cube, mask)
     yield "ratioed", replace(detector, mask=mask)
     # Despike only the bands in play, so filled ones cannot pull the median about.
     kept = ~mask.bands
     block = np.ascontiguousarray(cube[:, :, kept])
-    despike.remove_spikes(block, bands_calibration.centres(table)[kept])
+    despike.remove_spikes(block, bands_calibration.centres(table)[kept], mask.pixels)
     cube[:, :, kept] = block
     yield "despiked", replace(detector, mask=mask)
 
@@ -294,5 +321,5 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         inside=held.inside,
         valid=geometry.marked(geometry.taken(observation.valid, held.bounds)),
         cube=geometry.taken(observation.cube, held.bounds),
-        wavelengths=observation.wavelengths,
+        measured_bands=observation.measured_bands,
     )

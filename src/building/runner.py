@@ -321,4 +321,9 @@ def _indexed(
             tiles[one.tile] = earlier[one.tile]
     # What the dataset holds, which is every instrument in it and not a wish.
     held = tuple(sorted({one.instrument for one in records}))
-    metadata.write_metadata(list(tiles.values()), records, held, root)
+    grids = {
+        name: INSTRUMENTS[name].layout.band_centres_nm
+        for name in held
+        if name in INSTRUMENTS and INSTRUMENTS[name].layout.band_centres_nm
+    }
+    metadata.write_metadata(list(tiles.values()), records, held, grids, root)

@@ -23,6 +23,9 @@ class Layout:
         beside: What else of the sample is stored, keyed by the name it is written
             as and read off the sample by, each with its own axes.
         stored: The type the measurement is written as, or None to keep its own.
+        band_centres_nm: The nominal centre in nm of every band its crops are laid
+            out on, one grid every crop shares, or None for an instrument holding
+            no wavelength.
     """
 
     instrument: str
@@ -31,3 +34,4 @@ class Layout:
     measurement: str
     beside: dict[str, tuple[str, ...]] = field(default_factory=dict)
     stored: str | None = None
+    band_centres_nm: tuple[float, ...] | None = None

@@ -24,8 +24,9 @@ class Sample:
             every one of them does.
         valid: Which of them is a measurement rather than a filled cell, or
             None where every one of them is.
-        wavelengths: The nominal centre in nm of every band a spectral instrument
-            holds, or None where it holds no band.
+        measured_bands: One flag per band of the grid a spectral instrument's crops
+            are laid out on, True where this one measured it, or None where the
+            instrument holds no band.
     """
 
     identifier: str
@@ -33,14 +34,14 @@ class Sample:
     label: dict[str, str]
     inside: np.ndarray | None = None
     valid: np.ndarray | None = None
-    wavelengths: np.ndarray | None = None
+    measured_bands: np.ndarray | None = None
 
     @property
-    def measured(self) -> np.ndarray:
+    def measured_ground(self) -> np.ndarray:
         """Return which samples are both in the tile's box and measurements.
 
         Returns:
-            measured: One flag per sample over the ground axes, the two masks
+            measured_ground: One flag per sample over the ground axes, the two masks
                 rooted together and every sample marked where neither says less.
         """
         held = np.ones(self.position.ground_sizes, dtype=bool)
