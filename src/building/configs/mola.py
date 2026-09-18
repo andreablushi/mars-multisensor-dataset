@@ -30,7 +30,8 @@ LAYOUT = Layout(
     instrument="MOLA",
     dims=("line", "sample"),
     axes=(GROUND, GROUND),
-    measurement="delay",
+    measurement="elevation",
+    beside={"delay": ("line", "sample"), "delay_inside": ("line", "sample")},
     stored="int16",
 )
 

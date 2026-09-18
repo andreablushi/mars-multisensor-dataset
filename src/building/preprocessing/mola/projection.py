@@ -89,17 +89,19 @@ def crop_polar(grid: MolaGrid, frame: Tile) -> MolaSample | None:
     if held is None:
         return None
     lines, samples = held.bounds
+    height = images.load_window(
+        image,
+        label,
+        (int(lines[0]), int(lines[-1]) + 1),
+        (int(samples[0]), int(samples[-1]) + 1),
+    )
+    rows, inside = delay.radargram_rows(height)
     return MolaSample(
         identifier=grid.name,
         position=held.position,
-        label=delay.row_label(labels.merge(label)),
+        label=labels.merge(label),
         inside=held.inside,
-        delay=delay.radargram_rows(
-            images.load_window(
-                image,
-                label,
-                (int(lines[0]), int(lines[-1]) + 1),
-                (int(samples[0]), int(samples[-1]) + 1),
-            )
-        ),
+        elevation=height,
+        delay=rows,
+        delay_inside=inside,
     )

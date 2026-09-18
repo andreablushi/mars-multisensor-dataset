@@ -60,12 +60,15 @@ def crop(grid: MolaGrid, frame: Tile) -> MolaSample | None:
     if grid.polar:
         return projection.crop_polar(grid, frame)
     observation = merge_sheets(grid, frame)
+    rows, inside = delay.radargram_rows(observation.topography)
     return MolaSample(
         identifier=observation.identifier,
         position=geometry.placed(
             Samples(observation.down, observation.across, observation.separable, None),
             frame,
         ),
-        label=delay.row_label(observation.label),
-        delay=delay.radargram_rows(observation.topography),
+        label=observation.label,
+        elevation=observation.topography,
+        delay=rows,
+        delay_inside=inside,
     )
