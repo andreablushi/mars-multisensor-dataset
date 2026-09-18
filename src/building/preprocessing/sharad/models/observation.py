@@ -10,6 +10,11 @@ import numpy as np
 LATITUDE_FIELD = "LATITUDE"
 LONGITUDE_FIELD = "LONGITUDE"
 
+# Which of them says where the Sun and the spacecraft stood over it.
+SOLAR_ZENITH_FIELD = "SZA"
+MARS_RADIUS_FIELD = "MARS RADIUS"
+SPACECRAFT_RADIUS_FIELD = "SPACECRAFT RADIUS"
+
 
 @dataclass(frozen=True, slots=True)
 class SharadObservation:
@@ -53,3 +58,23 @@ class SharadObservation:
             longitude: One per trace, in degrees.
         """
         return self.geometry[LONGITUDE_FIELD]
+
+    @property
+    def solar_zenith_deg(self) -> np.ndarray:
+        """Return how far off the vertical the Sun stood over every kept trace.
+
+        Returns:
+            zenith: One per trace, in degrees, which is the angle a camera over the
+                same ground would call the incidence.
+        """
+        return self.geometry[SOLAR_ZENITH_FIELD]
+
+    @property
+    def spacecraft_altitude_km(self) -> np.ndarray:
+        """Return how far above the ground the spacecraft flew over every trace.
+
+        Returns:
+            altitude: One per trace, in km, the two radii the geometry publishes
+                taken from one another.
+        """
+        return self.geometry[SPACECRAFT_RADIUS_FIELD] - self.geometry[MARS_RADIUS_FIELD]

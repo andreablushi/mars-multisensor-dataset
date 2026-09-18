@@ -105,7 +105,13 @@ LAYOUT = Layout(
         WAVELENGTH,
     ),
     measurement="cube",
-    beside={"measured_bands": ("band",)},
+    beside={
+        "measured_bands": ("band",),
+        "incidence_deg": ("line", "sample"),
+        "emission_deg": ("line", "sample"),
+        "phase_deg": ("line", "sample"),
+        "local_solar_time_h": ("line", "sample"),
+    },
     stored="f2",
     band_centres_nm=BANDS_NM,
 )

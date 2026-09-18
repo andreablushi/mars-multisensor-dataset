@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 import numpy as np
 
 from building.common.layout import GROUND, WAVELENGTH, Layout
 from building.common.pds import times
+from building.metadata.acquisition_info import AcquisitionInfo, acquisition_info
 from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.sample import Sample
 from shared.disk import parquet
@@ -51,6 +52,8 @@ class ObservationMetadata:
         t_start: When the observation started, or None where the archive
             publishes no time for it.
         t_end: When it ended, or None for the same reason.
+        acquisition: Where the Sun and the spacecraft stood over the crop, every
+            quantity of it unset for an archive that publishes none.
     """
 
     tile: str
@@ -71,6 +74,7 @@ class ObservationMetadata:
     band_valid_count: tuple[int, ...] | None = None
     t_start: datetime | None = None
     t_end: datetime | None = None
+    acquisition: AcquisitionInfo = field(default_factory=AcquisitionInfo)
 
     @property
     def identity(self) -> tuple[str, str, str]:
@@ -158,6 +162,7 @@ def observation_metadata(
         band_valid_count=band_valid_count,
         t_start=_moment(held.label, STARTED) or t_start,
         t_end=_moment(held.label, STOPPED),
+        acquisition=acquisition_info(held, frame),
     )
 
 

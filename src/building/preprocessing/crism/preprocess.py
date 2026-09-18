@@ -22,7 +22,10 @@ from building.preprocessing.crism.correction import (
     ratio,
 )
 from building.preprocessing.crism.models.detector import Detector
-from building.preprocessing.crism.models.observation import CrismObservation
+from building.preprocessing.crism.models.observation import (
+    ACQUISITION_PLANES,
+    CrismObservation,
+)
 from building.preprocessing.crism.models.sample import CrismSample
 from shared.models.tile import Tile
 
@@ -322,4 +325,8 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         valid=geometry.marked(geometry.taken(observation.valid, held.bounds)),
         cube=geometry.taken(observation.cube, held.bounds),
         measured_bands=observation.measured_bands,
+        **{
+            name: geometry.taken(observation.plane(at), held.bounds)
+            for name, at in ACQUISITION_PLANES.items()
+        },
     )

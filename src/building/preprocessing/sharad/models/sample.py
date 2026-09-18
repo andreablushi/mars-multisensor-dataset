@@ -19,8 +19,13 @@ class SharadSample(Sample):
             no surface echo is predicted.
         traces: Which of the original radargram columns these traces are,
             counted from zero.
+        incidence_deg: How far off the vertical the Sun stood over every trace,
+            which is the solar zenith angle its geometry publishes.
+        spacecraft_altitude_km: How far above the ground it was sounded from.
     """
 
     power: np.ndarray
     clutter: np.ndarray
     traces: np.ndarray
+    incidence_deg: np.ndarray
+    spacecraft_altitude_km: np.ndarray

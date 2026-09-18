@@ -34,7 +34,12 @@ LAYOUT = Layout(
     dims=("delay", "trace"),
     axes=(DELAY, GROUND),
     measurement="power",
-    beside={"traces": ("trace",), "clutter": ("delay", "trace")},
+    beside={
+        "traces": ("trace",),
+        "clutter": ("delay", "trace"),
+        "incidence_deg": ("trace",),
+        "spacecraft_altitude_km": ("trace",),
+    },
 )
 
 DELAY_INTERVAL_S = 0.0375e-6

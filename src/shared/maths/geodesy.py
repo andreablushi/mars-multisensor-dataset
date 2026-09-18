@@ -192,6 +192,23 @@ def northward_m(degrees: float) -> float:
     return math.radians(degrees) * RADIUS_M
 
 
+def spheroid_radius_m(lat: float) -> float:
+    """Return how far the spheroid's surface stands from the centre at one latitude.
+
+    Args:
+        lat: The planetocentric latitude in degrees, which is the latitude every
+            box and every archive here is measured in.
+
+    Returns:
+        radius: The distance in metres, which is the equatorial radius at the
+            equator and the polar one at either pole.
+    """
+    held = math.radians(lat)
+    across = POLAR_RADIUS_M * math.cos(held)
+    up = EQUATORIAL_RADIUS_M * math.sin(held)
+    return EQUATORIAL_RADIUS_M * POLAR_RADIUS_M / math.hypot(across, up)
+
+
 def laea_inverse(
     x: np.ndarray | float,
     y: np.ndarray | float,

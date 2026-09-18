@@ -88,4 +88,8 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
         power=power,
         clutter=observation.clutter[:, observation.traces[traces]],
         traces=observation.traces[traces],
+        incidence_deg=geometry.taken(observation.solar_zenith_deg, held.bounds),
+        spacecraft_altitude_km=geometry.taken(
+            observation.spacecraft_altitude_km, held.bounds
+        ),
     )

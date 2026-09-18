@@ -6,9 +6,16 @@ from dataclasses import dataclass
 
 import numpy as np
 
-# Which DDR backplane places a pixel; the other twelve say nothing MOLA says better.
+# Which DDR backplane places a pixel; only the slope and the height say what MOLA does.
 LATITUDE_PLANE = 3
 LONGITUDE_PLANE = 4
+
+ACQUISITION_PLANES = {
+    "incidence_deg": 0,
+    "emission_deg": 1,
+    "phase_deg": 2,
+    "local_solar_time_h": 12,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +44,17 @@ class CrismObservation:
     # A pushbroom swath bends, so every pixel carries its own backplanes' pair.
     separable = False
 
+    def plane(self, at: int) -> np.ndarray:
+        """Return one backplane of every pixel.
+
+        Args:
+            at: Which backplane, counted from zero as the DDR writes them.
+
+        Returns:
+            plane: Lines by columns, in the unit the DDR's label names it in.
+        """
+        return self.geometry[:, :, at]
+
     @property
     def latitude(self) -> np.ndarray:
         """Return the latitude every pixel was measured at.
@@ -44,7 +62,7 @@ class CrismObservation:
         Returns:
             latitude: Lines by columns, in degrees.
         """
-        return self.geometry[:, :, LATITUDE_PLANE]
+        return self.plane(LATITUDE_PLANE)
 
     @property
     def longitude(self) -> np.ndarray:
@@ -53,4 +71,4 @@ class CrismObservation:
         Returns:
             longitude: Lines by columns, in degrees.
         """
-        return self.geometry[:, :, LONGITUDE_PLANE]
+        return self.plane(LONGITUDE_PLANE)

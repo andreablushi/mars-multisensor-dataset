@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from urllib.parse import quote
 
 import httpx
 
 from building.configs import ctx as configs
 from building.download import archive
+from shared.disk.files import atomic_path
 from shared.fetch.http import FetchError
 
 # What ODE publishes CTX under.
@@ -40,7 +42,7 @@ TIMEOUT = 900.0
 
 
 def fetch(observation_id: str, client: httpx.Client) -> None:
-    """Bring the projected scan and its label down, or leave what is here.
+    """Bring the scan, its label and what ODE says of it, or leave what is here.
 
     Args:
         observation_id: The observation to fetch.
@@ -53,12 +55,20 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
     destination = configs.CACHE.files(observation_id, observation_id)
     if all(path.exists() for path in destination.values()):
         return
+    said = destination.pop(configs.METADATA_SUFFIX)
     entries = archive.query(
         client, productid=observation_id, results=FIELDS, pt=PRODUCT_TYPE, **ODE
     )
     archived = entries[0].get(VOLUME_KEY) if entries else None
     if not archived:
         raise FileNotFoundError(f"ODE carries no raw scan for {observation_id}.")
+    acquisition = {
+        key: str(entries[0][key])
+        for key in configs.ODE_ACQUISITION
+        if entries[0].get(key)
+    }
+    with atomic_path(said) as tmp:
+        tmp.write_text(json.dumps(acquisition))
     volume = str(archived).lower()
     likely, otherwise = (
         (POLAR_LABEL, EQUATORIAL_LABEL)

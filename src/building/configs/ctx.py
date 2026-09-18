@@ -17,6 +17,19 @@ KINDS = (LABEL, IMAGE)
 # What each kind is suffixed with once it is on disk.
 SUFFIXES = {LABEL: ".isis.hdr", IMAGE: ".tiff"}
 
+# What the scan's own metadata is kept as, which ODE answers with rather than serves.
+METADATA_SUFFIX = ".ode.json"
+
+# What ODE says of a scan that its projected label does not, the geometry it was at
+ODE_ACQUISITION = (
+    "Incidence_angle",
+    "Emission_angle",
+    "Phase_angle",
+    "Solar_longitude",
+    "Solar_distance",
+    "Solar_time",
+)
+
 # From this latitude up ASU writes a scan polar, below it simple cylindrical
 ASU_POLAR_LATITUDE = 70
 
@@ -54,5 +67,6 @@ LAYOUT = Layout(
     measurement="image",
 )
 
-# Where both are kept. ASU names both after the scan, so only the suffix differs.
-CACHE = ProductCache(paths.CTX_ROOT, {None: tuple(SUFFIXES.values())})
+# Where all three are kept. ASU names both of its own after the scan, so only the
+# suffix differs.
+CACHE = ProductCache(paths.CTX_ROOT, {None: (*SUFFIXES.values(), METADATA_SUFFIX)})

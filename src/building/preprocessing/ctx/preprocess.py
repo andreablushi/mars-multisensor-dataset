@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
@@ -56,7 +57,8 @@ def read_observation(identifier: str) -> CtxObservation:
             that `download.fetch` puts them in.
 
     Returns:
-        observation: The observation, its image on that grid.
+        observation: The observation, its image on that grid and what ODE says of
+            it read into its label.
 
     Raises:
         FileNotFoundError: When the image or its label is missing.
@@ -71,8 +73,13 @@ def read_observation(identifier: str) -> CtxObservation:
         held = scan.pages[0].shape
     if len(held) != 2:
         raise ValueError(f"{identifier} holds a {len(held)} dimensional image.")
+    said = files[configs.METADATA_SUFFIX]
+    acquisition = json.loads(said.read_text()) if said.exists() else {}
     return CtxObservation(
-        identifier, labels.merge(label), image, *projection.grid_axes(label)
+        identifier,
+        labels.merge(label, acquisition),
+        image,
+        *projection.grid_axes(label),
     )
 
 
