@@ -55,7 +55,9 @@ class AcquisitionInfo:
     spacecraft_altitude_km: float | None = None
 
 
-def acquisition_info(held: Sample, frame: Tile) -> AcquisitionInfo:
+def acquisition_info(
+    held: Sample, frame: Tile, measured: np.ndarray
+) -> AcquisitionInfo:
     """Return what one crop was taken under, from its own planes and its label.
 
     Args:
@@ -63,12 +65,13 @@ def acquisition_info(held: Sample, frame: Tile) -> AcquisitionInfo:
             whose label is read for every quantity it carries no plane of.
         frame: The local frame of its tile, at whose latitude the spheroid an
             altitude stands above is measured.
+        measured: Which of its samples are measurements inside that tile's box,
+            over the ground axes alone, which its caller has already rooted.
 
     Returns:
         info: One scalar per quantity, each unset where neither a plane of the crop
             nor its label carries it.
     """
-    measured = held.measured_ground
     collected = {}
     for one in fields(AcquisitionInfo):
         plane = getattr(held, one.name, None)
@@ -77,10 +80,11 @@ def acquisition_info(held: Sample, frame: Tile) -> AcquisitionInfo:
             if plane is not None
             else _label_scalar(held.label, LABEL_KEYS.get(one.name, ()))
         )
-    centre = _label_scalar(held.label, TARGET_DISTANCE_KEYS)
-    if collected["spacecraft_altitude_km"] is None and centre is not None:
-        stood = geodesy.spheroid_radius_m(frame.centre_lat) / physics.METRES_PER_KM
-        collected["spacecraft_altitude_km"] = centre - stood
+    if collected["spacecraft_altitude_km"] is None:
+        centre = _label_scalar(held.label, TARGET_DISTANCE_KEYS)
+        if centre is not None:
+            stood = geodesy.spheroid_radius_m(frame.centre_lat) / physics.METRES_PER_KM
+            collected["spacecraft_altitude_km"] = centre - stood
     return AcquisitionInfo(**collected)
 
 

@@ -113,7 +113,8 @@ def observation_metadata(
         size if holds == GROUND else 1
         for size, holds in zip(values.shape, layout.axes, strict=True)
     )
-    measured = held.measured_ground.reshape(ground)
+    measured_ground = held.measured_ground
+    measured = measured_ground.reshape(ground)
     # An integer holds no infinite identity, so the reduction starts at its type's edge.
     limits = (
         np.iinfo(values.dtype)
@@ -162,7 +163,7 @@ def observation_metadata(
         band_valid_count=band_valid_count,
         t_start=_moment(held.label, STARTED) or t_start,
         t_end=_moment(held.label, STOPPED),
-        acquisition=acquisition_info(held, frame),
+        acquisition=acquisition_info(held, frame, measured_ground),
     )
 
 
