@@ -8,8 +8,8 @@ from pathlib import Path
 from analysis import paths
 from analysis.models.instrument import InstrumentSet
 from analysis.models.job import Job, Plan
+from analysis.models.tile_group import TileGroup
 from analysis.paths import events_path, metadata_file, set_summary_path
-from shared.models.tile_group import TileGroup
 
 
 def _outstanding[T, R](

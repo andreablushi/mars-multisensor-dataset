@@ -11,6 +11,8 @@ from shared.maths.physics import EQUATORIAL_RADIUS_M, POLAR_RADIUS_M, RADIUS_M
 # The whole turn, which every longitude here is measured round.
 TURN = 360.0
 
+HALF_TURN = 180.0
+
 # A degree of longitude vanishes at a pole, so the correction is floored
 MIN_COSINE = 0.05
 

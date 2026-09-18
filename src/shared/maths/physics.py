@@ -16,3 +16,5 @@ POLAR_RADIUS_M = 3_376_200.0
 
 # What the archives write a radius in, where they do not write it in metres.
 METRES_PER_KM = 1000.0
+
+RADIUS_KM = RADIUS_M / METRES_PER_KM

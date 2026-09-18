@@ -7,7 +7,7 @@ from analysis.coverage.artifacts import index
 from analysis.coverage.models.summary import Summary
 from analysis.stats.models.catalogue import CatalogueStats, InstrumentStats
 from analysis.stats.models.spread import Spread
-from shared.maths import tessellate
+from shared.maths.tessellate import split_bands_columns
 
 
 def read_catalogue() -> CatalogueStats:
@@ -24,7 +24,7 @@ def read_catalogue() -> CatalogueStats:
         by_tile.setdefault(row.tile, row)
         by_instrument.setdefault(row.iid, []).append(row)
     return CatalogueStats(
-        tiles=sum(tessellate.band_columns(tile_km)),
+        tiles=sum(split_bands_columns(tile_km)),
         tile_km=tile_km,
         measured=len(by_tile),
         tile_km2=Spread.over([row.tile_area_km2 for row in by_tile.values()]),

@@ -11,9 +11,10 @@ from shapely.geometry.base import BaseGeometry
 from analysis import configs, paths
 from analysis.metadata.loaders.observations import load_observations
 from analysis.models.instrument import InstrumentSet
+from analysis.utils import tile_group
 from analysis.visualization.common.models.coverage import Coverage
 from analysis.visualization.tile.models.outlines import Trace
-from shared.maths import tessellate
+from shared.maths.tessellate import Tessellate
 
 OUTLINE_CACHE = 4
 
@@ -21,9 +22,10 @@ OUTLINE_CACHE = 4
 def read(coverage: Coverage) -> dict[str, BaseGeometry]:
     """Read the published footprint of every observation of one tile."""
     settings = configs.load()
-    group = tessellate.tile_group_name(
-        tessellate.tile_named(coverage[0].summary.tile, settings.tile_km),
-        settings.tile_km,
+    grid = Tessellate.of(settings.tile_km)
+    group = tile_group.group_name(
+        len(grid.columns),
+        grid.tile_named(coverage[0].summary.tile),
         settings.tile_group_deg,
     )
     found: dict[str, BaseGeometry] = {}

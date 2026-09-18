@@ -10,8 +10,8 @@ from pathlib import Path
 
 import httpx
 
-from analysis import dataset_list
 from analysis.selector.models.selection import Selection
+from analysis.utils import dataset_list
 from building.dispatcher import INSTRUMENTS
 from building.metadata.tile import tile_metadata
 from building.models.job import Job, Plan

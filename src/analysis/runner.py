@@ -22,7 +22,8 @@ from analysis.metadata.ode import ODEClient
 from analysis.models.job import Job, Outcome
 from analysis.models.progress import ProgressEvent
 from analysis.models.settings import Settings
-from shared.maths import tessellate
+from analysis.utils import tile_group
+from shared.maths.tessellate import Tessellate
 
 
 def run_jobs(
@@ -61,7 +62,8 @@ def run_pipeline(
     futures: list[Future[Outcome]] = []
     fetched: list[Outcome] = []
     with ODEClient() as client:
-        groups = tessellate.every_tile_group(settings.tile_km, settings.tile_group_deg)
+        grid = Tessellate.of(settings.tile_km)
+        groups = tile_group.every_tile_group(grid, settings.tile_group_deg)
         plan = planner.download_plan(groups, settings.instrument_sets, force=force)
         rewriting = {job.output_path for job in plan.jobs}
         stored = [held for held in file_explorer.find_sets() if held not in rewriting]

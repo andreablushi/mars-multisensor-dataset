@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from functools import cache
 
-from analysis import dataset_list
 from analysis.selector.models.selection import Selection
+from analysis.utils import dataset_list
 
 
 @cache

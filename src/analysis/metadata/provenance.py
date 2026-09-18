@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from analysis.models.instrument import InstrumentSet
-from shared.models.tile_group import TileGroup
+from analysis.models.tile_group import TileGroup
 
 
 def stamp(group: TileGroup, instrument_set: InstrumentSet, loc: str) -> dict[str, Any]:

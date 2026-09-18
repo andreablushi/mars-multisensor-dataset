@@ -14,8 +14,8 @@ from analysis import configs
 from analysis.selector.models.selection import Selection
 from analysis.visualization.common import mosaic, panels
 from analysis.visualization.common.models.box import Box
-from shared.maths import tessellate
 from shared.maths.physics import RADIUS_M
+from shared.maths.tessellate import Tessellate
 
 MAP_FIGURE_SIZE = (14.0, 7.6)
 MARS = Box(-180.0, -90.0, 180.0, 90.0)
@@ -35,25 +35,21 @@ TILE_ALPHA = 0.45
 
 def plot(picked: Sequence[Selection]) -> widgets.Widget:
     """Map every tile of Mars, the kept ones in green and every other one in red."""
-    tile_km = configs.load().tile_km
-    offsets = tessellate.tile_offsets(tile_km)
-    kept = np.zeros(sum(tessellate.band_columns(tile_km)), dtype=bool)
-    for one in picked:
-        if one.tile.kept:
-            kept[offsets[one.tile.band] + one.tile.column] = True
-    return mosaic.fetched(
-        MARS, lambda image: figure(kept, tile_km, image), BASEMAP_PIXELS
-    )
+    grid = Tessellate.of(configs.load().tile_km)
+    kept = np.zeros(sum(grid.columns), dtype=bool)
+    held = [one.tile for one in picked if one.tile.kept]
+    kept[
+        grid.flat_tile_indices([one.band for one in held], [one.column for one in held])
+    ] = True
+    return mosaic.fetched(MARS, lambda image: figure(kept, grid, image), BASEMAP_PIXELS)
 
 
-def figure(kept: np.ndarray, tile_km: float, image: bytes) -> widgets.Widget:
+def figure(kept: np.ndarray, grid: Tessellate, image: bytes) -> widgets.Widget:
     """Draw the mosaic of Mars with every tile coloured by what the filter kept."""
     lat = np.arange(MARS.north - RASTER_DEG / 2.0, MARS.south, -RASTER_DEG)
     lon = np.arange(MARS.west + RASTER_DEG / 2.0, MARS.east, RASTER_DEG)
-    bands, columns = tessellate.tile_indices(
-        *np.meshgrid(lat, lon, indexing="ij"), tile_km
-    )
-    held = kept[tessellate.tile_offsets(tile_km)[bands] + columns]
+    bands, columns = grid.tile_indices(*np.meshgrid(lat, lon, indexing="ij"))
+    held = kept[grid.flat_tile_indices(bands, columns)]
     painted = np.where(
         held[..., None],
         to_rgba(KEPT, TILE_ALPHA),
