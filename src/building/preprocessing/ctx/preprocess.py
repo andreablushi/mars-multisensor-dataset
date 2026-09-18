@@ -10,8 +10,7 @@ import tifffile
 
 from building.common.pds import labels
 from building.configs import ctx as configs
-from building.preprocessing.common import projection as placing
-from building.preprocessing.common.crop import marked, taken
+from building.preprocessing.common import geometry
 from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.ctx import projection
 from building.preprocessing.ctx.models.observation import CtxObservation
@@ -98,7 +97,7 @@ def windowed(image: Path, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
             slice(left, int(samples.max()) + 1),
         ),
     )
-    return taken(window, (lines - top, samples - left))
+    return geometry.taken(window, (lines - top, samples - left))
 
 
 def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
@@ -111,7 +110,7 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
     Returns:
         sample: The scan cut to that tile, or None where it reaches none of it.
     """
-    held = placing.overlap(
+    held = geometry.overlap(
         Samples(
             observation.down,
             observation.across,
@@ -128,6 +127,6 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         position=held.position,
         label=observation.label,
         inside=held.inside,
-        valid=marked(image != BLANK),
+        valid=geometry.marked(image != BLANK),
         image=image,
     )

@@ -30,7 +30,7 @@ class ObservationMetadata:
         path: Where its arrays were written, relative to the dataset's own root.
         axes: What each axis of the value array holds, in the array's own order.
         shape: The value array's shape, in that same order.
-        ground_sample_m: How much ground one sample spans along each ground axis,
+        sample_spacing_m: How much ground one sample spans along each ground axis,
             in the order those axes run, measured rather than claimed.
         separable: Whether the grid it was placed on holds one ground axis each
             rather than a pair per sample, which the stored offsets no longer
@@ -61,7 +61,7 @@ class ObservationMetadata:
     path: str
     axes: tuple[str, ...]
     shape: tuple[int, ...]
-    ground_sample_m: tuple[float, ...]
+    sample_spacing_m: tuple[float, ...]
     separable: bool
     valid_count: int
     value_min: float | None
@@ -151,7 +151,7 @@ def observation_metadata(
         path=path,
         axes=layout.axes,
         shape=tuple(values.shape),
-        ground_sample_m=relative_positioning.ground_sample_m(held.position, frame),
+        sample_spacing_m=relative_positioning.sample_spacing_m(held.position, frame),
         separable=held.position.separable,
         valid_count=counted,
         value_min=smallest,

@@ -6,8 +6,7 @@ import math
 
 import numpy as np
 
-from building.preprocessing.common import cross
-from building.preprocessing.common.crop import marked
+from building.preprocessing.common import geometry
 from building.preprocessing.common.models.cut import Cut
 from building.preprocessing.common.models.relative_position import (
     PolarGrid,
@@ -58,8 +57,8 @@ def cut(samples: Samples, frame: Tile, span: float) -> Cut | None:
     sign = -1.0 if grid[1] else 1.0
     held = Samples(samples.down[lines], samples.across[across], True, grid)
     inside = np.empty(held.sizes, dtype=bool)
-    for block in cross.blocked(held.sizes):
-        down, east = cross.axes(held, block)
+    for block in geometry.blocked(held.sizes):
+        down, east = geometry.axes(held, block)
         radius = np.hypot(down, east)
         turned = np.degrees(np.arctan2(east, sign * down)) + grid[0]
         inside[block] = (
@@ -69,7 +68,7 @@ def cut(samples: Samples, frame: Tile, span: float) -> Cut | None:
         )
     if not inside.any():
         return None
-    return Cut((lines, across), marked(inside), True)
+    return Cut((lines, across), geometry.marked(inside), True)
 
 
 def placed(samples: Samples, frame: Tile, place: PolarGrid) -> RelativePosition:
@@ -111,7 +110,7 @@ def placed(samples: Samples, frame: Tile, place: PolarGrid) -> RelativePosition:
                 north: Their metres north of the centre.
                 east: Their metres east of it.
             """
-            down, across = cross.axes(samples, block)
+            down, across = geometry.axes(samples, block)
             # A pole's eastings run the other way round, so its turn does too.
             sign = 1.0 if place[1] else -1.0
             cosine, sine = math.cos(turned), math.sin(turned)
@@ -131,9 +130,9 @@ def placed(samples: Samples, frame: Tile, place: PolarGrid) -> RelativePosition:
                 north: Their metres north of the centre.
                 east: Their metres east of it.
             """
-            lon, lat = cross.degrees(samples, block)
+            lon, lat = geometry.degrees(samples, block)
             x, y = geodesy.stereographic_forward(lon, lat, *place)
             return y - float(centre_y), x - float(centre_x)
 
-    north, east = cross.filled(samples, offsets)
+    north, east = geometry.filled(samples, offsets)
     return RelativePosition(north, east, False, place)

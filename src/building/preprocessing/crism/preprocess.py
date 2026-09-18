@@ -10,8 +10,7 @@ import numpy as np
 
 from building.common.pds import images, labels
 from building.configs import crism as configs
-from building.preprocessing.common import projection as placing
-from building.preprocessing.common.crop import marked, taken
+from building.preprocessing.common import geometry
 from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.crism.correction import (
     atmospheric,
@@ -280,7 +279,7 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         sample: The observation cut to that tile, its measured bands left whole, or
             None where it reaches none of it.
     """
-    held = placing.overlap(
+    held = geometry.overlap(
         Samples(
             observation.latitude, observation.longitude, observation.separable, None
         ),
@@ -293,7 +292,7 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         position=held.position,
         label=observation.label,
         inside=held.inside,
-        valid=marked(taken(observation.valid, held.bounds)),
-        cube=taken(observation.cube, held.bounds),
+        valid=geometry.marked(geometry.taken(observation.valid, held.bounds)),
+        cube=geometry.taken(observation.cube, held.bounds),
         wavelengths=observation.wavelengths,
     )

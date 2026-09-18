@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from building.preprocessing.common import cross
-from building.preprocessing.common.crop import marked, taken
+from building.preprocessing.common import geometry
 from building.preprocessing.common.models.cut import Cut
 from building.preprocessing.common.models.relative_position import RelativePosition
 from building.preprocessing.common.models.samples import Samples
@@ -46,7 +45,7 @@ def cut(samples: Samples, frame: Tile, span: float) -> Cut | None:
         np.arange(int(low), int(high) + 1)
         for low, high in zip(where.min(axis=0), where.max(axis=0), strict=True)
     )
-    return Cut(bounds, marked(taken(kept, bounds)), False)
+    return Cut(bounds, geometry.marked(geometry.taken(kept, bounds)), False)
 
 
 def placed(samples: Samples, frame: Tile) -> RelativePosition:
@@ -77,10 +76,10 @@ def placed(samples: Samples, frame: Tile) -> RelativePosition:
             north: Their degrees north of the centre.
             east: Their degrees east of it.
         """
-        lon, lat = cross.degrees(samples, block)
+        lon, lat = geometry.degrees(samples, block)
         return lat - frame.centre_lat, geodesy.normalise_longitude(
             lon - frame.centre_lon
         )
 
-    north, east = cross.filled(samples, offsets)
+    north, east = geometry.filled(samples, offsets)
     return RelativePosition(north, east, False)

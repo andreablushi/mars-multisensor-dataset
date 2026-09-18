@@ -6,7 +6,7 @@ import numpy as np
 
 from building.common.pds import images, labels, tables
 from building.configs import sharad as configs
-from building.preprocessing.common import projection as placing
+from building.preprocessing.common import geometry
 from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.sharad.models.observation import SharadObservation
 from building.preprocessing.sharad.models.sample import SharadSample
@@ -67,7 +67,7 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
     Returns:
         sample: The track cut to that tile, or None where it reaches none of it.
     """
-    held = placing.overlap(
+    held = geometry.overlap(
         Samples(
             observation.latitude, observation.longitude, observation.separable, None
         ),
