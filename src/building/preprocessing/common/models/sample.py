@@ -27,6 +27,16 @@ class Sample:
         measured_bands: One flag per band of the grid a spectral instrument's crops
             are laid out on, True where this one measured it, or None where the
             instrument holds no band.
+        incidence_deg: The angle between the Sun and the areoid's normal at every
+            sample, or None where the archive publishes none per sample. A
+            sounder's solar zenith angle is that same angle and is carried as it.
+        emission_deg: The angle between the spacecraft and that normal, read the
+            same way, or None for the same reason.
+        phase_deg: The angle the ground sees between the two, or None likewise.
+        local_solar_time_h: The hour of the Martian day at every sample, on the
+            twenty four hour clock, or None likewise.
+        spacecraft_altitude_km: How far above the ground every sample was taken
+            from, or None likewise.
     """
 
     identifier: str
@@ -35,6 +45,11 @@ class Sample:
     inside: np.ndarray | None = None
     valid: np.ndarray | None = None
     measured_bands: np.ndarray | None = None
+    incidence_deg: np.ndarray | None = None
+    emission_deg: np.ndarray | None = None
+    phase_deg: np.ndarray | None = None
+    local_solar_time_h: np.ndarray | None = None
+    spacecraft_altitude_km: np.ndarray | None = None
 
     @property
     def measured_ground(self) -> np.ndarray:

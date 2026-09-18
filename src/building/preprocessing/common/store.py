@@ -83,6 +83,10 @@ def write_sample(
 
     Returns:
         path: The file it was written as.
+
+    Raises:
+        ValueError: When the layout declares an array beside the measurement that
+            the crop itself carries none of.
     """
     ground = tuple(
         name
@@ -98,7 +102,12 @@ def write_sample(
         MEASURED: ground,
         **layout.beside,
     }
-    arrays = {name: native(getattr(held, name)) for name in layout.beside}
+    arrays = {}
+    for name in layout.beside:
+        alongside = getattr(held, name)
+        if alongside is None:
+            raise ValueError(f"{layout.instrument} declares {name} but holds none.")
+        arrays[name] = native(alongside)
     values = native(getattr(held, layout.measurement))
     arrays[layout.measurement] = values.astype(
         layout.stored or values.dtype, copy=False
