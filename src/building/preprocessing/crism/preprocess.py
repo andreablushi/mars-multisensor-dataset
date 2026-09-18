@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from dataclasses import replace
 from pathlib import Path
 
@@ -224,36 +223,6 @@ def read_geometry(identifier: str) -> np.ndarray:
     )[0]
 
 
-def cleaning_steps(detector: Detector) -> Iterator[tuple[str, Detector]]:
-    """Refuse everything one detector holds that is not measured, a step at a time.
-
-    Args:
-        detector: The detector as it was read, whose one cube every step works in
-            place on, so a caller wanting a step back has to copy it out.
-
-    Yields:
-        step: What was just done, and the detector once it was done.
-
-    Raises:
-        ValueError: When a window keeps no band of the cube.
-    """
-    cube, table, name = detector.cube, detector.wavelengths, detector.name
-    mask = masking.bad_pixels(cube, table, name)
-    yield "masked", replace(detector, mask=mask)
-    mask = atmospheric.remove_atmospheric_bands(cube, mask, table, name)
-    yield "atmosphere dropped", replace(detector, mask=mask)
-    mask = destripe.remove_spike_columns(cube, mask, table, name)
-    yield "destriped", replace(detector, mask=mask)
-    mask = ratio.ratio_colmed(cube, mask)
-    yield "ratioed", replace(detector, mask=mask)
-    # Despike only the bands in play, so filled ones cannot pull the median about.
-    kept = ~mask.bands
-    block = np.ascontiguousarray(cube[:, :, kept])
-    despike.remove_spikes(block, bands_calibration.centres(table)[kept], mask.pixels)
-    cube[:, :, kept] = block
-    yield "despiked", replace(detector, mask=mask)
-
-
 def clean_detectors(identifier: str) -> dict[str, Detector]:
     """Read one observation and refuse everything in it that is not measured.
 
@@ -269,9 +238,36 @@ def clean_detectors(identifier: str) -> dict[str, Detector]:
         FileNotFoundError: When any file the observation needs is missing.
         ValueError: When a window keeps no band of a cube.
     """
+
+    def cleaned(detector: Detector) -> Detector:
+        """Refuse everything one detector holds that is not measured.
+
+        Args:
+            detector: The detector as it was read, whose one cube every step
+                works in place on.
+
+        Returns:
+            detector: The same detector, carrying the mask every step left.
+
+        Raises:
+            ValueError: When a window keeps no band of the cube.
+        """
+        cube, table, name = detector.cube, detector.wavelengths, detector.name
+        mask = masking.bad_pixels(cube, table, name)
+        mask = atmospheric.remove_atmospheric_bands(cube, mask, table, name)
+        mask = destripe.remove_spike_columns(cube, mask, table, name)
+        mask = ratio.ratio_colmed(cube, mask)
+        # Despike only the bands in play, so filled ones cannot pull the median about.
+        kept = ~mask.bands
+        block = np.ascontiguousarray(cube[:, :, kept])
+        despike.remove_spikes(
+            block, bands_calibration.centres(table)[kept], mask.pixels
+        )
+        cube[:, :, kept] = block
+        return replace(detector, mask=mask)
+
     return {
-        name: list(cleaning_steps(detector))[-1][1]
-        for name, detector in read_detectors(identifier).items()
+        name: cleaned(detector) for name, detector in read_detectors(identifier).items()
     }
 
 

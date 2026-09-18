@@ -114,8 +114,3 @@ of it is still drawn, at zero, so a missing line always means something.
 tile rather than of a sample of them, and maps every tile of Mars, green where
 the filter kept it and red where it did not. It reads back what the pipeline
 published and builds no artifact of its own.
-
-`notebooks/crism_preprocessing.ipynb` takes one CRISM observation apart, a
-correction at a time, drawing the cube after each one. It brings that
-observation down itself, so it waits on no pipeline and on nothing already
-on disk.
