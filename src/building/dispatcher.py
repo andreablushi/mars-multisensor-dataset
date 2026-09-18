@@ -68,8 +68,10 @@ INSTRUMENTS = {
         crism.crop,
         discard=crism_configs.CACHE.discard,
         observation_id=crism_configs.NAMING.parse,
-        # A cleaned observation measured 203 MB, both detectors and the chain.
-        worker_bytes=512 * 1024**2,
+        # A hyperspectral observation measured 601 MB, both detectors and the chain,
+        # against 325 MB for a multispectral one; the heavier orders the run.
+        worker_bytes=1024**3,
+        held_bytes=crism.held_bytes,
     ),
     ctx_configs.LAYOUT.instrument: Instrument(
         ctx_configs.LAYOUT,

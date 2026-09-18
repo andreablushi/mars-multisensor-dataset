@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
@@ -10,7 +11,8 @@ import tifffile
 
 from building.common.pds import labels
 from building.configs import ctx as configs
-from building.preprocessing.common.crop import marked, overlap, polar_overlap, taken
+from building.preprocessing.common import geometry
+from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.ctx import projection
 from building.preprocessing.ctx.models.observation import CtxObservation
 from building.preprocessing.ctx.models.sample import BLANK, CtxSample
@@ -55,7 +57,8 @@ def read_observation(identifier: str) -> CtxObservation:
             that `download.fetch` puts them in.
 
     Returns:
-        observation: The observation, its image on that grid.
+        observation: The observation, its image on that grid and what ODE says of
+            it read into its label.
 
     Raises:
         FileNotFoundError: When the image or its label is missing.
@@ -70,8 +73,13 @@ def read_observation(identifier: str) -> CtxObservation:
         held = scan.pages[0].shape
     if len(held) != 2:
         raise ValueError(f"{identifier} holds a {len(held)} dimensional image.")
+    said = files[configs.METADATA_SUFFIX]
+    acquisition = json.loads(said.read_text()) if said.exists() else {}
     return CtxObservation(
-        identifier, labels.merge(label), image, *projection.grid_axes(label)
+        identifier,
+        labels.merge(label, acquisition),
+        image,
+        *projection.grid_axes(label),
     )
 
 
@@ -96,7 +104,7 @@ def windowed(image: Path, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
             slice(left, int(samples.max()) + 1),
         ),
     )
-    return taken(window, (lines - top, samples - left))
+    return geometry.taken(window, (lines - top, samples - left))
 
 
 def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
@@ -109,10 +117,14 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
     Returns:
         sample: The scan cut to that tile, or None where it reaches none of it.
     """
-    held = (
-        polar_overlap(observation.down, observation.across, observation.polar, frame)
-        if observation.polar
-        else overlap(observation.down, observation.across, observation.separable, frame)
+    held = geometry.overlap(
+        Samples(
+            observation.down,
+            observation.across,
+            observation.separable,
+            observation.polar,
+        ),
+        frame,
     )
     if held is None:
         return None
@@ -122,6 +134,6 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         position=held.position,
         label=observation.label,
         inside=held.inside,
-        valid=marked(image != BLANK),
+        valid=geometry.marked(image != BLANK),
         image=image,
     )

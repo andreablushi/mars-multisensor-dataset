@@ -11,7 +11,8 @@ from analysis.selector.models.selection import Selection
 from analysis.stats.models.tile import TileStats
 from analysis.stats.tile import measure
 from analysis.stats.tile import read as tile
-from shared.maths import tessellate
+from analysis.utils import tile_group
+from shared.maths.tessellate import Tessellate
 
 # Called with how many tile groups are read and how many there are
 Progress = Callable[[int, int], None]
@@ -32,12 +33,11 @@ def measure_every_tile(
             leaving out a tile with no measured set on disk.
     """
     settings = configs.load()
+    grid = Tessellate.of(settings.tile_km)
     by_group: dict[str, list[Selection]] = {}
     for one in picked:
-        held = tessellate.tile_of(one.tile.band, one.tile.column, settings.tile_km)
-        name = tessellate.tile_group_name(
-            held, settings.tile_km, settings.tile_group_deg
-        )
+        held = grid.tile_of(one.tile.band, one.tile.column)
+        name = tile_group.group_name(len(grid.columns), held, settings.tile_group_deg)
         by_group.setdefault(name, []).append(one)
     found: list[TileStats] = []
     with ProcessPoolExecutor(max_workers=workers) as pool:

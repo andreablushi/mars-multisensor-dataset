@@ -9,6 +9,7 @@ import numpy as np
 
 from building import paths
 from building.common.layout import GROUND, Layout
+from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.sample import Sample
 from shared.disk.files import atomic_path
 from shared.disk.slugify import slugify
@@ -20,7 +21,7 @@ NORTH = "north"
 EAST = "east"
 INSIDE = "inside"
 VALID = "valid"
-MEASURED = "measured"
+MEASURED = "measured_ground"
 
 # What the placing arrays are measured in, degrees from the centre or a grid's metres.
 DEGREES = "degrees"
@@ -82,6 +83,10 @@ def write_sample(
 
     Returns:
         path: The file it was written as.
+
+    Raises:
+        ValueError: When the layout declares an array beside the measurement that
+            the crop itself carries none of.
     """
     ground = tuple(
         name
@@ -97,14 +102,23 @@ def write_sample(
         MEASURED: ground,
         **layout.beside,
     }
-    arrays = {name: native(getattr(held, name)) for name in layout.beside}
+    arrays = {}
+    for name in layout.beside:
+        alongside = getattr(held, name)
+        if alongside is None:
+            raise ValueError(f"{layout.instrument} declares {name} but holds none.")
+        arrays[name] = native(alongside)
     values = native(getattr(held, layout.measurement))
     arrays[layout.measurement] = values.astype(
         layout.stored or values.dtype, copy=False
     )
-    arrays[NORTH] = native(held.position.north)
-    arrays[EAST] = native(held.position.east)
-    arrays[MEASURED] = native(held.measured)
+    arrays[NORTH] = native(held.position.north).astype(
+        relative_positioning.STORED, copy=False
+    )
+    arrays[EAST] = native(held.position.east).astype(
+        relative_positioning.STORED, copy=False
+    )
+    arrays[MEASURED] = native(held.measured_ground)
     for name, mask in ((INSIDE, held.inside), (VALID, held.valid)):
         # The two the rooted mask is made of, kept for whoever wants them apart.
         if mask is not None:

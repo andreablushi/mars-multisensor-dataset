@@ -41,7 +41,7 @@ def track_widths(observations: Sequence[Observation]) -> list[float | None]:
             np.asarray([from_wkt(observation.wkt)], dtype=object)
         )
         length = sum(
-            geodesy.haversine_length(*np.asarray(part.coords).T) for part in parts
+            geodesy.geodesic_length(*np.asarray(part.coords).T) for part in parts
         )
         # The speed that trace implies fixes the altitude, and so the swath
         speed = length / observation.duration_s

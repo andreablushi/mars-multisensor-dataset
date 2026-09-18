@@ -15,7 +15,7 @@ from analysis.selector.models.selection import (
     Selection,
 )
 from analysis.selector.models.survey import Study
-from shared.maths import tessellate
+from shared.maths.tessellate import Tessellate
 from shared.models.tile import Tile
 
 # Called with how many tile groups are searched and how many there are
@@ -103,10 +103,8 @@ def _searched(group: str) -> list[Selection]:
     Returns:
         selections: The rows of every tile a measured set reached, in the order read.
     """
-    tile_km = configs.load().tile_km
+    grid = Tessellate.of(configs.load().tile_km)
     return [
-        selected(
-            Study.over(coverage, filtering.FILTER), tessellate.tile_named(name, tile_km)
-        )
+        selected(Study.over(coverage, filtering.FILTER), grid.tile_named(name))
         for name, coverage in index.load_group(group).items()
     ]

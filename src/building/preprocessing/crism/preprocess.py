@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from dataclasses import replace
 from pathlib import Path
 
@@ -10,7 +9,8 @@ import numpy as np
 
 from building.common.pds import images, labels
 from building.configs import crism as configs
-from building.preprocessing.common.crop import marked, overlap, taken
+from building.preprocessing.common import geometry
+from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.crism.correction import (
     atmospheric,
     bands_calibration,
@@ -21,7 +21,10 @@ from building.preprocessing.crism.correction import (
     ratio,
 )
 from building.preprocessing.crism.models.detector import Detector
-from building.preprocessing.crism.models.observation import CrismObservation
+from building.preprocessing.crism.models.observation import (
+    ACQUISITION_PLANES,
+    CrismObservation,
+)
 from building.preprocessing.crism.models.sample import CrismSample
 from shared.models.tile import Tile
 
@@ -33,6 +36,12 @@ GROUND_SOFTWARE = ("MRO:IKF_", "MRO:RSC_", "MRO:REFZ_", "MRO:FRAM_STAT_")
 
 # Which detector places a merged observation, in order so a lone half places itself
 PLACING_ORDER = ("l", "s")
+
+# What one build holds whatever it reads, the survey's whole band grid included.
+HELD_FLOOR = 256 * 1024**2
+
+# What it holds of the product itself, over the cleaning chain and the grid it joins on.
+HELD_PER_BYTE = 3
 
 
 def product_files(identifier: str, detector: str, kind: str) -> dict[str, Path]:
@@ -77,6 +86,27 @@ def cached_detectors(identifier: str) -> tuple[str, ...]:
     if not found:
         raise FileNotFoundError(f"No detector of {identifier} is in the cache.")
     return found
+
+
+def held_bytes(identifier: str) -> int:
+    """Return how much memory one build of this observation holds at its peak.
+
+    Args:
+        identifier: The observation, whose files must already be in the cache
+            that `download.fetch` puts them in.
+
+    Returns:
+        held: How many bytes to hold for it, floor included.
+
+    Raises:
+        FileNotFoundError: When neither detector landed whole.
+    """
+    # Read off what landed, a hyperspectral half running to several times a survey one.
+    landed = sum(
+        product_files(identifier, name, configs.OBSERVATION)[".img"].stat().st_size
+        for name in cached_detectors(identifier)
+    )
+    return HELD_FLOOR + HELD_PER_BYTE * landed
 
 
 def placing_detector(identifier: str) -> str:
@@ -193,36 +223,6 @@ def read_geometry(identifier: str) -> np.ndarray:
     )[0]
 
 
-def cleaning_steps(detector: Detector) -> Iterator[tuple[str, Detector]]:
-    """Refuse everything one detector holds that is not measured, a step at a time.
-
-    Args:
-        detector: The detector as it was read, whose one cube every step works in
-            place on, so a caller wanting a step back has to copy it out.
-
-    Yields:
-        step: What was just done, and the detector once it was done.
-
-    Raises:
-        ValueError: When a window keeps no band of the cube.
-    """
-    cube, table, name = detector.cube, detector.wavelengths, detector.name
-    mask = masking.bad_pixels(cube, table, name)
-    yield "masked", replace(detector, mask=mask)
-    mask = atmospheric.remove_atmospheric_bands(cube, mask, table, name)
-    yield "atmosphere dropped", replace(detector, mask=mask)
-    mask = destripe.remove_spike_columns(cube, mask, table, name)
-    yield "destriped", replace(detector, mask=mask)
-    ratio.ratio_colmed(cube, mask.pixels)
-    yield "ratioed", replace(detector, mask=mask)
-    # Despike only the bands in play, so filled ones cannot pull the median about.
-    kept = ~mask.bands
-    block = np.ascontiguousarray(cube[:, :, kept])
-    despike.remove_spikes(block, bands_calibration.centres(table)[kept])
-    cube[:, :, kept] = block
-    yield "despiked", replace(detector, mask=mask)
-
-
 def clean_detectors(identifier: str) -> dict[str, Detector]:
     """Read one observation and refuse everything in it that is not measured.
 
@@ -238,9 +238,36 @@ def clean_detectors(identifier: str) -> dict[str, Detector]:
         FileNotFoundError: When any file the observation needs is missing.
         ValueError: When a window keeps no band of a cube.
     """
+
+    def cleaned(detector: Detector) -> Detector:
+        """Refuse everything one detector holds that is not measured.
+
+        Args:
+            detector: The detector as it was read, whose one cube every step
+                works in place on.
+
+        Returns:
+            detector: The same detector, carrying the mask every step left.
+
+        Raises:
+            ValueError: When a window keeps no band of the cube.
+        """
+        cube, table, name = detector.cube, detector.wavelengths, detector.name
+        mask = masking.bad_pixels(cube, table, name)
+        mask = atmospheric.remove_atmospheric_bands(cube, mask, table, name)
+        mask = destripe.remove_spike_columns(cube, mask, table, name)
+        mask = ratio.ratio_colmed(cube, mask)
+        # Despike only the bands in play, so filled ones cannot pull the median about.
+        kept = ~mask.bands
+        block = np.ascontiguousarray(cube[:, :, kept])
+        despike.remove_spikes(
+            block, bands_calibration.centres(table)[kept], mask.pixels
+        )
+        cube[:, :, kept] = block
+        return replace(detector, mask=mask)
+
     return {
-        name: list(cleaning_steps(detector))[-1][1]
-        for name, detector in read_detectors(identifier).items()
+        name: cleaned(detector) for name, detector in read_detectors(identifier).items()
     }
 
 
@@ -278,8 +305,11 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         sample: The observation cut to that tile, its measured bands left whole, or
             None where it reaches none of it.
     """
-    held = overlap(
-        observation.latitude, observation.longitude, observation.separable, frame
+    held = geometry.overlap(
+        Samples(
+            observation.latitude, observation.longitude, observation.separable, None
+        ),
+        frame,
     )
     if held is None:
         return None
@@ -288,7 +318,11 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         position=held.position,
         label=observation.label,
         inside=held.inside,
-        valid=marked(taken(observation.valid, held.bounds)),
-        cube=taken(observation.cube, held.bounds),
-        wavelengths=observation.wavelengths,
+        valid=geometry.marked(geometry.taken(observation.valid, held.bounds)),
+        cube=geometry.taken(observation.cube, held.bounds),
+        measured_bands=observation.measured_bands,
+        **{
+            name: geometry.taken(observation.plane(at), held.bounds)
+            for name, at in ACQUISITION_PLANES.items()
+        },
     )

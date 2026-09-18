@@ -31,8 +31,8 @@ def merge_detectors(
         label: What every product the observation was published as says of it.
 
     Returns:
-        observation: The joined observation, holding only the bands of the survey's
-            grid it measured.
+        observation: The joined observation, laid out on the whole of the survey's
+            grid, with the bands it did not measure left empty.
 
     Raises:
         ValueError: When no half was delivered, or one has not been cleaned.
@@ -48,24 +48,24 @@ def merge_detectors(
     # Only the samples no half refused.
     columns = ~np.logical_or.reduce([detectors[name].mask.columns for name in halves])
 
-    grids = {}
+    joined = np.full(
+        (lines, int(columns.sum()), len(configs.BANDS_NM)), np.nan, dtype="f4"
+    )
+    measured = np.zeros(len(configs.BANDS_NM), dtype=bool)
     for name in halves:
         grid = np.asarray(configs.DETECTOR_BANDS_NM[name])
+        slots = np.asarray(configs.DETECTOR_SLOTS[name])
         held = detectors[name]
         live = resample.measured_bands(held.mask, held.wavelengths[columns], grid)
-        grids[name] = grid[live]
-
-    wavelengths = np.sort(np.concatenate(list(grids.values())))
-    joined = np.empty((lines, int(columns.sum()), wavelengths.size), dtype="f4")
-    for name, grid in grids.items():
-        held = detectors[name]
+        chosen = slots[live]
+        measured[chosen] = True
         resample.resample_bands(
             held.cube[:lines, columns],
             held.mask,
             held.wavelengths[columns],
-            grid,
+            grid[live],
             joined,
-            np.searchsorted(wavelengths, grid),
+            chosen,
         )
 
     # A pixel any half could not read is no measurement of the observation.
@@ -78,5 +78,5 @@ def merge_detectors(
         joined,
         geometry[:lines, columns],
         valid,
-        wavelengths.astype("f4"),
+        measured,
     )

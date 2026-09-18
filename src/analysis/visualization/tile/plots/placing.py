@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from analysis import configs
 from analysis.visualization.tile.models.placing import Placed
-from shared.maths import tessellate
-
-HALF_TURN_DEG = 180.0
+from shared.maths.geodesy import HALF_TURN
+from shared.maths.tessellate import Tessellate
 
 
 def placed(name: str) -> Placed | None:
@@ -19,7 +18,7 @@ def placed(name: str) -> Placed | None:
         placed: Where it falls in lon and lat, or None where no plate carree crop covers
             it.
     """
-    grid = Placed(tessellate.tile_named(name, configs.load().tile_km))
+    grid = Placed(Tessellate.of(configs.load().tile_km).tile_named(name))
     # A tile wrapping the pole has no lon/lat box a plate carree crop can cover
     lon, _ = grid.outline()
-    return grid if lon.max() - lon.min() <= HALF_TURN_DEG else None
+    return grid if lon.max() - lon.min() <= HALF_TURN else None

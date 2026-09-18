@@ -29,7 +29,7 @@ def read_sample(path: Path) -> tuple[dict[str, np.ndarray], dict]:
     return arrays, described
 
 
-def ground_metres(
+def distance_centre_m(
     arrays: dict[str, np.ndarray], described: dict
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return how far north and east of its tile centre every sample sits.
@@ -40,7 +40,7 @@ def ground_metres(
 
     Returns:
         north: The ground metres north of that centre, one per sample, in the
-            azimuthal equidistant frame it is the middle of.
+            geodesic frame it is the middle of.
         east: The ground metres east of it, in the same frame.
     """
     grid = described["polar"]
@@ -51,4 +51,4 @@ def ground_metres(
         polar=None if grid is None else tuple(grid),
     )
     frame = Tile(described["band"], described["column"], **described["box"])
-    return relative_positioning.ground_metres(position, frame)
+    return relative_positioning.distance_centre_m(position, frame)

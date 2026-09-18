@@ -1,15 +1,18 @@
-"""Spherical geometry on Mars: longitudes, projection, areas, and lengths."""
+"""Geometry on Mars: longitudes, projection, areas, and geodesic lengths."""
 
 from __future__ import annotations
 
 import math
 
 import numpy as np
+from pyproj import Geod
 
 from shared.maths.physics import EQUATORIAL_RADIUS_M, POLAR_RADIUS_M, RADIUS_M
 
 # The whole turn, which every longitude here is measured round.
 TURN = 360.0
+
+HALF_TURN = 180.0
 
 # A degree of longitude vanishes at a pole, so the correction is floored
 MIN_COSINE = 0.05
@@ -17,8 +20,11 @@ MIN_COSINE = 0.05
 # How near the antipode the projection is allowed to divide by
 LAEA_MIN_DENOMINATOR = 1e-12
 
-# How often the equidistant inverse re-reads a radius that moves by under a percent
-AEQD_PASSES = 3
+# A polar grid: its centre longitude, whether north, and the sphere it is built on.
+PolarGrid = tuple[float, bool, float]
+
+# The spheroid every ground distance is walked on, which no sphere stands in for.
+SPHEROID = Geod(a=EQUATORIAL_RADIUS_M, b=POLAR_RADIUS_M)
 
 
 def normalise_longitude(lon: np.ndarray | float) -> np.ndarray:
@@ -144,47 +150,25 @@ def laea_forward(
     return x, y
 
 
-def local_radius_m(lat: np.ndarray | float) -> np.ndarray:
-    """Return the radius Mars stands at, at one planetocentric latitude.
-
-    Args:
-        lat: The latitude in degrees, or an array of them.
-
-    Returns:
-        radius: The radius in metres, falling from the equatorial axis to the polar one.
-    """
-    phi = np.radians(np.asarray(lat, dtype=float))
-    return (EQUATORIAL_RADIUS_M * POLAR_RADIUS_M) / np.hypot(
-        POLAR_RADIUS_M * np.cos(phi), EQUATORIAL_RADIUS_M * np.sin(phi)
-    )
-
-
-def haversine_steps(
-    lon: np.ndarray, lat: np.ndarray, radius: np.ndarray | float = RADIUS_M
-) -> np.ndarray:
-    """Return the great-circle distance between each neighbouring pair of points.
+def geodesic_steps(lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
+    """Return the geodesic distance between each neighbouring pair of points.
 
     Args:
         lon: The point longitudes in degrees.
         lat: The point latitudes in degrees.
-        radius: The sphere each pair is measured on, one radius for all of them or
-            one per pair.
 
     Returns:
         steps: One distance in metres per neighbouring pair, and nothing for fewer than
             two points.
     """
-    lam = np.radians(np.asarray(lon, dtype=float))
-    phi = np.radians(np.asarray(lat, dtype=float))
-    hav = (
-        np.sin(np.diff(phi) / 2.0) ** 2
-        + np.cos(phi[:-1]) * np.cos(phi[1:]) * np.sin(np.diff(lam) / 2.0) ** 2
-    )
-    return 2.0 * radius * np.arcsin(np.sqrt(np.clip(hav, 0.0, 1.0)))
+    lon = np.asarray(lon, dtype=float)
+    lat = np.asarray(lat, dtype=float)
+    _, _, steps = SPHEROID.inv(lon[:-1], lat[:-1], lon[1:], lat[1:])
+    return steps
 
 
-def haversine_length(lon: np.ndarray, lat: np.ndarray) -> float:
-    """Return the great-circle length along a sequence of lon/lat points.
+def geodesic_length(lon: np.ndarray, lat: np.ndarray) -> float:
+    """Return the geodesic length along a sequence of lon/lat points.
 
     Args:
         lon: The point longitudes in degrees.
@@ -193,7 +177,7 @@ def haversine_length(lon: np.ndarray, lat: np.ndarray) -> float:
     Returns:
         length: The summed length in metres, or 0.0 for fewer than two points.
     """
-    return float(haversine_steps(lon, lat).sum())
+    return float(geodesic_steps(lon, lat).sum())
 
 
 def northward_m(degrees: float) -> float:
@@ -208,17 +192,21 @@ def northward_m(degrees: float) -> float:
     return math.radians(degrees) * RADIUS_M
 
 
-def eastward_m(degrees: float, lat: float) -> float:
-    """Return how far east a span of longitude reaches at one latitude, in metres.
+def spheroid_radius_m(lat: float) -> float:
+    """Return how far the spheroid's surface stands from the centre at one latitude.
 
     Args:
-        degrees: The span of longitude in degrees.
-        lat: The latitude it is spanned at, in degrees.
+        lat: The planetocentric latitude in degrees, which is the latitude every
+            box and every archive here is measured in.
 
     Returns:
-        metres: The distance in metres along that parallel.
+        radius: The distance in metres, which is the equatorial radius at the
+            equator and the polar one at either pole.
     """
-    return math.radians(degrees) * RADIUS_M * math.cos(math.radians(lat))
+    held = math.radians(lat)
+    across = POLAR_RADIUS_M * math.cos(held)
+    up = EQUATORIAL_RADIUS_M * math.sin(held)
+    return EQUATORIAL_RADIUS_M * POLAR_RADIUS_M / math.hypot(across, up)
 
 
 def laea_inverse(
@@ -313,13 +301,13 @@ def stereographic_inverse(
     return normalise_longitude(lon), lat
 
 
-def aeqd_forward(
+def geodesic_forward(
     lon: np.ndarray | float,
     lat: np.ndarray | float,
     centre_lon: float,
     centre_lat: float,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Project lon/lat degrees into azimuthal equidistant metres about one centre.
+    """Project lon/lat degrees into ground metres east and north of one centre.
 
     Args:
         lon: The longitudes in degrees.
@@ -331,67 +319,12 @@ def aeqd_forward(
         eastings: The eastings in ground metres.
         northings: The northings in ground metres.
     """
-    held = np.asarray(lat, dtype=float)
-    lam = np.radians(normalise_longitude(np.asarray(lon, dtype=float) - centre_lon))
-    phi = np.radians(held)
-    phi0 = math.radians(centre_lat)
-    hav = (
-        np.sin((phi - phi0) / 2.0) ** 2
-        + math.cos(phi0) * np.cos(phi) * np.sin(lam / 2.0) ** 2
+    lon, lat = np.broadcast_arrays(
+        np.asarray(lon, dtype=float), np.asarray(lat, dtype=float)
     )
-    # The walk `haversine_steps` takes, on the spheroid each pair's middle stands at.
-    span = (
-        2.0
-        * local_radius_m((held + centre_lat) / 2.0)
-        * np.arcsin(np.sqrt(np.clip(hav, 0.0, 1.0)))
+    # The geodesic each sample stands at, walked on the spheroid rather than a sphere.
+    azimuth, _, span = SPHEROID.inv(
+        np.full(lon.shape, centre_lon), np.full(lon.shape, centre_lat), lon, lat
     )
-    bearing = np.arctan2(
-        np.cos(phi) * np.sin(lam),
-        math.cos(phi0) * np.sin(phi) - math.sin(phi0) * np.cos(phi) * np.cos(lam),
-    )
+    bearing = np.radians(azimuth)
     return span * np.sin(bearing), span * np.cos(bearing)
-
-
-def aeqd_inverse(
-    x: np.ndarray | float,
-    y: np.ndarray | float,
-    centre_lon: float,
-    centre_lat: float,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Turn azimuthal equidistant ground metres back into lon/lat degrees.
-
-    Args:
-        x: The eastings in ground metres.
-        y: The northings in ground metres.
-        centre_lon: The longitude the frame is centred on, in degrees.
-        centre_lat: The latitude it is centred on, in degrees.
-
-    Returns:
-        longitudes: The longitudes in -180 to 180 degrees.
-        latitudes: The latitudes in degrees.
-    """
-    phi0 = math.radians(centre_lat)
-    span = np.hypot(np.asarray(x, dtype=float), np.asarray(y, dtype=float))
-    bearing = np.arctan2(x, y)
-    lat = np.full_like(span, float(centre_lat))
-    angle = span
-    # The radius stands where the pair's middle does, which only the answer says.
-    for _ in range(AEQD_PASSES):
-        angle = span / local_radius_m((lat + centre_lat) / 2.0)
-        lat = np.degrees(
-            np.arcsin(
-                np.clip(
-                    math.sin(phi0) * np.cos(angle)
-                    + math.cos(phi0) * np.sin(angle) * np.cos(bearing),
-                    -1.0,
-                    1.0,
-                )
-            )
-        )
-    lon = centre_lon + np.degrees(
-        np.arctan2(
-            np.sin(bearing) * np.sin(angle) * math.cos(phi0),
-            np.cos(angle) - math.sin(phi0) * np.sin(np.radians(lat)),
-        )
-    )
-    return normalise_longitude(lon), lat

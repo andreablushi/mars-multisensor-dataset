@@ -12,7 +12,7 @@ from analysis.coverage.artifacts import index
 from analysis.stats.artifacts import selection
 from analysis.visualization.common import panels
 from analysis.visualization.common.models.coverage import Coverage
-from shared.maths import tessellate
+from shared.maths.tessellate import Tessellate
 
 DEFAULT_LAT = 18.4
 DEFAULT_LON = 77.5
@@ -69,7 +69,9 @@ class TilePicker:
     def _confirmed(self, _button=None) -> None:
         """Load the tile holding the confirmed point and refill every claimed area."""
         settings = configs.load()
-        tile = tessellate.tile_at(self._lat.value, self._lon.value, settings.tile_km)
+        grid = Tessellate.of(settings.tile_km)
+        band, column = grid.tile_indices(self._lat.value, self._lon.value)
+        tile = grid.tile_of(int(band), int(column))
         # The config says in what order the sets are drawn
         ranks = {
             chosen.key: rank for rank, chosen in enumerate(settings.instrument_sets)

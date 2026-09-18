@@ -6,7 +6,8 @@ import numpy as np
 
 from building.common.pds import images, labels, tables
 from building.configs import sharad as configs
-from building.preprocessing.common.crop import overlap
+from building.preprocessing.common import geometry
+from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.sharad.models.observation import SharadObservation
 from building.preprocessing.sharad.models.sample import SharadSample
 from shared.models.tile import Tile
@@ -66,8 +67,11 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
     Returns:
         sample: The track cut to that tile, or None where it reaches none of it.
     """
-    held = overlap(
-        observation.latitude, observation.longitude, observation.separable, frame
+    held = geometry.overlap(
+        Samples(
+            observation.latitude, observation.longitude, observation.separable, None
+        ),
+        frame,
     )
     if held is None:
         return None
@@ -84,4 +88,8 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
         power=power,
         clutter=observation.clutter[:, observation.traces[traces]],
         traces=observation.traces[traces],
+        incidence_deg=geometry.taken(observation.solar_zenith_deg, held.bounds),
+        spacecraft_altitude_km=geometry.taken(
+            observation.spacecraft_altitude_km, held.bounds
+        ),
     )

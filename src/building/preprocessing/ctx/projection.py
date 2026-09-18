@@ -7,7 +7,7 @@ import numpy as np
 from building.preprocessing.common.models.relative_position import PolarGrid
 
 # The two projections ASU writes a scan in, the second above about seventy degrees.
-CYLINDRICAL = "SimpleCylindrical"
+EQUATORIAL = "SimpleCylindrical"
 POLAR = "PolarStereographic"
 
 # The only reading of latitude and longitude this places; the domain does not matter.
@@ -28,14 +28,14 @@ def grid_axes(
     Returns:
         down: What every line holds, the latitude of it or its northing.
         across: What every sample holds, the longitude of it or its easting.
-        polar: The grid the two are measured on, and None for a cylindrical one.
+        polar: The grid the two are measured on, and None for an equatorial one.
 
     Raises:
         ValueError: When the label names a projection or a convention this
             cannot read.
     """
     name = label["ProjectionName"]
-    if name not in (CYLINDRICAL, POLAR):
+    if name not in (EQUATORIAL, POLAR):
         raise ValueError(f"Cannot place a {name} grid.")
     for key, wanted in CONVENTIONS.items():
         if label[key] != wanted:

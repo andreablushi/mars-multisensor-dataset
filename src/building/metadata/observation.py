@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 import numpy as np
 
 from building.common.layout import GROUND, WAVELENGTH, Layout
 from building.common.pds import times
+from building.metadata.acquisition_info import AcquisitionInfo, acquisition_info
 from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.sample import Sample
 from shared.disk import parquet
@@ -30,7 +31,7 @@ class ObservationMetadata:
         path: Where its arrays were written, relative to the dataset's own root.
         axes: What each axis of the value array holds, in the array's own order.
         shape: The value array's shape, in that same order.
-        ground_sample_m: How much ground one sample spans along each ground axis,
+        sample_spacing_m: How much ground one sample spans along each ground axis,
             in the order those axes run, measured rather than claimed.
         separable: Whether the grid it was placed on holds one ground axis each
             rather than a pair per sample, which the stored offsets no longer
@@ -47,12 +48,12 @@ class ObservationMetadata:
             and None for every other and where the crop measures nothing.
         band_std: Each band's standard deviation, or None for the same reasons.
         band_valid_count: How many measurements each of those bands pools, or None
-            for the same reasons.
-        band_wavelengths: The nominal centre in nm of each of those bands, or None
-            for the same reasons.
+            for the same reasons, and zero for a band the observation never measured.
         t_start: When the observation started, or None where the archive
             publishes no time for it.
         t_end: When it ended, or None for the same reason.
+        acquisition: Where the Sun and the spacecraft stood over the crop, every
+            quantity of it unset for an archive that publishes none.
     """
 
     tile: str
@@ -61,7 +62,7 @@ class ObservationMetadata:
     path: str
     axes: tuple[str, ...]
     shape: tuple[int, ...]
-    ground_sample_m: tuple[float, ...]
+    sample_spacing_m: tuple[float, ...]
     separable: bool
     valid_count: int
     value_min: float | None
@@ -71,9 +72,9 @@ class ObservationMetadata:
     band_mean: tuple[float, ...] | None = None
     band_std: tuple[float, ...] | None = None
     band_valid_count: tuple[int, ...] | None = None
-    band_wavelengths: tuple[float, ...] | None = None
     t_start: datetime | None = None
     t_end: datetime | None = None
+    acquisition: AcquisitionInfo = field(default_factory=AcquisitionInfo)
 
     @property
     def identity(self) -> tuple[str, str, str]:
@@ -112,7 +113,8 @@ def observation_metadata(
         size if holds == GROUND else 1
         for size, holds in zip(values.shape, layout.axes, strict=True)
     )
-    measured = held.measured.reshape(ground)
+    measured_ground = held.measured_ground
+    measured = measured_ground.reshape(ground)
     # An integer holds no infinite identity, so the reduction starts at its type's edge.
     limits = (
         np.iinfo(values.dtype)
@@ -133,17 +135,15 @@ def observation_metadata(
     )
     # A band is the one axis a reader normalises against, so it survives the reduction.
     over = tuple(axis for axis, holds in enumerate(layout.axes) if holds == GROUND)
-    banded = counted and WAVELENGTH in layout.axes
-    band_mean, band_std, band_valid_count, band_wavelengths = (
-        (
-            tuple(np.mean(values, axis=over, where=measured).tolist()),
-            tuple(np.std(values, axis=over, where=measured).tolist()),
-            tuple(np.broadcast_to(measured, values.shape).sum(axis=over).tolist()),
-            tuple(held.wavelengths.tolist()),
-        )
-        if banded
-        else (None, None, None, None)
-    )
+    band_mean, band_std, band_valid_count = None, None, None
+    if counted and WAVELENGTH in layout.axes:
+        pooled = np.broadcast_to(measured, values.shape).sum(axis=over)
+        # A band the observation never measured pools nothing, whatever the ground says.
+        if held.measured_bands is not None:
+            pooled = np.where(held.measured_bands, pooled, 0)
+        band_mean = tuple(np.mean(values, axis=over, where=measured).tolist())
+        band_std = tuple(np.std(values, axis=over, where=measured).tolist())
+        band_valid_count = tuple(pooled.tolist())
     return ObservationMetadata(
         tile=frame.name,
         instrument=layout.instrument,
@@ -151,7 +151,7 @@ def observation_metadata(
         path=path,
         axes=layout.axes,
         shape=tuple(values.shape),
-        ground_sample_m=relative_positioning.ground_sample_m(held.position, frame),
+        sample_spacing_m=relative_positioning.sample_spacing_m(held.position, frame),
         separable=held.position.separable,
         valid_count=counted,
         value_min=smallest,
@@ -161,9 +161,9 @@ def observation_metadata(
         band_mean=band_mean,
         band_std=band_std,
         band_valid_count=band_valid_count,
-        band_wavelengths=band_wavelengths,
         t_start=_moment(held.label, STARTED) or t_start,
         t_end=_moment(held.label, STOPPED),
+        acquisition=acquisition_info(held, frame, measured_ground),
     )
 
 

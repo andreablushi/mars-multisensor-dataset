@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from building.preprocessing.common import geometry
 from building.preprocessing.common.models.relative_position import RelativePosition
 from shared.maths import geodesy
 from shared.models.tile import Tile
@@ -50,7 +51,7 @@ def degrees(
     return geodesy.stereographic_inverse(x, y, *position.polar)
 
 
-def ground_metres(
+def distance_centre_m(
     position: RelativePosition, frame: Tile
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return how far north and east of its tile centre every sample sits.
@@ -62,28 +63,25 @@ def ground_metres(
 
     Returns:
         north: The ground metres north of that centre, one per sample, in the
-            azimuthal equidistant frame it is the middle of.
+            geodesic frame it is the middle of.
         east: The ground metres east of it, in the same frame.
     """
     sizes = position.ground_sizes
     north = np.empty(sizes, dtype=STORED)
     east = np.empty(sizes, dtype=STORED)
-    # A whole scan crossed at once would hold more than the crop itself does.
-    reach = max(1, BLOCK // int(np.prod(sizes[1:], dtype=int)))
     plain = position.separable and position.polar is None
-    for start in range(0, sizes[0], reach):
-        block = slice(start, start + reach)
+    for block in geometry.blocked(sizes, BLOCK):
         lon, lat = degrees(position, frame, (block, *(slice(None),) * (len(sizes) - 1)))
         if plain:
             # One axis holds latitude and the other longitude, so the two are crossed.
             lon, lat = lon[None, :], lat[:, None]
-        east[block], north[block] = geodesy.aeqd_forward(
+        east[block], north[block] = geodesy.geodesic_forward(
             lon, lat, frame.centre_lon, frame.centre_lat
         )
     return north, east
 
 
-def ground_sample_m(position: RelativePosition, frame: Tile) -> tuple[float, ...]:
+def sample_spacing_m(position: RelativePosition, frame: Tile) -> tuple[float, ...]:
     """Return how much ground one sample spans, along each of its ground axes.
 
     Args:
@@ -92,7 +90,7 @@ def ground_sample_m(position: RelativePosition, frame: Tile) -> tuple[float, ...
         frame: The tile's local frame, which the offsets are relative to.
 
     Returns:
-        sample: The median great-circle metres between neighbouring samples along each
+        spacing: The median geodesic metres between neighbouring samples along each
             ground axis, and not a number for an axis holding a single sample.
     """
 
@@ -131,8 +129,7 @@ def ground_sample_m(position: RelativePosition, frame: Tile) -> tuple[float, ...
             )
             lon, lat = degrees(position, frame, taken)
             line = (np.ravel(lon), np.ravel(lat))
-        # The spheroid is measured where each pair stands, not on one sphere for all.
-        middles = (line[1][:-1] + line[1][1:]) / 2.0
-        walk = geodesy.haversine_steps(*line, geodesy.local_radius_m(middles))
+        # Each pair is walked on the spheroid itself, not on one sphere for all.
+        walk = geodesy.geodesic_steps(*line)
         steps.append(float(np.median(walk)) if walk.size else float("nan"))
     return tuple(steps)

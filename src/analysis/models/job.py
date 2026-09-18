@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from analysis.models.instrument import InstrumentSet
-from shared.models.tile_group import TileGroup
+from analysis.models.tile_group import TileGroup
 
 
 @dataclass(frozen=True, slots=True)

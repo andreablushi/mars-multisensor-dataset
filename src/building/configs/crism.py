@@ -56,6 +56,20 @@ DETECTOR_BANDS_NM = {
 }
 # fmt: on
 
+# The one band axis every observation is laid out on, both detectors in order.
+BANDS_NM = tuple(sorted(band for grid in DETECTOR_BANDS_NM.values() for band in grid))
+
+# Two detectors sharing a centre would share a slot, and one would overwrite the other.
+if len(set(BANDS_NM)) != len(BANDS_NM):
+    raise ValueError("Two detectors declare the same band centre.")
+
+# Where each detector's bands sit along that axis.
+_SLOT = {band: at for at, band in enumerate(BANDS_NM)}
+DETECTOR_SLOTS = {
+    name: tuple(_SLOT[band] for band in grid)
+    for name, grid in DETECTOR_BANDS_NM.items()
+}
+
 # The two products one detector of a scan is published as.
 OBSERVATION = "observation"
 GEOMETRY = "geometry"
@@ -91,8 +105,15 @@ LAYOUT = Layout(
         WAVELENGTH,
     ),
     measurement="cube",
-    beside={"wavelengths": ("band",)},
+    beside={
+        "measured_bands": ("band",),
+        "incidence_deg": ("line", "sample"),
+        "emission_deg": ("line", "sample"),
+        "phase_deg": ("line", "sample"),
+        "local_solar_time_h": ("line", "sample"),
+    },
     stored="f2",
+    band_centres_nm=BANDS_NM,
 )
 
 # The directory every wavelength file is kept in, shared by every observation.

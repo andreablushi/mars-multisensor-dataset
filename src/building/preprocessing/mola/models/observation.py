@@ -1,4 +1,4 @@
-"""The sheets one tile stands on, laid onto the single cylindrical grid they share."""
+"""The sheets one tile stands on, laid onto the single equatorial grid they share."""
 
 from __future__ import annotations
 

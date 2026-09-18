@@ -12,8 +12,9 @@ from analysis.coverage.artifacts.write import EVENTS, SUMMARY
 from analysis.coverage.models.coverage import Event, SetCoverage
 from analysis.coverage.models.summary import Summary
 from analysis.metadata import file_explorer
+from analysis.utils import tile_group
 from shared.disk.files import atomic_path
-from shared.maths import tessellate
+from shared.maths.tessellate import split_bands_columns
 from shared.models.tile import Tile
 
 
@@ -75,7 +76,8 @@ def load_tile(tile: Tile) -> list[SetCoverage]:
             and nothing at all where no set reached it.
     """
     settings = configs.load()
-    group = tessellate.tile_group_name(tile, settings.tile_km, settings.tile_group_deg)
+    bands = len(split_bands_columns(settings.tile_km))
+    group = tile_group.group_name(bands, tile, settings.tile_group_deg)
     return load_group(group, tile.name).get(tile.name, [])
 
 
