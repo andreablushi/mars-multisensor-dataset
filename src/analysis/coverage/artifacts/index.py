@@ -13,9 +13,9 @@ from analysis.coverage.models.coverage import Event, SetCoverage
 from analysis.coverage.models.summary import Summary
 from analysis.metadata import file_explorer
 from analysis.utils import tile_group
-from shared.disk.files import atomic_path
-from shared.maths.tessellate import split_bands_columns
-from shared.models.tile import Tile
+from common.disk.files import atomic_path
+from common.maths.tessellate import split_bands_columns
+from common.models.tile import Tile
 
 
 def reindex() -> int:

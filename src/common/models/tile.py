@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from shared.maths import geodesy, physics
-from shared.maths.geodesy import PolarGrid
+from common.maths import geodesy, physics
+from common.maths.geodesy import PolarGrid
 
 # From this latitude up a tile is read on its pole, below it in degrees.
 POLAR_LATITUDE = 70.0

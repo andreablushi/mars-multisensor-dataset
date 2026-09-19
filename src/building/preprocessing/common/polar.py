@@ -13,9 +13,9 @@ from building.preprocessing.common.models.relative_position import (
     RelativePosition,
 )
 from building.preprocessing.common.models.samples import Samples
-from shared.maths import geodesy
-from shared.maths.geodesy import TURN
-from shared.models.tile import Tile
+from common.maths import geodesy
+from common.maths.geodesy import TURN
+from common.models.tile import Tile
 
 # The longest segment the box is walked in, a chord leaving its arc by under a pixel.
 STEP = 0.1

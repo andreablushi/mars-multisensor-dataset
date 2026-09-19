@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from shared.disk.slugify import slugify
-from shared.paths import CONFIGS_ROOT, DATA_ROOT
+from common.disk.slugify import slugify
+from common.paths import CONFIGS_ROOT, DATA_ROOT
 
-CONFIG_PATH = CONFIGS_ROOT / "building.yaml"
+TRAINING_CONFIG_PATH = CONFIGS_ROOT / "training" / "building.yaml"
+EVALUATION_CONFIG_PATH = CONFIGS_ROOT / "evaluation" / "building.yaml"
 
 BUILDING_ROOT = DATA_ROOT / "building"
 DATASETS_ROOT = BUILDING_ROOT / "dataset"

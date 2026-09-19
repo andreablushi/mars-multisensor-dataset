@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from analysis import paths as analysis_paths
-from shared import paths
+from common import paths
 
 
 @dataclass(frozen=True, slots=True)

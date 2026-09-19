@@ -10,7 +10,7 @@ from shapely import from_wkt
 
 from analysis.coverage.projection.geometry import footprints
 from analysis.models.observation import Observation
-from shared.maths import geodesy, physics
+from common.maths import geodesy, physics
 
 # SHARAD transmits 15-25 MHz; its centre sets the sounding wavelength
 SHARAD_CENTRE_FREQUENCY_HZ = 20e6

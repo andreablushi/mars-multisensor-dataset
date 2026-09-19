@@ -22,8 +22,8 @@ from shapely import (
 from shapely.geometry.base import BaseGeometry
 
 from analysis.coverage.models.region import TileRegion
-from shared.maths import geodesy, physics
-from shared.models.tile import Tile
+from common.maths import geodesy, physics
+from common.models.tile import Tile
 
 _EMPTY = Polygon()
 _LINESTRING = 1

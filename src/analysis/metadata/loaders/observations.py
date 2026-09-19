@@ -7,7 +7,7 @@ from pathlib import Path
 
 import analysis.metadata.provenance as provenance
 from analysis.models.observation import Observation, ObservationSet
-from shared.disk.files import read_jsonl
+from common.disk.files import read_jsonl
 
 
 def load_observations(path: Path) -> ObservationSet:

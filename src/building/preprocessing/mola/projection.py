@@ -11,8 +11,8 @@ from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.mola import delay
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
-from shared.maths import physics
-from shared.models.tile import Tile
+from common.maths import physics
+from common.models.tile import Tile
 
 # The two projections the gridded record is written in.
 EQUATORIAL = "SIMPLE CYLINDRICAL"

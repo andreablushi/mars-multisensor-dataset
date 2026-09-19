@@ -10,7 +10,7 @@ from building.preprocessing.common import geometry
 from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.sharad.models.observation import SharadObservation
 from building.preprocessing.sharad.models.sample import SharadSample
-from shared.models.tile import Tile
+from common.models.tile import Tile
 
 # The field the geometry names each radargram column in, counted from one.
 COLUMN_FIELD = "RADARGRAM COLUMN"

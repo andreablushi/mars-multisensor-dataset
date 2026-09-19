@@ -16,7 +16,7 @@ from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.ctx import projection
 from building.preprocessing.ctx.models.observation import CtxObservation
 from building.preprocessing.ctx.models.sample import BLANK, CtxSample
-from shared.models.tile import Tile
+from common.models.tile import Tile
 
 # Nothing here reads ASU's no-data tag: what a scan left blank is `BLANK`
 logging.getLogger("tifffile").setLevel(logging.ERROR)

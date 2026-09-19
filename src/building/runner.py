@@ -6,25 +6,35 @@ import queue
 import threading
 from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import Future, ProcessPoolExecutor, ThreadPoolExecutor
-from contextlib import closing
+from contextlib import ExitStack, closing
 from functools import partial
 from pathlib import Path
 
 import httpx
 from rich.console import Console
 
+from analysis.selector.models.selection import Selection
 from building import console as printing
 from building import paths, planner
 from building.dispatcher import INSTRUMENTS
 from building.metadata import read as metadata_read
 from building.metadata import write as metadata
-from building.metadata.observation import ObservationMetadata, observation_metadata
+from building.metadata.observation import (
+    ObservationMetadata,
+    observation_metadata,
+)
 from building.models.budget import Budget, memory_bytes
 from building.models.job import Job, Outcome, Plan
-from building.models.progress import BUILDING, FETCHING, HOLDING, QUEUED, Progress
+from building.models.progress import (
+    BUILDING,
+    FETCHING,
+    HOLDING,
+    QUEUED,
+    Progress,
+)
 from building.models.settings import Settings
 from building.preprocessing.common import store
-from shared.console import named_failure
+from common.console import named_failure
 
 # How much of the box's memory a build may hold. The rest is not spare: the box is
 # charged for the downloads in flight and for the cache of every file written and
@@ -36,6 +46,7 @@ CHECKPOINT_PRODUCTS = 500
 
 def run_build(
     settings: Settings,
+    picked: Sequence[Selection],
     console: Console,
     root: Path,
     *,
@@ -46,6 +57,7 @@ def run_build(
 
     Args:
         settings: The settled choices for the build.
+        picked: The tiles to build, each with the observations its window keeps.
         console: The console to render on.
         root: The directory this build of the dataset is written in.
         force: Whether to rebuild crops that are already written.
@@ -56,16 +68,13 @@ def run_build(
 
     Returns:
         collected: Every finished outcome, in completion order.
-
-    Raises:
-        FileNotFoundError: When no selection has been written to build from.
     """
     # Every core builds, and what each build holds is measured as it lands.
     budget = Budget(int(memory_bytes() * MEMORY_SHARE))
     # Reused, so a run pays for a connection once a host rather than once a file
+    connections = sum(settings.downloads.values()) * 2
     limits = httpx.Limits(
-        max_connections=settings.downloads * 2,
-        max_keepalive_connections=settings.downloads * 2,
+        max_connections=connections, max_keepalive_connections=connections
     )
     with httpx.Client(limits=limits) as ode:
         try:
@@ -83,16 +92,22 @@ def run_build(
             if dropped:
                 console.print(f"dropping {dropped:,} crops the index does not name")
         published = named if checkpoint else frozenset()
-        plan = planner.build_plan(settings, root, ode, force=force, published=published)
+        plan = planner.build_plan(picked, root, ode, force=force, published=published)
         printing.describe(plan, settings, budget, console)
         progress = Progress(len(plan.jobs))
         # A download waits on the network and a build on the cores, so the pools differ.
         with (
             ProcessPoolExecutor(max_workers=settings.workers) as building,
-            # A thread waiting on memory holds no download back, so this is wider
-            ThreadPoolExecutor(max_workers=settings.in_flight) as fetching,
+            ExitStack() as pools,
             printing.watch(progress),
         ):
+            fetching = {
+                # A thread waiting on memory holds no download back, so each is wider
+                archive: pools.enter_context(
+                    ThreadPoolExecutor(max_workers=settings.workers + downloads)
+                )
+                for archive, downloads in settings.downloads.items()
+            }
             held = _outcomes(
                 plan.jobs, ode, fetching, building, root, settings, budget, progress
             )
@@ -144,7 +159,7 @@ def _checkpointed(
 def _outcomes(
     jobs: tuple[Job, ...],
     ode: httpx.Client,
-    fetching: ThreadPoolExecutor,
+    fetching: dict[str, ThreadPoolExecutor],
     building: ProcessPoolExecutor,
     root: Path,
     settings: Settings,
@@ -156,7 +171,7 @@ def _outcomes(
     Args:
         jobs: The products to fetch and build, heaviest first.
         ode: The client every download is asked through.
-        fetching: The threads the downloads run on.
+        fetching: The threads the downloads run on, by the archive they wait on.
         building: The processes the builds run on.
         root: The dataset's own root directory.
         settings: The settled choices for the build, which bound how many
@@ -170,7 +185,10 @@ def _outcomes(
     finished: queue.Queue[Outcome] = queue.Queue()
     # A place to land in, and a turn on the network, since neither bounds the other.
     waiting = threading.Semaphore(settings.in_flight)
-    downloading = threading.Semaphore(settings.downloads)
+    downloading = {
+        archive: threading.Semaphore(downloads)
+        for archive, downloads in settings.downloads.items()
+    }
 
     def finish(outcome: Outcome, ticket: object, held: int) -> None:
         """Record what one job left and give back everything it took.
@@ -197,7 +215,7 @@ def _outcomes(
         steps = INSTRUMENTS[job.instrument]
         ticket, held = progress.entered(job.label, QUEUED), 0
         try:
-            with downloading:
+            with downloading[steps.archive]:
                 progress.moved(ticket, FETCHING)
                 steps.fetch(job.identifier, ode)
             # Only now is there a product to measure, and so a share to ask for.
@@ -232,7 +250,7 @@ def _outcomes(
 
     # Every path leaves one outcome and gives its place back, or it waits for ever.
     for job in jobs:
-        fetching.submit(fetched, job)
+        fetching[INSTRUMENTS[job.instrument].archive].submit(fetched, job)
     for _ in jobs:
         yield finished.get()
 
@@ -292,10 +310,11 @@ def _indexed(
     *,
     on_disk: bool,
 ) -> None:
-    """Write the index over every crop the dataset holds, not this run's alone.
+    """Write the index over every crop of the tiles covered, not this run's alone.
 
     Args:
-        plan: What the build set out to do, whose tiles this run covers.
+        plan: What the build set out to do, whose tiles alone the index names, so a
+            tile the build no longer covers leaves it.
         collected: What every job of this run left.
         root: The dataset's own root directory.
         on_disk: Whether an earlier run's record is kept only while its crop is
@@ -303,22 +322,20 @@ def _indexed(
     """
     written = [held for one in collected for held in one.records]
     rewritten = {one.identity for one in written}
+    tiles = {one.identity: one for one in plan.tiles}
     try:
         standing = metadata_read.read_observation_metadata(root)
-        earlier = metadata_read.read_tile_metadata(root)
     except FileNotFoundError:
-        standing, earlier = [], {}
-    # What an earlier run left, less what this run rewrote and what has been deleted.
+        standing = []
+    # What an earlier run left of the tiles covered, less what this run rewrote and
+    # what has been deleted.
     records = [
         one
         for one in standing
-        if one.identity not in rewritten and (not on_disk or (root / one.path).exists())
+        if one.tile in tiles
+        and one.identity not in rewritten
+        and (not on_disk or (root / one.path).exists())
     ] + written
-    tiles = {one.identity: one for one in plan.tiles}
-    # A tile this run missed is carried forward, so no record names an unknown one.
-    for one in records:
-        if one.tile not in tiles and one.tile in earlier:
-            tiles[one.tile] = earlier[one.tile]
     # What the dataset holds, which is every instrument in it and not a wish.
     held = tuple(sorted({one.instrument for one in records}))
     grids = {

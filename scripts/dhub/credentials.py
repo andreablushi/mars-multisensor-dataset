@@ -7,7 +7,7 @@ import os
 from digitalhub.stores.client.base.factory import get_client
 from dotenv import load_dotenv
 
-from shared import paths
+from common import paths
 
 TOKEN = "DHCORE_PERSONAL_ACCESS_TOKEN"
 

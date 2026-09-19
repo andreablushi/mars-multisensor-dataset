@@ -8,9 +8,9 @@ from functools import lru_cache
 
 import numpy as np
 
-from shared.maths.geodesy import HALF_TURN, TURN
-from shared.maths.physics import RADIUS_KM
-from shared.models.tile import Tile
+from common.maths.geodesy import HALF_TURN, TURN
+from common.maths.physics import RADIUS_KM
+from common.models.tile import Tile
 
 
 @lru_cache(maxsize=4)

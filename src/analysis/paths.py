@@ -5,21 +5,26 @@ from __future__ import annotations
 from pathlib import Path
 
 from analysis.models.instrument import InstrumentSet
-from shared.paths import CONFIGS_ROOT, DATA_ROOT
+from common.paths import CONFIGS_ROOT, DATA_ROOT
 
-CONFIG_PATH = CONFIGS_ROOT / "analysis.yaml"
+CONFIG_PATH = CONFIGS_ROOT / "analysis" / "analysis.yaml"
+LABELS_CONFIG_PATH = CONFIGS_ROOT / "analysis" / "labels.yaml"
 
 ANALYSIS_ROOT = DATA_ROOT / "analysis"
 METADATA_ROOT = ANALYSIS_ROOT / "metadata"
 COVERAGE_ROOT = ANALYSIS_ROOT / "coverage"
 GROUPS_ROOT = COVERAGE_ROOT / "groups"
 STATS_ROOT = ANALYSIS_ROOT / "stats"
+EVALUATION_STATS_ROOT = STATS_ROOT / "evaluation"
 SELECTION_ROOT = ANALYSIS_ROOT / "selection"
+LABELS_ROOT = ANALYSIS_ROOT / "labels"
+FEATURES_PATH = LABELS_ROOT / "features.jsonl"
 
 STATS_NAME = "stats.json"
 SELECTED_TILES_NAME = "tiles.parquet"
 SELECTED_OBSERVATIONS_NAME = "observations.parquet"
 SUMMARY_NAME = "summary.parquet"
+LABELS_NAME = "labels.parquet"
 EVENTS_SUFFIX = ".events.parquet"
 SET_SUMMARY_SUFFIX = ".summary.parquet"
 

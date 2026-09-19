@@ -16,7 +16,7 @@ from matplotlib.axes import Axes
 
 from analysis.visualization.common import panels
 from analysis.visualization.common.models.box import Box
-from shared.maths import geodesy
+from common.maths import geodesy
 
 BASEMAP_URL = "https://planetarymaps.usgs.gov/cgi-bin/mapserv"
 BASEMAP_MAP = "/maps/mars/mars_simp_cyl.map"

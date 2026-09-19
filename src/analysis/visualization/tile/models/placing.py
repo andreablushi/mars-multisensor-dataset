@@ -6,8 +6,8 @@ import numpy as np
 
 from analysis.coverage.projection.geometry import footprints
 from analysis.visualization.common.models.box import Box
-from shared.maths import geodesy
-from shared.models.tile import Tile
+from common.maths import geodesy
+from common.models.tile import Tile
 
 MIN_SPAN_DEG = 0.5
 RING_SAMPLES = 17

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Every name is read from the file the runs are settled from, so nothing drifts
-config="$(dirname "$0")/../configs/digitalhub.yaml"
+config="$(dirname "$0")/../configs/common/digitalhub.yaml"
 project="$(sed -n 's/^project: *//p' "$config")"
 
 published() {
@@ -59,6 +59,7 @@ With no name, every one of them comes down.
   selection    the tiles and looks kept       -> data/analysis/selection
   stats        what the filter left of it     -> data/analysis/stats
   summary      one row per tile and set        -> data/analysis/coverage
+  labels       the evaluation labels           -> data/analysis/labels
 EOF
 }
 
@@ -69,7 +70,7 @@ fi
 
 names=("$@")
 if [[ ${#names[@]} -eq 0 ]]; then
-    names=(coverage metadata selection stats summary)
+    names=(coverage metadata selection stats summary labels)
 fi
 
 for name in "${names[@]}"; do
@@ -79,6 +80,7 @@ for name in "${names[@]}"; do
         selection) download_one "$(published selection)" data/analysis/selection ;;
         stats) download_one "$(published stats)" data/analysis/stats ;;
         summary) download_one "$(published summary)" data/analysis/coverage shares ;;
+        labels) download_one "$(published labels)" data/analysis/labels ;;
         *)
             echo "nothing is published under \`$name\`" >&2
             usage >&2

@@ -7,8 +7,8 @@ import tomllib
 import digitalhub as dh
 
 from building.models import budget
+from common import paths
 from dhub import configs, credentials
-from shared import paths
 
 UNITS = {"Ki": 1024, "Mi": 1024**2, "Gi": 1024**3, "Ti": 1024**4}
 
@@ -42,7 +42,7 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
 
     # Build the image first, since the job cannot install anything itself.
     built = function.run(
-        action="build", profile=platform.resources["image"]["profile"], wait=True
+        action="build", profile=platform.resources["image"].profile, wait=True
     )
     if built.status.state != "COMPLETED":
         print(f"the image did not build: {built.status.state}")
@@ -52,11 +52,11 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
     # Start the job, told where the clone lands and what the box holds
     asked = platform.resources[stage]
     root = platform.source_root
-    budgeted = asked.get("budget", asked["memory"])
+    budgeted = asked.budget or asked.memory
     run = function.run(
         action="job",
-        profile=asked["profile"],
-        resources={"cpu": asked["cpu"], "mem": asked["memory"], "disk": asked["disk"]},
+        profile=asked.profile,
+        resources={"cpu": str(asked.cpu), "mem": asked.memory, "disk": asked.disk},
         secrets=[credentials.TOKEN],
         envs=[
             {"name": "PYTHONPATH", "value": f"{root}:{root}/src:{root}/scripts"},
@@ -67,7 +67,7 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
                 "value": str(int(budgeted[:-2]) * UNITS[budgeted[-2:]]),
             },
         ],
-        parameters=parameters | {"workers": int(asked["cpu"])},
+        parameters=parameters | {"workers": asked.cpu},
         wait=False,
     )
     print(run.key)

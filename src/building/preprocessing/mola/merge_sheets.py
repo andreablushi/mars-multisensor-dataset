@@ -10,9 +10,9 @@ from building.common.pds import images, labels
 from building.preprocessing.mola import projection
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.observation import MolaObservation
-from shared.maths import geodesy
-from shared.maths.geodesy import TURN
-from shared.models.tile import Tile
+from common.maths import geodesy
+from common.maths.geodesy import TURN
+from common.models.tile import Tile
 
 
 def merge_sheets(grid: MolaGrid, frame: Tile) -> MolaObservation:

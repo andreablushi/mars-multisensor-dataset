@@ -15,7 +15,7 @@ from building.models.budget import Budget
 from building.models.job import Outcome, Plan
 from building.models.progress import Progress
 from building.models.settings import Settings
-from shared import console as printing
+from common import console as printing
 
 # Progress lines where no cursor moves; the platform keeps a run's first 100 kB
 LOGGED_LINES = 100
@@ -45,8 +45,9 @@ def describe(plan: Plan, settings: Settings, budget: Budget, console: Console) -
     )
     console.print(
         f"instruments: {', '.join(sorted({job.instrument for job in plan.jobs}))}; "
-        f"share {settings.share:.0%}, seed {settings.seed}; "
-        f"build pool {settings.workers}, download pool {settings.downloads}, "
+        f"built as {settings.name}; "
+        f"build pool {settings.workers}, download pools "
+        f"{', '.join(f'{name} {n}' for name, n in settings.downloads.items())}, "
         f"{settings.in_flight} products may wait, "
         f"{budget.total / GIB:.0f} GiB between them"
     )

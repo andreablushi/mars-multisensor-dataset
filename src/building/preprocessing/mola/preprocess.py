@@ -9,7 +9,7 @@ from building.preprocessing.mola import delay, projection
 from building.preprocessing.mola.merge_sheets import merge_sheets
 from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
-from shared.models.tile import Tile
+from common.models.tile import Tile
 
 
 def read_observation(grid: str) -> MolaGrid:

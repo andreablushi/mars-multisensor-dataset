@@ -3,20 +3,17 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
-
-import yaml
+from dataclasses import replace
 
 from analysis import paths
-from analysis.models.instrument import InstrumentSet
 from analysis.models.settings import Settings
+from common.config import load_config
 
 
-def load(path: Path = paths.CONFIG_PATH, workers: int | None = None) -> Settings:
+def load(workers: int | None = None) -> Settings:
     """Settle what a run should do, reading the config file once.
 
     Args:
-        path: The config file, which carries every setting a run turns on.
         workers: How many jobs each half runs at once, standing in for the
             config where a run was given a number of cores of its own, which
             are then every core the jobs share.
@@ -24,18 +21,7 @@ def load(path: Path = paths.CONFIG_PATH, workers: int | None = None) -> Settings
     Returns:
         choices: The settled choices for the run.
     """
-    config = yaml.safe_load(path.read_text(encoding="utf-8"))
+    settings = load_config(paths.CONFIG_PATH, Settings, workers=workers)
+    # The coverage jobs run side by side, so each takes a share of the machine
     cores = workers or os.process_cpu_count() or 1
-    workers = workers or config["workers"]
-    return Settings(
-        tile_km=float(config["tile_km"]),
-        tile_group_deg=float(config["tile_group_deg"]),
-        grid_cells=config["grid_cells"],
-        instrument_sets=tuple(
-            InstrumentSet.from_key(key) for key in config["instruments"]
-        ),
-        loc=config["loc"],
-        workers=workers,
-        # The coverage jobs run side by side, so each takes a share of the machine
-        union_threads=max(1, cores // workers),
-    )
+    return replace(settings, union_threads=max(1, cores // settings.workers))

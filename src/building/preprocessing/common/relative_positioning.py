@@ -5,9 +5,11 @@ from __future__ import annotations
 import numpy as np
 
 from building.preprocessing.common import geometry
-from building.preprocessing.common.models.relative_position import RelativePosition
-from shared.maths import geodesy
-from shared.models.tile import Tile
+from building.preprocessing.common.models.relative_position import (
+    RelativePosition,
+)
+from common.maths import geodesy
+from common.models.tile import Tile
 
 # How many neighbouring pairs of one axis to measure a ground sample over.
 MEASURED = 512

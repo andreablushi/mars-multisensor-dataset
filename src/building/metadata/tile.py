@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from analysis.selector.models.selection import SelectedTile
-from shared.disk import parquet
-from shared.models.tile import Tile
+from common.disk import parquet
+from common.models.tile import Tile
 
 
 @dataclass(frozen=True, slots=True)

@@ -12,7 +12,7 @@ from building.configs import mola as configs
 from building.download import archive
 
 if TYPE_CHECKING:
-    from shared.models.tile import Tile
+    from common.models.tile import Tile
 
 # What ODE publishes MOLA under.
 ODE = {"ihid": "MGS", "iid": "MOLA"}

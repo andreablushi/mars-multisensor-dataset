@@ -1,0 +1,9 @@
+# How every build of a dataset runs, whichever dataset it builds.
+
+# Products built at once, one per core; a run on a platform is given its own.
+workers: 8
+
+# Downloads at once from each archive, which wait on it and not on the cores.
+downloads:
+  asu: 112
+  wustl: 112

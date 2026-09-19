@@ -14,7 +14,7 @@ from analysis.models.instrument import InstrumentSet
 from analysis.utils import tile_group
 from analysis.visualization.common.models.coverage import Coverage
 from analysis.visualization.tile.models.outlines import Trace
-from shared.maths.tessellate import Tessellate
+from common.maths.tessellate import Tessellate
 
 OUTLINE_CACHE = 4
 

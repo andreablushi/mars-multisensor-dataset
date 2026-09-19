@@ -26,7 +26,7 @@ from building.preprocessing.crism.models.observation import (
     CrismObservation,
 )
 from building.preprocessing.crism.models.sample import CrismSample
-from shared.models.tile import Tile
+from common.models.tile import Tile
 
 # What a wavelength file writes where the detector was never calibrated.
 UNCALIBRATED = 65535.0

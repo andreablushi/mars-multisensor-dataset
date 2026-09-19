@@ -15,8 +15,8 @@ from analysis.selector.models.selection import (
     Selection,
 )
 from analysis.selector.models.survey import Study
-from shared.maths.tessellate import Tessellate
-from shared.models.tile import Tile
+from common.maths.tessellate import Tessellate
+from common.models.tile import Tile
 
 # Called with how many tile groups are searched and how many there are
 Progress = Callable[[int, int], None]

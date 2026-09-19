@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from building.configs import sharad as sharad_configs
-from shared.maths import physics
+from common.maths import physics
 
 
 def radargram_rows(topography: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

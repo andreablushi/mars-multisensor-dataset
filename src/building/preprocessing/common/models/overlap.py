@@ -6,7 +6,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from building.preprocessing.common.models.relative_position import RelativePosition
+from building.preprocessing.common.models.relative_position import (
+    RelativePosition,
+)
 
 
 @dataclass(frozen=True, slots=True)

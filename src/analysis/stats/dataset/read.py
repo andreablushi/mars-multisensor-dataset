@@ -12,7 +12,7 @@ from analysis.stats.models.tile import TileStats
 from analysis.stats.tile import measure
 from analysis.stats.tile import read as tile
 from analysis.utils import tile_group
-from shared.maths.tessellate import Tessellate
+from common.maths.tessellate import Tessellate
 
 # Called with how many tile groups are read and how many there are
 Progress = Callable[[int, int], None]

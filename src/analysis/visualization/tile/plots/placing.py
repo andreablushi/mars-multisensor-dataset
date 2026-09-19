@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from analysis import configs
 from analysis.visualization.tile.models.placing import Placed
-from shared.maths.geodesy import HALF_TURN
-from shared.maths.tessellate import Tessellate
+from common.maths.geodesy import HALF_TURN
+from common.maths.tessellate import Tessellate
 
 
 def placed(name: str) -> Placed | None:

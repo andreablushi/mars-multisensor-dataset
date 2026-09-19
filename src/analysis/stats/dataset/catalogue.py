@@ -7,7 +7,7 @@ from analysis.coverage.artifacts import index
 from analysis.coverage.models.summary import Summary
 from analysis.stats.models.catalogue import CatalogueStats, InstrumentStats
 from analysis.stats.models.spread import Spread
-from shared.maths.tessellate import split_bands_columns
+from common.maths.tessellate import split_bands_columns
 
 
 def read_catalogue() -> CatalogueStats:

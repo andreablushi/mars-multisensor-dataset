@@ -7,8 +7,8 @@ from dataclasses import dataclass, fields
 import numpy as np
 
 from building.preprocessing.common.models.sample import Sample
-from shared.maths import geodesy, physics
-from shared.models.tile import Tile
+from common.maths import geodesy, physics
+from common.models.tile import Tile
 
 LABEL_KEYS = {
     "incidence_deg": ("Incidence_angle",),

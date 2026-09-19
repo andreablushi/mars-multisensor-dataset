@@ -6,8 +6,8 @@ from typing import Any
 
 import httpx
 
-from shared.fetch import http
-from shared.fetch.ode import ODE_BASE_URL, OUTPUT, ODEError
+from common.fetch import http
+from common.fetch.ode import ODE_BASE_URL, OUTPUT, ODEError
 
 
 class ODEClient:

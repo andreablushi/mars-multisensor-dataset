@@ -7,7 +7,7 @@ from datetime import datetime
 
 from building.metadata.observation import ObservationMetadata
 from building.metadata.tile import TileMetadata
-from shared.models.tile import Tile
+from common.models.tile import Tile
 
 
 @dataclass(frozen=True, slots=True)

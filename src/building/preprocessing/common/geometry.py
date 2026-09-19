@@ -8,10 +8,12 @@ import numpy as np
 
 from building.preprocessing.common import equatorial, polar
 from building.preprocessing.common.models.overlap import Overlap
-from building.preprocessing.common.models.relative_position import RelativePosition
+from building.preprocessing.common.models.relative_position import (
+    RelativePosition,
+)
 from building.preprocessing.common.models.samples import Samples
-from shared.maths import geodesy
-from shared.models.tile import Tile
+from common.maths import geodesy
+from common.models.tile import Tile
 
 # How many samples of a cut are crossed at once, since a grid can run to gigabytes.
 BLOCK = 4_000_000

@@ -8,8 +8,8 @@ import analysis.metadata.provenance as provenance
 from analysis.metadata.ode import ODEClient
 from analysis.models.instrument import InstrumentSet
 from analysis.models.tile_group import TileGroup
-from shared.fetch import ode
-from shared.fetch.ode import ODEError
+from common.fetch import ode
+from common.fetch.ode import ODEError
 
 # A group circling a pole is asked in two halves, no ODE box reaching round
 LONGITUDE_HALVES = ((0.0, 180.0), (180.0, 360.0))

@@ -7,7 +7,7 @@ import math
 import numpy as np
 from pyproj import Geod
 
-from shared.maths.physics import EQUATORIAL_RADIUS_M, POLAR_RADIUS_M, RADIUS_M
+from common.maths.physics import EQUATORIAL_RADIUS_M, POLAR_RADIUS_M, RADIUS_M
 
 # The whole turn, which every longitude here is measured round.
 TURN = 360.0

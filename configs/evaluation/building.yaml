@@ -1,0 +1,9 @@
+# What the evaluation build is called.
+
+# How every build runs, which this one is composed over.
+defaults:
+  - /common/building@_here_
+  - _self_
+
+# The directory it is written in and the name it is published under.
+name: evaluation

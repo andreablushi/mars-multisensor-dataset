@@ -13,8 +13,8 @@ from urllib.parse import urlparse
 from digitalhub import get_s3_client
 from digitalhub.stores.data.api import get_default_store
 
+from common import paths
 from dhub import credentials
-from shared import paths
 
 ANALYSIS_DIR = "analysis"
 
@@ -159,14 +159,16 @@ def download_files(project, name: str, into: Path, names: Sequence[str]) -> None
     print(f"filling in from {name}, {len(wanted):,} files of its index", flush=True)
 
 
-def unpack_archive(downloaded: str, into: Path) -> None:
+def unpack_archive(project, name: str, into: Path) -> None:
     """Put a published archive back where the pipeline reads it, and nothing else.
 
     Args:
-        downloaded: The archive the platform left, which is the one file it holds.
+        project: The DigitalHub project the archive was logged into.
+        name: The name the archive was published under.
         into: The directory the archive fills, emptied first so that what it
             holds afterwards is what was published and only that.
     """
+    downloaded = project.get_artifact(name).download(overwrite=True)
     shutil.rmtree(into, ignore_errors=True)
     into.parent.mkdir(parents=True, exist_ok=True)
     with tarfile.open(downloaded) as packed:

@@ -1,19 +1,35 @@
-"""Reading `configs/digitalhub.yaml`, the one file a platform run is settled from."""
+"""Reading `configs/common/digitalhub.yaml`, which settles every platform run."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from functools import lru_cache
-from pathlib import Path
+from dataclasses import dataclass, replace
 
-import yaml
+from common.config import load_config
+from common.paths import COMMON_CONFIGS_ROOT
 
-from shared.paths import CONFIGS_ROOT
-
-PLATFORM_CONFIG_PATH = CONFIGS_ROOT / "digitalhub.yaml"
+PLATFORM_CONFIG_PATH = COMMON_CONFIGS_ROOT / "digitalhub.yaml"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
+class Resources:
+    """What one stage asks the platform for.
+
+    Attributes:
+        profile: The profile settling the cores and the memory of the box.
+        cpu: The cores the job is scheduled on, or None for a stage only built.
+        memory: The memory it is scheduled with, such as "32Gi".
+        disk: The disk it is given.
+        budget: The memory a build plans against, or None to plan against all of it.
+    """
+
+    profile: str
+    cpu: int | None = None
+    memory: str | None = None
+    disk: str | None = None
+    budget: str | None = None
+
+
+@dataclass(slots=True)
 class Platform:
     """What a run submitted to DigitalHub is given, and what it publishes.
 
@@ -27,6 +43,8 @@ class Platform:
             against and the disk each stage asks for, by stage.
         functions: The function each stage is registered as, by stage.
         publishes: What each stage publishes, by the name a download asks for.
+        shared: Whether every stage queues on the shared pool rather than the
+            reserved one.
     """
 
     project: str
@@ -34,26 +52,25 @@ class Platform:
     source_root: str
     python_version: str
     image_extras: list[str]
-    resources: dict[str, dict[str, str]]
+    resources: dict[str, Resources]
     functions: dict[str, str]
     publishes: dict[str, str]
+    shared: bool = False
 
 
-@lru_cache(maxsize=1)
-def load(path: Path = PLATFORM_CONFIG_PATH) -> Platform:
+def load() -> Platform:
     """Settle what a platform run is given, reading the config file once.
 
-    Args:
-        path: The config file, which carries every setting a run is submitted with.
-
     Returns:
-        platform: The settled choices for the submission.
+        platform: The settled choices for the submission, each profile marked
+            for the pool it queues on.
     """
-    config = yaml.safe_load(path.read_text(encoding="utf-8"))
-    pool = "-shared" if config.pop("shared") else ""
-    asked = {
-        stage: {key: str(value) for key, value in one.items()}
-        | {"profile": f"{one['profile']}{pool}"}
-        for stage, one in config["resources"].items()
-    }
-    return Platform(**config | {"resources": asked})
+    platform = load_config(PLATFORM_CONFIG_PATH, Platform)
+    pool = "-shared" if platform.shared else ""
+    return replace(
+        platform,
+        resources={
+            stage: replace(one, profile=one.profile + pool)
+            for stage, one in platform.resources.items()
+        },
+    )

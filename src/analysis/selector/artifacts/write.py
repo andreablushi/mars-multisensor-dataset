@@ -11,7 +11,7 @@ from analysis.selector.models.selection import (
     SelectedTile,
     Selection,
 )
-from shared.disk import parquet
+from common.disk import parquet
 
 TILES = parquet.schema_of(SelectedTile)
 OBSERVATIONS = parquet.schema_of(SelectedObservation)

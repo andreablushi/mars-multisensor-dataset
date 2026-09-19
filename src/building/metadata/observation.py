@@ -12,8 +12,8 @@ from building.common.pds import times
 from building.metadata.acquisition_info import AcquisitionInfo, acquisition_info
 from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.sample import Sample
-from shared.disk import parquet
-from shared.models.tile import Tile
+from common.disk import parquet
+from common.models.tile import Tile
 
 # What a label calls the two ends of the time a product was taken over.
 STARTED = "START_TIME"
@@ -114,14 +114,22 @@ def observation_metadata(
         for size, holds in zip(values.shape, layout.axes, strict=True)
     )
     measured_ground = held.measured_ground
-    measured = measured_ground.reshape(ground)
+    on_ground = np.broadcast_to(measured_ground.reshape(ground), values.shape)
+    measured = on_ground
+    # A band the observation never measured holds nothing, whatever the ground says.
+    if held.measured_bands is not None:
+        bands = tuple(
+            size if holds == WAVELENGTH else 1
+            for size, holds in zip(values.shape, layout.axes, strict=True)
+        )
+        measured = on_ground & held.measured_bands.reshape(bands)
     # An integer holds no infinite identity, so the reduction starts at its type's edge.
     limits = (
         np.iinfo(values.dtype)
         if np.issubdtype(values.dtype, np.integer)
         else np.finfo(values.dtype)
     )
-    counted = int(measured.sum()) * int(np.prod(values.shape) // measured.size)
+    counted = int(measured.sum())
     # A crop can reach the box and measure nothing, and nothing says nothing
     smallest, largest, mean, deviation = (
         (
@@ -137,12 +145,9 @@ def observation_metadata(
     over = tuple(axis for axis, holds in enumerate(layout.axes) if holds == GROUND)
     band_mean, band_std, band_valid_count = None, None, None
     if counted and WAVELENGTH in layout.axes:
-        pooled = np.broadcast_to(measured, values.shape).sum(axis=over)
-        # A band the observation never measured pools nothing, whatever the ground says.
-        if held.measured_bands is not None:
-            pooled = np.where(held.measured_bands, pooled, 0)
-        band_mean = tuple(np.mean(values, axis=over, where=measured).tolist())
-        band_std = tuple(np.std(values, axis=over, where=measured).tolist())
+        pooled = measured.sum(axis=over)
+        band_mean = tuple(np.mean(values, axis=over, where=on_ground).tolist())
+        band_std = tuple(np.std(values, axis=over, where=on_ground).tolist())
         band_valid_count = tuple(pooled.tolist())
     return ObservationMetadata(
         tile=frame.name,

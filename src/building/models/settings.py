@@ -5,27 +5,21 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class Settings:
-    """The settled choices for a build, read from one flat config file.
+    """The settled choices for a build, whichever dataset it builds.
 
     Attributes:
         name: What this build is called, the directory it is written in and the
             name it is published under, so one build never overwrites another.
-        share: What share of the tiles the selection kept to build, from above
-            zero to one, drawn evenly across their classes.
-        seed: The number every draw is made with, so a smaller build is a
-            reproducible subset of the full one.
         workers: How many products are built at once, one per core, which a job
             a platform sized itself is given rather than reads.
-        downloads: How many downloads run at once, which wait on the archives.
+        downloads: How many downloads run at once from each archive, by its name.
     """
 
     name: str
-    share: float
-    seed: int
     workers: int
-    downloads: int
+    downloads: dict[str, int]
 
     @property
     def in_flight(self) -> int:
@@ -35,4 +29,19 @@ class Settings:
             held: Enough waiting to feed every builder while every download is
                 still in flight.
         """
-        return self.workers + self.downloads
+        return self.workers + sum(self.downloads.values())
+
+
+@dataclass(slots=True)
+class TrainingSettings(Settings):
+    """The settled choices for the training build, beside how every build runs.
+
+    Attributes:
+        share: What share of the tiles the selection kept to build, from above
+            zero to one.
+        seed: The number every draw is made with, so a smaller build is a
+            reproducible subset of the full one.
+    """
+
+    share: float = 1.0
+    seed: int = 0

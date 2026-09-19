@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import os
 import time
+from collections import Counter
 
 from dhub import archives, submit
 from dhub import configs as platform
@@ -14,12 +15,17 @@ from rich.console import Console
 
 from analysis import configs, console, paths, planner, runner
 from analysis.coverage.artifacts import index
+from analysis.labels import artifacts, draw, fetch, label
+from analysis.labels.models.label import Label
+from analysis.labels.models.settings import Settings as Labelling
 from analysis.metadata import file_explorer
 from analysis.models.progress import CoverageSummary, DownloadSummary
 from analysis.selector import select
 from analysis.stats.artifacts import store
 from analysis.stats.dataset import aggregate, read
-from shared.console import PLAIN_LOG_ENV, print_interrupted
+from analysis.utils import dataset_list
+from common.config import load_config
+from common.console import PLAIN_LOG_ENV, print_interrupted
 
 PIPELINE_HANDLER = "scripts.analysis_pipeline:run_pipeline"
 SELECTION_HANDLER = "scripts.analysis_pipeline:run_selection"
@@ -30,6 +36,7 @@ _METADATA = _PUBLISHED["metadata"]
 _SELECTION = _PUBLISHED["selection"]
 _STATS = _PUBLISHED["stats"]
 _SUMMARY = _PUBLISHED["summary"]
+_LABELS = _PUBLISHED["labels"]
 
 # Where each archive is packed from and what it holds, said once since two
 # handlers publish the same ones.
@@ -49,6 +56,10 @@ ARCHIVED = {
     _STATS: (
         paths.STATS_ROOT,
         "What the filter left of the dataset; unpack under data/analysis/.",
+    ),
+    _LABELS: (
+        paths.LABELS_ROOT,
+        "Every labelled tile, the drawn ones marked; unpack under data/analysis/.",
     ),
 }
 
@@ -94,25 +105,56 @@ def compute_coverage(force: bool = False, workers: int | None = None) -> int:
     return 1 if computed.failed or downloaded.failed else 0
 
 
-def compute_selection(workers: int | None = None) -> None:
-    """Search every measured tile under the filter and read what it left.
+def compute_labels(force: bool = False) -> list[Label]:
+    """Label every kept tile, draw the balanced set held out of training, and write it.
+
+    Args:
+        force: Whether to fetch the feature catalogue again rather than read the
+            one cached.
+
+    Returns:
+        labels: Every labelled tile, the drawn ones marked so.
+    """
+    settings = load_config(paths.LABELS_CONFIG_PATH, Labelling)
+    labels = draw.drawn_labels(
+        label.labelled_tiles(
+            dataset_list.read_selected_tiles(),
+            fetch.read_features(refresh=force),
+            settings,
+        ),
+        settings,
+    )
+    artifacts.write_labels(labels)
+    held = Counter(one.label for one in labels)
+    drawn = Counter(one.label for one in labels if one.drawn)
+    for name in settings.classes:
+        print(f"{name}: {drawn[name]} drawn of {held[name]}")
+    return labels
+
+
+def compute_selection(workers: int | None = None, force: bool = False) -> None:
+    """Search every measured tile under the filter, label it, and read what both left.
 
     Args:
         workers: How many processes to run on at once, or None for the config.
+        force: Whether to fetch the feature catalogue again rather than read the
+            one cached.
     """
     workers = configs.load(workers=workers).workers
     picked = select.select_dataset(workers, console.logged("selection"))
     kept = sum(1 for one in picked if one.tile.kept)
     print(f"{kept:,} of {len(picked):,} tiles earned a place", flush=True)
     # Read off the selection just written, so they never stand for an old filter
+    measured = read.measure_every_tile(picked, workers, console.logged("stats"))
+    store.write_stats_file(aggregate.dataset_stats(measured))
+    drawn = {one.tile for one in compute_labels(force) if one.drawn}
     store.write_stats_file(
-        aggregate.dataset_stats(
-            read.measure_every_tile(picked, workers, console.logged("stats"))
-        )
+        aggregate.dataset_stats([one for one in measured if one.window.tile in drawn]),
+        paths.EVALUATION_STATS_ROOT,
     )
 
 
-@handler(outputs=[_COVERAGE, _SUMMARY, _SELECTION, _STATS])
+@handler(outputs=[_COVERAGE, _SUMMARY, _SELECTION, _STATS, _LABELS])
 def run_pipeline(project, force: bool = False, workers: int | None = None):
     """Run every stage on DigitalHub and publish everything each one left on disk.
 
@@ -126,6 +168,7 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
         summary: The table of one row per tile and instrument set.
         selection: The archive of the tiles and observations kept.
         stats: The archive of what the filter left of the dataset.
+        labels: The archive of every labelled tile.
 
     Raises:
         RuntimeError: When the measuring stage reported a failure, which leaves
@@ -147,30 +190,35 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
     # Report a failure only once uploaded, and never select from short coverage
     if failed:
         raise RuntimeError("the run had failures; the archives hold what finished")
-    compute_selection(workers)
+    compute_selection(workers, force)
     print("done", flush=True)
-    return coverage, summary, archived(project, _SELECTION), archived(project, _STATS)
+    return (
+        coverage,
+        summary,
+        *(archived(project, name) for name in (_SELECTION, _STATS, _LABELS)),
+    )
 
 
-@handler(outputs=[_SELECTION, _STATS])
-def run_selection(project, workers: int | None = None):
+@handler(outputs=[_SELECTION, _STATS, _LABELS])
+def run_selection(project, force: bool = False, workers: int | None = None):
     """Select the dataset on DigitalHub under the filter, and publish what it leaves.
 
     Args:
         project: The DigitalHub project the archives are logged into.
+        force: Whether to fetch the feature catalogue again.
         workers: How many processes to run on at once, as the job was sized.
 
     Returns:
         selection: The archive of the tiles and observations kept.
         stats: The archive of what the filter left of the dataset.
+        labels: The archive of every labelled tile.
     """
     os.environ[PLAIN_LOG_ENV] = "1"
     print("fetching the measurements", flush=True)
-    measured = project.get_artifact(_COVERAGE).download(overwrite=True)
-    archives.unpack_archive(measured, paths.COVERAGE_ROOT)
-    compute_selection(workers)
+    archives.unpack_archive(project, _COVERAGE, paths.COVERAGE_ROOT)
+    compute_selection(workers, force)
     print("done", flush=True)
-    return archived(project, _SELECTION), archived(project, _STATS)
+    return tuple(archived(project, name) for name in (_SELECTION, _STATS, _LABELS))
 
 
 def main() -> int:
@@ -187,7 +235,8 @@ def main() -> int:
     parsed.add_argument(
         "--only-stats",
         action="store_true",
-        help="skip the download and the measurement, and read the stats alone",
+        help="skip the download and the measurement, and select, read the stats "
+        "and label alone",
     )
     parsed.add_argument(
         "--force", action="store_true", help="redo finished work rather than skip it"
@@ -197,12 +246,14 @@ def main() -> int:
 
     if arguments.dh:
         if arguments.only_stats:
-            return submit.submitted("selection", SELECTION_HANDLER, arguments.ref)
+            return submit.submitted(
+                "selection", SELECTION_HANDLER, arguments.ref, force=arguments.force
+            )
         return submit.submitted(
             "pipeline", PIPELINE_HANDLER, arguments.ref, force=arguments.force
         )
     failed = 0 if arguments.only_stats else compute_coverage(arguments.force)
-    compute_selection()
+    compute_selection(force=arguments.force)
     return failed
 
 

@@ -11,10 +11,10 @@ from building import paths
 from building.common.layout import GROUND, Layout
 from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.sample import Sample
-from shared.disk.files import atomic_path
-from shared.disk.slugify import slugify
-from shared.maths import physics
-from shared.models.tile import Tile
+from common.disk.files import atomic_path
+from common.disk.slugify import slugify
+from common.maths import physics
+from common.models.tile import Tile
 
 # What the arrays placing a crop are called, and what the masks beside them are.
 NORTH = "north"

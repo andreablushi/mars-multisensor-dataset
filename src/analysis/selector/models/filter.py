@@ -10,7 +10,7 @@ Answer = tuple[tuple[int, ...], int]
 Constraints = list[list[Answer]]
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class Filter:
     """What the instruments are asked for before a tile earns a place.
 
@@ -24,10 +24,10 @@ class Filter:
         standing: What the whole record answers for, tightest first.
     """
 
-    constraints: tuple[dict[str, float], ...]
-    admits: dict[str, float]
+    constraints: list[dict[str, float]]
     span_ls: float
-    timeless: frozenset[str] = frozenset()
+    admits: dict[str, float] = field(default_factory=dict)
+    timeless: list[str] = field(default_factory=list)
     least: list[float] = field(default_factory=list)
     windowed: Constraints = field(default_factory=list)
     standing: Constraints = field(default_factory=list)

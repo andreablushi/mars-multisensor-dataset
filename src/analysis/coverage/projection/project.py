@@ -8,10 +8,13 @@ import numpy as np
 from shapely import STRtree, from_wkt, is_missing
 from shapely.geometry.base import BaseGeometry
 
-from analysis.coverage.models.observation import ProjectedObservation, ProjectedSet
+from analysis.coverage.models.observation import (
+    ProjectedObservation,
+    ProjectedSet,
+)
 from analysis.coverage.projection.geometry import footprints, sizing
 from analysis.models.observation import ObservationSet
-from shared.models.tile import Tile
+from common.models.tile import Tile
 
 
 def project_every_tile(

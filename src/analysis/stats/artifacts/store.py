@@ -9,7 +9,7 @@ from pathlib import Path
 from analysis import paths
 from analysis.stats.models.dataset import Aggregate, DatasetStats
 from analysis.stats.models.spread import Spread
-from shared.disk.files import atomic_path
+from common.disk.files import atomic_path
 
 # The layout of a published file, raised whenever what is written changes.
 STATS_SHAPE = 3

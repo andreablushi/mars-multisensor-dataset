@@ -23,7 +23,7 @@ from analysis.models.job import Job, Outcome
 from analysis.models.progress import ProgressEvent
 from analysis.models.settings import Settings
 from analysis.utils import tile_group
-from shared.maths.tessellate import Tessellate
+from common.maths.tessellate import Tessellate
 
 
 def run_jobs(

@@ -1,4 +1,9 @@
-# What a build of the dataset holds, and how much of it to build.
+# What the training build holds, and how much of it to build.
+
+# How every build runs, which this one is composed over.
+defaults:
+  - /common/building@_here_
+  - _self_
 
 # The directory it is written in and the name it is published under.
 name: training
@@ -8,9 +13,3 @@ share: 1.0
 
 # The number every draw is made with, so a smaller build is a reproducible subset.
 seed: 42
-
-# Products built at once, one per core; a run on a platform is given its own.
-workers: 12
-
-# Downloads at once, which wait on the archives and not on the cores.
-downloads: 112

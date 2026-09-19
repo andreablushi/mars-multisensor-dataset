@@ -9,8 +9,8 @@ import httpx
 
 from building.configs import ctx as configs
 from building.download import archive
-from shared.disk.files import atomic_path
-from shared.fetch.http import FetchError
+from common.disk.files import atomic_path
+from common.fetch.http import FetchError
 
 # What ODE publishes CTX under.
 ODE = {"ihid": "MRO", "iid": "CTX"}

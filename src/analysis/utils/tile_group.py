@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from analysis.models.tile_group import TileGroup
-from shared.maths.geodesy import HALF_TURN, TURN, longitude_span
-from shared.maths.tessellate import Tessellate
-from shared.models.tile import Tile
+from common.maths.geodesy import HALF_TURN, TURN, longitude_span
+from common.maths.tessellate import Tessellate
+from common.models.tile import Tile
 
 
 def group_name(bands: int, tile: Tile, tile_group_deg: float) -> str:

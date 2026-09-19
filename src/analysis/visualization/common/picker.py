@@ -12,7 +12,7 @@ from analysis.coverage.artifacts import index
 from analysis.stats.artifacts import selection
 from analysis.visualization.common import panels
 from analysis.visualization.common.models.coverage import Coverage
-from shared.maths.tessellate import Tessellate
+from common.maths.tessellate import Tessellate
 
 DEFAULT_LAT = 18.4
 DEFAULT_LON = 77.5

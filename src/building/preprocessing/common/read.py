@@ -8,9 +8,11 @@ from pathlib import Path
 import numpy as np
 
 from building.preprocessing.common import relative_positioning
-from building.preprocessing.common.models.relative_position import RelativePosition
+from building.preprocessing.common.models.relative_position import (
+    RelativePosition,
+)
 from building.preprocessing.common.store import EAST, META, NORTH
-from shared.models.tile import Tile
+from common.models.tile import Tile
 
 
 def read_sample(path: Path) -> tuple[dict[str, np.ndarray], dict]:

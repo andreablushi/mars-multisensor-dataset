@@ -9,9 +9,13 @@ from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress
 
 from analysis.models.job import Plan
-from analysis.models.progress import CoverageSummary, DownloadSummary, ProgressEvent
+from analysis.models.progress import (
+    CoverageSummary,
+    DownloadSummary,
+    ProgressEvent,
+)
 from analysis.models.settings import Settings
-from shared import console as printing
+from common import console as printing
 
 # How many progress lines a stage prints where no cursor can be moved
 LOGGED_LINES = 50

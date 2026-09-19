@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-from shared.fetch import http, ode
+from common.fetch import http, ode
 
 # How long to wait for the larger half of a product.
 TIMEOUT = 300.0

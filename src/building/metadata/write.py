@@ -13,7 +13,7 @@ from building.metadata import observation as records
 from building.metadata import tile as tiles
 from building.metadata.observation import ObservationMetadata
 from building.metadata.tile import TileMetadata
-from shared.disk import parquet
+from common.disk import parquet
 
 
 def write_metadata(
