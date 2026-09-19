@@ -9,7 +9,7 @@ from pathlib import Path
 
 import httpx
 
-from common.analysis.selector.models.selection import Selection
+from analysis.selector.models.selection import Selection
 from common.building.dispatcher import INSTRUMENTS
 from common.building.metadata.tile import tile_metadata
 from common.building.models.job import Job, Plan

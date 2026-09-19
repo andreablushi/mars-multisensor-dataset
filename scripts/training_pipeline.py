@@ -10,9 +10,9 @@ from dhub import archives, build, submit
 from dhub import configs as platform
 from digitalhub_runtime_python import handler
 
-from common.analysis import paths as analysis_paths
-from common.analysis.selector.models.selection import Selection
-from common.analysis.utils import dataset_list
+from analysis import paths as analysis_paths
+from analysis.selector.models.selection import Selection
+from analysis.utils import dataset_list
 from common.building import build as building
 from common.building.configs import overall
 from common.console import PLAIN_LOG_ENV, print_interrupted

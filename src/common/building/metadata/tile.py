@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from common.analysis.selector.models.selection import SelectedTile
+from analysis.selector.models.selection import SelectedTile
 from common.disk import parquet
 from common.models.tile import Tile
 

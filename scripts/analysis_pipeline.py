@@ -12,13 +12,13 @@ from dhub import configs as platform
 from digitalhub_runtime_python import handler
 from rich.console import Console
 
-from common.analysis import configs, console, paths, planner, runner
-from common.analysis.coverage.artifacts import index
-from common.analysis.metadata import file_explorer
-from common.analysis.models.progress import CoverageSummary, DownloadSummary
-from common.analysis.selector import select
-from common.analysis.stats.artifacts import store
-from common.analysis.stats.dataset import aggregate, read
+from analysis import configs, console, paths, planner, runner
+from analysis.coverage.artifacts import index
+from analysis.metadata import file_explorer
+from analysis.models.progress import CoverageSummary, DownloadSummary
+from analysis.selector import select
+from analysis.stats.artifacts import store
+from analysis.stats.dataset import aggregate, read
 from common.console import PLAIN_LOG_ENV, print_interrupted
 
 PIPELINE_HANDLER = "scripts.analysis_pipeline:run_pipeline"

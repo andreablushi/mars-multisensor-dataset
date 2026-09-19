@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from pathlib import Path
 
-from common.analysis.metadata.ode import ODEClient
+from analysis.metadata.ode import ODEClient
 from common.disk.files import read_jsonl, write_jsonl
 from common.fetch.ode import ODE_TARGET
 from evaluation import paths

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from common.analysis.selector.models.selection import Selection
+from analysis.selector.models.selection import Selection
 from common.building import build, paths
 from common.building.configs import overall
 from dhub import archives

@@ -6,8 +6,8 @@ import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from analysis import paths as analysis_paths
 from common import paths
-from common.analysis import paths as analysis_paths
 
 
 @dataclass(frozen=True, slots=True)

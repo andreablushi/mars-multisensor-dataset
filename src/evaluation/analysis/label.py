@@ -6,7 +6,7 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from common.analysis.selector.models.selection import SelectedTile
+from analysis.selector.models.selection import SelectedTile
 from common.maths.geodesy import northward_m
 from evaluation.analysis import box
 from evaluation.analysis.models.feature import Feature

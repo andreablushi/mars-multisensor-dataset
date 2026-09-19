@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from collections.abc import Sequence, Set
 
-from common.analysis.selector.models.selection import Selection
+from analysis.selector.models.selection import Selection
 from training.building.models.settings import Settings
 
 

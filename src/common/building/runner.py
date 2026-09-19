@@ -13,7 +13,7 @@ from pathlib import Path
 import httpx
 from rich.console import Console
 
-from common.analysis.selector.models.selection import Selection
+from analysis.selector.models.selection import Selection
 from common.building import console as printing
 from common.building import paths, planner
 from common.building.dispatcher import INSTRUMENTS

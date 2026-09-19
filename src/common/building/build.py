@@ -7,7 +7,7 @@ from collections.abc import Callable, Sequence
 
 from rich.console import Console
 
-from common.analysis.selector.models.selection import Selection
+from analysis.selector.models.selection import Selection
 from common.building import console, paths, runner
 from common.building.models.settings import Settings
 

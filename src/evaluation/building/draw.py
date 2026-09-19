@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from common.analysis.selector.models.selection import Selection
+from analysis.selector.models.selection import Selection
 from evaluation.analysis.models.label import Label
 
 
