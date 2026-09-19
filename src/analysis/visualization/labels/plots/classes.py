@@ -7,11 +7,11 @@ from collections.abc import Sequence
 import ipywidgets as widgets
 from matplotlib.lines import Line2D
 
+from analysis.labels.models.label import Label
 from analysis.selector.models.selection import Selection
 from analysis.visualization.common import mosaic, panels
 from analysis.visualization.dataset.plots import tiles
 from common.maths import geodesy
-from evaluation.analysis.models.label import Label
 
 MARKER_SIZE = 18
 

@@ -6,13 +6,13 @@ from collections.abc import Sequence
 
 import numpy as np
 
+from analysis.labels import box
+from analysis.labels.models.feature import Feature
+from analysis.labels.models.label import Label
+from analysis.labels.models.rule import Rule
+from analysis.labels.models.settings import Settings
 from analysis.selector.models.selection import SelectedTile
 from common.maths.geodesy import northward_m
-from evaluation.analysis import box
-from evaluation.analysis.models.feature import Feature
-from evaluation.analysis.models.label import Label
-from evaluation.analysis.models.rule import Rule
-from evaluation.analysis.models.settings import Settings
 
 
 def labelled_tiles(

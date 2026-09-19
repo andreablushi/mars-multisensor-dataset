@@ -1,1 +1,1 @@
-"""The evaluation dataset: tiles labelled by the geology they show, and their build."""
+"""The evaluation build: the tiles the balanced draw took, built with their labels."""

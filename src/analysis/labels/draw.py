@@ -7,8 +7,8 @@ from collections.abc import Sequence
 from dataclasses import replace
 from itertools import chain, islice, zip_longest
 
-from evaluation.analysis.models.label import Label
-from evaluation.analysis.models.settings import Settings
+from analysis.labels.models.label import Label
+from analysis.labels.models.settings import Settings
 
 
 def drawn_labels(labels: Sequence[Label], settings: Settings) -> list[Label]:

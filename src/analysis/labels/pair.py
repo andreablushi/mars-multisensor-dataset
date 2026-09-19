@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from collections.abc import Sequence
 
-from evaluation.analysis.models.label import Label
+from analysis.labels.models.label import Label
 
 
 def random_pair(labels: Sequence[Label], seed: int | None = None) -> tuple[str, str]:

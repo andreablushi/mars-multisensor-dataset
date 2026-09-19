@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
+from analysis import paths
+from analysis.labels.models.label import Label
 from common.disk import parquet
-from evaluation import paths
-from evaluation.analysis.models.label import Label
 
 LABELS = parquet.schema_of(Label)
 

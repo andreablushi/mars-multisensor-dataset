@@ -6,12 +6,12 @@ from pathlib import Path
 
 import yaml
 
-from evaluation import paths
-from evaluation.analysis.models.rule import Rule
-from evaluation.analysis.models.settings import Settings
+from analysis import paths
+from analysis.labels.models.rule import Rule
+from analysis.labels.models.settings import Settings
 
 
-def load(path: Path = paths.ANALYSIS_CONFIG_PATH) -> Settings:
+def load(path: Path = paths.LABELS_CONFIG_PATH) -> Settings:
     """Settle how the kept tiles are labelled, reading the config file once.
 
     Args:

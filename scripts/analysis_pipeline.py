@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import os
 import time
+from collections import Counter
 
 from dhub import archives, submit
 from dhub import configs as platform
@@ -14,11 +15,14 @@ from rich.console import Console
 
 from analysis import configs, console, paths, planner, runner
 from analysis.coverage.artifacts import index
+from analysis.labels import artifacts, draw, fetch, label
+from analysis.labels import configs as labelling
 from analysis.metadata import file_explorer
 from analysis.models.progress import CoverageSummary, DownloadSummary
 from analysis.selector import select
 from analysis.stats.artifacts import store
 from analysis.stats.dataset import aggregate, read
+from analysis.utils import dataset_list
 from common.console import PLAIN_LOG_ENV, print_interrupted
 
 PIPELINE_HANDLER = "scripts.analysis_pipeline:run_pipeline"
@@ -30,6 +34,7 @@ _METADATA = _PUBLISHED["metadata"]
 _SELECTION = _PUBLISHED["selection"]
 _STATS = _PUBLISHED["stats"]
 _SUMMARY = _PUBLISHED["summary"]
+_LABELS = _PUBLISHED["labels"]
 
 # Where each archive is packed from and what it holds, said once since two
 # handlers publish the same ones.
@@ -49,6 +54,10 @@ ARCHIVED = {
     _STATS: (
         paths.STATS_ROOT,
         "What the filter left of the dataset; unpack under data/analysis/.",
+    ),
+    _LABELS: (
+        paths.LABELS_ROOT,
+        "Every labelled tile, the drawn ones marked; unpack under data/analysis/.",
     ),
 }
 
@@ -94,11 +103,36 @@ def compute_coverage(force: bool = False, workers: int | None = None) -> int:
     return 1 if computed.failed or downloaded.failed else 0
 
 
-def compute_selection(workers: int | None = None) -> None:
-    """Search every measured tile under the filter and read what it left.
+def compute_labels(force: bool = False) -> None:
+    """Label every kept tile, draw the balanced set held out of training, and write it.
+
+    Args:
+        force: Whether to fetch the feature catalogue again rather than read the
+            one cached.
+    """
+    settings = labelling.load()
+    labels = draw.drawn_labels(
+        label.labelled_tiles(
+            dataset_list.read_selected_tiles(),
+            fetch.read_features(refresh=force),
+            settings,
+        ),
+        settings,
+    )
+    artifacts.write_labels(labels)
+    held = Counter(one.label for one in labels)
+    drawn = Counter(one.label for one in labels if one.drawn)
+    for rule in settings.rules:
+        print(f"{rule.label}: {drawn[rule.label]} drawn of {held[rule.label]}")
+
+
+def compute_selection(workers: int | None = None, force: bool = False) -> None:
+    """Search every measured tile under the filter, read what it left, and label it.
 
     Args:
         workers: How many processes to run on at once, or None for the config.
+        force: Whether to fetch the feature catalogue again rather than read the
+            one cached.
     """
     workers = configs.load(workers=workers).workers
     picked = select.select_dataset(workers, console.logged("selection"))
@@ -110,9 +144,10 @@ def compute_selection(workers: int | None = None) -> None:
             read.measure_every_tile(picked, workers, console.logged("stats"))
         )
     )
+    compute_labels(force)
 
 
-@handler(outputs=[_COVERAGE, _SUMMARY, _SELECTION, _STATS])
+@handler(outputs=[_COVERAGE, _SUMMARY, _SELECTION, _STATS, _LABELS])
 def run_pipeline(project, force: bool = False, workers: int | None = None):
     """Run every stage on DigitalHub and publish everything each one left on disk.
 
@@ -126,6 +161,7 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
         summary: The table of one row per tile and instrument set.
         selection: The archive of the tiles and observations kept.
         stats: The archive of what the filter left of the dataset.
+        labels: The archive of every labelled tile.
 
     Raises:
         RuntimeError: When the measuring stage reported a failure, which leaves
@@ -147,29 +183,35 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
     # Report a failure only once uploaded, and never select from short coverage
     if failed:
         raise RuntimeError("the run had failures; the archives hold what finished")
-    compute_selection(workers)
+    compute_selection(workers, force)
     print("done", flush=True)
-    return coverage, summary, archived(project, _SELECTION), archived(project, _STATS)
+    return (
+        coverage,
+        summary,
+        *(archived(project, name) for name in (_SELECTION, _STATS, _LABELS)),
+    )
 
 
-@handler(outputs=[_SELECTION, _STATS])
-def run_selection(project, workers: int | None = None):
+@handler(outputs=[_SELECTION, _STATS, _LABELS])
+def run_selection(project, force: bool = False, workers: int | None = None):
     """Select the dataset on DigitalHub under the filter, and publish what it leaves.
 
     Args:
         project: The DigitalHub project the archives are logged into.
+        force: Whether to fetch the feature catalogue again.
         workers: How many processes to run on at once, as the job was sized.
 
     Returns:
         selection: The archive of the tiles and observations kept.
         stats: The archive of what the filter left of the dataset.
+        labels: The archive of every labelled tile.
     """
     os.environ[PLAIN_LOG_ENV] = "1"
     print("fetching the measurements", flush=True)
     archives.unpack_archive(project, _COVERAGE, paths.COVERAGE_ROOT)
-    compute_selection(workers)
+    compute_selection(workers, force)
     print("done", flush=True)
-    return archived(project, _SELECTION), archived(project, _STATS)
+    return tuple(archived(project, name) for name in (_SELECTION, _STATS, _LABELS))
 
 
 def main() -> int:
@@ -186,7 +228,8 @@ def main() -> int:
     parsed.add_argument(
         "--only-stats",
         action="store_true",
-        help="skip the download and the measurement, and read the stats alone",
+        help="skip the download and the measurement, and select, read the stats "
+        "and label alone",
     )
     parsed.add_argument(
         "--force", action="store_true", help="redo finished work rather than skip it"
@@ -196,12 +239,14 @@ def main() -> int:
 
     if arguments.dh:
         if arguments.only_stats:
-            return submit.submitted("selection", SELECTION_HANDLER, arguments.ref)
+            return submit.submitted(
+                "selection", SELECTION_HANDLER, arguments.ref, force=arguments.force
+            )
         return submit.submitted(
             "pipeline", PIPELINE_HANDLER, arguments.ref, force=arguments.force
         )
     failed = 0 if arguments.only_stats else compute_coverage(arguments.force)
-    compute_selection()
+    compute_selection(force=arguments.force)
     return failed
 
 

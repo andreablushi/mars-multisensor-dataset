@@ -11,13 +11,12 @@ from dhub import configs as platform
 from digitalhub_runtime_python import handler
 
 from analysis import paths as analysis_paths
+from analysis.labels import artifacts
 from analysis.selector.models.selection import Selection
 from analysis.utils import dataset_list
 from common.building import build as building
 from common.building.configs import overall
 from common.console import PLAIN_LOG_ENV, print_interrupted
-from evaluation import paths
-from evaluation.analysis import artifacts
 from training.building import configs, draw
 
 BUILD_HANDLER = "scripts.training_pipeline:run_build"
@@ -36,7 +35,7 @@ def training_selections() -> list[Selection]:
             and none the evaluation set holds.
 
     Raises:
-        FileNotFoundError: When no evaluation labels have been written, since
+        FileNotFoundError: When the analysis pipeline has written no labels, since
             training would then take the tiles evaluation is meant to hold out.
     """
     held_out = {one.tile for one in artifacts.read_labels() if one.drawn}
@@ -61,7 +60,7 @@ def run_build(project, force: bool = False, workers: int | None = None):
     # The platform clones the repo alone, so both come off their archives
     print("fetching the selection and the evaluation labels", flush=True)
     archives.unpack_archive(project, _SELECTION, analysis_paths.SELECTION_ROOT)
-    archives.unpack_archive(project, _LABELS, paths.LABELS_ROOT)
+    archives.unpack_archive(project, _LABELS, analysis_paths.LABELS_ROOT)
     return build.published_dataset(
         project, configs.load().name, training_selections(), force, workers
     )

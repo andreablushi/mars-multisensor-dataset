@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from evaluation.analysis.models.rule import Rule
+from analysis.labels.models.rule import Rule
 
 
 @dataclass(frozen=True, slots=True)

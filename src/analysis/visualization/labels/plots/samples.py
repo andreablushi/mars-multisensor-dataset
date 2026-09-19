@@ -10,12 +10,12 @@ import ipywidgets as widgets
 import numpy as np
 from matplotlib.figure import Figure
 
+from analysis.labels.models.label import Label
 from analysis.visualization.common import panels
 from common.building.common.layout import DELAY
 from common.building.metadata.observation import ObservationMetadata
 from common.building.preprocessing.common.read import read_sample
 from common.building.preprocessing.common.store import MEASURED
-from evaluation.analysis.models.label import Label
 
 PANEL_HEIGHT = 3.4
 

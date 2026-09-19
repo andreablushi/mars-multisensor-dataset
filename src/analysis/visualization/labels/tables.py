@@ -8,11 +8,11 @@ from collections.abc import Sequence
 import ipywidgets as widgets
 import numpy as np
 
+from analysis.labels.models.label import Label
+from analysis.labels.models.settings import Settings
 from analysis.visualization.common import tables
 from analysis.visualization.common.models.tables import Row
 from common.building.metadata.observation import ObservationMetadata
-from evaluation.analysis.models.label import Label
-from evaluation.analysis.models.settings import Settings
 
 _CLASSES = (
     "Class",

@@ -59,7 +59,7 @@ With no name, every one of them comes down.
   selection    the tiles and looks kept       -> data/analysis/selection
   stats        what the filter left of it     -> data/analysis/stats
   summary      one row per tile and set        -> data/analysis/coverage
-  labels       the evaluation labels           -> data/evaluation/labels
+  labels       the evaluation labels           -> data/analysis/labels
 EOF
 }
 
@@ -80,7 +80,7 @@ for name in "${names[@]}"; do
         selection) download_one "$(published selection)" data/analysis/selection ;;
         stats) download_one "$(published stats)" data/analysis/stats ;;
         summary) download_one "$(published summary)" data/analysis/coverage shares ;;
-        labels) download_one "$(published labels)" data/evaluation/labels ;;
+        labels) download_one "$(published labels)" data/analysis/labels ;;
         *)
             echo "nothing is published under \`$name\`" >&2
             usage >&2

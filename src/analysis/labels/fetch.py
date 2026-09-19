@@ -5,11 +5,11 @@ from __future__ import annotations
 from dataclasses import asdict
 from pathlib import Path
 
+from analysis import paths
+from analysis.labels.models.feature import Feature
 from analysis.metadata.ode import ODEClient
 from common.disk.files import read_jsonl, write_jsonl
 from common.fetch.ode import ODE_TARGET
-from evaluation import paths
-from evaluation.analysis.models.feature import Feature
 
 
 def read_features(

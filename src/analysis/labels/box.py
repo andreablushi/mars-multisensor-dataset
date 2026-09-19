@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from analysis.labels.models.feature import Feature
 from common.maths.geodesy import TURN, longitude_span
-from evaluation.analysis.models.feature import Feature
 
 POLE = 90.0
 
