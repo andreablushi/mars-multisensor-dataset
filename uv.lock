@@ -535,7 +535,7 @@ wheels = [
 
 [[package]]
 name = "digitalhub"
-version = "0.15.10"
+version = "0.15.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3" },
@@ -551,9 +551,9 @@ dependencies = [
     { name = "requests" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d1/b0/b233b4752485695e549f573cbc4aac4a4260b996ef97383f9496410e015b/digitalhub-0.15.10.tar.gz", hash = "sha256:8541c74f25ec7266bf9300fca1fb34ded4da043598222fe7b59e4d82611f6305", size = 142182, upload-time = "2026-09-14T11:41:46.088Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c1/11/28ab3cc3f30a33f5022c9370c7dfee21574f9ccb84ce6ca4fa739668758d/digitalhub-0.15.11.tar.gz", hash = "sha256:dcd75b111371c860ad6752439491d540a5ee3c65b25e9c4f0485bf41ac9f2a13", size = 142191, upload-time = "2026-09-18T10:15:42.741Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/64/1f29659850f712575db734209d4a33a3de1ba7d863bbb8b9f1906b00ceb3/digitalhub-0.15.10-py3-none-any.whl", hash = "sha256:0a09e2c4891980b37e20b2fe27433529a405239a230a8398871675899b4c4d2a", size = 291614, upload-time = "2026-09-14T11:41:44.53Z" },
+    { url = "https://files.pythonhosted.org/packages/38/a2/eaab0a0772a82d6663dba5ca9579333023f9d589cca958abeec8e56fccb5/digitalhub-0.15.11-py3-none-any.whl", hash = "sha256:29182e14e139101c590704725e10b082e51a82a286147ebced37eb9546cfdbc0", size = 291626, upload-time = "2026-09-18T10:15:41.33Z" },
 ]
 
 [package.optional-dependencies]
@@ -1364,8 +1364,8 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [{ name = "ruff", specifier = ">=0.16.2" }]
 digitalhub = [
-    { name = "digitalhub", specifier = ">=0.15.8,<0.16" },
-    { name = "digitalhub-runtime-python", specifier = ">=0.15,<0.16" },
+    { name = "digitalhub", specifier = ">=0.15.11,<0.16" },
+    { name = "digitalhub-runtime-python", specifier = ">=0.15.2,<0.16" },
     { name = "python-dotenv", specifier = ">=1.2.3" },
 ]
 notebook = [

@@ -10,7 +10,7 @@ share: 1.0
 seed: 42
 
 # Products built at once, one per core; a run on a platform is given its own.
-workers: 8
+workers: 12
 
 # Downloads at once, which wait on the archives and not on the cores.
 downloads: 112

@@ -10,7 +10,7 @@ source_root: /shared
 # The image a job is built on, its extras what the platform itself asks for
 python_version: PYTHON3_13
 image_extras:
-  - digitalhub>=0.15.8,<0.16
+  - digitalhub>=0.15.11,<0.16
   - pandas
 
 # Whether every stage queues on the shared pool rather than the reserved one,
@@ -38,10 +38,10 @@ resources:
   # A build waits on the archives, not the cores, and its disk holds the whole dataset
   build:
     profile: cpu
-    cpu: 8
+    cpu: 12
     memory: 40Gi
     budget: 24Gi
-    disk: 400Gi
+    disk: 700Gi
 
 # The function each run is registered as, the project scoping it so it needs no prefix
 functions:
