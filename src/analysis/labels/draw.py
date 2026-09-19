@@ -25,7 +25,7 @@ def drawn_labels(labels: Sequence[Label], settings: Settings) -> list[Label]:
         ValueError: When a class holds fewer tiles than every class is drawn for.
     """
     classes: dict[str, dict[str, list[Label]]] = {
-        rule.label: {} for rule in settings.rules
+        label: {} for label in settings.classes
     }
     for one in labels:
         classes[one.label].setdefault(one.feature, []).append(one)

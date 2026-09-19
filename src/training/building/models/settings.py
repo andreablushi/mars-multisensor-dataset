@@ -4,20 +4,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from common.building.models.settings import Settings as Building
 
-@dataclass(frozen=True, slots=True)
-class Settings:
-    """The settled choices for the training build.
+
+@dataclass(slots=True)
+class Settings(Building):
+    """The settled choices for the training build, beside how every build runs.
 
     Attributes:
-        name: What this build is called, the directory it is written in and the
-            name it is published under, so one build never overwrites another.
         share: What share of the tiles the selection kept to build, from above
             zero to one.
         seed: The number every draw is made with, so a smaller build is a
             reproducible subset of the full one.
     """
 
-    name: str
-    share: float
-    seed: int
+    share: float = 1.0
+    seed: int = 0

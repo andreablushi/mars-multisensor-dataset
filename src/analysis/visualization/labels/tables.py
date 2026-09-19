@@ -28,9 +28,9 @@ def classes(labels: Sequence[Label], settings: Settings) -> widgets.Widget:
     """Tabulate every class: what it is read from, and how many tiles it holds."""
     held = Counter(one.label for one in labels)
     rows: list[Row] = []
-    for rule in settings.rules:
+    for name, rule in settings.classes.items():
         drawn = Counter(
-            one.feature for one in labels if one.drawn and one.label == rule.label
+            one.feature for one in labels if one.drawn and one.label == name
         )
         read_from = rule.descriptor or ", ".join(rule.names)
         if rule.diameter_km is not None:
@@ -41,11 +41,11 @@ def classes(labels: Sequence[Label], settings: Settings) -> widgets.Widget:
             read_from += f", {rule.latitudes[0]:g} to {rule.latitudes[1]:g} deg"
         rows.append(
             (
-                rule.label,
+                name,
                 read_from,
-                f"{held[rule.label]:,}",
+                f"{held[name]:,}",
                 f"{drawn.total():,}",
-                ", ".join(f"{name} ({count})" for name, count in drawn.most_common()),
+                ", ".join(f"{one} ({count})" for one, count in drawn.most_common()),
             )
         )
     return tables.written("Every class and what it is read from", _CLASSES, rows)

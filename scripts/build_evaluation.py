@@ -16,9 +16,11 @@ from analysis.selector.models.selection import Selection
 from analysis.utils import dataset_list
 from common.building import build as building
 from common.building import paths
-from common.building.configs import overall
+from common.building.models.settings import Settings
+from common.config import load_config
 from common.console import PLAIN_LOG_ENV, print_interrupted
-from evaluation.building import configs, draw
+from evaluation import paths as evaluation_paths
+from evaluation.building import draw
 
 BUILD_HANDLER = "scripts.build_evaluation:run_build"
 
@@ -28,8 +30,11 @@ _SELECTION = _PUBLISHED["selection"]
 _LABELS = _PUBLISHED["labels"]
 
 
-def evaluation_selections() -> list[Selection]:
+def evaluation_selections(settings: Settings) -> list[Selection]:
     """Write the drawn labels beside the evaluation build, and read what it covers.
+
+    Args:
+        settings: The settled choices for the build, which name its directory.
 
     Returns:
         picked: The tiles to build, each with the observations its window keeps.
@@ -38,7 +43,7 @@ def evaluation_selections() -> list[Selection]:
         FileNotFoundError: When the analysis pipeline has written no labels.
     """
     labels = artifacts.read_labels()
-    root = paths.dataset_root(configs.load_name())
+    root = paths.dataset_root(settings.name)
     artifacts.write_labels([one for one in labels if one.drawn], root)
     return draw.drawn_selections(dataset_list.read_dataset_list(), labels)
 
@@ -60,8 +65,11 @@ def run_build(project, force: bool = False, workers: int | None = None):
     print("fetching the selection and the labels", flush=True)
     archives.unpack_archive(project, _SELECTION, analysis_paths.SELECTION_ROOT)
     archives.unpack_archive(project, _LABELS, analysis_paths.LABELS_ROOT)
+    settings = load_config(
+        evaluation_paths.BUILDING_CONFIG_PATH, Settings, workers=workers
+    )
     return build.published_dataset(
-        project, configs.load_name(), evaluation_selections(), force, workers
+        project, settings, evaluation_selections(settings), force
     )
 
 
@@ -89,8 +97,9 @@ def main() -> int:
         return submit.submitted(
             "evaluation", BUILD_HANDLER, arguments.ref, force=arguments.force
         )
+    settings = load_config(evaluation_paths.BUILDING_CONFIG_PATH, Settings)
     return building.build_dataset(
-        overall.load(configs.load_name()), evaluation_selections(), arguments.force
+        settings, evaluation_selections(settings), arguments.force
     )
 
 

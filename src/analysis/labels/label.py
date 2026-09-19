@@ -50,8 +50,12 @@ def labelled_tiles(
         for held in zip(*(box.bounds_box(one) for one in kept), strict=True)
     )
     claims: list[dict[str, str]] = [{} for _ in kept]
-    objects = [rule for rule in settings.rules if rule.diameter_km is not None]
-    for rule in settings.rules:
+    objects = {
+        label: rule
+        for label, rule in settings.classes.items()
+        if rule.diameter_km is not None
+    }
+    for label, rule in settings.classes.items():
         for feature in (one for one in features if read_from(rule, one)):
             if rule.diameter_km is not None:
                 smallest, largest = rule.diameter_km
@@ -64,16 +68,15 @@ def labelled_tiles(
             else:
                 hit = box.inside(tiles, core)
             for at in np.flatnonzero(hit):
-                claims[at].setdefault(rule.label, feature.name)
+                claims[at].setdefault(label, feature.name)
     # Any object reaching into a texture tile, whatever its size, is ground of its own
     reached = np.zeros(len(kept), dtype=bool)
     for feature in features:
-        if any(read_from(rule, feature) for rule in objects):
+        if any(read_from(rule, feature) for rule in objects.values()):
             reached |= box.touching(tiles, box.bounds_box(feature))
-    whole = {rule.label for rule in objects}
     labels = []
     for at, held in enumerate(claims):
-        chosen = {label: name for label, name in held.items() if label in whole}
+        chosen = {label: name for label, name in held.items() if label in objects}
         if not chosen and not reached[at]:
             chosen = held
         if len(chosen) == 1:

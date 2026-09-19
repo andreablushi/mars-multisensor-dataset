@@ -15,9 +15,11 @@ from analysis.labels import artifacts
 from analysis.selector.models.selection import Selection
 from analysis.utils import dataset_list
 from common.building import build as building
-from common.building.configs import overall
+from common.config import load_config
 from common.console import PLAIN_LOG_ENV, print_interrupted
-from training.building import configs, draw
+from training import paths
+from training.building import draw
+from training.building.models.settings import Settings
 
 BUILD_HANDLER = "scripts.build_training:run_build"
 
@@ -27,8 +29,11 @@ _SELECTION = _PUBLISHED["selection"]
 _LABELS = _PUBLISHED["labels"]
 
 
-def training_selections() -> list[Selection]:
+def training_selections(settings: Settings) -> list[Selection]:
     """Read the selection and draw the tiles the training build covers.
+
+    Args:
+        settings: The settled choices for the build, which size the draw.
 
     Returns:
         picked: The tiles to build, each with the observations its window keeps,
@@ -39,9 +44,7 @@ def training_selections() -> list[Selection]:
             training would then take the tiles evaluation is meant to hold out.
     """
     held_out = {one.tile for one in artifacts.read_labels() if one.drawn}
-    return draw.drawn_selections(
-        dataset_list.read_dataset_list(), configs.load(), held_out
-    )
+    return draw.drawn_selections(dataset_list.read_dataset_list(), settings, held_out)
 
 
 @handler(outputs=[_DATASET])
@@ -61,8 +64,9 @@ def run_build(project, force: bool = False, workers: int | None = None):
     print("fetching the selection and the evaluation labels", flush=True)
     archives.unpack_archive(project, _SELECTION, analysis_paths.SELECTION_ROOT)
     archives.unpack_archive(project, _LABELS, analysis_paths.LABELS_ROOT)
+    settings = load_config(paths.BUILDING_CONFIG_PATH, Settings, workers=workers)
     return build.published_dataset(
-        project, configs.load().name, training_selections(), force, workers
+        project, settings, training_selections(settings), force
     )
 
 
@@ -90,8 +94,9 @@ def main() -> int:
         return submit.submitted(
             "build", BUILD_HANDLER, arguments.ref, force=arguments.force
         )
+    settings = load_config(paths.BUILDING_CONFIG_PATH, Settings)
     return building.build_dataset(
-        overall.load(configs.load().name), training_selections(), arguments.force
+        settings, training_selections(settings), arguments.force
     )
 
 

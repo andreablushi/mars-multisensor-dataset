@@ -16,14 +16,15 @@ from rich.console import Console
 from analysis import configs, console, paths, planner, runner
 from analysis.coverage.artifacts import index
 from analysis.labels import artifacts, draw, fetch, label
-from analysis.labels import configs as labelling
 from analysis.labels.models.label import Label
+from analysis.labels.models.settings import Settings as Labelling
 from analysis.metadata import file_explorer
 from analysis.models.progress import CoverageSummary, DownloadSummary
 from analysis.selector import select
 from analysis.stats.artifacts import store
 from analysis.stats.dataset import aggregate, read
 from analysis.utils import dataset_list
+from common.config import load_config
 from common.console import PLAIN_LOG_ENV, print_interrupted
 
 PIPELINE_HANDLER = "scripts.analysis_pipeline:run_pipeline"
@@ -114,7 +115,7 @@ def compute_labels(force: bool = False) -> list[Label]:
     Returns:
         labels: Every labelled tile, the drawn ones marked so.
     """
-    settings = labelling.load()
+    settings = load_config(paths.LABELS_CONFIG_PATH, Labelling)
     labels = draw.drawn_labels(
         label.labelled_tiles(
             dataset_list.read_selected_tiles(),
@@ -126,8 +127,8 @@ def compute_labels(force: bool = False) -> list[Label]:
     artifacts.write_labels(labels)
     held = Counter(one.label for one in labels)
     drawn = Counter(one.label for one in labels if one.drawn)
-    for rule in settings.rules:
-        print(f"{rule.label}: {drawn[rule.label]} drawn of {held[rule.label]}")
+    for name in settings.classes:
+        print(f"{name}: {drawn[name]} drawn of {held[name]}")
     return labels
 
 

@@ -1,8 +1,7 @@
-"""Where the training dataset is settled from."""
+"""Where the training build is settled from."""
 
 from __future__ import annotations
 
 from common.paths import CONFIGS_ROOT
 
-TRAINING_CONFIGS_ROOT = CONFIGS_ROOT / "training"
-BUILDING_CONFIG_PATH = TRAINING_CONFIGS_ROOT / "building.yaml"
+BUILDING_CONFIG_PATH = CONFIGS_ROOT / "training" / "building.yaml"

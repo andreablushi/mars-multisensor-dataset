@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class Settings:
     """The settled choices for a build, whichever dataset it builds.
 

@@ -5,9 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from common.disk.slugify import slugify
-from common.paths import COMMON_CONFIGS_ROOT, DATA_ROOT
-
-CONFIG_PATH = COMMON_CONFIGS_ROOT / "building.yaml"
+from common.paths import DATA_ROOT
 
 BUILDING_ROOT = DATA_ROOT / "building"
 DATASETS_ROOT = BUILDING_ROOT / "dataset"

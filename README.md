@@ -22,6 +22,10 @@ configs/evaluation/ building.yaml
 scripts/            analysis_pipeline.py, build_training.py, build_evaluation.py
 ```
 
+Every config is read through Hydra into the dataclass it settles, so a missing
+or mistyped value fails the moment it is read. A build config composes
+`configs/common/building.yaml` through its defaults, and adds what that build alone draws.
+
 The scripts stay flat, since the scripts root is on the import path and a
 `training` or `evaluation` directory there would shadow the packages of the same name.
 

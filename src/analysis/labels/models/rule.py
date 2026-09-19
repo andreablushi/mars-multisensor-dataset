@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class Rule:
     """The features one class is read from, and how a tile earns it.
 
     Attributes:
-        label: The class a tile earns, such as "chaos".
         descriptor: The IAU descriptor every feature of it is named under, or
             None where it is read from the named features alone.
         names: The features it is read from, or empty where the descriptor
@@ -20,8 +19,7 @@ class Rule:
         latitudes: The latitudes a texture is kept to, or None for anywhere.
     """
 
-    label: str
     descriptor: str | None = None
-    names: tuple[str, ...] = ()
-    diameter_km: tuple[float, float] | None = None
-    latitudes: tuple[float, float] | None = None
+    names: list[str] = field(default_factory=list)
+    diameter_km: list[float] | None = None
+    latitudes: list[float] | None = None
