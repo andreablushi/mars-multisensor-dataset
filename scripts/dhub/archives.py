@@ -13,8 +13,8 @@ from urllib.parse import urlparse
 from digitalhub import get_s3_client
 from digitalhub.stores.data.api import get_default_store
 
+from common import paths
 from dhub import credentials
-from shared import paths
 
 ANALYSIS_DIR = "analysis"
 

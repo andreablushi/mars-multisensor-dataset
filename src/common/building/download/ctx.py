@@ -1,0 +1,121 @@
+"""Bringing one projected CTX scan down from ASU into the cache."""
+
+from __future__ import annotations
+
+import json
+from urllib.parse import quote
+
+import httpx
+
+from common.building.configs import ctx as configs
+from common.building.download import archive
+from common.disk.files import atomic_path
+from common.fetch.http import FetchError
+
+# What ODE publishes CTX under.
+ODE = {"ihid": "MRO", "iid": "CTX"}
+
+# The only type ODE carries, the raw scan. ASU builds the projected one and is asked.
+PRODUCT_TYPE = "EDR"
+
+# The scan's metadata, where the volume is published rather than buried in a URL.
+FIELDS = "opm"
+VOLUME_KEY = "PDSVolume_Id"
+
+# Where ASU serves what it built, given the path the file sits at.
+ASU_URL = "https://image.mars.asu.edu/stream/{name}?image={path}"
+
+# Where ASU keeps one product of a scan, under the volume it was archived on.
+ASU_PATH = "/mars/images/ctx/{volume}/{place}/{name}"
+
+# Which ASU directory each kind is kept in.
+DIRECTORIES = {configs.IMAGE: "prj_full", configs.LABEL: "stage"}
+
+# What ASU suffixes each with: one shared image, and a label per projection it writes.
+REMOTE_IMAGE = ".tiff"
+# Depending on the zone, projection are either polar stereographic or equirectangular
+EQUATORIAL_LABEL = ".scyl.isis.hdr"
+POLAR_LABEL = ".ps.isis.hdr"
+
+# How long to wait for the scan, which ASU builds on the way out.
+TIMEOUT = 900.0
+
+
+def fetch(observation_id: str, client: httpx.Client) -> None:
+    """Bring the scan, its label and what ODE says of it, or leave what is here.
+
+    Args:
+        observation_id: The observation to fetch.
+        client: The client whose connections every query is asked over.
+
+    Raises:
+        FileNotFoundError: When ODE carries no raw scan to read the volume off.
+        FetchError: When ASU serves the scan in none of the projections.
+    """
+    destination = configs.CACHE.files(observation_id, observation_id)
+    if all(path.exists() for path in destination.values()):
+        return
+    said = destination.pop(configs.METADATA_SUFFIX)
+    entries = archive.query(
+        client, productid=observation_id, results=FIELDS, pt=PRODUCT_TYPE, **ODE
+    )
+    archived = entries[0].get(VOLUME_KEY) if entries else None
+    if not archived:
+        raise FileNotFoundError(f"ODE carries no raw scan for {observation_id}.")
+    acquisition = {
+        key: str(entries[0][key])
+        for key in configs.ODE_ACQUISITION
+        if entries[0].get(key)
+    }
+    with atomic_path(said) as tmp:
+        tmp.write_text(json.dumps(acquisition))
+    volume = str(archived).lower()
+    likely, otherwise = (
+        (POLAR_LABEL, EQUATORIAL_LABEL)
+        if configs.polar(observation_id)
+        else (EQUATORIAL_LABEL, POLAR_LABEL)
+    )
+    try:
+        archive.bring(
+            destination, _asu(observation_id, volume, likely), TIMEOUT, client=client
+        )
+        return
+    except FetchError:
+        # The scan is served at one URL whatever the projection, so only a label
+        # ASU never wrote is worth asking for in the other one.
+        if destination[configs.SUFFIXES[configs.LABEL]].exists():
+            raise
+    archive.bring(
+        destination, _asu(observation_id, volume, otherwise), TIMEOUT, client=client
+    )
+
+
+def _asu(observation_id: str, volume_id: str, label: str) -> dict[str, str]:
+    """Return where ASU serves each product of one scan from.
+
+    Args:
+        observation_id: The scan to build the URLs for.
+        volume_id: The PDS volume the raw scan was archived on, which is the
+            directory ASU keeps what it built from it under.
+        label: What ASU suffixes the label with, which says the projection the
+            scan was written in.
+
+    Returns:
+        urls: The URL each product is streamed from, keyed by its suffix on disk.
+    """
+    # ODE spells a scan in lower case, and ASU serves it in upper.
+    scan = observation_id.upper()
+    remote = {configs.IMAGE: REMOTE_IMAGE, configs.LABEL: label}
+    return {
+        configs.SUFFIXES[kind]: ASU_URL.format(
+            name=f"{scan}{configs.SUFFIXES[kind]}",
+            path=quote(
+                ASU_PATH.format(
+                    volume=volume_id,
+                    place=DIRECTORIES[kind],
+                    name=f"{scan}{remote[kind]}",
+                )
+            ),
+        )
+        for kind in configs.KINDS
+    }

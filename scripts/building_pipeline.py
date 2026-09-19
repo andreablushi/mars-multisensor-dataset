@@ -13,10 +13,10 @@ from dhub import configs as platform
 from digitalhub_runtime_python import handler
 from rich.console import Console
 
-from analysis import paths as analysis_paths
-from building import console, paths, runner
-from building.configs import overall
-from shared.console import PLAIN_LOG_ENV, print_interrupted
+from common.analysis import paths as analysis_paths
+from common.building import console, paths, runner
+from common.building.configs import overall
+from common.console import PLAIN_LOG_ENV, print_interrupted
 
 BUILD_HANDLER = "scripts.building_pipeline:run_build"
 
