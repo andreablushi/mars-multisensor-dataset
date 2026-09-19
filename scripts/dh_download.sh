@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Every name is read from the file the runs are settled from, so nothing drifts
-config="$(dirname "$0")/../configs/digitalhub.yaml"
+config="$(dirname "$0")/../configs/common/digitalhub.yaml"
 project="$(sed -n 's/^project: *//p' "$config")"
 
 published() {

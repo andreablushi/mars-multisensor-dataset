@@ -1,4 +1,4 @@
-"""Reading `configs/digitalhub.yaml`, the one file a platform run is settled from."""
+"""Reading `configs/common/digitalhub.yaml`, which settles every platform run."""
 
 from __future__ import annotations
 
@@ -8,9 +8,9 @@ from pathlib import Path
 
 import yaml
 
-from common.paths import CONFIGS_ROOT
+from common.paths import COMMON_CONFIGS_ROOT
 
-PLATFORM_CONFIG_PATH = CONFIGS_ROOT / "digitalhub.yaml"
+PLATFORM_CONFIG_PATH = COMMON_CONFIGS_ROOT / "digitalhub.yaml"
 
 
 @dataclass(frozen=True, slots=True)

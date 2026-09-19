@@ -7,7 +7,7 @@ from pathlib import Path
 from common.disk.slugify import slugify
 from common.paths import CONFIGS_ROOT, DATA_ROOT
 
-CONFIG_PATH = CONFIGS_ROOT / "building.yaml"
+CONFIG_PATH = CONFIGS_ROOT / "training" / "building.yaml"
 
 BUILDING_ROOT = DATA_ROOT / "building"
 DATASETS_ROOT = BUILDING_ROOT / "dataset"

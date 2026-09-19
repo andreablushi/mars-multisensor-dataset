@@ -7,4 +7,5 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 CONFIGS_ROOT = REPO_ROOT / "configs"
+COMMON_CONFIGS_ROOT = CONFIGS_ROOT / "common"
 DATA_ROOT = REPO_ROOT / "data"
