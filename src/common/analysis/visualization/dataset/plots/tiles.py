@@ -7,7 +7,9 @@ from collections.abc import Sequence
 import ipywidgets as widgets
 import numpy as np
 from cartopy import crs
+from matplotlib.axes import Axes
 from matplotlib.colors import to_rgba
+from matplotlib.figure import Figure
 from matplotlib.patches import Patch
 
 from common.analysis import configs
@@ -27,6 +29,14 @@ GLOBE = crs.Globe(semimajor_axis=RADIUS_M, semiminor_axis=RADIUS_M, ellipse=None
 LONLAT = crs.PlateCarree(globe=GLOBE)
 ROBINSON = crs.Robinson(globe=GLOBE)
 GRATICULE = "#ffffff"
+
+LAID = dict(
+    extent=MARS.extent,
+    origin="upper",
+    interpolation="nearest",
+    transform=LONLAT,
+    regrid_shape=REGRID,
+)
 
 KEPT = "#2ca02c"
 EXCLUDED = "#d62728"
@@ -55,24 +65,8 @@ def figure(kept: np.ndarray, grid: Tessellate, image: bytes) -> widgets.Widget:
         to_rgba(KEPT, TILE_ALPHA),
         to_rgba(EXCLUDED, TILE_ALPHA),
     )
-    drawn, axis = panels.board(MAP_FIGURE_SIZE, ROBINSON)
-    axis.set_global()
-    laid = dict(
-        extent=MARS.extent,
-        origin="upper",
-        interpolation="nearest",
-        transform=LONLAT,
-        regrid_shape=REGRID,
-    )
-    axis.imshow(mosaic.read_mosaic(image), cmap="gray", **laid)
-    axis.imshow(painted, **laid)
-    lines = axis.gridlines(
-        LONLAT, draw_labels=True, color=GRATICULE, linewidth=0.4, alpha=0.5
-    )
-    lines.xlabel_style = lines.ylabel_style = {"size": 8}
-    axis.set_title(
-        f"{int(kept.sum()):,} of {kept.size:,} tiles kept", fontsize=12, loc="left"
-    )
+    drawn, axis = mars_board(image, f"{int(kept.sum()):,} of {kept.size:,} tiles kept")
+    axis.imshow(painted, **LAID)
     axis.legend(
         handles=[
             Patch(color=KEPT, alpha=TILE_ALPHA, label="kept"),
@@ -83,3 +77,25 @@ def figure(kept: np.ndarray, grid: Tessellate, image: bytes) -> widgets.Widget:
     )
     drawn.tight_layout()
     return panels.rendered(drawn)
+
+
+def mars_board(image: bytes, title: str) -> tuple[Figure, Axes]:
+    """Draw the mosaic of Mars under its graticule, for tiles to be marked on.
+
+    Args:
+        image: The mosaic of the whole planet, as fetched.
+        title: What the map is titled.
+
+    Returns:
+        figure: The figure the map is drawn on.
+        axis: The map itself, in lon and lat.
+    """
+    drawn, axis = panels.board(MAP_FIGURE_SIZE, ROBINSON)
+    axis.set_global()
+    axis.imshow(mosaic.read_mosaic(image), cmap="gray", **LAID)
+    lines = axis.gridlines(
+        LONLAT, draw_labels=True, color=GRATICULE, linewidth=0.4, alpha=0.5
+    )
+    lines.xlabel_style = lines.ylabel_style = {"size": 8}
+    axis.set_title(title, fontsize=12, loc="left")
+    return drawn, axis
