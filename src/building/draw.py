@@ -1,18 +1,19 @@
-"""Drawing the tiles the training build covers out of what the selection kept."""
+"""Drawing the tiles each build covers out of what the selection kept."""
 
 from __future__ import annotations
 
 import random
 from collections.abc import Sequence, Set
 
+from analysis.labels.models.label import Label
 from analysis.selector.models.selection import Selection
 from building.models.settings import TrainingSettings
 
 
-def drawn_selections(
+def draw_training(
     picked: Sequence[Selection], settings: TrainingSettings, held_out: Set[str]
 ) -> list[Selection]:
-    """Keep the share of the kept tiles one build covers, drawn at random.
+    """Keep the share of the kept tiles the training build covers, drawn at random.
 
     Args:
         picked: What the search left of every tile it searched.
@@ -30,3 +31,19 @@ def drawn_selections(
         taken = sorted(random.Random(settings.seed).sample(taken, wanted))
     # Held out after the draw, so a new evaluation draw never reshuffles training
     return [kept[at] for at in taken if kept[at].tile.tile not in held_out]
+
+
+def draw_evaluation(
+    picked: Sequence[Selection], labels: Sequence[Label]
+) -> list[Selection]:
+    """Keep the tiles the balanced draw took for the evaluation build.
+
+    Args:
+        picked: What the search left of every tile it searched.
+        labels: Every labelled tile, the drawn ones marked so.
+
+    Returns:
+        kept: The selections to build, in the order the selection was written.
+    """
+    drawn = {one.tile for one in labels if one.drawn}
+    return [one for one in picked if one.tile.tile in drawn]

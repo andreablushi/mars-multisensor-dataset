@@ -14,7 +14,7 @@ from analysis import paths as analysis_paths
 from analysis.labels import artifacts
 from analysis.selector.models.selection import Selection
 from analysis.utils import dataset_list
-from building import evaluation, paths
+from building import draw, paths
 from building.build import build_dataset
 from building.models.settings import Settings
 from common.config import load_config
@@ -43,7 +43,7 @@ def evaluation_selections(settings: Settings) -> list[Selection]:
     labels = artifacts.read_labels()
     root = paths.dataset_root(settings.name)
     artifacts.write_labels([one for one in labels if one.drawn], root)
-    return evaluation.drawn_selections(dataset_list.read_dataset_list(), labels)
+    return draw.draw_evaluation(dataset_list.read_dataset_list(), labels)
 
 
 @handler(outputs=[_DATASET])

@@ -14,7 +14,7 @@ from analysis import paths as analysis_paths
 from analysis.labels import artifacts
 from analysis.selector.models.selection import Selection
 from analysis.utils import dataset_list
-from building import paths, training
+from building import draw, paths
 from building.build import build_dataset
 from building.models.settings import TrainingSettings
 from common.config import load_config
@@ -43,9 +43,7 @@ def training_selections(settings: TrainingSettings) -> list[Selection]:
             training would then take the tiles evaluation is meant to hold out.
     """
     held_out = {one.tile for one in artifacts.read_labels() if one.drawn}
-    return training.drawn_selections(
-        dataset_list.read_dataset_list(), settings, held_out
-    )
+    return draw.draw_training(dataset_list.read_dataset_list(), settings, held_out)
 
 
 @handler(outputs=[_DATASET])
