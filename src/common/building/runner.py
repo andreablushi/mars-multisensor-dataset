@@ -301,10 +301,11 @@ def _indexed(
     *,
     on_disk: bool,
 ) -> None:
-    """Write the index over every crop the dataset holds, not this run's alone.
+    """Write the index over every crop of the tiles covered, not this run's alone.
 
     Args:
-        plan: What the build set out to do, whose tiles this run covers.
+        plan: What the build set out to do, whose tiles alone the index names, so a
+            tile the build no longer covers leaves it.
         collected: What every job of this run left.
         root: The dataset's own root directory.
         on_disk: Whether an earlier run's record is kept only while its crop is
@@ -312,22 +313,20 @@ def _indexed(
     """
     written = [held for one in collected for held in one.records]
     rewritten = {one.identity for one in written}
+    tiles = {one.identity: one for one in plan.tiles}
     try:
         standing = metadata_read.read_observation_metadata(root)
-        earlier = metadata_read.read_tile_metadata(root)
     except FileNotFoundError:
-        standing, earlier = [], {}
-    # What an earlier run left, less what this run rewrote and what has been deleted.
+        standing = []
+    # What an earlier run left of the tiles covered, less what this run rewrote and
+    # what has been deleted.
     records = [
         one
         for one in standing
-        if one.identity not in rewritten and (not on_disk or (root / one.path).exists())
+        if one.tile in tiles
+        and one.identity not in rewritten
+        and (not on_disk or (root / one.path).exists())
     ] + written
-    tiles = {one.identity: one for one in plan.tiles}
-    # A tile this run missed is carried forward, so no record names an unknown one.
-    for one in records:
-        if one.tile not in tiles and one.tile in earlier:
-            tiles[one.tile] = earlier[one.tile]
     # What the dataset holds, which is every instrument in it and not a wish.
     held = tuple(sorted({one.instrument for one in records}))
     grids = {

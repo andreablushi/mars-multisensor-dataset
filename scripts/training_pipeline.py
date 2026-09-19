@@ -15,6 +15,8 @@ from common.analysis.selector.models.selection import Selection
 from common.analysis.utils import dataset_list
 from common.building import build as building
 from common.console import PLAIN_LOG_ENV, print_interrupted
+from evaluation import paths
+from evaluation.analysis import artifacts
 from training.building import configs, draw
 
 BUILD_HANDLER = "scripts.training_pipeline:run_build"
@@ -22,15 +24,24 @@ BUILD_HANDLER = "scripts.training_pipeline:run_build"
 _PUBLISHED = platform.load().publishes
 _DATASET = _PUBLISHED["dataset"]
 _SELECTION = _PUBLISHED["selection"]
+_LABELS = _PUBLISHED["labels"]
 
 
 def training_selections() -> list[Selection]:
     """Read the selection and draw the tiles the training build covers.
 
     Returns:
-        picked: The tiles to build, each with the observations its window keeps.
+        picked: The tiles to build, each with the observations its window keeps,
+            and none the evaluation set holds.
+
+    Raises:
+        FileNotFoundError: When no evaluation labels have been written, since
+            training would then take the tiles evaluation is meant to hold out.
     """
-    return draw.drawn_selections(dataset_list.read_dataset_list(), configs.load())
+    held_out = {one.tile for one in artifacts.read_labels() if one.drawn}
+    return draw.drawn_selections(
+        dataset_list.read_dataset_list(), configs.load(), held_out
+    )
 
 
 @handler(outputs=[_DATASET])
@@ -46,9 +57,10 @@ def run_build(project, force: bool = False, workers: int | None = None):
         dataset: The published dataset, one object per crop.
     """
     os.environ[PLAIN_LOG_ENV] = "1"
-    # The platform clones the repo alone, so the selection comes off its archive
-    print("fetching the selection", flush=True)
+    # The platform clones the repo alone, so both come off their archives
+    print("fetching the selection and the evaluation labels", flush=True)
     archives.unpack_archive(project, _SELECTION, analysis_paths.SELECTION_ROOT)
+    archives.unpack_archive(project, _LABELS, paths.LABELS_ROOT)
     return build.published_dataset(
         project, configs.load().name, training_selections(), force, workers
     )
