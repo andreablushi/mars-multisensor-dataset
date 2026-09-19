@@ -6,8 +6,8 @@ import tomllib
 
 import digitalhub as dh
 
+from building.models import budget
 from common import paths
-from common.building.models import budget
 from dhub import configs, credentials
 
 UNITS = {"Ki": 1024, "Mi": 1024**2, "Gi": 1024**3, "Ti": 1024**4}

@@ -12,10 +12,10 @@ from matplotlib.figure import Figure
 
 from analysis.labels.models.label import Label
 from analysis.visualization.common import panels
-from common.building.common.layout import DELAY
-from common.building.metadata.observation import ObservationMetadata
-from common.building.preprocessing.common.read import read_sample
-from common.building.preprocessing.common.store import MEASURED
+from building.common.layout import DELAY
+from building.metadata.observation import ObservationMetadata
+from building.preprocessing.common.read import read_sample
+from building.preprocessing.common.store import MEASURED
 
 PANEL_HEIGHT = 3.4
 

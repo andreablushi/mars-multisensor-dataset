@@ -14,13 +14,11 @@ from analysis import paths as analysis_paths
 from analysis.labels import artifacts
 from analysis.selector.models.selection import Selection
 from analysis.utils import dataset_list
-from common.building import build as building
-from common.building import paths
-from common.building.models.settings import Settings
+from building import evaluation, paths
+from building.build import build_dataset
+from building.models.settings import Settings
 from common.config import load_config
 from common.console import PLAIN_LOG_ENV, print_interrupted
-from evaluation import paths as evaluation_paths
-from evaluation.building import draw
 
 BUILD_HANDLER = "scripts.build_evaluation:run_build"
 
@@ -45,7 +43,7 @@ def evaluation_selections(settings: Settings) -> list[Selection]:
     labels = artifacts.read_labels()
     root = paths.dataset_root(settings.name)
     artifacts.write_labels([one for one in labels if one.drawn], root)
-    return draw.drawn_selections(dataset_list.read_dataset_list(), labels)
+    return evaluation.drawn_selections(dataset_list.read_dataset_list(), labels)
 
 
 @handler(outputs=[_DATASET])
@@ -65,9 +63,7 @@ def run_build(project, force: bool = False, workers: int | None = None):
     print("fetching the selection and the labels", flush=True)
     archives.unpack_archive(project, _SELECTION, analysis_paths.SELECTION_ROOT)
     archives.unpack_archive(project, _LABELS, analysis_paths.LABELS_ROOT)
-    settings = load_config(
-        evaluation_paths.BUILDING_CONFIG_PATH, Settings, workers=workers
-    )
+    settings = load_config(paths.EVALUATION_CONFIG_PATH, Settings, workers=workers)
     return build.published_dataset(
         project, settings, evaluation_selections(settings), force
     )
@@ -97,10 +93,8 @@ def main() -> int:
         return submit.submitted(
             "build_evaluation", BUILD_HANDLER, arguments.ref, force=arguments.force
         )
-    settings = load_config(evaluation_paths.BUILDING_CONFIG_PATH, Settings)
-    return building.build_dataset(
-        settings, evaluation_selections(settings), arguments.force
-    )
+    settings = load_config(paths.EVALUATION_CONFIG_PATH, Settings)
+    return build_dataset(settings, evaluation_selections(settings), arguments.force)
 
 
 if __name__ == "__main__":

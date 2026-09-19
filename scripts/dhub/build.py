@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from analysis.selector.models.selection import Selection
-from common.building import build, paths
-from common.building.models.settings import Settings
+from building import build, paths
+from building.models.settings import Settings
 from dhub import archives
 from dhub import configs as platform
 

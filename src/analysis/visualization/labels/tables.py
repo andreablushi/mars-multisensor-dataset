@@ -12,7 +12,7 @@ from analysis.labels.models.label import Label
 from analysis.labels.models.settings import Settings
 from analysis.visualization.common import tables
 from analysis.visualization.common.models.tables import Row
-from common.building.metadata.observation import ObservationMetadata
+from building.metadata.observation import ObservationMetadata
 
 _CLASSES = (
     "Class",
