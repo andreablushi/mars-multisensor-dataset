@@ -105,12 +105,12 @@ Each crop is stored as an .npz file containing spatial data arrays and an embedd
 
 ## Notebooks
 
-`notebooks/qualitative.ipynb` reads one tile at a time, whole. Type a latitude
+`notebooks/training_qualitative.ipynb` reads one tile at a time, whole. Type a latitude
 and longitude, confirm, and the cells below fill themselves in for the tile
 holding that point. An instrument that reached none
 of it is still drawn, at zero, so a missing line always means something.
 
-`notebooks/quantitative.ipynb` reads what the filter made of every measured
+`notebooks/training_quantitative.ipynb` reads what the filter made of every measured
 tile rather than of a sample of them, and maps every tile of Mars, green where
 the filter kept it and red where it did not. It reads back what the pipeline
 published and builds no artifact of its own.
