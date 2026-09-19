@@ -95,7 +95,7 @@ def main() -> int:
 
     if arguments.dh:
         return submit.submitted(
-            "evaluation", BUILD_HANDLER, arguments.ref, force=arguments.force
+            "build_evaluation", BUILD_HANDLER, arguments.ref, force=arguments.force
         )
     settings = load_config(evaluation_paths.BUILDING_CONFIG_PATH, Settings)
     return building.build_dataset(

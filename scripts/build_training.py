@@ -92,7 +92,7 @@ def main() -> int:
 
     if arguments.dh:
         return submit.submitted(
-            "build", BUILD_HANDLER, arguments.ref, force=arguments.force
+            "build_training", BUILD_HANDLER, arguments.ref, force=arguments.force
         )
     settings = load_config(paths.BUILDING_CONFIG_PATH, Settings)
     return building.build_dataset(

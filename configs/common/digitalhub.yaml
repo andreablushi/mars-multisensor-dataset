@@ -36,14 +36,14 @@ resources:
     memory: 32Gi
     disk: 64Gi
   # A build waits on the archives, not the cores, and its disk holds the whole dataset
-  build:
+  build_training:
     profile: cpu
     cpu: 8
     memory: 40Gi
     budget: 32Gi
     disk: 300Gi
   # The evaluation build holds a few hundred tiles, so its disk holds far less
-  evaluation:
+  build_evaluation:
     profile: cpu
     cpu: 8
     memory: 40Gi
@@ -54,8 +54,8 @@ resources:
 functions:
   pipeline: analysis-pipeline
   selection: select-features
-  build: build-dataset
-  evaluation: build-evaluation
+  build_training: build-dataset
+  build_evaluation: build-evaluation
 
 # What each stage publishes, which is what dh_download.sh brings back down.
 publishes:
