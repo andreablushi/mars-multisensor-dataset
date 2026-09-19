@@ -35,4 +35,6 @@ def load(path: Path = paths.ANALYSIS_CONFIG_PATH) -> Settings:
             )
             for label, rule in config["classes"].items()
         ),
+        per_class=config["per_class"],
+        seed=config["seed"],
     )

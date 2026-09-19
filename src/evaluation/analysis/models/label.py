@@ -13,8 +13,10 @@ class Label:
         tile: The tile's name, such as "b123_c0456".
         label: The class it earned, such as "chaos".
         feature: The feature it earned it from, such as "Aram Chaos".
+        drawn: Whether the balanced draw took it into the evaluation set.
     """
 
     tile: str
     label: str
     feature: str
+    drawn: bool = False

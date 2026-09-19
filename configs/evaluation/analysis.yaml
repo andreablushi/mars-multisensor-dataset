@@ -6,6 +6,13 @@
 # since ODE gives a box and not an outline, and its edges often hold other ground.
 core: 0.5
 
+# How many tiles are drawn of every class, or null for as many as the scarcest
+# class holds, so that every class weighs the same.
+per_class: null
+
+# The number the draw is made with, so the set is the same every run.
+seed: 42
+
 # Every class, by the IAU descriptor or the named features it is read from.
 # An object takes the diameters it is kept for, in km, so that every one sits
 # in a tile at a similar scale; a texture may take the latitudes it is kept to.

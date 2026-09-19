@@ -35,6 +35,12 @@ resources:
     cpu: 8
     memory: 32Gi
     disk: 64Gi
+  # Labelling reads the selection and one catalogue, so it asks for little
+  labels:
+    profile: cpu
+    cpu: 2
+    memory: 8Gi
+    disk: 16Gi
   # A build waits on the archives, not the cores, and its disk holds the whole dataset
   build:
     profile: cpu
@@ -48,6 +54,7 @@ functions:
   pipeline: analysis-pipeline
   selection: select-features
   build: build-dataset
+  labels: label-evaluation
 
 # What each stage publishes, which is what dh_download.sh brings back down.
 publishes:
@@ -57,3 +64,4 @@ publishes:
   stats: stats
   summary: summary
   dataset: dataset
+  labels: labels
