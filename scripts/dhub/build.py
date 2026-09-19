@@ -67,7 +67,7 @@ def published_dataset(
             crop.unlink()
         return dataset
 
-    failed = build.build_dataset(name, picked, force, workers, checkpoint)
+    failed = build.build_dataset(choices, picked, force, checkpoint)
     dataset = checkpoint()
     if failed:
         raise RuntimeError(

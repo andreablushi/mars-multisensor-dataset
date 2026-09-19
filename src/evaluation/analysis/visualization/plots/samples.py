@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import warnings
 from collections.abc import Sequence
 from pathlib import Path
@@ -14,7 +13,8 @@ from matplotlib.figure import Figure
 from common.analysis.visualization.common import panels
 from common.building.common.layout import DELAY
 from common.building.metadata.observation import ObservationMetadata
-from common.building.preprocessing.common.store import MEASURED, META
+from common.building.preprocessing.common.read import read_sample
+from common.building.preprocessing.common.store import MEASURED
 from evaluation.analysis.models.label import Label
 
 PANEL_HEIGHT = 3.4
@@ -52,10 +52,9 @@ def plot(
                 axis.set_axis_off()
                 panels.note(axis, "not observed")
                 continue
-            with np.load(root / held[0].path) as crop:
-                meta = json.loads(str(crop[META]))
-                values = crop[meta["measurement"]].astype(np.float64)
-                measured = crop[MEASURED].astype(bool)
+            arrays, meta = read_sample(root / held[0].path)
+            values = arrays[meta["measurement"]].astype(np.float32)
+            measured = arrays[MEASURED].astype(bool)
             dims = meta["dims"][meta["measurement"]]
             ground = [dims.index(name) for name in meta["ground"]]
             if DELAY in meta["axes"]:
@@ -68,8 +67,7 @@ def plot(
                 # An image is drawn in plan, every other axis of it averaged
                 values = np.moveaxis(values, ground, range(len(ground)))
                 with warnings.catch_warnings():
-                    # A band a cube never measured is left out, and ground none
-                    # of it measured left blank, neither warned of
+                    # Unmeasured bands and ground are skipped without a warning
                     warnings.simplefilter("ignore", RuntimeWarning)
                     values = np.nanmean(values.reshape(*measured.shape, -1), axis=-1)
                 values[~measured] = np.nan

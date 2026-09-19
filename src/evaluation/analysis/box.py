@@ -27,16 +27,16 @@ def box_span(box) -> float:
     return longitude_span(box.west_lon, box.east_lon)
 
 
-def feature_box(feature: Feature) -> Box:
-    """Return the box ODE bounds one feature by.
+def bounds_box(bounded) -> Box:
+    """Return the box one tile or one feature is bounded by.
 
     Args:
-        feature: The feature.
+        bounded: Anything bounded by two latitudes and two longitudes.
 
     Returns:
         box: Its latitudes, its west edge and its eastward span.
     """
-    return feature.min_lat, feature.max_lat, feature.west_lon, box_span(feature)
+    return bounded.min_lat, bounded.max_lat, bounded.west_lon, box_span(bounded)
 
 
 def core_box(

@@ -10,6 +10,7 @@ from matplotlib.lines import Line2D
 from common.analysis.selector.models.selection import Selection
 from common.analysis.visualization.common import mosaic, panels
 from common.analysis.visualization.dataset.plots import tiles
+from common.maths import geodesy
 from evaluation.analysis.models.label import Label
 
 MARKER_SIZE = 18
@@ -25,10 +26,18 @@ def plot(picked: Sequence[Selection], labels: Sequence[Label]) -> widgets.Widget
         """Draw the drawn tiles over the mosaic of Mars."""
         board, axis = tiles.mars_board(image, f"{len(drawn):,} tiles drawn")
         for label, colour in colours.items():
-            held = [boxes[one.tile] for one in drawn if one.label == label]
+            lon, lat = zip(
+                *(
+                    geodesy.bbox_centre(
+                        held.min_lat, held.max_lat, held.west_lon, held.east_lon
+                    )
+                    for held in (boxes[one.tile] for one in drawn if one.label == label)
+                ),
+                strict=True,
+            )
             axis.scatter(
-                [(one.west_lon + one.east_lon) / 2.0 for one in held],
-                [(one.min_lat + one.max_lat) / 2.0 for one in held],
+                lon,
+                lat,
                 s=MARKER_SIZE,
                 color=colour,
                 edgecolor="black",

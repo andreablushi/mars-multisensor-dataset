@@ -16,6 +16,7 @@ from common.analysis.selector.models.selection import Selection
 from common.analysis.utils import dataset_list
 from common.building import build as building
 from common.building import paths as building_paths
+from common.building.configs import overall
 from common.console import PLAIN_LOG_ENV, print_interrupted
 from evaluation import paths
 from evaluation.analysis import artifacts, configs, draw, fetch, label
@@ -45,7 +46,7 @@ def compute_labels(force: bool = False) -> list[Label]:
     settings = configs.load()
     labels = draw.drawn_labels(
         label.labelled_tiles(
-            dataset_list.read_dataset_list(),
+            dataset_list.read_selected_tiles(),
             fetch.read_features(refresh=force),
             settings,
         ),
@@ -68,10 +69,9 @@ def evaluation_selections(labels: list[Label]) -> list[Selection]:
     Returns:
         picked: The tiles to build, each with the observations its window keeps.
     """
-    drawn = [one for one in labels if one.drawn]
     root = building_paths.dataset_root(building_configs.load_name())
-    artifacts.write_labels(drawn, root)
-    return building_draw.drawn_selections(dataset_list.read_dataset_list(), drawn)
+    artifacts.write_labels([one for one in labels if one.drawn], root)
+    return building_draw.drawn_selections(dataset_list.read_dataset_list(), labels)
 
 
 def published_labels(project, force: bool) -> tuple[list[Label], object]:
@@ -172,7 +172,9 @@ def main() -> int:
     if arguments.only_labels:
         return 0
     return building.build_dataset(
-        building_configs.load_name(), evaluation_selections(labels), arguments.force
+        overall.load(building_configs.load_name()),
+        evaluation_selections(labels),
+        arguments.force,
     )
 
 

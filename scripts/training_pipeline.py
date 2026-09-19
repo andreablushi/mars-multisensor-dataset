@@ -14,6 +14,7 @@ from common.analysis import paths as analysis_paths
 from common.analysis.selector.models.selection import Selection
 from common.analysis.utils import dataset_list
 from common.building import build as building
+from common.building.configs import overall
 from common.console import PLAIN_LOG_ENV, print_interrupted
 from evaluation import paths
 from evaluation.analysis import artifacts
@@ -91,7 +92,7 @@ def main() -> int:
             "build", BUILD_HANDLER, arguments.ref, force=arguments.force
         )
     return building.build_dataset(
-        configs.load().name, training_selections(), arguments.force
+        overall.load(configs.load().name), training_selections(), arguments.force
     )
 
 

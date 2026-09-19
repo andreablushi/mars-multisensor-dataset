@@ -6,7 +6,7 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from common.analysis.selector.models.selection import Selection
+from common.analysis.selector.models.selection import SelectedTile
 from common.maths.geodesy import northward_m
 from evaluation.analysis import box
 from evaluation.analysis.models.feature import Feature
@@ -16,12 +16,12 @@ from evaluation.analysis.models.settings import Settings
 
 
 def labelled_tiles(
-    picked: Sequence[Selection], features: Sequence[Feature], settings: Settings
+    searched: Sequence[SelectedTile], features: Sequence[Feature], settings: Settings
 ) -> list[Label]:
     """Label every kept tile a single class claims, and leave out every other.
 
     Args:
-        picked: What the search left of every tile it searched.
+        searched: Every tile the selection searched.
         features: Every feature ODE publishes.
         settings: The settled choices for the labelling.
 
@@ -44,16 +44,10 @@ def labelled_tiles(
         """
         return feature.name in rule.names or feature.feature_class == rule.descriptor
 
-    kept = [one.tile for one in picked if one.tile.kept]
+    kept = [one for one in searched if one.kept]
     tiles: box.Box = tuple(
         np.array(held)
-        for held in zip(
-            *(
-                (one.min_lat, one.max_lat, one.west_lon, box.box_span(one))
-                for one in kept
-            ),
-            strict=True,
-        )
+        for held in zip(*(box.bounds_box(one) for one in kept), strict=True)
     )
     claims: list[dict[str, str]] = [{} for _ in kept]
     objects = [rule for rule in settings.rules if rule.diameter_km is not None]
@@ -64,7 +58,7 @@ def labelled_tiles(
                 diameter = northward_m(feature.max_lat - feature.min_lat) / 1000.0
                 if not smallest <= diameter <= largest:
                     continue
-                hit = box.inside(box.feature_box(feature), tiles)
+                hit = box.inside(box.bounds_box(feature), tiles)
             elif (core := box.core_box(feature, settings.core, rule.latitudes)) is None:
                 continue
             else:
@@ -75,7 +69,7 @@ def labelled_tiles(
     reached = np.zeros(len(kept), dtype=bool)
     for feature in features:
         if any(read_from(rule, feature) for rule in objects):
-            reached |= box.touching(tiles, box.feature_box(feature))
+            reached |= box.touching(tiles, box.bounds_box(feature))
     whole = {rule.label for rule in objects}
     labels = []
     for at, held in enumerate(claims):

@@ -23,9 +23,10 @@ def drawn_selections(
     Returns:
         kept: The selections to build, in the order the selection was written.
     """
-    kept = [one for one in picked if one.tile.kept and one.tile.tile not in held_out]
+    kept = [one for one in picked if one.tile.kept]
     wanted = round(settings.share * len(kept))
-    if wanted >= len(kept):
-        return kept
-    taken = random.Random(settings.seed).sample(range(len(kept)), wanted)
-    return [kept[at] for at in sorted(taken)]
+    taken = range(len(kept))
+    if wanted < len(kept):
+        taken = sorted(random.Random(settings.seed).sample(taken, wanted))
+    # Held out after the draw, so a new evaluation draw never reshuffles training
+    return [kept[at] for at in taken if kept[at].tile.tile not in held_out]
