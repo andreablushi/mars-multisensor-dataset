@@ -143,7 +143,7 @@ uv run --group digitalhub python scripts/build_evaluation.py --dh
 
 Every class is set in `configs/analysis/labels.yaml`. A texture class holds a
 tile lying in the middle of one of its features, since any patch of it shows
-what it is. An object class, the crater, holds a tile a crater of 8 to 16 km lies
+what it is. An object class, the crater, holds a tile a crater of 8 to 32 km lies
 in whole, so every one sits in its tile at a similar scale. A tile two classes
 claim is left out, and so is a texture tile any crater reaches into. The draw
 then takes as many tiles of every class as the scarcest holds, one feature at a
@@ -151,7 +151,7 @@ time in turn, so no single feature fills its class.
 
 | Class | Read from |
 | --- | --- |
-| `crater` | Crater, 8 to 16 km, whole in the tile |
+| `crater` | Crater, 8 to 32 km, whole in the tile |
 | `chaos` | Chaos |
 | `dune_field` | Unda |
 | `fossae` | Fossa |
