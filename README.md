@@ -16,7 +16,7 @@ src/evaluation/   the labels, the balanced draw, and what its notebook draws
 configs/common/   analysis.yaml, building.yaml, digitalhub.yaml
 configs/training/ building.yaml
 configs/evaluation/ analysis.yaml, building.yaml
-scripts/          analysis_pipeline.py, training_pipeline.py, evaluation_pipeline.py
+scripts/          analysis_pipeline.py, build_training.py, build_evaluation.py
 ```
 
 The scripts stay flat, since the scripts root is on the import path and a
@@ -109,8 +109,8 @@ A build is big enough to be asked for on its own, by its name:
 Starting from the previous selection, the pipeline builds a dataset where a sample is defined as a tile and its corresponding multi-sensor observations.
 
 ```bash
-uv run python scripts/training_pipeline.py          # here
-uv run --group digitalhub python scripts/training_pipeline.py --dh
+uv run python scripts/build_training.py          # here
+uv run --group digitalhub python scripts/build_training.py --dh
 ```
 
 What the training build draws is described in `configs/training/building.yaml`,
@@ -128,9 +128,9 @@ the same filter, and labelled by the feature catalogue ODE publishes, the IAU
 nomenclature, so no source beyond ODE is read.
 
 ```bash
-uv run python scripts/evaluation_pipeline.py --only-labels   # label and draw
-uv run python scripts/evaluation_pipeline.py                 # and build
-uv run --group digitalhub python scripts/evaluation_pipeline.py --dh
+uv run python scripts/build_evaluation.py --only-labels   # label and draw
+uv run python scripts/build_evaluation.py                 # and build
+uv run --group digitalhub python scripts/build_evaluation.py --dh
 ```
 
 Every class is set in `configs/evaluation/analysis.yaml`. A texture class holds a
