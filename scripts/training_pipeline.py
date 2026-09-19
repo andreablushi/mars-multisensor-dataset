@@ -6,10 +6,11 @@ from __future__ import annotations
 import argparse
 import os
 
-from dhub import build, submit
+from dhub import archives, build, submit
 from dhub import configs as platform
 from digitalhub_runtime_python import handler
 
+from common.analysis import paths as analysis_paths
 from common.analysis.selector.models.selection import Selection
 from common.analysis.utils import dataset_list
 from common.building import build as building
@@ -18,7 +19,9 @@ from training.building import configs, draw
 
 BUILD_HANDLER = "scripts.training_pipeline:run_build"
 
-_DATASET = platform.load().publishes["dataset"]
+_PUBLISHED = platform.load().publishes
+_DATASET = _PUBLISHED["dataset"]
+_SELECTION = _PUBLISHED["selection"]
 
 
 def training_selections() -> list[Selection]:
@@ -43,8 +46,11 @@ def run_build(project, force: bool = False, workers: int | None = None):
         dataset: The published dataset, one object per crop.
     """
     os.environ[PLAIN_LOG_ENV] = "1"
+    # The platform clones the repo alone, so the selection comes off its archive
+    print("fetching the selection", flush=True)
+    archives.unpack_archive(project, _SELECTION, analysis_paths.SELECTION_ROOT)
     return build.published_dataset(
-        project, configs.load().name, training_selections, force, workers
+        project, configs.load().name, training_selections(), force, workers
     )
 
 

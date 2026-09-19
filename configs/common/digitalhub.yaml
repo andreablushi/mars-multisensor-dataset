@@ -48,6 +48,13 @@ resources:
     memory: 40Gi
     budget: 24Gi
     disk: 700Gi
+  # The evaluation build holds a few hundred tiles, so its disk holds far less
+  evaluation:
+    profile: cpu
+    cpu: 12
+    memory: 40Gi
+    budget: 24Gi
+    disk: 128Gi
 
 # The function each run is registered as, the project scoping it so it needs no prefix
 functions:
@@ -55,6 +62,7 @@ functions:
   selection: select-features
   build: build-dataset
   labels: label-evaluation
+  evaluation: build-evaluation
 
 # What each stage publishes, which is what dh_download.sh brings back down.
 publishes:
