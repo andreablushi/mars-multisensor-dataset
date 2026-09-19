@@ -6,17 +6,20 @@ The pipeline measures what every instrument covers of each tile and filters the 
 
 ## Repository layout
 
-What both datasets share lives in `common`, and what only one of them does lives
-in its own package. The configs follow the same split.
+The analysis settles what every dataset holds: the selection, its stats, and the
+labels of the evaluation set. What both builds share lives in `common`, and what
+only one of them does lives in its own package. The configs follow the same split.
 
 ```
-src/common/       the analysis and the build both datasets run through
-src/training/     the share of the kept tiles the training build draws
-src/evaluation/   the labels, the balanced draw, and what its notebook draws
-configs/common/   analysis.yaml, building.yaml, digitalhub.yaml
-configs/training/ building.yaml
-configs/evaluation/ analysis.yaml, building.yaml
-scripts/          analysis_pipeline.py, build_training.py, build_evaluation.py
+src/analysis/       coverage, selection, stats and labels, and what the notebooks draw
+src/common/         the build both datasets run through, and what every part shares
+src/training/       the share of the kept tiles the training build draws
+src/evaluation/     the drawn tiles the evaluation build covers
+configs/analysis/   analysis.yaml, labels.yaml
+configs/common/     building.yaml, digitalhub.yaml
+configs/training/   building.yaml
+configs/evaluation/ building.yaml
+scripts/            analysis_pipeline.py, build_training.py, build_evaluation.py
 ```
 
 The scripts stay flat, since the scripts root is on the import path and a
@@ -65,13 +68,14 @@ uv run python scripts/analysis_pipeline.py
 
 It downloads the ODE metadata of every tile group, measures the coverage of
 every tile, searches each for its best window, and writes what the filter keeps.
-Every other choice comes from `configs/common/analysis.yaml`, so the same files describe what was run
-and what to run again.
+It then labels the kept tiles, draws the evaluation set out of them, and reads
+the stats of both. Every other choice comes from `configs/analysis/`, so the
+same files describe what was run and what to run again.
 
 | Flag | What it does |
 | --- | --- |
-| `--only-stats` | skip the download and the measurement, and select from what is already on disk |
-| `--force` | redo finished work rather than skip it: download again and measure again |
+| `--only-stats` | skip the download and the measurement, and select, label and read the stats from what is already on disk |
+| `--force` | redo finished work rather than skip it: download again, measure again, and fetch the feature catalogue again |
 | `--dh` | submit to DigitalHub instead of running locally |
 | `--ref` | with `--dh`, the branch, tag, or commit the platform clones |
 
@@ -93,8 +97,8 @@ publishes.
 | `summary` | one row per tile and instrument set | `data/analysis/coverage/` |
 | `metadata` | the ODE records behind the measurements | `data/analysis/metadata/` |
 | `selection` | the tiles and observations the filter keeps | `data/analysis/selection/` |
-| `stats` | what the filter left of the dataset | `data/analysis/stats/` |
-| `labels` | every labelled tile, the drawn ones marked | `data/evaluation/labels/` |
+| `stats` | what the filter left of the dataset, and of the evaluation set | `data/analysis/stats/` |
+| `labels` | every labelled tile, the drawn ones marked | `data/analysis/labels/` |
 | `dataset` | the cropped observations and their index | `data/building/dataset/` |
 
 A build is big enough to be asked for on its own, by its name:
@@ -115,8 +119,8 @@ uv run --group digitalhub python scripts/build_training.py --dh
 
 What the training build draws is described in `configs/training/building.yaml`,
 and how every build runs in `configs/common/building.yaml`. The tiles the
-evaluation set drew are held out of it, so the evaluation labels have to be
-written first, and a tile an earlier build held that it no longer draws leaves
+evaluation set drew are held out of it, read off the labels the analysis
+pipeline wrote, and a tile an earlier build held that it no longer draws leaves
 its index.
 
 ## Building the evaluation dataset
@@ -125,15 +129,15 @@ The evaluation set tests whether a model tells geology apart: every tile of one
 class should lie near the others of it and far from every other class. Its tiles
 are drawn out of the ones the selection kept, on the same 32 km grid and under
 the same filter, and labelled by the feature catalogue ODE publishes, the IAU
-nomenclature, so no source beyond ODE is read.
+nomenclature, so no source beyond ODE is read. The analysis pipeline labels and
+draws it, and the build covers the tiles it drew.
 
 ```bash
-uv run python scripts/build_evaluation.py --only-labels   # label and draw
-uv run python scripts/build_evaluation.py                 # and build
+uv run python scripts/build_evaluation.py          # here
 uv run --group digitalhub python scripts/build_evaluation.py --dh
 ```
 
-Every class is set in `configs/evaluation/analysis.yaml`. A texture class holds a
+Every class is set in `configs/analysis/labels.yaml`. A texture class holds a
 tile lying in the middle of one of its features, since any patch of it shows
 what it is. An object class, the crater, holds a tile a crater of 8 to 16 km lies
 in whole, so every one sits in its tile at a similar scale. A tile two classes
