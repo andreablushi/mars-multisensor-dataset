@@ -1,0 +1,20 @@
+"""One tile the evaluation set labels, and the feature it was labelled from."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True, slots=True)
+class Label:
+    """One kept tile, and the class the feature catalogue gives it.
+
+    Attributes:
+        tile: The tile's name, such as "b123_c0456".
+        label: The class it earned, such as "chaos".
+        feature: The feature it earned it from, such as "Aram Chaos".
+    """
+
+    tile: str
+    label: str
+    feature: str

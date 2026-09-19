@@ -1,0 +1,24 @@
+# How the tiles the selection kept are labelled, every rule read off the feature
+# catalogue ODE publishes. A class is either a texture, which any patch inside
+# the feature shows, or an object, which a tile has to hold whole.
+
+# The share of a texture feature's box a tile has to lie in, about its centre,
+# since ODE gives a box and not an outline, and its edges often hold other ground.
+core: 0.5
+
+# Every class, by the IAU descriptor or the named features it is read from.
+# An object takes the diameters it is kept for, in km, so that every one sits
+# in a tile at a similar scale; a texture may take the latitudes it is kept to.
+classes:
+  crater: {descriptor: Crater, diameter_km: [8, 16]}
+  chaos: {descriptor: Chaos}
+  dune_field: {descriptor: Unda}
+  fossae: {descriptor: Fossa}
+  labyrinthus: {descriptor: Labyrinthus}
+  polar_layered_deposits: {names: [Planum Boreum, Planum Australe]}
+  shield_volcano:
+    names: [Olympus Mons, Ascraeus Mons, Pavonis Mons, Arsia Mons, Alba Mons, Elysium Mons]
+  # The SHARAD pair: plains alike to the eye, one holding buried ice, the band
+  # where SHARAD finds it (Bramson 2015, Stuurman 2016), the other too warm for it.
+  ice_rich_plains: {names: [Arcadia Planitia, Utopia Planitia], latitudes: [38, 50]}
+  ice_poor_plains: {names: [Amazonis Planitia, Elysium Planitia], latitudes: [-30, 30]}
