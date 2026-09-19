@@ -40,14 +40,14 @@ resources:
     profile: cpu
     cpu: 8
     memory: 40Gi
-    budget: 24Gi
+    budget: 32Gi
     disk: 300Gi
   # The evaluation build holds a few hundred tiles, so its disk holds far less
   evaluation:
     profile: cpu
     cpu: 8
     memory: 40Gi
-    budget: 24Gi
+    budget: 32Gi
     disk: 128Gi
 
 # The function each run is registered as, the project scoping it so it needs no prefix
