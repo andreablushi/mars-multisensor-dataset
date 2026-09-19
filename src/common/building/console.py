@@ -45,7 +45,7 @@ def describe(plan: Plan, settings: Settings, budget: Budget, console: Console) -
     )
     console.print(
         f"instruments: {', '.join(sorted({job.instrument for job in plan.jobs}))}; "
-        f"share {settings.share:.0%}, seed {settings.seed}; "
+        f"built as {settings.name}; "
         f"build pool {settings.workers}, download pool {settings.downloads}, "
         f"{settings.in_flight} products may wait, "
         f"{budget.total / GIB:.0f} GiB between them"

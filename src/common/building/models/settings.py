@@ -7,23 +7,17 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, slots=True)
 class Settings:
-    """The settled choices for a build, read from one flat config file.
+    """The settled choices for a build, whichever dataset it builds.
 
     Attributes:
         name: What this build is called, the directory it is written in and the
             name it is published under, so one build never overwrites another.
-        share: What share of the tiles the selection kept to build, from above
-            zero to one, drawn evenly across their classes.
-        seed: The number every draw is made with, so a smaller build is a
-            reproducible subset of the full one.
         workers: How many products are built at once, one per core, which a job
             a platform sized itself is given rather than reads.
         downloads: How many downloads run at once, which wait on the archives.
     """
 
     name: str
-    share: float
-    seed: int
     workers: int
     downloads: int
 

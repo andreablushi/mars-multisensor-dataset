@@ -13,6 +13,7 @@ from pathlib import Path
 import httpx
 from rich.console import Console
 
+from common.analysis.selector.models.selection import Selection
 from common.building import console as printing
 from common.building import paths, planner
 from common.building.dispatcher import INSTRUMENTS
@@ -45,6 +46,7 @@ CHECKPOINT_PRODUCTS = 500
 
 def run_build(
     settings: Settings,
+    picked: Sequence[Selection],
     console: Console,
     root: Path,
     *,
@@ -55,6 +57,7 @@ def run_build(
 
     Args:
         settings: The settled choices for the build.
+        picked: The tiles to build, each with the observations its window keeps.
         console: The console to render on.
         root: The directory this build of the dataset is written in.
         force: Whether to rebuild crops that are already written.
@@ -65,9 +68,6 @@ def run_build(
 
     Returns:
         collected: Every finished outcome, in completion order.
-
-    Raises:
-        FileNotFoundError: When no selection has been written to build from.
     """
     # Every core builds, and what each build holds is measured as it lands.
     budget = Budget(int(memory_bytes() * MEMORY_SHARE))
@@ -92,7 +92,7 @@ def run_build(
             if dropped:
                 console.print(f"dropping {dropped:,} crops the index does not name")
         published = named if checkpoint else frozenset()
-        plan = planner.build_plan(settings, root, ode, force=force, published=published)
+        plan = planner.build_plan(picked, root, ode, force=force, published=published)
         printing.describe(plan, settings, budget, console)
         progress = Progress(len(plan.jobs))
         # A download waits on the network and a build on the cores, so the pools differ.

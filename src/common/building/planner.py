@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import random
 from collections import defaultdict
 from collections.abc import Sequence
 from datetime import datetime
@@ -11,17 +10,15 @@ from pathlib import Path
 import httpx
 
 from common.analysis.selector.models.selection import Selection
-from common.analysis.utils import dataset_list
 from common.building.dispatcher import INSTRUMENTS
 from common.building.metadata.tile import tile_metadata
 from common.building.models.job import Job, Plan
-from common.building.models.settings import Settings
 from common.building.preprocessing.common.store import sample_path
 from common.models.tile import Tile
 
 
 def build_plan(
-    settings: Settings,
+    picked: Sequence[Selection],
     root: Path,
     ode: httpx.Client | None = None,
     *,
@@ -31,8 +28,7 @@ def build_plan(
     """Work out every product one build has to fetch, and what to cut it to.
 
     Args:
-        settings: The settled choices for the build, which size it. Which
-            instruments it covers is not among them.
+        picked: The tiles to build, each with the observations its window keeps.
         root: The directory this build of the dataset is written in.
         ode: The client an instrument searched by ground is looked up through,
             or None to leave those instruments out of the plan.
@@ -42,11 +38,7 @@ def build_plan(
 
     Returns:
         plan: The plan, its jobs heaviest first so no long one is picked up last.
-
-    Raises:
-        FileNotFoundError: When no selection has been written to build from.
     """
-    picked = _sampled(dataset_list.read_dataset_list(), settings)
     tiles = [tile_metadata(one.tile) for one in picked]
     wanted: dict[tuple[str, str], list[Tile]] = defaultdict(list)
     taken: dict[tuple[str, str], datetime] = {}
@@ -109,22 +101,3 @@ def build_plan(
         skipped_existing=skipped,
         unread=unread,
     )
-
-
-def _sampled(picked: Sequence[Selection], settings: Settings) -> list[Selection]:
-    """Keep the share of the tiles one build covers, drawn at random.
-
-    Args:
-        picked: What the search left of every tile it searched.
-        settings: The settled choices for the build, whose share settles how much
-            of what the filter kept one build covers.
-
-    Returns:
-        kept: The selections to build, in the order the selection was written.
-    """
-    kept = [one for one in picked if one.tile.kept]
-    wanted = round(settings.share * len(kept))
-    if wanted >= len(kept):
-        return kept
-    taken = random.Random(settings.seed).sample(range(len(kept)), wanted)
-    return [kept[at] for at in sorted(taken)]

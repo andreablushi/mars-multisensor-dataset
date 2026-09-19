@@ -166,8 +166,7 @@ def run_selection(project, workers: int | None = None):
     """
     os.environ[PLAIN_LOG_ENV] = "1"
     print("fetching the measurements", flush=True)
-    measured = project.get_artifact(_COVERAGE).download(overwrite=True)
-    archives.unpack_archive(measured, paths.COVERAGE_ROOT)
+    archives.unpack_archive(project, _COVERAGE, paths.COVERAGE_ROOT)
     compute_selection(workers)
     print("done", flush=True)
     return archived(project, _SELECTION), archived(project, _STATS)
