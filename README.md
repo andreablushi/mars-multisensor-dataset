@@ -70,4 +70,4 @@ uv run --group notebook jupyter lab
 
 - `notebooks/training_qualitative.ipynb`: one tile at a time, picked by latitude and longitude.
 - `notebooks/training_quantitative.ipynb`: what the selection kept of every tile.
-- `notebooks/evaluation_quantitative.ipynb`: the evaluation classes, and two built tiles set side by side.
+- `notebooks/evaluation_quantitative.ipynb`: the evaluation classes, where they lie, and what the instruments land on them.
