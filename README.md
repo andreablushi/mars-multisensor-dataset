@@ -50,8 +50,6 @@ uv run --group digitalhub python scripts/build_evaluation.py --dh
 chmod +x scripts/dh_download.sh scripts/dh_dataset.sh   # once
 ./scripts/dh_download.sh                 # every analysis archive
 ./scripts/dh_download.sh selection stats # only some of them
-./scripts/dh_dataset.sh                  # the training dataset
-./scripts/dh_dataset.sh evaluation       # the evaluation dataset
 ```
 
 | Name | Where it lands |
