@@ -17,6 +17,7 @@ from analysis import configs, console, paths, planner, runner
 from analysis.coverage.artifacts import index
 from analysis.labels import artifacts, draw, fetch, label
 from analysis.labels import configs as labelling
+from analysis.labels.models.label import Label
 from analysis.metadata import file_explorer
 from analysis.models.progress import CoverageSummary, DownloadSummary
 from analysis.selector import select
@@ -103,12 +104,15 @@ def compute_coverage(force: bool = False, workers: int | None = None) -> int:
     return 1 if computed.failed or downloaded.failed else 0
 
 
-def compute_labels(force: bool = False) -> None:
+def compute_labels(force: bool = False) -> list[Label]:
     """Label every kept tile, draw the balanced set held out of training, and write it.
 
     Args:
         force: Whether to fetch the feature catalogue again rather than read the
             one cached.
+
+    Returns:
+        labels: Every labelled tile, the drawn ones marked so.
     """
     settings = labelling.load()
     labels = draw.drawn_labels(
@@ -124,10 +128,11 @@ def compute_labels(force: bool = False) -> None:
     drawn = Counter(one.label for one in labels if one.drawn)
     for rule in settings.rules:
         print(f"{rule.label}: {drawn[rule.label]} drawn of {held[rule.label]}")
+    return labels
 
 
 def compute_selection(workers: int | None = None, force: bool = False) -> None:
-    """Search every measured tile under the filter, read what it left, and label it.
+    """Search every measured tile under the filter, label it, and read what both left.
 
     Args:
         workers: How many processes to run on at once, or None for the config.
@@ -139,12 +144,13 @@ def compute_selection(workers: int | None = None, force: bool = False) -> None:
     kept = sum(1 for one in picked if one.tile.kept)
     print(f"{kept:,} of {len(picked):,} tiles earned a place", flush=True)
     # Read off the selection just written, so they never stand for an old filter
+    measured = read.measure_every_tile(picked, workers, console.logged("stats"))
+    store.write_stats_file(aggregate.dataset_stats(measured))
+    drawn = {one.tile for one in compute_labels(force) if one.drawn}
     store.write_stats_file(
-        aggregate.dataset_stats(
-            read.measure_every_tile(picked, workers, console.logged("stats"))
-        )
+        aggregate.dataset_stats([one for one in measured if one.window.tile in drawn]),
+        paths.EVALUATION_STATS_ROOT,
     )
-    compute_labels(force)
 
 
 @handler(outputs=[_COVERAGE, _SUMMARY, _SELECTION, _STATS, _LABELS])
