@@ -64,22 +64,18 @@ def crops(
                 for one in records
                 if one.instrument == instrument and classes.get(one.tile) == label
             ]
-            # A band a cube never measured blanks its whole statistics, not its own
-            means = [
-                np.nanmean(one.band_mean) if one.band_mean else one.value_mean
-                for one in held
-            ]
-            spreads = [
-                np.nanmean(one.band_std) if one.band_std else one.value_std
-                for one in held
-            ]
+            measured = [one for one in held if one.value_mean is not None]
             rows.append(
                 (
                     instrument,
                     label,
                     f"{len(held):,}",
-                    f"{np.nanmean(np.array(means, dtype=float)):.4g}",
-                    f"{np.nanmean(np.array(spreads, dtype=float)):.4g}",
+                    f"{np.mean([one.value_mean for one in measured]):.4g}"
+                    if measured
+                    else "",
+                    f"{np.mean([one.value_std for one in measured]):.4g}"
+                    if measured
+                    else "",
                 )
             )
     return tables.written("What the crops of the two classes hold", _CROPS, rows)
