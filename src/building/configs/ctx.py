@@ -1,0 +1,72 @@
+"""What a CTX scan is published as, and where it lands."""
+
+from __future__ import annotations
+
+import re
+
+from building import paths
+from building.common.layout import GROUND, Layout
+from building.common.naming import Naming
+from building.common.product_cache import ProductCache
+
+# The two products a scan comes as, the label first so a wrong projection costs less.
+LABEL = "label"
+IMAGE = "image"
+KINDS = (LABEL, IMAGE)
+
+# What each kind is suffixed with once it is on disk.
+SUFFIXES = {LABEL: ".isis.hdr", IMAGE: ".tiff"}
+
+# What the scan's own metadata is kept as, which ODE answers with rather than serves.
+METADATA_SUFFIX = ".ode.json"
+
+# What ODE says of a scan that its projected label does not, the geometry it was at
+ODE_ACQUISITION = (
+    "Incidence_angle",
+    "Emission_angle",
+    "Phase_angle",
+    "Solar_longitude",
+    "Solar_distance",
+    "Solar_time",
+)
+
+# From this latitude up ASU writes a scan polar, below it simple cylindrical
+ASU_POLAR_LATITUDE = 70
+
+# Where a scan's own name carries the latitude it was taken at.
+LATITUDE = re.compile(r"_(\d{2})[ns]\d{3}[we]$")
+
+
+def polar(identifier: str) -> bool:
+    """Say whether ASU writes one scan on a polar grid.
+
+    Args:
+        identifier: The scan, whose name carries the latitude it was taken at.
+
+    Returns:
+        polar: True where ASU projects it stereographically, which a name carrying no
+            latitude is not.
+    """
+    found = LATITUDE.search(identifier.lower())
+    return bool(found) and int(found[1]) >= ASU_POLAR_LATITUDE
+
+
+# How a scan is named, for its mission phase, orbit, latitude and where it looked.
+NAMING = Naming(
+    re.compile(
+        r"^(?P<scan>(?:[a-z]\d{2}|moi)_\d{6}_\d{4}_[a-z]{2}_\d{2}[ns]\d{3}[we])$"
+    ),
+    identity="{scan}",
+)
+
+# What the arrays of one scan hold, and which of them is stored for.
+LAYOUT = Layout(
+    instrument="CTX",
+    dims=("line", "sample"),
+    axes=(GROUND, GROUND),
+    measurement="image",
+)
+
+# Where all three are kept. ASU names both of its own after the scan, so only the
+# suffix differs.
+CACHE = ProductCache(paths.CTX_ROOT, {None: (*SUFFIXES.values(), METADATA_SUFFIX)})
