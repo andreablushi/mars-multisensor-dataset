@@ -27,11 +27,7 @@ def labelled_tiles(
         settings: The settled choices for the labelling.
 
     Returns:
-        labels: One label per tile a single class claims, in the order the
-            selection was written. A tile holding a whole object is that object,
-            and a texture tile lies in the box of its feature, each counted for
-            the features of other classes or excluded descriptors reaching into
-            it, or of its own class where it holds an object.
+        labels: One label per tile a single class claims, in selection order.
     """
 
     def read_from(rule: Rule, feature: Feature) -> bool:

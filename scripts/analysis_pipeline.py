@@ -36,8 +36,7 @@ _STATS = _PUBLISHED["stats"]
 _SUMMARY = _PUBLISHED["summary"]
 _LABELS = _PUBLISHED["labels"]
 
-# Where each archive is packed from and what it holds, said once since two
-# handlers publish the same ones.
+# Where each archive is packed from, shared by two handlers.
 ARCHIVED = {
     _COVERAGE: (
         paths.COVERAGE_ROOT,
@@ -107,8 +106,7 @@ def compute_labels(force: bool = False) -> list[Label]:
     """Label every kept tile, draw the balanced set held out of training, and write it.
 
     Args:
-        force: Whether to fetch the feature catalogue again rather than read the
-            one cached.
+        force: Whether to fetch the feature catalogue again rather than read it.
 
     Returns:
         labels: Every labelled tile, the drawn ones marked so.
@@ -135,8 +133,7 @@ def compute_selection(workers: int | None = None, force: bool = False) -> None:
 
     Args:
         workers: How many processes to run on at once, or None for the config.
-        force: Whether to fetch the feature catalogue again rather than read the
-            one cached.
+        force: Whether to fetch the feature catalogue again rather than read it.
     """
     workers = configs.load(workers=workers).workers
     picked = select.select_dataset(workers, console.logged("selection"))
@@ -169,8 +166,7 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
         labels: The archive of every labelled tile.
 
     Raises:
-        RuntimeError: When the measuring stage reported a failure, which leaves
-            the coverage too incomplete to select a dataset from.
+        RuntimeError: When the measuring stage reported a failure.
     """
     os.environ[PLAIN_LOG_ENV] = "1"
     print("measuring coverage", flush=True)
@@ -223,8 +219,7 @@ def main() -> int:
     """Run the pipeline where it was asked for, over the stages it was asked for.
 
     Returns:
-        code: A process exit code, non zero when a stage failed or an image did not
-            build.
+        code: A process exit code, non zero when a stage or an image build failed.
     """
     parsed = argparse.ArgumentParser(description=__doc__)
     parsed.add_argument(

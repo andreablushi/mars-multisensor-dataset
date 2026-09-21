@@ -22,19 +22,16 @@ def remove_spike_columns(
     """Replace every band of a column that spikes away from its neighbours.
 
     Args:
-        cube: The values as lines by samples by bands, already masked, levelled
-            in place.
+        cube: The masked values as lines by samples by bands, levelled in place.
         mask: What that masking refused.
-        table: The centre wavelength of every column and band, which sets how
-            many bands the smoothing window covers.
+        table: The centre wavelength of every column and band.
         detector: Which detector, `l` or `s`, which picks the threshold.
 
     Returns:
         mask: The mask with each levelled column and band recorded.
 
     Raises:
-        ValueError: When the threshold is further from a column's mean than
-            its own bands can reach, so that no band could ever be caught.
+        ValueError: When the threshold is beyond what a column's bands can reach.
     """
     columns, bands = ~mask.columns, ~mask.bands
     live_columns, live_bands = np.flatnonzero(columns), np.flatnonzero(bands)

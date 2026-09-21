@@ -27,12 +27,10 @@ def published_at(project, *parts: str) -> str:
 
     Args:
         project: The DigitalHub project, which names its own tree in the store.
-        *parts: The directories it is gathered into and the name it lands as,
-            in order, an empty last part leaving it a directory of its own.
+        *parts: The directories and name it lands as, an empty last part a directory.
 
     Returns:
-        path: The destination, which the platform writes to as given rather than
-            generating one of its own per version.
+        path: The destination, written to as given rather than one per version.
     """
     root = get_default_store(project.name)
     return "/".join((root, project.name, "artifacts", *parts))
@@ -99,8 +97,7 @@ def published_folder(
 
     Args:
         project: The DigitalHub project to log the folder into.
-        root: The directory they sit in, whose paths inside it they keep, which
-            is what the index names them by.
+        root: The directory they sit in, which the index names them relative to.
         files: What to send, in any order.
         last: What is sent one by one, only once every file is up.
         name: The name the folder is published under.
@@ -141,8 +138,7 @@ def download_files(project, name: str, into: Path, names: Sequence[str]) -> None
 
     Args:
         project: The DigitalHub project the folder was logged into.
-        name: The name the folder was published under, which need not be published
-            yet: a first run has nothing to fill in from.
+        name: The name the folder is published under, possibly not yet published.
         into: The directory they land in, keeping whatever is already there.
         names: The files to bring down, each at the top of the folder.
     """
@@ -165,8 +161,7 @@ def unpack_archive(project, name: str, into: Path) -> None:
     Args:
         project: The DigitalHub project the archive was logged into.
         name: The name the archive was published under.
-        into: The directory the archive fills, emptied first so that what it
-            holds afterwards is what was published and only that.
+        into: The directory the archive fills, emptied first.
     """
     downloaded = project.get_artifact(name).download(overwrite=True)
     shutil.rmtree(into, ignore_errors=True)

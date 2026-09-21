@@ -15,8 +15,7 @@ class Counter:
     """What one window holds, kept true as the window slides along the axis.
 
     Attributes:
-        observations_per_cell: The window's observations filling each cell, per set,
-            as one row of counts per set.
+        observations_per_cell: One row of observation counts per cell, per set.
         cells_reached: How many cells of the tile each set reaches.
     """
 

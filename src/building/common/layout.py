@@ -18,14 +18,10 @@ class Layout:
         instrument: The instrument, as ODE names it.
         dims: What each axis of its arrays is called.
         axes: What each of those axes holds, in the same order.
-        measurement: The array the instrument is stored for, which is also what
-            the sample calls it.
-        beside: What else of the sample is stored, keyed by the name it is written
-            as and read off the sample by, each with its own axes.
+        measurement: The array stored for the instrument, as the sample names it.
+        beside: The other arrays of the sample stored, by name, with their axes.
         stored: The type the measurement is written as, or None to keep its own.
-        band_centres_nm: The nominal centre in nm of every band its crops are laid
-            out on, one grid every crop shares, or None for an instrument holding
-            no wavelength.
+        band_centres_nm: The shared band centres in nm, or None without wavelength.
     """
 
     instrument: str

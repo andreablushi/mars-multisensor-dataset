@@ -30,8 +30,7 @@ def select_dataset(workers: int, progress: Progress | None = None) -> list[Selec
         progress: Called with how many tile groups are searched and how many there are.
 
     Returns:
-        picked: What the search left of each tile, band by band and west to east,
-            leaving out a tile no measured set reached.
+        picked: What the search left of each tile, band by band, west to east.
     """
     groups = index.measured_groups()
     picked: list[Selection] = []
@@ -51,8 +50,7 @@ def selected(study: Study, tile: Tile) -> Selection:
 
     Args:
         study: What the search found over it.
-        tile: The tile itself, whose box the row carries so a later run reads it
-            from the selection alone.
+        tile: The tile itself, its box carried so later runs need only the selection.
 
     Returns:
         selection: Its own row, and a row for each observation it keeps.

@@ -44,8 +44,7 @@ def polar(identifier: str) -> bool:
         identifier: The scan, whose name carries the latitude it was taken at.
 
     Returns:
-        polar: True where ASU projects it stereographically, which a name carrying no
-            latitude is not.
+        polar: True where ASU projects it stereographically.
     """
     found = LATITUDE.search(identifier.lower())
     return bool(found) and int(found[1]) >= ASU_POLAR_LATITUDE
@@ -67,6 +66,5 @@ LAYOUT = Layout(
     measurement="image",
 )
 
-# Where all three are kept. ASU names both of its own after the scan, so only the
-# suffix differs.
+# Where all three are kept, ASU naming its own after the scan by suffix.
 CACHE = ProductCache(paths.CTX_ROOT, {None: (*SUFFIXES.values(), METADATA_SUFFIX)})

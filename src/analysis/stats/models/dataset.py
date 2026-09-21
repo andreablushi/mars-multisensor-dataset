@@ -16,10 +16,8 @@ class Aggregate:
         kept: How many of them earned a window worth keeping.
         days: How long the windows last, over the kept tiles.
         reached: The share of a tile each instrument reaches, over the kept.
-        pixels_per_look: The pixels one observation of each instrument landed on
-            a tile, over the kept tiles it took any of.
-        pixel_km2: The ground one pixel of each instrument covers, over every
-            tile searched, its size being the same on any of them.
+        pixels_per_look: The pixels one observation lands on a tile, per instrument.
+        pixel_km2: The ground one pixel covers, per instrument.
     """
 
     searched: int

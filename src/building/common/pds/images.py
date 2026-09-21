@@ -17,8 +17,7 @@ def build_cube(image: Path, label: dict[str, str]) -> np.ndarray:
         label: The parsed label describing it.
 
     Returns:
-        values: The values as lines by samples by bands, in the file's own band order
-            and the label's unit.
+        values: The values as lines by samples by bands, in the label's unit.
 
     Raises:
         KeyError: When it names a sample type this cannot read.
@@ -46,8 +45,7 @@ def measured(values: np.ndarray, label: dict[str, str]) -> np.ndarray:
         label: The parsed label describing them.
 
     Returns:
-        values: The values in the unit the label names, the stored ones where it asks
-            for no scaling.
+        values: The values in the label's unit, stored ones where none is scaled.
     """
     factor, offset = labels.scaling(label)
     if factor == 1.0 and offset == 0.0:
@@ -70,8 +68,7 @@ def load_window(
         samples: The first sample to read, and the sample after the last.
 
     Returns:
-        values: The values inside those bounds, as lines by samples, in the label's
-            unit.
+        values: The values inside those bounds, lines by samples, in its unit.
 
     Raises:
         KeyError: When it names a sample type this cannot read.

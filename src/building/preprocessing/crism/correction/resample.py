@@ -17,8 +17,7 @@ def measured_bands(mask: Mask, table: np.ndarray, grid: np.ndarray) -> np.ndarra
         grid: The nominal centre of every band of this detector, ascending.
 
     Returns:
-        measured: One flag per grid band, True where a kept band of the detector
-            falls nearer to it than to either of its neighbours.
+        measured: One flag per grid band, True where a kept band is nearest.
     """
     steps = np.diff(grid)
     borders = np.concatenate(
@@ -38,15 +37,11 @@ def resample_bands(
     """Read one detector's spectra onto the grid its bands are nominally centred on.
 
     Args:
-        cube: The values as lines by samples by bands, already cleaned, read
-            rather than changed.
-        mask: What that cleaning refused, whose kept bands are the only ones read
-            from and whose fill stands in for a column holding too few of them.
-        table: The centre wavelength of every column and band, which every column
-            is read off its own row of, so the smile across the detector is taken out.
+        cube: The cleaned values as lines by samples by bands, read only.
+        mask: What that cleaning refused, whose kept bands alone are read.
+        table: The centre wavelength of every column and band, per column.
         grid: The nominal centres to read, ascending.
-        out: The lines by samples by bands written into, each grid band read between
-            the two bands of its own column around it and held at the ends.
+        out: The lines by samples by bands written into.
         bands: Where each grid band lands along the last axis of `out`.
     """
     kept = ~mask.bands

@@ -38,8 +38,7 @@ class Survey:
         """Name every observation the tile keeps, in time order.
 
         Returns:
-            taken: The window's own observations and what came from outside it, oldest
-                first.
+            taken: The window's observations and those from outside it, oldest first.
         """
         return tuple(sorted(set(self.kept) | set(self.standing)))
 
@@ -51,8 +50,7 @@ class Study:
     Attributes:
         tile: The tile's name, such as "b123_c0456".
         criteria: What the tile was asked for.
-        track: Its admissible observations on one time axis, or None where it
-            holds nothing measurable.
+        track: Its admissible observations on one time axis, or None.
         survey: The window it earned, or None where it earned none.
     """
 
@@ -70,8 +68,7 @@ class Study:
             criteria: Which instruments a window has to hold, and how much ground each.
 
         Returns:
-            study: What the search found, the timeline it ran over and the window it
-                earned.
+            study: What the search found, its timeline and the window it earned.
         """
         # Imported here, since the algorithm hands back the survey defined above
         from analysis.selector import algorithm

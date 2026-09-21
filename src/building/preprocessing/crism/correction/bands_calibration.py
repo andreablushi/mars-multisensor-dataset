@@ -9,19 +9,15 @@ def calibrate(cube: np.ndarray, table: np.ndarray) -> tuple[np.ndarray, np.ndarr
     """Order one cube by wavelength and fill what was never calibrated.
 
     Args:
-        cube: The values as lines by samples by bands, in the band order the
-            file stored them in.
-        table: The centre wavelength of every column and band, in that same
-            order, with NaN where nothing was calibrated.
+        cube: The values as lines by samples by bands, in stored band order.
+        table: The centre wavelength of every column and band, NaN if uncalibrated.
 
     Returns:
-        cube: The cube with bands ascending in wavelength, uncalibrated columns and
-            bands NaN.
+        cube: The cube with bands ascending, uncalibrated columns and bands NaN.
         wavelengths: The centre wavelength of every column and band, in that same order.
 
     Raises:
-        ValueError: When the table does not describe the cube it is given, or
-            when it names no calibrated band to read the band order off.
+        ValueError: When the table does not fit the cube or has no calibrated band.
     """
     if cube.shape[1:] != table.shape:
         raise ValueError(
@@ -53,8 +49,7 @@ def centres(table: np.ndarray) -> np.ndarray:
         table: The centre wavelength of every column and band.
 
     Returns:
-        centres: One centre per band, averaged over the columns that carry one, NaN
-            where none does.
+        centres: One centre per band averaged over its columns, NaN where none.
     """
     # Bands the detector was calibrated for in at least one column.
     named = ~np.isnan(table).all(axis=0)

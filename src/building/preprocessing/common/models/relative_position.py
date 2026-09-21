@@ -14,14 +14,10 @@ class RelativePosition:
     """Where each sample of one observation sits on the tile it was kept for.
 
     Attributes:
-        north: How far north of the tile centre, in degrees or a projection's own
-            metres, one per line where the grid is separable and per sample where not.
-        east: How far east of it, in the same unit, wrapped so the meridian is no
-            jump, one per sample of a line where the grid is separable.
-        separable: Whether the two hold one axis each, a line's north and a
-            sample's east, rather than a value for every sample.
-        polar: The grid the two are measured on, and None where they are the degrees
-            every other placement holds.
+        north: How far north of the tile centre, in degrees or metres.
+        east: How far east of it, in the same unit, wrapped at the meridian.
+        separable: Whether the two hold one axis each.
+        polar: The grid the two are measured on, or None for degrees.
     """
 
     north: np.ndarray
@@ -44,12 +40,10 @@ class RelativePosition:
         """Return the northings and the eastings of the samples a cut keeps.
 
         Args:
-            taken: Which of each ground axis to read, outermost first, and
-                empty for all of them.
+            taken: Which of each ground axis to read, outermost first, empty for all.
 
         Returns:
-            north: The northings, one axis where the position is separable and a value
-                per sample where it is not.
+            north: The northings, one axis if separable, else one per sample.
             east: The eastings, holding the same.
         """
         if not taken:
@@ -67,8 +61,7 @@ class RelativePosition:
             ground: The instrument's ground axes, in the order they run.
 
         Returns:
-            north: The axes of the northing, one where separable and every ground axis
-                where not.
+            north: The axes of the northing, one if separable, else every ground axis.
             east: The axes of the easting, holding the same.
         """
         if self.separable:

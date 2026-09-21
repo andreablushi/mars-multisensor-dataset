@@ -24,8 +24,7 @@ def build_dataset(
         settings: The settled choices for the build, naming the dataset.
         picked: The tiles to build, each with the observations its window keeps.
         force: Whether to build every crop again, rather than only the missing ones.
-        checkpoint: What publishes the dataset as it stands, for a platform run
-            that is resumed from what it left, and None for a run here.
+        checkpoint: What publishes the dataset so far, or None for a local run.
 
     Returns:
         code: A process exit code, non zero when any product failed to build.

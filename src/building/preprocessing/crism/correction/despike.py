@@ -15,11 +15,9 @@ def remove_spikes(pixspec: np.ndarray, centre: np.ndarray, rem: np.ndarray) -> N
     """Remove spikes with narrowing windows, as crism_ml does.
 
     Args:
-        pixspec: The ratioed values as lines by samples by bands, changed in
-            place.
+        pixspec: The ratioed values as lines by samples by bands, changed in place.
         centre: The centre wavelength of every band it holds.
-        rem: Lines by samples, True where the pixel is not a measurement and so
-            is kept out of the spread the threshold is read from.
+        rem: Lines by samples, True where the pixel is not a measurement.
     """
     if rem.all():
         return

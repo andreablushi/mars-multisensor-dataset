@@ -13,10 +13,8 @@ class Label:
         tile: The tile's name, such as "b123_c0456".
         label: The class it earned, such as "chaos".
         feature: The feature it earned it from, such as "Aram Chaos".
-        foreign: How many other features reach into it, of another class or an
-            excluded descriptor, or of its own where it holds an object.
-        offset: How far its object sits from its centre, or it from its
-            feature's, 0 at the centre and 1 at the edge.
+        foreign: How many features of another class or excluded descriptor touch it.
+        offset: How far it sits from its centre, 0 at the centre and 1 at the edge.
         drawn: Whether the balanced draw took it into the evaluation set.
     """
 

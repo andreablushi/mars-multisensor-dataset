@@ -27,23 +27,13 @@ class AcquisitionInfo:
     """Where the Sun and the spacecraft stood over one crop, and in what season.
 
     Attributes:
-        incidence_deg: The angle between the Sun and the areoid's normal, averaged
-            over the samples the crop measured where its archive writes one per
-            sample and the observation's own figure where it publishes one for the
-            whole. A sounder's solar zenith angle is that same angle and is read
-            as it.
-        emission_deg: The angle between the spacecraft and that normal, read the
-            same way.
-        phase_deg: The angle the ground sees between the Sun and the spacecraft,
-            read the same way.
-        solar_longitude_deg: The areocentric longitude of the Sun, which is the
-            season the observation was taken in.
-        local_solar_time_h: The hour of the Martian day over the ground, on the
-            twenty four hour clock.
+        incidence_deg: The angle between the Sun and the areoid's normal.
+        emission_deg: The angle between the spacecraft and that normal.
+        phase_deg: The angle between the Sun and the spacecraft seen from ground.
+        solar_longitude_deg: The areocentric longitude of the Sun.
+        local_solar_time_h: The local Martian hour over the ground, of 24.
         solar_distance_km: How far the Sun stood from Mars.
-        spacecraft_altitude_km: How far the spacecraft stood above the ground,
-            taken off the spheroid where an archive publishes its distance to the
-            centre of Mars instead.
+        spacecraft_altitude_km: How high the spacecraft stood above the ground.
     """
 
     incidence_deg: float | None = None
@@ -61,16 +51,12 @@ def acquisition_info(
     """Return what one crop was taken under, from its own planes and its label.
 
     Args:
-        held: The crop, whose planes are reduced over the samples it measured and
-            whose label is read for every quantity it carries no plane of.
-        frame: The local frame of its tile, at whose latitude the spheroid an
-            altitude stands above is measured.
-        measured: Which of its samples are measurements inside that tile's box,
-            over the ground axes alone, which its caller has already rooted.
+        held: The crop, reduced over its measured samples.
+        frame: The local frame of its tile.
+        measured: Which samples are measurements inside the tile's box.
 
     Returns:
-        info: One scalar per quantity, each unset where neither a plane of the crop
-            nor its label carries it.
+        info: One scalar per quantity, unset where the crop carries none.
     """
     collected = {}
     for one in fields(AcquisitionInfo):
@@ -96,8 +82,7 @@ def _measured_mean(plane: np.ndarray, measured: np.ndarray) -> float | None:
         measured: Which of those samples are measurements inside the tile's box.
 
     Returns:
-        mean: The mean, or None where the crop measured no sample its archive
-            wrote a finite value at.
+        mean: The mean, or None where no finite sample was measured.
     """
     kept = measured & np.isfinite(plane)
     return float(plane[kept].mean()) if kept.any() else None
@@ -108,8 +93,7 @@ def _label_scalar(label: dict[str, str], keys: tuple[str, ...]) -> float | None:
 
     Args:
         label: The merged label of the observation.
-        keys: What an archive may call the quantity, in the order they are
-            preferred.
+        keys: What an archive may call the quantity, preferred first.
 
     Returns:
         value: The number, or None where the label carries none of them readably.

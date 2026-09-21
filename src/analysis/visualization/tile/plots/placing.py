@@ -15,8 +15,7 @@ def placed(name: str) -> Placed | None:
         name: The tile's name, such as "b123_c0456".
 
     Returns:
-        placed: Where it falls in lon and lat, or None where no plate carree crop covers
-            it.
+        placed: Where it falls in lon and lat, or None where no crop covers it.
     """
     grid = Placed(Tessellate.of(configs.load().tile_km).tile_named(name))
     # A tile wrapping the pole has no lon/lat box a plate carree crop can cover

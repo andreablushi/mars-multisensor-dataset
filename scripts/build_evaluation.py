@@ -73,8 +73,7 @@ def main() -> int:
     """Run the build where it was asked for.
 
     Returns:
-        code: A process exit code, non zero when a product failed or an image did not
-            build.
+        code: A process exit code, non zero when a product or an image build failed.
     """
     parsed = argparse.ArgumentParser(description=__doc__)
     parsed.add_argument(

@@ -13,10 +13,8 @@ class Settings:
 
     Attributes:
         excluded: The IAU descriptors a labelled tile is best kept clear of.
-        classes: What every class is read from, by the class a tile earns, in
-            the order the config names them.
-        per_class: How many tiles the draw takes of every class, or None for as
-            many as the scarcest class holds.
+        classes: What every class is read from, in config order.
+        per_class: How many tiles are drawn per class, or None for the scarcest.
         seed: The number the draw is made with, so it is the same every run.
     """
 

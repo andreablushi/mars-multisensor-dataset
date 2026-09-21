@@ -31,8 +31,7 @@ def grid_axes(
         polar: The grid the two are measured on, and None for an equatorial one.
 
     Raises:
-        ValueError: When the label names a projection or a convention this
-            cannot read.
+        ValueError: When the projection or convention cannot be read.
     """
     name = label["ProjectionName"]
     if name not in (EQUATORIAL, POLAR):

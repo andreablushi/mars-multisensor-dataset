@@ -14,8 +14,7 @@ class CrismSample(Sample):
     """The spectra one observation measured over one tile.
 
     Attributes:
-        cube: Lines by columns by the whole of the survey's band grid, NaN for the
-            bands the observation never measured.
+        cube: Lines by columns by the survey's band grid, NaN for unmeasured bands.
     """
 
     cube: np.ndarray

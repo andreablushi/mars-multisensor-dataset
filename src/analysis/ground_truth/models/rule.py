@@ -10,12 +10,9 @@ class Rule:
     """The features one class is read from, and how a tile earns it.
 
     Attributes:
-        descriptor: The IAU descriptor every feature of it is named under, or
-            None where it is read from the named features alone.
-        names: The features it is read from, or empty where the descriptor
-            names them all.
-        diameter_km: The diameters an object is kept for, a tile having to hold
-            one whole, or None for a texture, which a patch of it shows.
+        descriptor: The IAU descriptor it is read from, or None for named features.
+        names: The features it is read from, or empty where the descriptor is used.
+        diameter_km: The diameters an object is kept for, or None for a texture.
         latitudes: The latitudes a texture is kept to, or None for anywhere.
     """
 

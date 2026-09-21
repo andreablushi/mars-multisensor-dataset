@@ -25,15 +25,13 @@ class Track:
     Attributes:
         observations: The observations the search may pick from, oldest first.
         times: When each of them started, in days, which is what a span is measured in.
-        ls: How far round its year Mars had turned as each was taken, in degrees,
-            which is what a window's width is held to.
+        ls: The solar longitude at which each was taken, in degrees.
         owners: The instrument set each belongs to, as its index into labels.
         cells: The tile's cells each fills, in the same order, each named once.
         labels: The name of each set, in the order owners index them.
         iids: The instrument each set belongs to, in the same order.
         grid: The grid the tile is searched over.
-        refused: The observations left off the axis, each with the set it belongs
-            to and the cells it fills, oldest first.
+        refused: The observations left off the axis, with their sets and cells.
     """
 
     observations: list[Event]

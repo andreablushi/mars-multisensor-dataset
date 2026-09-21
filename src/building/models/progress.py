@@ -42,8 +42,7 @@ class Progress:
             stage: The stage it has reached.
 
         Returns:
-            ticket: What the product is tracked by, since two jobs of one
-                archive's record are named alike.
+            ticket: What the product is tracked by, since archive jobs share names.
         """
         ticket = object()
         with self._lock:
@@ -84,9 +83,7 @@ class Progress:
         """Return one line saying what the build is doing right now.
 
         Returns:
-            written: How many products are at each stage, how many are done, how
-                long since any moved, and the products held longest at one stage,
-                which is what a stalled build is waiting on.
+            written: The products per stage, done, idle time and longest held.
         """
         with self._lock:
             now = time.monotonic()

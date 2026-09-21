@@ -19,8 +19,7 @@ class Observation:
         stop: When the observation finished, or None when none was published.
         wkt: The footprint as well-known text, left unparsed.
         map_scale_m: The ground size of one pixel, or None when unpublished.
-        north_wkt: The footprint in north polar stereographic metres, or None where
-            ODE publishes none, which it does only poleward of 60 degrees.
+        north_wkt: The footprint in north polar stereographic metres, or None.
         south_wkt: The same in south polar stereographic metres.
     """
 

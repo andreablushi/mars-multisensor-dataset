@@ -43,8 +43,7 @@ download_one() {
     rm -rf "$staged"
 }
 
-# dh_dataset.sh takes the two above for the one archive this leaves it, so
-# everything below here belongs to a direct run alone.
+# Everything below runs only when this is executed rather than sourced.
 [[ ${BASH_SOURCE[0]} == "$0" ]] || return 0
 
 usage() {

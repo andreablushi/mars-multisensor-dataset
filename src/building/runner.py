@@ -36,9 +36,7 @@ from building.models.settings import Settings
 from building.preprocessing.common import store
 from common.console import named_failure
 
-# How much of the box's memory a build may hold. The rest is not spare: the box is
-# charged for the downloads in flight and for the cache of every file written and
-# read back, none of which this budget meters.
+# The share of the box's memory a build may hold, the rest being unmetered.
 MEMORY_SHARE = 0.45
 
 CHECKPOINT_BYTES = 100 * 1024**3
@@ -61,10 +59,7 @@ def run_build(
         console: The console to render on.
         root: The directory this build of the dataset is written in.
         force: Whether to rebuild crops that are already written.
-        checkpoint: What publishes the dataset as it stands and may take its
-            crops off disk, so a run that dies is resumed from what it left and
-            every crop its index names counts as built, or None to publish only
-            at the end.
+        checkpoint: What publishes the dataset as it stands, or None.
 
     Returns:
         collected: Every finished outcome, in completion order.
@@ -179,8 +174,7 @@ def _outcomes(
         fetching: The threads the downloads run on, by the archive they wait on.
         building: The processes the builds run on.
         root: The dataset's own root directory.
-        settings: The settled choices for the build, which bound how many
-            products run at once and how many of them are downloading.
+        settings: The settled choices, bounding how many products run at once.
         budget: The memory the builds running at once share between them.
         progress: What every product still in the build is doing.
 
@@ -263,12 +257,10 @@ def build_product(job: Job, root: Path) -> Outcome:
         root: The dataset's own root directory.
 
     Returns:
-        outcome: The outcome, holding the record of every sample written, and the error
-            that stopped it where one did after some were already on disk.
+        outcome: The outcome, its written samples and any error that stopped it.
 
     Raises:
-        Exception: Whatever reading the product off disk raised, which the pool
-            hands back for the runner to collect as this job's own failure.
+        Exception: Whatever reading the product raised, collected as a failure.
     """
     steps = INSTRUMENTS[job.instrument]
     written: list[ObservationMetadata] = []
@@ -313,12 +305,10 @@ def _indexed(
     """Write the index over every crop of the tiles covered, not this run's alone.
 
     Args:
-        plan: What the build set out to do, whose tiles alone the index names, so a
-            tile the build no longer covers leaves it.
+        plan: What the build set out to do, whose tiles alone the index names.
         collected: What every job of this run left.
         root: The dataset's own root directory.
-        on_disk: Whether an earlier run's record is kept only while its crop is
-            on disk, rather than for as long as the index names it.
+        on_disk: Whether an earlier record is kept only while its crop is on disk.
     """
     written = [held for one in collected for held in one.records]
     rewritten = {one.identity for one in written}
@@ -327,8 +317,7 @@ def _indexed(
         standing = metadata_read.read_observation_metadata(root)
     except FileNotFoundError:
         standing = []
-    # What an earlier run left of the tiles covered, less what this run rewrote and
-    # what has been deleted.
+    # What an earlier run left, less what this run rewrote or deleted.
     records = [
         one
         for one in standing

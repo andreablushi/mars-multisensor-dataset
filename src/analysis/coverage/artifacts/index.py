@@ -72,8 +72,7 @@ def load_tile(tile: Tile) -> list[SetCoverage]:
         tile: The tile to read.
 
     Returns:
-        coverage: One entry per instrument set, widest coverage first, then busiest,
-            and nothing at all where no set reached it.
+        coverage: One entry per set, widest then busiest first, empty where none.
     """
     settings = configs.load()
     bands = len(split_bands_columns(settings.tile_km))
@@ -89,8 +88,7 @@ def load_group(group: str, tile: str | None = None) -> dict[str, list[SetCoverag
         tile: The one tile to read, or None for every tile the group measured.
 
     Returns:
-        coverage: Each tile's sets, observed or not, by tile name, in the order the
-            tiles were measured.
+        coverage: Each tile's sets by tile name, in the order they were measured.
     """
     directory = paths.GROUPS_ROOT / group
     filters = None if tile is None else [("tile", "==", tile)]

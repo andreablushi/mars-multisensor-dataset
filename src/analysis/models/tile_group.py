@@ -17,8 +17,7 @@ class TileGroup:
         min_lat: The southernmost latitude any of them reaches, in degrees.
         max_lat: The northernmost latitude any of them reaches, in degrees.
         west_lon: The westernmost longitude any of them reaches, 0 to 360.
-        east_lon: The easternmost longitude, equal to the westernmost where a
-            tile of it circles a pole.
+        east_lon: The easternmost longitude, the westernmost where it circles a pole.
     """
 
     name: str

@@ -27,11 +27,9 @@ def degrees(
     """Return the longitude and latitude the samples of one position sit at.
 
     Args:
-        position: Where the samples sit, in degrees from the tile centre or
-            in the metres of the projection it was placed on.
+        position: Where the samples sit, in degrees or projected metres.
         frame: The tile's local frame, which those offsets are relative to.
-        taken: Which of each ground axis to read, outermost first, and empty for
-            all of them.
+        taken: Which of each ground axis to read, outermost first, empty for all.
 
     Returns:
         longitudes: The longitudes in degrees.
@@ -59,13 +57,11 @@ def distance_centre_m(
     """Return how far north and east of its tile centre every sample sits.
 
     Args:
-        position: Where the samples sit, in degrees from the tile centre or
-            in the metres of the projection it was placed on.
+        position: Where the samples sit, in degrees or projected metres.
         frame: The tile's local frame, which the offsets are measured from.
 
     Returns:
-        north: The ground metres north of that centre, one per sample, in the
-            geodesic frame it is the middle of.
+        north: The ground metres north of that centre, one per sample.
         east: The ground metres east of it, in the same frame.
     """
     sizes = position.ground_sizes
@@ -87,13 +83,11 @@ def sample_spacing_m(position: RelativePosition, frame: Tile) -> tuple[float, ..
     """Return how much ground one sample spans, along each of its ground axes.
 
     Args:
-        position: Where the samples sit, in degrees from the tile centre or
-            in the metres of the projection it was placed on.
+        position: Where the samples sit, in degrees or projected metres.
         frame: The tile's local frame, which the offsets are relative to.
 
     Returns:
-        spacing: The median geodesic metres between neighbouring samples along each
-            ground axis, and not a number for an axis holding a single sample.
+        spacing: The median geodesic metres between neighbours per ground axis.
     """
 
     def middle(length: int) -> slice:

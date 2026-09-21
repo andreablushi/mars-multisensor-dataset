@@ -39,12 +39,10 @@ class Platform:
         source_root: Where that clone lands on the job.
         python_version: The interpreter the image is built on.
         image_extras: What the platform itself asks for, beyond the pipeline.
-        resources: The profile, the cores, the memory, the budget it plans
-            against and the disk each stage asks for, by stage.
+        resources: The profile, cores, memory, budget and disk of each stage.
         functions: The function each stage is registered as, by stage.
         publishes: What each stage publishes, by the name a download asks for.
-        shared: Whether every stage queues on the shared pool rather than the
-            reserved one.
+        shared: Whether every stage queues on the shared pool.
     """
 
     project: str
@@ -62,8 +60,7 @@ def load() -> Platform:
     """Settle what a platform run is given, reading the config file once.
 
     Returns:
-        platform: The settled choices for the submission, each profile marked
-            for the pool it queues on.
+        platform: The settled choices, each profile marked for its pool.
     """
     platform = load_config(PLATFORM_CONFIG_PATH, Platform)
     pool = "-shared" if platform.shared else ""

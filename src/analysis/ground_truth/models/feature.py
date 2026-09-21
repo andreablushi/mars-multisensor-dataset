@@ -15,8 +15,7 @@ class Feature:
         min_lat: The southernmost planetocentric latitude in degrees.
         max_lat: The northernmost planetocentric latitude in degrees.
         west_lon: The westernmost longitude in degrees, 0 to 360.
-        east_lon: The easternmost longitude in degrees, 0 to 360, equal to the
-            westernmost where the feature circles a pole.
+        east_lon: The easternmost longitude, 0 to 360, the westernmost at a pole.
     """
 
     name: str

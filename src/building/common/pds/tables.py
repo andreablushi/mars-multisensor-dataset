@@ -44,8 +44,7 @@ def build_table(table: Path, label: dict[str, str], fields: list[dict[str, str]]
         fields: The COLUMN objects, as `labels.columns` returns them.
 
     Returns:
-        table: One row per record, its fields named as the label names them, integers
-            read as integers, times as datetimes and the rest as floats.
+        table: One row per record, its fields named and typed as the label says.
     """
     rows, width = int(label["ROWS"]), int(label["ROW_BYTES"])
     raw = np.fromfile(table, dtype="S1", count=rows * width)

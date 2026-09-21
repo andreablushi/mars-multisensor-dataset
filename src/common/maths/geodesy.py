@@ -158,8 +158,7 @@ def geodesic_steps(lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
         lat: The point latitudes in degrees.
 
     Returns:
-        steps: One distance in metres per neighbouring pair, and nothing for fewer than
-            two points.
+        steps: One distance in metres per neighbouring pair.
     """
     lon = np.asarray(lon, dtype=float)
     lat = np.asarray(lat, dtype=float)
@@ -196,12 +195,10 @@ def spheroid_radius_m(lat: float) -> float:
     """Return how far the spheroid's surface stands from the centre at one latitude.
 
     Args:
-        lat: The planetocentric latitude in degrees, which is the latitude every
-            box and every archive here is measured in.
+        lat: The planetocentric latitude in degrees.
 
     Returns:
-        radius: The distance in metres, which is the equatorial radius at the
-            equator and the polar one at either pole.
+        radius: The distance in metres.
     """
     held = math.radians(lat)
     across = POLAR_RADIUS_M * math.cos(held)

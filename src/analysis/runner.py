@@ -52,8 +52,7 @@ def run_pipeline(
     Args:
         settings: The settled choices for the run.
         console: The console to render on.
-        force: Whether to redo finished work rather than skip it, which covers
-            both halves at once: a set is downloaded again and measured again.
+        force: Whether to download and measure finished sets again.
 
     Returns:
         fetched: Every finished download outcome.

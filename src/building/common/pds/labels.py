@@ -74,8 +74,7 @@ def load(path: Path) -> dict[str, str]:
         path: The `.lbl` or `.hdr` file to read.
 
     Returns:
-        label: The label, keyed as written, quotes and unit suffixes stripped, the first
-            of a repeated key winning.
+        label: The label as written, quotes and units stripped, first key winning.
     """
     label: dict[str, str] = {}
     skipping = False
@@ -133,8 +132,7 @@ def scaling(label: dict[str, str]) -> tuple[float, float]:
         label: The parsed label.
 
     Returns:
-        factor: What every stored value is multiplied by, one where the label names
-            none.
+        factor: What every stored value is multiplied by, one where none is named.
         offset: What is added after it, zero where the label names none.
     """
     return float(label.get("SCALING_FACTOR", 1.0)), float(label.get("OFFSET", 0.0))
@@ -147,8 +145,7 @@ def columns(path: Path) -> list[dict[str, str]]:
         path: The `.lbl` file describing the table.
 
     Returns:
-        columns: One dictionary per column, keyed as the label writes it, stripped of
-            quotes and units.
+        columns: One dictionary per column, quotes and units stripped.
     """
     found: list[dict[str, str]] = []
     inside: dict[str, str] | None = None
@@ -171,8 +168,7 @@ def merge(*held: dict[str, str]) -> dict[str, str]:
         held: The label of each product, in the order they are preferred.
 
     Returns:
-        label: Their keys in one map, without what only describes the file they came in
-            and without a key the archive left unset.
+        label: Their keys in one map, without file-only or unset keys.
     """
     merged: dict[str, str] = {}
     for one in held:

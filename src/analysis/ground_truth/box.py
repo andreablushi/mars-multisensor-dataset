@@ -63,8 +63,7 @@ def centre_offset(inner: Box, outer: Box) -> np.ndarray:
         outer: The boxes they are measured in, one or an array of them.
 
     Returns:
-        offset: One share per pair, 0 at the centre and 1 at the edge, which is
-            measured from the pole for a box circling one.
+        offset: One share per pair, 0 at the centre and 1 at the edge.
     """
     south, north, west, span = outer
     latitude = (np.asarray(inner[0]) + inner[1]) / 2.0

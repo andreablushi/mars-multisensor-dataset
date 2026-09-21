@@ -36,21 +36,14 @@ class Instrument:
     Attributes:
         layout: What its arrays hold, and which of them it is stored for.
         fetch: What brings one product of it down into the cache.
-        read_observation: What reads a fetched product off disk, which for a
-            product merged to a box is only what says where its parts are.
-        crop: What cuts that observation to one tile's box, handing back the
-            sample to store or None where it reaches none of it.
+        read_observation: What reads a fetched product off disk.
+        crop: What cuts that observation to a tile's box, or None where it misses.
         archive: Which archive its products are downloaded from.
-        discard: What deletes the product from the cache once it is built, and None
-            for an archive small enough to be held for the whole run.
-        observation_id: What reads which observation a product the selection kept
-            belongs to, or None for an instrument the selection can never name.
-        identifiers: What asks an archive what covers one tile's ground, and
-            None for every instrument named by a product id.
-        worker_bytes: What one build holds of its largest product at once, given
-            where nothing measures the product itself.
-        held_bytes: What reads how much one downloaded product holds, for an
-            instrument whose products differ widely in size, and None for the rest.
+        discard: What deletes the built product, or None for a small archive.
+        observation_id: What reads a kept product's observation, or None.
+        identifiers: What asks an archive what covers a tile, or None.
+        worker_bytes: What one build holds of its largest product at once.
+        held_bytes: What reads a downloaded product's size, or None.
     """
 
     layout: Layout
@@ -74,8 +67,7 @@ INSTRUMENTS = {
         WUSTL,
         discard=crism_configs.CACHE.discard,
         observation_id=crism_configs.NAMING.parse,
-        # A hyperspectral observation measured 601 MB, both detectors and the chain,
-        # against 325 MB for a multispectral one; the heavier orders the run.
+        # A hyperspectral observation takes 601 MB against 325 MB, so it goes first.
         worker_bytes=1024**3,
         held_bytes=crism.held_bytes,
     ),

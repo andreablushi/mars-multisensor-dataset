@@ -80,15 +80,13 @@ def placed(samples: Samples, frame: Tile, place: PolarGrid) -> RelativePosition:
         place: The grid the tile is read on, which every instrument shares.
 
     Returns:
-        position: The metres north and east of that centre, separable only where
-            the samples sit on a grid of that same pole and meridian.
+        position: The metres north and east of that centre.
     """
     centre_x, centre_y = geodesy.stereographic_forward(
         frame.centre_lon, frame.centre_lat, *place
     )
     grid = samples.grid
-    # A grid of the tile's own pole reaches it by a turn and a scale, whatever
-    # meridian and sphere it was published on.
+    # A grid of the tile's own pole reaches it by a turn and a scale.
     if grid is not None and grid[1] == place[1]:
         scale = place[2] / grid[2]
         turned = math.radians(grid[0] - place[0])

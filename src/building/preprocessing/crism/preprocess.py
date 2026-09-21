@@ -64,12 +64,10 @@ def cached_detectors(identifier: str) -> tuple[str, ...]:
     """Read which detectors of one observation were downloaded whole.
 
     Args:
-        identifier: The observation, whose files must already be in the cache
-            that `download.fetch` puts them in.
+        identifier: The observation, its files already in the download cache.
 
     Returns:
-        detectors: The detectors whose observation and geometry both landed, as the
-            archive names them.
+        detectors: The detectors whose observation and geometry both landed.
 
     Raises:
         FileNotFoundError: When neither detector landed whole.
@@ -92,8 +90,7 @@ def held_bytes(identifier: str) -> int:
     """Return how much memory one build of this observation holds at its peak.
 
     Args:
-        identifier: The observation, whose files must already be in the cache
-            that `download.fetch` puts them in.
+        identifier: The observation, its files already in the download cache.
 
     Returns:
         held: How many bytes to hold for it, floor included.
@@ -113,12 +110,10 @@ def placing_detector(identifier: str) -> str:
     """Read which detector's geometry places one observation.
 
     Args:
-        identifier: The observation, whose files must already be in the cache
-            that `download.fetch` puts them in.
+        identifier: The observation, its files already in the download cache.
 
     Returns:
-        detector: The first detector that landed, in the order they place an
-            observation.
+        detector: The first detector that landed, in placing order.
 
     Raises:
         FileNotFoundError: When neither detector landed whole.
@@ -134,8 +129,7 @@ def read_wavelengths(record: Path) -> np.ndarray:
         record: The `.img` of a wavelength file, which holds a single line.
 
     Returns:
-        wavelengths: The centre wavelength in nm as columns by bands, NaN where
-            the detector was never calibrated.
+        wavelengths: The centre wavelength in nm as columns by bands.
     """
     written = images.load_cube(record)[0][0]
     return np.where(written >= UNCALIBRATED, np.nan, written.astype("f8"))
@@ -145,18 +139,14 @@ def read_detectors(identifier: str) -> dict[str, Detector]:
     """Read every image one observation was downloaded as, keyed by detector.
 
     Args:
-        identifier: The observation, whose files must already be in the cache that
-            `download.fetch` puts them in, its wavelength files included.
+        identifier: The observation, its files already in the download cache.
 
     Returns:
-        detectors: Every detector that landed, each cube ordered by the wavelength file
-            its label names.
+        detectors: Every detector that landed, each cube in wavelength order.
 
     Raises:
-        FileNotFoundError: When neither detector landed, or a wavelength file
-            a label names is missing.
-        ValueError: When a label names a band order this cannot read, or the
-            wavelength file does not describe the cube beside it.
+        FileNotFoundError: When no detector landed or a wavelength file is missing.
+        ValueError: When the band order or wavelength file cannot be read.
     """
     detectors = {}
     for name in cached_detectors(identifier):
@@ -176,12 +166,10 @@ def read_label(identifier: str) -> dict[str, str]:
     """Read what every product one observation is published as says about it.
 
     Args:
-        identifier: The observation, whose files must already be in the cache
-            that `download.fetch` puts them in.
+        identifier: The observation, its files already in the download cache.
 
     Returns:
-        label: Their labels merged into one, without the tuning of the software that
-            calibrated them.
+        label: Their labels merged, without the calibration software's tuning.
 
     Raises:
         FileNotFoundError: When neither detector landed, or a label is missing.
@@ -206,12 +194,10 @@ def read_geometry(identifier: str) -> np.ndarray:
     """Read the backplanes that place every pixel of one observation.
 
     Args:
-        identifier: The observation, whose files must already be in the cache
-            that `download.fetch` puts them in.
+        identifier: The observation, its files already in the download cache.
 
     Returns:
-        backplanes: The backplanes of the detector that places it, as lines by samples
-            by fourteen.
+        backplanes: The placing detector's backplanes, lines by samples by 14.
 
     Raises:
         FileNotFoundError: When the geometry or its label is missing.
@@ -227,12 +213,10 @@ def clean_detectors(identifier: str) -> dict[str, Detector]:
     """Read one observation and refuse everything in it that is not measured.
 
     Args:
-        identifier: The observation, whose files must already be in the cache
-            that `download.fetch` puts them in.
+        identifier: The observation, its files already in the download cache.
 
     Returns:
-        detectors: Every detector that landed, each cube filled where it was not
-            measured and its mask beside it.
+        detectors: Every detector that landed, filled and with its mask.
 
     Raises:
         FileNotFoundError: When any file the observation needs is missing.
@@ -243,8 +227,7 @@ def clean_detectors(identifier: str) -> dict[str, Detector]:
         """Refuse everything one detector holds that is not measured.
 
         Args:
-            detector: The detector as it was read, whose one cube every step
-                works in place on.
+            detector: The detector as read, which every step works on in place.
 
         Returns:
             detector: The same detector, carrying the mask every step left.
@@ -275,12 +258,10 @@ def read_observation(identifier: str) -> CrismObservation:
     """Read one observation, clean it, and join the detectors it has onto the grid.
 
     Args:
-        identifier: The observation, whose files must already be in the cache
-            that `download.fetch` puts them in.
+        identifier: The observation, its files already in the download cache.
 
     Returns:
-        observation: The observation, read onto the one grid every observation of the
-            survey is laid out on.
+        observation: The observation on the survey's shared grid.
 
     Raises:
         FileNotFoundError: When any file the observation needs is missing.
@@ -302,8 +283,7 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         frame: The local frame of the tile it was kept for.
 
     Returns:
-        sample: The observation cut to that tile, its measured bands left whole, or
-            None where it reaches none of it.
+        sample: The observation cut to that tile, or None where it misses.
     """
     held = geometry.overlap(
         Samples(

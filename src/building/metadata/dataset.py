@@ -19,8 +19,7 @@ class DatasetManifest:
         instruments: The instruments it holds crops of.
         selection: Where the selection it was built from was read.
         revision: The commit the build ran from, or None outside a checkout.
-        band_centres_nm: The nominal centre in nm of every band, keyed by the
-            instrument whose crops are every one laid out on that grid.
+        band_centres_nm: The nominal band centres in nm, by instrument.
     """
 
     built_at: str
@@ -37,12 +36,10 @@ def dataset_manifest(
 
     Args:
         instruments: The instruments the build covered.
-        band_centres_nm: The grid every crop of an instrument is laid out on,
-            keyed by instrument, for those holding a wavelength.
+        band_centres_nm: The band grid of each instrument with a wavelength.
 
     Returns:
-        manifest: The manifest, its revision unset where the build ran outside a
-            checkout.
+        manifest: The manifest, its revision unset outside a checkout.
     """
     try:
         revision = subprocess.run(

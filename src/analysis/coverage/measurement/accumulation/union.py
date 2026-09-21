@@ -50,8 +50,7 @@ def new_ground(
             reaching: The indices of the observations reaching it, in order.
 
         Returns:
-            ground: The ground in square metres this cell saw each observation cover
-                first.
+            ground: The ground in m2 this cell saw each observation cover first.
         """
         covered: BaseGeometry = Polygon()
         arrived: list[BaseGeometry] = []

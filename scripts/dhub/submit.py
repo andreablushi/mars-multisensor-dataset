@@ -17,8 +17,7 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
     """Register a version of one stage from a pushed commit, and run it.
 
     Args:
-        stage: Which stage to submit, naming the function it is registered as
-            and the resources it is given.
+        stage: The stage to submit, naming its function and resources.
         handler: The dotted path the platform imports and calls.
         ref: The branch, tag, or commit the platform clones.
         **parameters: What the handler is called with on the platform.

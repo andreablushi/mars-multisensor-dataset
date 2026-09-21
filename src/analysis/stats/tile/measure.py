@@ -77,8 +77,7 @@ def ground_by_instrument_count(
         overlaps: The ground each set of instruments reaches, counting a cell once.
 
     Returns:
-        ground: The ground in square kilometres, by how many instruments reach it,
-            fewest first.
+        ground: The ground in km2 by how many instruments reach it, fewest first.
     """
     summed: dict[int, float] = {}
     for instrument_names, km2 in overlaps.items():

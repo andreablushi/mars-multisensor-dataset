@@ -20,8 +20,7 @@ class SelectedTile:
         east_lon: The easternmost longitude in degrees, 0 to 360.
         kept: Whether the tile earned a place at all.
         area_km2: How much ground it covers.
-        start: When the earliest observation it keeps was taken, or None where
-            it earned no window.
+        start: When its earliest kept observation was taken, or None without a window.
         end: When the latest one was taken, or None where it earned none.
         days: How long the window runs, in days.
         geo_mean: The insisted shares rooted together, as a share of the tile.
@@ -55,8 +54,7 @@ class SelectedObservation:
         pt: The product type.
         pdsid: The PDS product identifier, which is what a download asks for.
         t_start: When the observation started.
-        standing: Whether it was kept from outside the window, which only a
-            timeless instrument can be.
+        standing: Whether it was kept from outside the window.
     """
 
     tile: str
@@ -74,8 +72,7 @@ class Selection:
 
     Attributes:
         tile: The tile's own row, whether or not it earned a window.
-        observations: The observations it keeps, oldest first, and nothing at
-            all where it earned no window.
+        observations: The observations it keeps, oldest first.
     """
 
     tile: SelectedTile

@@ -23,14 +23,12 @@ def merge_sheets(grid: MolaGrid, frame: Tile) -> MolaObservation:
         frame: The local frame of the tile the sheets are merged for.
 
     Returns:
-        observation: The observation holding that tile's own box and no more of the
-            grid.
+        observation: The observation holding only that tile's box.
 
     Raises:
         FileNotFoundError: When a sheet's label is missing.
         KeyError: When a label names a sample type this cannot read.
-        ValueError: When a label names a projection this cannot read, or the
-            sheets that landed leave any part of the box unwritten.
+        ValueError: When the projection is unreadable or the box is not covered.
     """
     resolution = grid.resolution
     whole = round(TURN) * resolution

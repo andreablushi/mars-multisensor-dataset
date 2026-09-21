@@ -14,9 +14,7 @@ def load(workers: int | None = None) -> Settings:
     """Settle what a run should do, reading the config file once.
 
     Args:
-        workers: How many jobs each half runs at once, standing in for the
-            config where a run was given a number of cores of its own, which
-            are then every core the jobs share.
+        workers: How many jobs each half runs at once, or None for the config.
 
     Returns:
         choices: The settled choices for the run.

@@ -25,8 +25,7 @@ def read_tile(coverage: Sequence[SetCoverage]) -> TileLooks | None:
         coverage: The tile's instrument sets, in the order they are drawn.
 
     Returns:
-        looks: Its timeline and the looks the selection keeps, or None where the
-            selection never searched it or it holds nothing measurable.
+        looks: Its timeline and kept looks, or None where nothing is measurable.
 
     Raises:
         FileNotFoundError: When no selection has been written to read it off.
@@ -50,8 +49,7 @@ def place_kept_looks(
         picked: What the selection left of it, and the observations it keeps.
 
     Returns:
-        looks: Its timeline and where those looks sit on it, or None where the tile
-            holds nothing measurable.
+        looks: Its timeline and where its looks sit, or None if nothing measurable.
     """
     criteria, track = timeline.over(coverage, filtering.FILTER)
     if track is None:

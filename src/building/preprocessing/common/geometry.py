@@ -26,8 +26,7 @@ def marked(held: np.ndarray) -> np.ndarray | None:
         held: The mask over the samples a crop keeps.
 
     Returns:
-        mask: The mask, or None where every sample is true and it says nothing the shape
-            does not.
+        mask: The mask, or None where every sample is true.
     """
     return None if held.all() else held
 
@@ -58,8 +57,7 @@ def blocked(sizes: tuple[int, ...], budget: int = BLOCK) -> Iterator[slice]:
 
     Args:
         sizes: How many samples each ground axis holds.
-        budget: How many samples to read at once, which a heavier conversion
-            than a projection asks a smaller one of.
+        budget: How many samples to read at once.
 
     Yields:
         block: Which lines of the cut to read.
@@ -132,8 +130,7 @@ def placed(samples: Samples, frame: Tile) -> RelativePosition:
         frame: The tile's local frame, whose centre the offsets stand from.
 
     Returns:
-        position: The offsets from that centre, in the metres of the tile's pole
-            where it has one and in degrees where it has none.
+        position: The offsets from that centre, in polar metres or degrees.
     """
     place = frame.grid
     if place is None:

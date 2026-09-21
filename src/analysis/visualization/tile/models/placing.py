@@ -81,8 +81,7 @@ def _floored(low: float, high: float, minimum: float) -> tuple[float, float]:
         minimum: The width to hold it open to.
 
     Returns:
-        edges: The edges, widened about their middle when they sit closer than the
-            minimum.
+        edges: The edges, widened about their middle when closer than the minimum.
     """
     if high - low >= minimum:
         return low, high

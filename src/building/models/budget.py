@@ -26,8 +26,7 @@ class Budget:
     """The memory a run hands out to its builds, in the order they ask for it.
 
     Attributes:
-        total: How many bytes every build running at once may hold together,
-            which is also the most any single one of them is given.
+        total: How many bytes all concurrent builds may hold together.
     """
 
     def __init__(self, total: int) -> None:
@@ -45,8 +44,7 @@ class Budget:
         """Wait until one build's share is free, and take it.
 
         Args:
-            wanted: How many bytes that build holds, which is cut to the whole
-                budget where it asks for more than a run ever has.
+            wanted: How many bytes that build holds, capped at the whole budget.
 
         Returns:
             taken: How many bytes were taken, which is what has to be given back.
@@ -77,9 +75,7 @@ def memory_bytes() -> int:
     """Return how many bytes of memory the box this run was given holds.
 
     Returns:
-        held: The memory the platform named for the box, the limit a container
-            is held to where one is written, and the machine's own free memory
-            where neither says.
+        held: The memory the platform, container or machine allows.
     """
     told = os.environ.get(MEMORY_ENV, "")
     if told.isdigit():
@@ -100,8 +96,7 @@ def peak_bytes() -> int | None:
     """Return the most memory the box has held at once, as its cgroup counted it.
 
     Returns:
-        peak: The high water mark in bytes, and None where no cgroup counts one,
-            which is where nothing was measuring.
+        peak: The high water mark in bytes, or None where no cgroup counts one.
     """
     counted = list(CGROUP_PEAKS)
     try:

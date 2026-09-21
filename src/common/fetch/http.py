@@ -13,8 +13,7 @@ import httpx
 from common.disk.files import atomic_path
 from common.fetch.throttle import Throttle
 
-# A box spanning a fifth of the planet takes ODE forty seconds to answer at any
-# page size, the cost being the query and not the payload
+# A wide box takes ODE forty seconds at any page size, the query being costly
 REQUEST_TIMEOUT = 180.0
 MAX_RETRIES = 20
 BACKOFF_BASE = 0.5
@@ -72,8 +71,7 @@ def fetched_json(
     Args:
         url: Where to ask.
         params: What to ask for.
-        accepted: What reads the wanted part out of one reply, and hands back
-            None for a reply worth asking again for.
+        accepted: What reads one reply, or hands back None to ask again.
         client: A client whose connections to reuse, or None to ask on its own.
         timeout: How long to wait on one attempt.
         retries: How many times to ask again after the first attempt.
@@ -84,8 +82,7 @@ def fetched_json(
         found: What `accepted` read out of the first usable reply.
 
     Raises:
-        FetchError: When the server refuses the request, when no attempt left a
-            reply `accepted` could read, or when the deadline passed first.
+        FetchError: When refused, when no reply was readable, or past the deadline.
     """
     asking = client or httpx
     give_up_at = time.monotonic() + deadline
@@ -145,17 +142,14 @@ def streamed(
         url: Where to read it from.
         path: Where it belongs once it is whole.
         timeout: How long to wait on one transfer, between one chunk and the next.
-        client: A client whose connections to reuse, or None to open one for this
-            transfer alone.
+        client: A client whose connections to reuse, or None to open one.
         retries: How many times to ask again after the first attempt.
         backoff: The base delay between attempts, in seconds.
         deadline: How long the whole transfer may run for, in seconds.
-        span: The first byte to keep and the byte after the last, or None to keep
-            the whole file.
+        span: The first and past-the-last byte to keep, or None for the whole file.
 
     Raises:
-        FetchError: When the server refuses the file or the span, when every
-            attempt fails, or when the deadline passed first.
+        FetchError: When refused, when every attempt fails, or past the deadline.
     """
     reading = client.stream if client else httpx.stream
     headers = {"Range": f"bytes={span[0]}-{span[1] - 1}"} if span else None

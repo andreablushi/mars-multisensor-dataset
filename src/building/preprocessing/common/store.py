@@ -56,8 +56,7 @@ def native(values: np.ndarray) -> np.ndarray:
     """Return one array in the byte order the machine reads.
 
     Args:
-        values: The values to store, which a PDS archive publishes most
-            significant byte first whatever the machine reading it is.
+        values: The values to store, big-endian as PDS publishes them.
 
     Returns:
         values: The same values in the machine's own order, ready to hand to a tensor.
@@ -76,8 +75,7 @@ def write_sample(
 
     Args:
         held: The sample, whose position and masks are written beside the values.
-        layout: How that instrument's arrays are laid out, which names every
-            one of them the sample is read for.
+        layout: How that instrument's arrays are laid out.
         frame: The tile it was cut to.
         root: The dataset's own root directory.
 
@@ -85,8 +83,7 @@ def write_sample(
         path: The file it was written as.
 
     Raises:
-        ValueError: When the layout declares an array beside the measurement that
-            the crop itself carries none of.
+        ValueError: When the layout declares an array the crop does not carry.
     """
     ground = tuple(
         name

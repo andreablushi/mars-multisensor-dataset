@@ -27,9 +27,7 @@ def project_every_tile(
         tiles: The tiles of that group.
 
     Returns:
-        projected: One set per tile at least one observation landed on, in tile order,
-            a polar tile taking each footprint ODE also publishes in stereographic
-            metres from those rather than from its lon/lat outline.
+        projected: One set per tile an observation landed on, in tile order.
         discarded: How many stored records could not be measured or reached no tile.
     """
     observations = loaded.observations

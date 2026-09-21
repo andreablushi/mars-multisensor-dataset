@@ -13,10 +13,8 @@ class ProductCache:
 
     Attributes:
         root: The directory the instrument downloads under.
-        suffixes: The suffixes a product is downloaded as, keyed by the kind it
-            is, or keyed by None where every kind is downloaded as the same set.
-        subdirectories: The directory a kind is kept in under the product's own,
-            keyed by kind, for the kinds not kept beside the rest.
+        suffixes: The suffixes downloaded per kind, or keyed by None for all kinds.
+        subdirectories: The directory each kind is kept in, for those kept apart.
     """
 
     root: Path
@@ -29,11 +27,9 @@ class ProductCache:
         """Return where each half of one product belongs.
 
         Args:
-            directory: The directory under the root, the observation for a product
-                of one and a name of its own for what every observation shares.
+            directory: The directory under the root, the observation or a shared name.
             stem: What each half of the product is called, without its suffix.
-            kind: Which product it is, for an instrument publishing more than
-                one, or None where it publishes a single kind.
+            kind: Which product it is, or None for a single-kind instrument.
 
         Returns:
             files: The path for each suffix, keyed by suffix.
@@ -51,8 +47,7 @@ class ProductCache:
         """Delete everything one product was downloaded as.
 
         Args:
-            directory: The directory under the root the product was kept in,
-                which is the observation or sheet it belongs to.
+            directory: The observation or sheet directory the product was kept in.
         """
         # Only its own directory, so what every observation shares is left alone.
         shutil.rmtree(self.root / directory, ignore_errors=True)

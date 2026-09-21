@@ -31,8 +31,7 @@ class TileLooks:
         """Return the stretch of time the tile's window is open over.
 
         Returns:
-            stretches: The one stretch it earned, and nothing at all when it earned
-                none.
+            stretches: The one stretch it earned, or nothing.
         """
         if not self.window.kept:
             return []
@@ -58,8 +57,7 @@ class InstrumentReach:
         """Return the pixels one of its observations lands on the tile.
 
         Returns:
-            pixels: The mean over the observations the window keeps, or None where any
-                of them carries no pixel count.
+            pixels: The mean over the window's observations, or None if any lacks one.
         """
         if self.pixels is None or not self.observations_taken:
             return None
@@ -71,12 +69,10 @@ class TileStats:
     """One tile, and what the looks it keeps left on it.
 
     Attributes:
-        window: The window the selection gave it, carrying its name and box,
-            how much ground it covers and how long its window runs.
+        window: The window the selection gave it, with its name, box and span.
         iids: The instruments it holds, in the order they are drawn.
         offered: How many observations of each instrument landed on it at all.
-        pixel_km2: The ground one pixel of each instrument covers, read off the
-            observations offered to the tile rather than off the ones a window kept.
+        pixel_km2: The ground one pixel covers, per instrument offered to the tile.
         reached: What each instrument left on it, by instrument.
         overlaps: The ground each set of instruments reaches, most ground first.
     """

@@ -18,10 +18,7 @@ def minting_envs() -> list[dict[str, str]]:
     """Return what a job is told so it can mint credentials of its own.
 
     Returns:
-        told: The authority to ask and the client to ask as, each as the platform
-            spells a variable, read from the environment or from the `.env` beside
-            this file's repository. The token names neither, so a job handed it
-            alone has nowhere to present it.
+        told: The authority and client variables, read from the environment or `.env`.
 
     Raises:
         RuntimeError: When either is unset, which a job cannot mint without.

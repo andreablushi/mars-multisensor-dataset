@@ -13,10 +13,8 @@ class Cut:
 
     Attributes:
         bounds: The samples to keep of each ground axis, outermost first.
-        inside: Which of the samples that survives the cut truly falls in the
-            box, or None where every one of them does.
-        separable: Whether what it keeps holds one axis each rather than a value
-            for every sample.
+        inside: Which kept samples truly fall in the box, or None for all.
+        separable: Whether it keeps one axis each rather than a value per sample.
     """
 
     bounds: tuple[np.ndarray, ...]

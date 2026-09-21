@@ -28,8 +28,7 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
         client: The client whose connections every query is asked over.
 
     Raises:
-        FileNotFoundError: When ODE publishes neither detector, or publishes one
-            without the geometry that places it.
+        FileNotFoundError: When ODE publishes neither detector or no geometry.
         KeyError: When a label names no wavelength file.
     """
 
@@ -40,12 +39,10 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
             detector: Which detector to ask ODE for.
 
         Returns:
-            brought: True when it landed, False when ODE publishes no observation under
-                that detector.
+            brought: True when it landed, False when ODE publishes none.
 
         Raises:
-            FileNotFoundError: When the observation is published but the
-                geometry placing it is not.
+            FileNotFoundError: When its placing geometry is not published.
         """
         for kind, product_type in TYPES.items():
             product_id = configs.NAMING.product(observation_id, kind, detector=detector)

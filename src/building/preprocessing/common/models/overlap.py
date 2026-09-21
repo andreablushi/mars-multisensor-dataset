@@ -16,12 +16,9 @@ class Overlap:
     """What one tile's box keeps of one observation.
 
     Attributes:
-        bounds: The samples to keep of each ground axis, in the position's
-            order.
-        inside: Which of the samples that survives the cut truly falls in the box,
-            or None where every one of them does.
-        position: Where the samples that are kept sit, in the degrees or the
-            metres of the grid their tile is read on.
+        bounds: The samples to keep of each ground axis, in the position's order.
+        inside: Which kept samples truly fall in the box, or None for all.
+        position: Where the kept samples sit, in the grid's degrees or metres.
     """
 
     bounds: tuple[np.ndarray, ...]

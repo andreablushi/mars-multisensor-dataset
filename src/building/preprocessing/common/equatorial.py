@@ -58,8 +58,7 @@ def placed(samples: Samples, frame: Tile) -> RelativePosition:
         frame: The tile's local frame, whose centre the offsets stand from.
 
     Returns:
-        position: The degrees north and east of that centre, separable only where
-            the samples are degrees already.
+        position: The degrees north and east of that centre.
     """
     if samples.grid is None:
         return RelativePosition(

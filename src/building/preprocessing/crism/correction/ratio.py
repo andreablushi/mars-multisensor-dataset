@@ -16,14 +16,11 @@ def ratio_colmed(pixspec: np.ndarray, mask: Mask) -> Mask:
     """Use the median of a column for ratioing, as crism_ml's ColMed does.
 
     Args:
-        pixspec: The values as lines by samples by bands, divided through in
-            place.
-        mask: What the cleaning has refused, whose pixels are kept out of the
-            median and written over once it is taken.
+        pixspec: The values as lines by samples by bands, divided in place.
+        mask: What the cleaning refused, kept out of the median.
 
     Returns:
-        mask: The same mask, standing for a refused cell in the units the ratio
-            leaves the cube in rather than the brightness it was read in.
+        mask: The same mask, in the units the ratio leaves the cube in.
     """
     rem = mask.pixels
     for at in range(pixspec.shape[1]):

@@ -31,29 +31,19 @@ class ObservationMetadata:
         path: Where its arrays were written, relative to the dataset's own root.
         axes: What each axis of the value array holds, in the array's own order.
         shape: The value array's shape, in that same order.
-        sample_spacing_m: How much ground one sample spans along each ground axis,
-            in the order those axes run, measured rather than claimed.
-        separable: Whether the grid it was placed on holds one ground axis each
-            rather than a pair per sample, which the stored offsets no longer
-            do either way.
-        valid_count: How many of the stored values are measurements, which is what
-            the statistics beside it were measured over and pool by.
-        value_min: The smallest of those values, or None where the crop holds
-            no measurement to say anything about.
+        sample_spacing_m: The measured ground one sample spans per ground axis.
+        separable: Whether its grid held one ground axis each.
+        valid_count: How many stored values are measurements.
+        value_min: The smallest of those values, or None.
         value_max: The largest of them, or None for the same reason.
         value_mean: Their mean, or None for the same reason.
         value_std: Their standard deviation, or None for the same reason.
-        band_mean: The mean of each spectral band on its own, reduced over the
-            ground axes alone, for an instrument whose axes hold a wavelength,
-            and None for every other and where the crop measures nothing.
+        band_mean: The mean of each spectral band, or None without wavelength.
         band_std: Each band's standard deviation, or None for the same reasons.
-        band_valid_count: How many measurements each of those bands pools, or None
-            for the same reasons, and zero for a band the observation never measured.
-        t_start: When the observation started, or None where the archive
-            publishes no time for it.
+        band_valid_count: The measurements each band pools, or None.
+        t_start: When the observation started, or None.
         t_end: When it ended, or None for the same reason.
-        acquisition: Where the Sun and the spacecraft stood over the crop, every
-            quantity of it unset for an archive that publishes none.
+        acquisition: Where the Sun and the spacecraft stood over the crop.
     """
 
     tile: str
@@ -96,16 +86,14 @@ def observation_metadata(
     """Return what one stored observation is read back through.
 
     Args:
-        held: The sample that was written, whose position the ground sample is
-            measured off and whose label the times are read from.
+        held: The sample that was written.
         frame: The local frame of the tile it was kept for.
         layout: What its instrument's arrays hold.
         path: Where its arrays were written, relative to the dataset's own root.
         t_start: When it started, for an archive whose label publishes no time.
 
     Returns:
-        metadata: The metadata, its ground sample and statistics measured rather than
-            claimed, and those unset where it holds no measurement.
+        metadata: The metadata, measured rather than claimed.
     """
     values = getattr(held, layout.measurement)
     # A ground mask reaches every value on it, so it spreads over the instrument's axes.

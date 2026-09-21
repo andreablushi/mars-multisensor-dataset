@@ -13,13 +13,10 @@ class MolaObservation:
 
     Attributes:
         label: What the products it was read from say about it, merged.
-        identifier: The grid it was read from, which every crop of it is
-            stored under.
-        topography: The height of the ground above the areoid in metres, as
-            lines by samples, interpolated where no shot fell in the bin.
+        identifier: The grid it was read from, which its crops are stored under.
+        topography: The height above the areoid in metres, lines by samples.
         down: The latitude of every line in degrees, falling southward.
-        across: The longitude of every sample, rising eastward and running past
-            a whole turn where the box crosses the meridian.
+        across: The longitude of every sample, rising eastward past a turn.
     """
 
     identifier: str

@@ -81,8 +81,7 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
         )
         return
     except FetchError:
-        # The scan is served at one URL whatever the projection, so only a label
-        # ASU never wrote is worth asking for in the other one.
+        # One URL serves every projection, so only a missing label is worth asking.
         if destination[configs.SUFFIXES[configs.LABEL]].exists():
             raise
     archive.bring(
@@ -95,10 +94,8 @@ def _asu(observation_id: str, volume_id: str, label: str) -> dict[str, str]:
 
     Args:
         observation_id: The scan to build the URLs for.
-        volume_id: The PDS volume the raw scan was archived on, which is the
-            directory ASU keeps what it built from it under.
-        label: What ASU suffixes the label with, which says the projection the
-            scan was written in.
+        volume_id: The PDS volume of the raw scan, which ASU files it under.
+        label: The label suffix ASU uses, which names the projection.
 
     Returns:
         urls: The URL each product is streamed from, keyed by its suffix on disk.

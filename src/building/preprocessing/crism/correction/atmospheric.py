@@ -19,8 +19,7 @@ def remove_atmospheric_bands(
     """Drop the bands whose depth the atmosphere sets rather than the ground.
 
     Args:
-        cube: The values as lines by samples by bands, already masked, filled
-            in place.
+        cube: The masked values as lines by samples by bands, filled in place.
         mask: What that masking refused.
         table: The centre wavelength of every column and band.
         detector: Which detector, `l` or `s`, which picks the windows.

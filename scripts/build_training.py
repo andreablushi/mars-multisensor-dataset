@@ -35,12 +35,10 @@ def training_selections(settings: TrainingSettings) -> list[Selection]:
         settings: The settled choices for the build, which size the draw.
 
     Returns:
-        picked: The tiles to build, each with the observations its window keeps,
-            and none the evaluation set holds.
+        picked: The tiles to build with their windows, none held for evaluation.
 
     Raises:
-        FileNotFoundError: When the analysis pipeline has written no labels, since
-            training would then take the tiles evaluation is meant to hold out.
+        FileNotFoundError: When no labels were written, so none can be held out.
     """
     held_out = {one.tile for one in artifacts.read_labels() if one.drawn}
     return draw.draw_training(dataset_list.read_dataset_list(), settings, held_out)
@@ -75,8 +73,7 @@ def main() -> int:
     """Run the build where it was asked for, over as much as it was asked for.
 
     Returns:
-        code: A process exit code, non zero when a product failed or an image did not
-            build.
+        code: A process exit code, non zero when a product or an image build failed.
     """
     parsed = argparse.ArgumentParser(description=__doc__)
     parsed.add_argument(

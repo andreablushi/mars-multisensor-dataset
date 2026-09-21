@@ -11,15 +11,11 @@ class Naming:
     """How one archive spells the products of one observation.
 
     Attributes:
-        pattern: What matches a product id, and matches an identifier too where
-            the parts telling the kinds apart are absent.
+        pattern: What matches a product id, or an identifier lacking kind parts.
         identity: How an identifier is written from the parts the pattern names.
-        marks: The parts a published product carries that an identifier on its
-            own does not, so an id holding all of them names a product.
-        template: How a product id is written from an identifier's parts, or
-            None where every product carries the observation's own name.
-        fields: What each kind writes for the parts that tell the kinds apart,
-            keyed by kind.
+        marks: The parts only a product id carries, not a bare identifier.
+        template: How a product id is written from its parts, or None.
+        fields: What each kind writes for the parts telling kinds apart, by kind.
     """
 
     pattern: re.Pattern[str]
@@ -35,8 +31,7 @@ class Naming:
             name: A product id or an identifier.
 
         Returns:
-            parts: The part the pattern names, keyed by name, or None when the id is not
-                one this can read.
+            parts: The named parts, or None when the id cannot be read.
         """
         match = self.pattern.match(name)
         if not match:
@@ -50,8 +45,7 @@ class Naming:
             product_id: The id to read, in whichever case its archive spells it.
 
         Returns:
-            identifier: The observation it belongs to, or None when the id is not a
-                product this instrument wants.
+            identifier: The observation it belongs to, or None if not wanted.
         """
         parts = self.parts(product_id.lower())
         if parts is None or not all(parts.get(mark) for mark in self.marks):
@@ -64,8 +58,7 @@ class Naming:
         Args:
             identifier: The observation, as `parse` spells it.
             kind: Which product of it.
-            written: What else is written into the id, for an archive naming a
-                part the observation itself does not carry.
+            written: What else is written into the id, for an archive naming a part.
 
         Returns:
             product: The product id the archive knows that product by.

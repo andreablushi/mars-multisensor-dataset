@@ -29,8 +29,7 @@ def measure_every_tile(
         progress: Called with how many tile groups are done and how many there are.
 
     Returns:
-        measured: One entry per tile holding something to measure, a group at a time,
-            leaving out a tile with no measured set on disk.
+        measured: One entry per tile with something to measure, a group at a time.
     """
     settings = configs.load()
     grid = Tessellate.of(settings.tile_km)
@@ -57,8 +56,7 @@ def _measure_group(group: str, picked: Sequence[Selection]) -> list[TileStats]:
         picked: What the search left of each of its tiles.
 
     Returns:
-        measured: What the looks each tile keeps left on it, leaving out a tile with no
-            measured set on disk or holding nothing measurable.
+        measured: What each tile's kept looks left on it.
     """
     coverage = index.load_group(group)
     found: list[TileStats] = []

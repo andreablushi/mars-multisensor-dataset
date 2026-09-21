@@ -92,8 +92,7 @@ def coverage_plan(
 
     Args:
         sources: The instrument set metadata files discovered on disk.
-        groups: Every group the tiles are grouped into, which each source is
-            matched to by the directory it sits in.
+        groups: Every group, which each source is matched to by its directory.
         groups_root: The per-group coverage root directory.
         force: When True, recompute sets that are already done.
 

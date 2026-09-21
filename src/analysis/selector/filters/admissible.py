@@ -24,8 +24,7 @@ def admit_observation(
         criteria: The filter read against the tile, holding the pixel floors.
 
     Returns:
-        held: What the tile keeps, with the set each belongs to and the cells it
-            fills.
+        held: What the tile keeps, with each set and the cells it fills.
         refused: What it turned away, carrying the same.
     """
     held: Held = []

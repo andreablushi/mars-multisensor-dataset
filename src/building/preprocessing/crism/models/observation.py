@@ -25,13 +25,10 @@ class CrismObservation:
     Attributes:
         label: What every product it was published as says about it, merged.
         identifier: The observation id.
-        cube: Lines by columns by the whole of the survey's band grid, holding only
-            the columns both detectors kept and NaN for the bands it never measured.
+        cube: Lines by columns by the survey's band grid, NaN for unmeasured bands.
         geometry: The backplanes on the same grid, as lines by columns by 14.
-        valid: Lines by columns, True where the pixel carries a measurement
-            rather than a cell the cleaning filled.
-        measured_bands: One flag per band of that grid, True where this observation
-            measured it, so an empty band is told from a refused pixel.
+        valid: Lines by columns, True where the pixel is a measurement.
+        measured_bands: One flag per band of that grid this observation measured.
     """
 
     identifier: str

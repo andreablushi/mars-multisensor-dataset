@@ -15,8 +15,7 @@ class InstrumentStats:
     Attributes:
         iid: The instrument, such as CTX.
         tiles: How many tiles it reached.
-        observations: How many observations of them it took, a look counted once
-            per tile it reached.
+        observations: How many observations it took, once per tile reached.
         first: When the earliest of its observations was taken.
         last: When the latest of them was taken.
     """

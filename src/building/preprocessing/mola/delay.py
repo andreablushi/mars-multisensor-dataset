@@ -15,10 +15,8 @@ def radargram_rows(topography: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         topography: Heights of the ground above the areoid in metres.
 
     Returns:
-        rows: One whole row per height, counted from zero like the radargram and
-            held to its window, whose top ground over about ten km stands above.
-        inside: Which of them the window holds, false where the echo lands off it
-            and the row was held to the nearest edge rather than counted on.
+        rows: One radargram row per height, held to its window.
+        inside: Which of them the window holds, false where held to an edge.
     """
     metres_per_row = physics.SPEED_OF_LIGHT_M_S * sharad_configs.DELAY_INTERVAL_S / 2.0
     rows = np.trunc(sharad_configs.AREOID_ROW - topography / metres_per_row)

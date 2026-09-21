@@ -15,19 +15,15 @@ class TileMetadata:
     """One tile of the dataset: when it was seen, and where it lies.
 
     Attributes:
-        frame: The local frame every observation of it is placed against, which
-            is the only place its absolute position is written down.
-        centre_lon: The longitude that frame is centred on, which is the centre
-            every crop of the tile was cut against.
+        frame: The local frame its observations are placed against.
+        centre_lon: The longitude that frame and its crops are centred on.
         centre_lat: The latitude it is centred on, for the same reason.
         area_km2: How much ground the tile's box covers.
         kept: Whether the filter gave the tile a place at all.
-        window_start: When the earliest observation it keeps was taken, or None
-            where it earned no window.
+        window_start: When its earliest kept observation was taken, or None.
         window_end: When the latest one was taken, or None for the same reason.
         window_days: How long that window runs.
-        window_share: The insisted shares rooted together, as a share of the
-            tile.
+        window_share: The insisted shares rooted together, as a share of the tile.
         observations_kept: How many observations the filter left it.
     """
 

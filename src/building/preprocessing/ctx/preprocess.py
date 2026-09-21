@@ -32,8 +32,7 @@ def held_bytes(identifier: str) -> int:
     """Return how much memory one build of this scan holds at its peak.
 
     Args:
-        identifier: The observation, whose files must already be in the cache
-            that `download.fetch` puts them in.
+        identifier: The observation, its files already in the download cache.
 
     Returns:
         held: How many bytes to hold for it, floor included.
@@ -53,17 +52,14 @@ def read_observation(identifier: str) -> CtxObservation:
     """Read one scan and place it on the grid its label projects it onto.
 
     Args:
-        identifier: The observation, whose files must already be in the cache
-            that `download.fetch` puts them in.
+        identifier: The observation, its files already in the download cache.
 
     Returns:
-        observation: The observation, its image on that grid and what ODE says of
-            it read into its label.
+        observation: The observation, its image and its ODE label.
 
     Raises:
         FileNotFoundError: When the image or its label is missing.
-        ValueError: When the label names a projection this cannot read, or the
-            image holds more than one plane.
+        ValueError: When the projection is unreadable or the image has many planes.
     """
     files = configs.CACHE.files(identifier, identifier)
     label = labels.load(files[configs.SUFFIXES[configs.LABEL]])
@@ -87,8 +83,7 @@ def windowed(image: Path, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     """Return the pixels one cut keeps, reading no more of the scan than holds them.
 
     Args:
-        image: The TIFF the scan was published as, in chunks, so a window of it
-            costs the chunks it covers and not the whole file.
+        image: The scan's TIFF, read chunk by chunk.
         bounds: The lines to keep and then the samples, as the cut left them.
 
     Returns:

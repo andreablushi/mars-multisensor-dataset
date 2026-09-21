@@ -30,11 +30,9 @@ def build_plan(
     Args:
         picked: The tiles to build, each with the observations its window keeps.
         root: The directory this build of the dataset is written in.
-        ode: The client an instrument searched by ground is looked up through,
-            or None to leave those instruments out of the plan.
+        ode: The client for instruments searched by ground, or None to skip them.
         force: When True, plan products every crop of which is already written.
-        published: The crops that count as written although no longer on disk,
-            by their path relative to the root.
+        published: The crops counted as written though off disk, by relative path.
 
     Returns:
         plan: The plan, its jobs heaviest first so no long one is picked up last.

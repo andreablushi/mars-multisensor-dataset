@@ -17,8 +17,7 @@ def draw_training(
 
     Args:
         picked: What the search left of every tile it searched.
-        settings: The settled choices for the build, whose share settles how much
-            of what the filter kept one build covers.
+        settings: The settled choices for the build, whose share sizes it.
         held_out: The tiles another dataset holds, which training never sees.
 
     Returns:

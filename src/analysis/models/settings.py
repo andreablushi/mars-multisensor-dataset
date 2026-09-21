@@ -17,14 +17,12 @@ class Settings:
         tile_km: The side every tile of the grid is sized to, in kilometres.
         tile_group_deg: The side every group of tiles is sized to, in degrees.
         grid_cells: Cells along each axis of every 100 km of a tile.
-        instruments: The instrument sets to download for every group, by key, which
-            the figures draw in that order.
+        instruments: The instrument sets to download for every group, by key.
         loc: "f" for every footprint overlapping the box, "o" for only those inside.
         workers: How many jobs each half runs at once.
         window: What a window has to hold before a tile earns a place.
         ground_truth: How the tiles the selection kept are labelled.
-        union_threads: How many threads one coverage job accumulates on, which is
-            the share of the machine one worker gets rather than a setting of its own.
+        union_threads: How many threads one coverage job accumulates on.
     """
 
     tile_km: float

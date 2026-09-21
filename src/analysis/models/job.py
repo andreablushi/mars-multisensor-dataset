@@ -34,8 +34,7 @@ class Job:
         """Return a short human readable name for this job.
 
         Returns:
-            label: The group and instrument set, named as the job's own stage spells
-                them.
+            label: The group and instrument set, as the job's stage names them.
         """
         if self.instrument_set is not None:
             return f"{self.group.name} [{self.instrument_set.key}]"

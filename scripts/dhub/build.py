@@ -27,18 +27,15 @@ def published_dataset(
 
     Args:
         project: The DigitalHub project the dataset is logged into.
-        settings: The settled choices for the build, whose name the dataset is
-            published under so one never overwrites another.
+        settings: The settled choices for the build, naming the published dataset.
         picked: The tiles to build, each with the observations its window keeps.
-        force: Whether to build the dataset again from nothing, rather than
-            filling in whatever the last build of it left missing.
+        force: Whether to build from nothing rather than fill in what is missing.
 
     Returns:
         dataset: The published dataset, one object per crop.
 
     Raises:
-        RuntimeError: When a product failed, which leaves the dataset short of
-            what the selection asked for.
+        RuntimeError: When a product failed.
     """
     published = platform.load().publishes
     name = settings.name

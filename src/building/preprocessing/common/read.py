@@ -41,8 +41,7 @@ def distance_centre_m(
         described: What `read_sample` handed back beside them.
 
     Returns:
-        north: The ground metres north of that centre, one per sample, in the
-            geodesic frame it is the middle of.
+        north: The ground metres north of that centre, one per sample.
         east: The ground metres east of it, in the same frame.
     """
     grid = described["polar"]

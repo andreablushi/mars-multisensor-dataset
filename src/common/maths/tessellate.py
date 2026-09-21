@@ -21,8 +21,7 @@ def split_bands(tile_km: float) -> tuple[float, ...]:
         tile_km: The side a tile is sized to, in kilometres.
 
     Returns:
-        edges: One latitude per boundary, from the south pole north, holding one
-            more than there are bands.
+        edges: One latitude per boundary, from the south pole north.
     """
     bands = max(1, round(math.pi * RADIUS_KM / tile_km))
     # The latitudinal boundaries, of equal height from pole to pole.
@@ -37,8 +36,7 @@ def split_bands_columns(tile_km: float) -> tuple[int, ...]:
         tile_km: The side a tile is sized to, in kilometres.
 
     Returns:
-        columns: One count per band, from the south pole north, each band holding
-            as many tiles as its area has room for.
+        columns: One tile count per band, from the south pole north.
     """
     # The band area, a zone of the sphere and so its height taken in sine.
     areas = (
@@ -54,8 +52,7 @@ class Tessellate:
     Attributes:
         edges: The latitude each band is bounded by, from the south pole north.
         columns: How many columns each band is split into.
-        offsets: Where each band's first tile stands when every tile is counted
-            in one run.
+        offsets: Where each band's first tile stands in one run of all tiles.
     """
 
     edges: tuple[float, ...]
@@ -144,7 +141,6 @@ class Tessellate:
             column: The place of each along its band, one or an array of them.
 
         Returns:
-            indices: The place of each tile among all of them, south to north and
-                west to east.
+            indices: Each tile's place, south to north and west to east.
         """
         return self.offsets[band] + np.asarray(column, dtype=np.int64)

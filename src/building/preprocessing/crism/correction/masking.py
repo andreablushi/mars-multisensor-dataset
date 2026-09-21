@@ -18,19 +18,16 @@ def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: str) -> Mask:
     """Fill everything one cube holds that is not a measurement.
 
     Args:
-        cube: The values as lines by samples by bands, ordered by wavelength,
-            filled in place.
+        cube: The values as lines by samples by bands, filled in place.
         table: The centre wavelength of every column and band, in that order.
-        detector: Which detector, `l` for infrared or `s` for visible, which
-            picks the window.
+        detector: Which detector, `l` for infrared or `s` for visible.
 
     Returns:
         mask: The mask saying where the cube was filled rather than measured.
 
     Raises:
         KeyError: When no window is configured for that detector.
-        ValueError: When nothing at all survives the mask, or when no cell of
-            it is a measurement to fill the rest from.
+        ValueError: When nothing survives the mask or nothing is measured.
     """
     centre = bands_calibration.centres(table)
     low, high = WINDOWS[detector]

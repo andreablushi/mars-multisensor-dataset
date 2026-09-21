@@ -29,8 +29,7 @@ def write_metadata(
         held: One row per tile, in the order to write them.
         taken: One record per tile and observation, in the same manner.
         instruments: The instruments the build covered.
-        band_centres_nm: The grid every crop of an instrument is laid out on,
-            keyed by instrument, for those holding a wavelength.
+        band_centres_nm: The band grid of each instrument with a wavelength.
         root: The directory the files are written in, made when missing.
     """
     root.mkdir(parents=True, exist_ok=True)

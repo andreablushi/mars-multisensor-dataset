@@ -21,8 +21,7 @@ class Tile:
         min_lat: The southernmost planetocentric latitude in degrees.
         max_lat: The northernmost planetocentric latitude in degrees.
         west_lon: The westernmost longitude in degrees, 0 to 360.
-        east_lon: The easternmost longitude in degrees, 0 to 360, equal to the
-            westernmost where the tile circles a pole.
+        east_lon: The easternmost longitude, 0 to 360, the westernmost at a pole.
     """
 
     band: int
@@ -64,9 +63,7 @@ class Tile:
         """Return the grid this tile is read on, whatever is read for it.
 
         Returns:
-            grid: The stereographic grid of the pole its whole box lies at,
-                centred on the meridian, and None where it is read in degrees
-                from its own centre instead.
+            grid: The polar stereographic grid of its box, or None for degrees.
         """
         if self.min_lat >= POLAR_LATITUDE:
             return (0.0, True, physics.EQUATORIAL_RADIUS_M)

@@ -14,11 +14,9 @@ class Samples:
     """Where every sample of one observation sits, on the grid it was placed on.
 
     Attributes:
-        down: The latitude of every line in degrees, or its northing in the
-            metres of `grid`, one per sample where the two are not separable.
+        down: The latitude or northing of every line, per sample if not separable.
         across: The longitude of every sample, or its easting, holding the same.
-        separable: Whether those two hold one axis each rather than a value for
-            every sample.
+        separable: Whether those two hold one axis each.
         grid: The grid the two are measured on, and None where they are degrees.
     """
 

@@ -17,14 +17,10 @@ class CtxObservation:
     Attributes:
         label: What every product it was published as says about it, merged.
         identifier: The observation id.
-        image: The TIFF the brightness was published as, read a window at a time
-            rather than whole, a scan running to gigabytes.
-        down: What every line holds, its latitude in degrees on an equatorial
-            grid and its northing in the projection's metres on a polar one.
-        across: What every sample holds, its longitude or its easting, read the
-            same way.
-        polar: The grid the two are measured on, and None where they are the
-            degrees an equatorial grid places directly.
+        image: The brightness TIFF, read a window at a time.
+        down: The latitude or northing of every line.
+        across: The longitude or easting of every sample.
+        polar: The grid the two are measured on, or None for degrees.
     """
 
     identifier: str

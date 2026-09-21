@@ -24,11 +24,9 @@ class SharadObservation:
         label: What every product it was published as says about it, merged.
         identifier: The observation id.
         power: Delay samples by traces, holding only the placed traces.
-        clutter: The simulated surface clutter power over every radargram column,
-            mapped from disk, zero where no surface echo is predicted.
+        clutter: The simulated clutter power per column, zero without echo.
         geometry: One row per kept trace, in the same order.
-        traces: Which of the original radargram columns these traces are,
-            counted from zero.
+        traces: Which original radargram columns these traces are, from zero.
     """
 
     identifier: str
@@ -64,8 +62,7 @@ class SharadObservation:
         """Return how far off the vertical the Sun stood over every kept trace.
 
         Returns:
-            zenith: One per trace, in degrees, which is the angle a camera over the
-                same ground would call the incidence.
+            zenith: One per trace, in degrees, the incidence a camera would see.
         """
         return self.geometry[SOLAR_ZENITH_FIELD]
 
@@ -74,7 +71,6 @@ class SharadObservation:
         """Return how far above the ground the spacecraft flew over every trace.
 
         Returns:
-            altitude: One per trace, in km, the two radii the geometry publishes
-                taken from one another.
+            altitude: One per trace, in km, the difference of the two radii.
         """
         return self.geometry[SPACECRAFT_RADIUS_FIELD] - self.geometry[MARS_RADIUS_FIELD]

@@ -33,8 +33,7 @@ def describe(plan: Plan, settings: Settings, budget: Budget, console: Console) -
     Args:
         plan: What the planner worked out.
         settings: The settled choices for the build, which size it.
-        budget: The memory those builds share, which settles how many of the
-            heaviest products run at once.
+        budget: The memory those builds share, settling how many run at once.
         console: The console to print on.
     """
     crops = sum(len(job.frames) for job in plan.jobs)
@@ -84,8 +83,7 @@ def _high_water() -> str:
     """Return the most memory the box has held, to read against what it was given.
 
     Returns:
-        held: The high water mark to print, and an empty string where nothing
-            counts one, so a run outside a container says nothing of it.
+        held: The high water mark to print, or empty where nothing counts one.
     """
     peak = memory.peak_bytes()
     return f", peak {peak / 1024**3:.1f} GiB" if peak else ""

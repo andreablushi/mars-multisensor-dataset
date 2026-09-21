@@ -18,8 +18,7 @@ class Job:
         instrument: The instrument that fetches it, as ODE names it.
         identifier: What that instrument is asked for, its observation or sheet.
         frames: The tiles to cut it to, each with its own local frame.
-        t_start: When the product was taken, or None where its archive
-            publishes no time for it.
+        t_start: When the product was taken, or None.
     """
 
     instrument: str
@@ -61,10 +60,8 @@ class Plan:
     Attributes:
         jobs: The products that still need building.
         tiles: What the dataset holds about every tile the build covers.
-        skipped_existing: Products left alone because every crop of them is
-            already written.
-        unread: Observations the selection kept that no instrument here could read,
-            and which were therefore never planned.
+        skipped_existing: Products whose every crop is already written.
+        unread: Kept observations no instrument here could read, never planned.
     """
 
     jobs: tuple[Job, ...]

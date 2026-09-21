@@ -99,8 +99,7 @@ def _scored(track: Track, counts: Sequence[int], arc: float = 0.0) -> float:
         arc: How far Mars turns inside the window, charged against its ground.
 
     Returns:
-        worth: The constraints rooted together as a share of the tile, less their
-            arc.
+        worth: The constraints rooted together as a share of the tile, less their arc.
     """
     rooted = math.prod(counts) ** (1.0 / len(counts))
     geo_mean = ground.share(rooted, track.grid.cell_km2, track.grid.area_km2)

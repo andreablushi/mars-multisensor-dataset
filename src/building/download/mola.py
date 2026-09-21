@@ -45,8 +45,7 @@ def record(client: httpx.Client) -> dict[str, tuple[str, Box]]:
         client: The client whose connections the query is asked over.
 
     Returns:
-        published: Where each file is served from and the ground its product covers, by
-            lowercase name.
+        published: Each file's URL and the ground it covers, by lowercase name.
     """
     if not _RECORD:
         for entry in archive.query(
@@ -90,8 +89,7 @@ def sheets(grid: str, client: httpx.Client) -> list[str]:
         client: The client whose connections the query is asked over.
 
     Returns:
-        sheets: The sheet ids the height is published for, sorted and without
-            repeats, and none for a grid published whole.
+        sheets: The sorted unique sheet ids, and none for a whole grid.
     """
     held = configs.GRIDS[grid]
     if held.product:

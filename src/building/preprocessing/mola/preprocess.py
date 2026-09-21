@@ -16,12 +16,10 @@ def read_observation(grid: str) -> MolaGrid:
     """Read which sheets of one grid a tile could be merged from.
 
     Args:
-        grid: The grid, as `configs.GRIDS` names it, whose sheets must already
-            be in the cache that `download.fetch` puts them in.
+        grid: The grid as `configs.GRIDS` names it, its sheets already cached.
 
     Returns:
-        grid: The sheets of it that landed, no more than a label of which is read
-            until a box says which bins to take.
+        grid: The sheets of it that landed, only their labels read yet.
     """
     held = configs.GRIDS[grid]
     files = {}

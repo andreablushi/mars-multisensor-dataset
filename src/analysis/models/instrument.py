@@ -44,8 +44,7 @@ class InstrumentSet:
         """Return the short readable name for this set.
 
         Returns:
-            label: The instrument and product type, with the pattern where it is part of
-                one.
+            label: The instrument and product type, with its pattern if any.
         """
         name = f"{self.iid} {self.pt}"
         return f"{name} {self.product_id}" if self.product_id else name
@@ -55,8 +54,7 @@ class InstrumentSet:
         """Return the canonical IHID/IID/PT identifier.
 
         Returns:
-            key: The three identifiers joined by slashes, with the pattern after a
-                colon.
+            key: The three identifiers joined by slashes, the pattern after a colon.
         """
         key = f"{self.ihid}/{self.iid}/{self.pt}"
         return f"{key}:{self.product_id}" if self.product_id else key

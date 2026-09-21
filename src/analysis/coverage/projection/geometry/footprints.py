@@ -51,9 +51,7 @@ def tile_region(tile: Tile) -> TileRegion:
         tile: The tile whose box the coverage is measured against.
 
     Returns:
-        region: The projected box and the clipping regions built from its bounds, in
-            lon/lat and, for a tile poleward of every lon/lat footprint's reach, in
-            its pole's stereographic metres.
+        region: The projected box and its clipping regions.
     """
     min_lat, max_lat = tile.min_lat, tile.max_lat
     west_lon, east_lon = tile.west_lon, tile.east_lon
@@ -146,15 +144,12 @@ def projected_footprints(
 
     Args:
         region: The projected tile the footprints are cut to.
-        geoms: The parsed footprint geometries, in lon/lat degrees or in the
-            stereographic metres of the tile's pole.
+        geoms: The parsed footprints, in lon/lat or polar stereographic metres.
         swath_widths_m: The cross-track width for each track, ignored for areas.
-        stereographic: Whether the geometries are in the stereographic metres ODE
-            publishes on the polar radius, which only a polar region can cut.
+        stereographic: Whether the geometries are in ODE's polar stereographic metres.
 
     Returns:
-        footprints: One projected, clipped footprint per input, empty where it falls
-            outside.
+        footprints: One clipped footprint per input, empty where it falls outside.
     """
     parts, owners = single_parts(geoms)
     kinds = get_type_id(parts)

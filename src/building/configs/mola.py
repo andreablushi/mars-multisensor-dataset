@@ -53,13 +53,10 @@ class Grid:
     """One grid of the gridded record, and what it is published as.
 
     Attributes:
-        name: What the grid is called, which is also what every crop merged
-            from it is stored under.
+        name: The grid's name, which every crop merged from it is stored under.
         resolution: How many bins of it one degree holds.
-        product: The single product it is published as, and None for a grid
-            published as the sheets that cover it.
-        north: Whether it is centred on the north pole, and None where it is
-            equatorial and centred on no pole at all.
+        product: The single product it is published as, or None for sheets.
+        north: Whether it is centred on the north pole, or None for equatorial.
     """
 
     name: str

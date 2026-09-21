@@ -25,14 +25,12 @@ def merge_detectors(
 
     Args:
         identifier: The observation the detectors are halves of.
-        detectors: The halves that landed, already through
-            `preprocess.clean_detectors`, so each carries its own mask.
+        detectors: The halves that landed, cleaned, each with its own mask.
         geometry: The backplanes that place every pixel, on the same grid.
         label: What every product the observation was published as says of it.
 
     Returns:
-        observation: The joined observation, laid out on the whole of the survey's
-            grid, with the bands it did not measure left empty.
+        observation: The joined observation on the survey's whole band grid.
 
     Raises:
         ValueError: When no half was delivered, or one has not been cleaned.

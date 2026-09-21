@@ -20,18 +20,15 @@ def read_observation(identifier: str) -> SharadObservation:
     """Read one radargram and join it to the geometry it was measured at.
 
     Args:
-        identifier: The observation, whose files must already be in the cache
-            that `download.fetch` puts them in.
+        identifier: The observation, its files already in the download cache.
 
     Returns:
-        observation: The observation holding only the traces the geometry places, in the
-            radargram's own order, with the combined clutter simulation beside them.
+        observation: The placed traces in order, with their clutter simulation.
 
     Raises:
         FileNotFoundError: When any product or a label is missing.
         KeyError: When a label names a sample type this cannot read.
-        ValueError: When the geometry holds fewer rows than its label promises, or
-            the clutter is not one array the radargram's size.
+        ValueError: When the geometry is short or the clutter does not fit.
     """
     held = {
         kind: configs.CACHE.files(

@@ -35,8 +35,7 @@ def every_tile_group(grid: Tessellate, tile_group_deg: float) -> list[TileGroup]
         tile_group_deg: The side a group is sized to, in degrees.
 
     Returns:
-        groups: Every group, south to north and west to east, each bounded by the
-            tiles it holds.
+        groups: Every group, south to north and west to east.
     """
     bands = len(grid.columns)
     grouped: dict[str, list[Tile]] = {}

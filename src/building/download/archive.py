@@ -18,8 +18,7 @@ def query(client: httpx.Client, **params: str) -> list[dict]:
 
     Args:
         client: The client whose connections the query is asked over.
-        params: What to ask for, such as the instrument host, the instrument,
-            the product type, and a product id or a page size.
+        params: What to ask for, such as instrument host, instrument and type.
 
     Returns:
         entries: One entry per product ODE answers with, empty when it matched none.
@@ -92,8 +91,7 @@ def offers(client: httpx.Client, product_id: str, **params: str) -> dict[str, st
         params: What else names it, such as the instrument and its type.
 
     Returns:
-        urls: The download URL of each file suffix, the file named for the product
-            where there is one, and the only offer of that suffix otherwise.
+        urls: The download URL of each file suffix.
     """
     entries = query(client, productid=product_id, **params)
     named: dict[str, str] = {}
@@ -121,10 +119,8 @@ def collect(
         client: The client whose connections the query is asked over.
         product_id: The product to fetch.
         destination: Where each of its halves belongs, keyed by suffix.
-        span: The first byte of each half to keep and the byte after the last, or
-            None to keep them whole.
-        params: What names the product to ODE, such as the instrument host, the
-            instrument and the product type.
+        span: The first and past-the-last byte of each half, or None for whole.
+        params: What names the product to ODE, such as host, instrument and type.
 
     Raises:
         FileNotFoundError: When ODE offers no download for a missing half.
@@ -152,10 +148,8 @@ def bring(
         destination: Where each half belongs, keyed by suffix.
         urls: Where each half is served from, keyed by the same suffix.
         timeout: How long to wait on each transfer.
-        client: A client whose connections to reuse, or None to open one per
-            transfer.
-        span: The first byte of each half to keep and the byte after the last, or
-            None to keep them whole.
+        client: A client whose connections to reuse, or None to open one each.
+        span: The first and past-the-last byte of each half, or None for whole.
 
     Raises:
         FileNotFoundError: When a missing half is served from nowhere.

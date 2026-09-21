@@ -27,8 +27,7 @@ def area(km2: float) -> str:
         km2: The area in square kilometres.
 
     Returns:
-        written: The area, to a hundredth below ten square kilometres and whole above
-            it.
+        written: The area, to a hundredth below ten km2 and whole above.
     """
     return f"{km2:,.0f} km2" if km2 >= 10.0 else f"{km2:,.2f} km2"
 
