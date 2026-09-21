@@ -39,33 +39,43 @@ def bounds_box(bounded) -> Box:
     return bounded.min_lat, bounded.max_lat, bounded.west_lon, box_span(bounded)
 
 
-def core_box(
-    feature: Feature, share: float, latitudes: tuple[float, float] | None
-) -> Box | None:
+def claimed_box(feature: Feature, latitudes: tuple[float, float] | None) -> Box | None:
     """Return the part of a feature's box a texture tile has to lie in.
 
     Args:
         feature: The feature.
-        share: The share of the box kept about its centre, which is the pole for
-            a feature circling one.
         latitudes: The latitudes the class is kept to, or None for anywhere.
 
     Returns:
-        box: The core, or None where the latitudes leave none of it.
+        box: The box, or None where the latitudes leave none of it.
     """
-    south, north, west = feature.min_lat, feature.max_lat, feature.west_lon
-    span = box_span(feature)
-    trimmed = (1.0 - share) * (north - south)
-    if span >= TURN and abs(north) >= POLE:
-        south += trimmed
-    elif span >= TURN and abs(south) >= POLE:
-        north -= trimmed
-    else:
-        south, north = south + trimmed / 2.0, north - trimmed / 2.0
-        west, span = (west + (1.0 - share) * span / 2.0) % TURN, share * span
+    south, north, west, span = bounds_box(feature)
     if latitudes is not None:
         south, north = max(south, latitudes[0]), min(north, latitudes[1])
     return (south, north, west, span) if south < north else None
+
+
+def centre_offset(inner: Box, outer: Box) -> np.ndarray:
+    """Return how far each inner box's centre sits from its outer box's centre.
+
+    Args:
+        inner: The boxes to measure, one or an array of them.
+        outer: The boxes they are measured in, one or an array of them.
+
+    Returns:
+        offset: One share per pair, 0 at the centre and 1 at the edge, which is
+            measured from the pole for a box circling one.
+    """
+    south, north, west, span = outer
+    latitude = (np.asarray(inner[0]) + inner[1]) / 2.0
+    height = np.asarray(north) - south
+    pole = np.where(np.asarray(north) >= POLE, north, south)
+    eastward = (np.asarray(inner[2]) + np.asarray(inner[3]) / 2.0 - west) % TURN
+    plain = np.maximum(
+        np.abs(2.0 * latitude - south - north) / height,
+        np.abs(2.0 * eastward - span) / span,
+    )
+    return np.where(span >= TURN, np.abs(pole - latitude) / height, plain)
 
 
 def inside(inner: Box, outer: Box) -> np.ndarray:

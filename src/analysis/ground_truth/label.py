@@ -13,6 +13,7 @@ from analysis.ground_truth.models.rule import Rule
 from analysis.ground_truth.models.settings import Settings
 from analysis.selector.models.selection import SelectedTile
 from common.maths.geodesy import northward_m
+from common.maths.physics import METRES_PER_KM
 
 
 def labelled_tiles(
@@ -28,8 +29,9 @@ def labelled_tiles(
     Returns:
         labels: One label per tile a single class claims, in the order the
             selection was written. A tile holding a whole object is that object,
-            and a texture tile is left out where another class claims it too or
-            where any object of an object class reaches into it.
+            and a texture tile lies in the box of its feature, each counted for
+            the features of other classes or excluded descriptors reaching into
+            it, or of its own class where it holds an object.
     """
 
     def read_from(rule: Rule, feature: Feature) -> bool:
@@ -49,37 +51,59 @@ def labelled_tiles(
         np.array(held)
         for held in zip(*(box.bounds_box(one) for one in kept), strict=True)
     )
-    claims: list[dict[str, str]] = [{} for _ in kept]
-    objects = {
-        label: rule
-        for label, rule in settings.classes.items()
-        if rule.diameter_km is not None
-    }
-    for label, rule in settings.classes.items():
-        for feature in (one for one in features if read_from(rule, one)):
+    owners = [
+        {label for label, rule in settings.classes.items() if read_from(rule, one)}
+        for one in features
+    ]
+    claims: list[dict[str, tuple[str, float]]] = [{} for _ in kept]
+    touched: list[list[int]] = [[] for _ in kept]
+    for at, feature in enumerate(features):
+        if not owners[at] and feature.feature_class not in settings.excluded:
+            continue
+        bounds = box.bounds_box(feature)
+        for tile in np.flatnonzero(box.touching(tiles, bounds)):
+            touched[tile].append(at)
+        for label in owners[at]:
+            rule = settings.classes[label]
             if rule.diameter_km is not None:
                 smallest, largest = rule.diameter_km
-                diameter = northward_m(feature.max_lat - feature.min_lat) / 1000.0
+                diameter = (
+                    northward_m(feature.max_lat - feature.min_lat) / METRES_PER_KM
+                )
                 if not smallest <= diameter <= largest:
                     continue
-                hit = box.inside(box.bounds_box(feature), tiles)
-            elif (core := box.core_box(feature, settings.core, rule.latitudes)) is None:
+                hit = box.inside(bounds, tiles)
+                offset = box.centre_offset(bounds, tiles)
+            elif (claimed := box.claimed_box(feature, rule.latitudes)) is None:
                 continue
             else:
-                hit = box.inside(tiles, core)
-            for at in np.flatnonzero(hit):
-                claims[at].setdefault(label, feature.name)
-    # Any object reaching into a texture tile, whatever its size, is ground of its own
-    reached = np.zeros(len(kept), dtype=bool)
-    for feature in features:
-        if any(read_from(rule, feature) for rule in objects.values()):
-            reached |= box.touching(tiles, box.bounds_box(feature))
+                hit = box.inside(tiles, claimed)
+                offset = box.centre_offset(tiles, claimed)
+            for tile in np.flatnonzero(hit):
+                claims[tile].setdefault(label, (feature.name, float(offset[tile])))
     labels = []
-    for at, held in enumerate(claims):
-        chosen = {label: name for label, name in held.items() if label in objects}
-        if not chosen and not reached[at]:
-            chosen = held
-        if len(chosen) == 1:
-            ((label, name),) = chosen.items()
-            labels.append(Label(tile=kept[at].tile, label=label, feature=name))
+    for tile, held in enumerate(claims):
+        chosen = {
+            label: claim
+            for label, claim in held.items()
+            if settings.classes[label].diameter_km is not None
+        } or held
+        if len(chosen) != 1:
+            continue
+        ((label, (name, offset)),) = chosen.items()
+        # An object stands alone, while a texture may meet more of its own class
+        alone = settings.classes[label].diameter_km is not None
+        foreign = sum(
+            features[at].name != name and (alone or owners[at] != {label})
+            for at in touched[tile]
+        )
+        labels.append(
+            Label(
+                tile=kept[tile].tile,
+                label=label,
+                feature=name,
+                foreign=foreign,
+                offset=offset,
+            )
+        )
     return labels

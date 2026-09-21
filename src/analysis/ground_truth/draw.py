@@ -1,11 +1,11 @@
-"""Drawing the same number of tiles out of every class, spread over its features."""
+"""Drawing the same number of tiles out of every class, the clearest first."""
 
 from __future__ import annotations
 
 import random
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import replace
-from itertools import chain, islice, zip_longest
 
 from analysis.ground_truth.models.label import Label
 from analysis.ground_truth.models.settings import Settings
@@ -36,9 +36,20 @@ def drawn_labels(labels: Sequence[Label], settings: Settings) -> list[Label]:
     draw = random.Random(settings.seed)
     taken: set[str] = set()
     for by_feature in classes.values():
-        shuffled = [draw.sample(one, len(one)) for one in by_feature.values()]
-        draw.shuffle(shuffled)
-        # One feature at a time in turn, so no single feature fills its class
-        turns = chain.from_iterable(zip_longest(*shuffled))
-        taken.update(one.tile for one in islice(filter(None, turns), wanted))
+        ranked = []
+        for tiles in by_feature.values():
+            turns: Counter[int] = Counter()
+            for one in sorted(tiles, key=lambda one: (one.foreign, one.offset)):
+                # One feature at a time in turn, so no single feature fills its class
+                ranked.append(
+                    (
+                        one.foreign,
+                        turns[one.foreign],
+                        one.offset,
+                        draw.random(),
+                        one.tile,
+                    )
+                )
+                turns[one.foreign] += 1
+        taken.update(tile for *_, tile in sorted(ranked)[:wanted])
     return [replace(one, drawn=one.tile in taken) for one in labels]

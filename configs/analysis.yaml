@@ -40,8 +40,8 @@ window:
 
 # How the tiles the selection kept are labelled.
 ground_truth:
-  # The share of a texture feature's box a tile has to lie in, about its centre.
-  core: 0.5
+  # The IAU descriptors the draw keeps tiles clear of first, beside every other class.
+  excluded: [Tholus, Patera, Mons, Vallis, Mensa, Collis, Cavus, Chasma, Catena, Rupes, Dorsum, Sulcus, Labes]
 
   # How many tiles are drawn of every class, or null for as many as the scarcest class holds.
   per_class: null

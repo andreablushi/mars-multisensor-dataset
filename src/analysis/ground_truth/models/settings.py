@@ -12,8 +12,7 @@ class Settings:
     """The settled choices for labelling the tiles the selection kept.
 
     Attributes:
-        core: The share of a texture feature's box a tile has to lie in, about
-            its centre.
+        excluded: The IAU descriptors a labelled tile is best kept clear of.
         classes: What every class is read from, by the class a tile earns, in
             the order the config names them.
         per_class: How many tiles the draw takes of every class, or None for as
@@ -21,7 +20,7 @@ class Settings:
         seed: The number the draw is made with, so it is the same every run.
     """
 
-    core: float
+    excluded: list[str]
     classes: dict[str, Rule]
     per_class: int | None
     seed: int
