@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import random
 import time
 from collections.abc import Callable
@@ -20,7 +21,7 @@ BACKOFF_BASE = 0.5
 # Ceiling on one backoff sleep, so many retries stay minutes rather than days
 BACKOFF_MAX = 30.0
 RETRYABLE_STATUS = frozenset({403, 429, 500, 502, 503, 504})
-# Which of those mean the caller is asking too often, and so hold every thread
+# Which of those mean the caller is asking too often, and so hold the host back
 CROWDED_STATUS = frozenset({403, 429})
 # Fewer tries for a transfer than a query, one running for minutes not seconds
 STREAM_RETRIES = 5
@@ -35,8 +36,18 @@ QUERY_DEADLINE = 900.0
 # How long one transfer may run in all, so a trickling server is given up on
 STREAM_DEADLINE = 10800.0
 
-# The pause every request waits out, which one archive's refusal lengthens.
-ARCHIVE = Throttle()
+
+@functools.cache
+def throttle(host: str) -> Throttle:
+    """Return the pause every request to one host waits out.
+
+    Args:
+        host: The host asked, whose refusals hold back its requests alone.
+
+    Returns:
+        throttle: The one throttle that host shares across threads.
+    """
+    return Throttle()
 
 
 class FetchError(RuntimeError):
@@ -85,6 +96,7 @@ def fetched_json(
         FetchError: When refused, when no reply was readable, or past the deadline.
     """
     asking = client or httpx
+    archive = throttle(httpx.URL(url).host)
     give_up_at = time.monotonic() + deadline
     last: Exception | None = None
     for attempt in range(retries + 1):
@@ -92,7 +104,7 @@ def fetched_json(
             slept(attempt, backoff)
         if time.monotonic() >= give_up_at:
             break
-        ARCHIVE.wait()
+        archive.wait()
         try:
             reply = asking.get(
                 url,
@@ -101,16 +113,16 @@ def fetched_json(
             )
         except httpx.HTTPError as error:
             if isinstance(error, CONNECT_ERRORS):
-                ARCHIVE.refused()
+                archive.refused()
             last = error
             continue
         if reply.status_code in RETRYABLE_STATUS:
-            # One refusal slows every thread, so a run stops asking to be blocked.
+            # One refusal slows every thread on that host, so a run stops being blocked.
             if reply.status_code in CROWDED_STATUS:
-                ARCHIVE.refused()
+                archive.refused()
             last = FetchError(f"HTTP {reply.status_code}")
             continue
-        ARCHIVE.answered()
+        archive.answered()
         if reply.status_code >= 400:
             raise FetchError(f"{url} refused the request: HTTP {reply.status_code}")
         try:
@@ -153,6 +165,7 @@ def streamed(
     """
     reading = client.stream if client else httpx.stream
     headers = {"Range": f"bytes={span[0]}-{span[1] - 1}"} if span else None
+    archive = throttle(httpx.URL(url).host)
     give_up_at = time.monotonic() + deadline
     last: Exception | None = None
     for attempt in range(retries + 1):
@@ -160,7 +173,7 @@ def streamed(
             slept(attempt, backoff)
         if time.monotonic() >= give_up_at:
             break
-        ARCHIVE.wait()
+        archive.wait()
         try:
             with reading(
                 "GET",
@@ -170,7 +183,7 @@ def streamed(
             ) as reply:
                 if reply.status_code in RETRYABLE_STATUS:
                     if reply.status_code in CROWDED_STATUS:
-                        ARCHIVE.refused()
+                        archive.refused()
                     last = FetchError(f"HTTP {reply.status_code}")
                     continue
                 if reply.status_code >= 400:
@@ -179,7 +192,7 @@ def streamed(
                     )
                 if span and reply.status_code != httpx.codes.PARTIAL_CONTENT:
                     raise FetchError(f"{url} ignored the byte range it was asked for")
-                ARCHIVE.answered()
+                archive.answered()
                 # Nothing is left behind when a transfer fails part way through.
                 with atomic_path(path) as tmp, tmp.open("wb") as handle:
                     for chunk in reply.iter_bytes():
@@ -192,6 +205,6 @@ def streamed(
                 return
         except httpx.HTTPError as error:
             if isinstance(error, CONNECT_ERRORS):
-                ARCHIVE.refused()
+                archive.refused()
             last = error
     raise FetchError(f"gave up after {deadline:.0f}s or {retries} retries: {last}")
