@@ -257,7 +257,7 @@ def build_product(job: Job, root: Path) -> Outcome:
         root: The dataset's own root directory.
 
     Returns:
-        outcome: The outcome, its written samples and any error that stopped it.
+        outcome: The outcome, its written samples and the first error a cut raised.
 
     Raises:
         Exception: Whatever reading the product raised, collected as a failure.
@@ -265,6 +265,7 @@ def build_product(job: Job, root: Path) -> Outcome:
     steps = INSTRUMENTS[job.instrument]
     written: list[ObservationMetadata] = []
     missed = 0
+    failed: Exception | None = None
     try:
         # Read once however many tiles want it, which is why the product is the unit.
         observation = steps.read_observation(job.identifier)
@@ -272,8 +273,9 @@ def build_product(job: Job, root: Path) -> Outcome:
             try:
                 held = steps.crop(observation, frame)
             except Exception as error:  # noqa: BLE001
-                # What is on disk is handed back, so no written sample misses the index.
-                return Outcome(job, records=tuple(written), error=error)
+                # A tile failing to cut is kept as the error, and the rest still cut.
+                failed = failed or error
+                continue
             # Reaching none of a tile is no failure, coverage being a box overlap.
             if held is None:
                 missed += 1
@@ -292,7 +294,7 @@ def build_product(job: Job, root: Path) -> Outcome:
         # A product goes once every tile that wanted it is cut; it is a cache.
         if steps.discard:
             steps.discard(job.identifier)
-    return Outcome(job, records=tuple(written), missed=missed)
+    return Outcome(job, records=tuple(written), missed=missed, error=failed)
 
 
 def _indexed(
