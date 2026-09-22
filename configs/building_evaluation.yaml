@@ -1,0 +1,12 @@
+# What the evaluation build is called.
+
+# The directory it is written in and the name it is published under.
+name: evaluation
+
+# Products built at once, one per core; a run on a platform is given its own.
+workers: 8
+
+# Downloads at once from each archive, which wait on it and not on the cores.
+downloads:
+  jpl: 4
+  wustl: 8

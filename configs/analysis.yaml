@@ -1,0 +1,63 @@
+# A run downloads every set still missing and measures every set not yet measured.
+
+# Jobs at once in each half: download threads, then coverage processes.
+workers: 16
+
+# The side every tile of the grid Mars is split into is sized to, in km.
+tile_km: 32
+
+# The side of the tile groups ODE is asked about at once, in degrees.
+tile_group_deg: 10
+
+# How many cells every 100 km of a tile is divided into. For computation purpose.
+grid_cells: 32
+
+# What a run downloads and measures, as IHID/IID/PT narrowed by a colon and an ODE product id pattern.
+instruments:
+  - MRO/CTX/EDR
+  - MRO/CRISM/TRDR:*sp*_if*_trr3
+  - MRO/SHARAD/USRDRV2
+
+# Which products a box returns: b box overlap, f footprint overlap, o inside, i containing.
+loc: f
+
+# What a window has to hold before a tile earns a place in the dataset.
+window:
+  # The coverage each instrument is asked of a tile, in percent of its area.
+  constraints:
+    - {CTX: 0.60}
+    - {CRISM: 0.50}
+    - {SHARAD: 0.0}
+
+  # The pixels an instrument has to land on a tile to count, powers of two preferred
+  admits: {CTX: 65536, CRISM: 4096, SHARAD: 64}
+
+  # How far Mars may turn inside a window, in degrees of Ls; 90 is one season
+  span_ls: 90.0
+
+  # What instruments are excluded from the window, and kept whenever they came
+  timeless: [SHARAD]
+
+# How the tiles the selection kept are labelled.
+ground_truth:
+  # The IAU descriptors the draw keeps tiles clear of first, beside every other class.
+  excluded: [Tholus, Patera, Mons, Vallis, Mensa, Collis, Cavus, Chasma, Catena, Rupes, Dorsum, Sulcus, Labes]
+
+  # How many tiles are drawn of every class, or null for as many as the scarcest class holds.
+  per_class: null
+
+  # The number the draw is made with, so the set is the same every run.
+  seed: 42
+
+  # Every class, by the IAU descriptor or the named features it is read from.
+  classes:
+    crater: {descriptor: Crater, diameter_km: [8, 32]}
+    chaos: {descriptor: Chaos}
+    dune_field: {descriptor: Unda}
+    fossae: {descriptor: Fossa}
+    labyrinthus: {descriptor: Labyrinthus}
+    polar_layered_deposits: {names: [Planum Boreum, Planum Australe]}
+    shield_volcano:
+      names: [Olympus Mons, Ascraeus Mons, Pavonis Mons, Arsia Mons, Alba Mons, Elysium Mons]
+    ice_rich_plains: {names: [Arcadia Planitia, Utopia Planitia], latitudes: [38, 50]}
+    ice_poor_plains: {names: [Amazonis Planitia, Elysium Planitia], latitudes: [-30, 30]}
