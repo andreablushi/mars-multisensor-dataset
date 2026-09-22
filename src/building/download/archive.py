@@ -141,6 +141,7 @@ def bring(
     *,
     client: httpx.Client | None = None,
     span: tuple[int, int] | None = None,
+    retries: int = http.STREAM_RETRIES,
 ) -> None:
     """Stream whichever halves of one product are not on disk yet.
 
@@ -150,6 +151,7 @@ def bring(
         timeout: How long to wait on each transfer.
         client: A client whose connections to reuse, or None to open one each.
         span: The first and past-the-last byte of each half, or None for whole.
+        retries: How many times to ask again for each half after the first attempt.
 
     Raises:
         FileNotFoundError: When a missing half is served from nowhere.
@@ -159,4 +161,6 @@ def bring(
             continue
         if not urls.get(suffix):
             raise FileNotFoundError(f"No {suffix} offered for {path.stem}.")
-        http.streamed(urls[suffix], path, timeout, client=client, span=span)
+        http.streamed(
+            urls[suffix], path, timeout, client=client, span=span, retries=retries
+        )

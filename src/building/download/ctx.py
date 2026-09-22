@@ -40,6 +40,8 @@ POLAR_LABEL = ".ps.isis.hdr"
 # How long to wait for the scan, which ASU builds on the way out.
 TIMEOUT = 900.0
 
+RETRIES = 10
+
 
 def fetch(observation_id: str, client: httpx.Client) -> None:
     """Bring the scan, its label and what ODE says of it, or leave what is here.
@@ -77,7 +79,11 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
     )
     try:
         archive.bring(
-            destination, _asu(observation_id, volume, likely), TIMEOUT, client=client
+            destination,
+            _asu(observation_id, volume, likely),
+            TIMEOUT,
+            client=client,
+            retries=RETRIES,
         )
         return
     except FetchError:
@@ -85,7 +91,11 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
         if destination[configs.SUFFIXES[configs.LABEL]].exists():
             raise
     archive.bring(
-        destination, _asu(observation_id, volume, otherwise), TIMEOUT, client=client
+        destination,
+        _asu(observation_id, volume, otherwise),
+        TIMEOUT,
+        client=client,
+        retries=RETRIES,
     )
 
 
