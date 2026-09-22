@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+from collections import defaultdict
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
 
@@ -160,3 +161,17 @@ def print_summary(
         return
     console.print(f"[yellow]{len(failed)} products failed:[/yellow]")
     printing.print_listed([f"{one.job.label}: {one.error}" for one in failed], console)
+    lacking: dict[str, set[str]] = defaultdict(set)
+    for one in failed:
+        written = {record.tile for record in one.records}
+        lacking[one.job.instrument].update(
+            frame.name for frame in one.job.frames if frame.name not in written
+        )
+    incomplete = set().union(*lacking.values())
+    console.print(
+        f"[yellow]{len(incomplete):,} tiles lack a product, "
+        + ", ".join(
+            f"{name} on {len(held):,}" for name, held in sorted(lacking.items())
+        )
+        + "; a rerun without --force fills them in[/yellow]"
+    )
