@@ -54,6 +54,22 @@ class FetchError(RuntimeError):
     """Raised when a server refuses a request, or keeps failing to answer one."""
 
 
+def gave_up(host: str, started: float, last: Exception | None) -> FetchError:
+    """Return the error a fetch ends on, naming the host and what it last failed with.
+
+    Args:
+        host: The host that was asked.
+        started: When the fetch began, on the monotonic clock.
+        last: What the last attempt failed with, or None.
+
+    Returns:
+        error: The error to raise.
+    """
+    cause = f"{type(last).__name__}: {last}" if last else "no attempt was made"
+    elapsed = time.monotonic() - started
+    return FetchError(f"gave up on {host} after {elapsed:.0f}s, {cause}")
+
+
 def slept(attempt: int, backoff: float) -> None:
     """Wait out one server's refusal, longer each time and never in step.
 
@@ -96,8 +112,10 @@ def fetched_json(
         FetchError: When refused, when no reply was readable, or past the deadline.
     """
     asking = client or httpx
-    archive = throttle(httpx.URL(url).host)
-    give_up_at = time.monotonic() + deadline
+    host = httpx.URL(url).host
+    archive = throttle(host)
+    started = time.monotonic()
+    give_up_at = started + deadline
     last: Exception | None = None
     for attempt in range(retries + 1):
         if attempt:
@@ -134,7 +152,7 @@ def fetched_json(
         if found is not None:
             return found
         last = FetchError("the reply held nothing to read")
-    raise FetchError(f"gave up after {deadline:.0f}s or {retries} retries: {last}")
+    raise gave_up(host, started, last)
 
 
 def streamed(
@@ -165,8 +183,10 @@ def streamed(
     """
     reading = client.stream if client else httpx.stream
     headers = {"Range": f"bytes={span[0]}-{span[1] - 1}"} if span else None
-    archive = throttle(httpx.URL(url).host)
-    give_up_at = time.monotonic() + deadline
+    host = httpx.URL(url).host
+    archive = throttle(host)
+    started = time.monotonic()
+    give_up_at = started + deadline
     last: Exception | None = None
     for attempt in range(retries + 1):
         if attempt:
@@ -207,4 +227,4 @@ def streamed(
             if isinstance(error, CONNECT_ERRORS):
                 archive.refused()
             last = error
-    raise FetchError(f"gave up after {deadline:.0f}s or {retries} retries: {last}")
+    raise gave_up(host, started, last)
