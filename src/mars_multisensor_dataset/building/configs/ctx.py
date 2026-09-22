@@ -1,0 +1,84 @@
+"""What a CTX scan is published as, where it lands, and how ISIS projects it."""
+
+from __future__ import annotations
+
+import re
+
+from mars_multisensor_dataset.building import paths
+from mars_multisensor_dataset.building.common.layout import Axis, Layout
+from mars_multisensor_dataset.building.common.naming import Naming
+from mars_multisensor_dataset.building.common.product_cache import ProductCache
+
+IMAGE_SUFFIX = ".img"
+
+CUBE_SUFFIX = ".cub"
+
+# What the scan's own metadata is kept as, which ODE answers with rather than serves.
+METADATA_SUFFIX = ".ode.json"
+
+# How a scan is named, for its mission phase, orbit, latitude and where it looked.
+NAMING = Naming(
+    re.compile(
+        r"^(?P<scan>(?:[a-z]\d{2}|moi)_\d{6}_\d{4}_[a-z]{2}_\d{2}[ns]\d{3}[we])$"
+    ),
+    identity="{scan}",
+)
+
+# What the arrays of one scan hold, and which of them is stored for.
+LAYOUT = Layout(
+    instrument="CTX",
+    dims=("line", "sample"),
+    axes=(Axis.GROUND, Axis.GROUND),
+    measurement="image",
+    stored="f2",
+)
+
+# What ODE publishes CTX under.
+ODE = {"ihid": "MRO", "iid": LAYOUT.instrument}
+
+# The ODE product type the raw scan is published under, the only one fetched.
+PRODUCT_TYPE = "EDR"
+
+# The scan's files and metadata, which carries the geometry it was taken at.
+ODE_RESULTS = "fopm"
+
+CACHE = ProductCache(paths.CTX_ROOT, NAMING, {None: (CUBE_SUFFIX, METADATA_SUFFIX)})
+
+# What ODE says of a scan that its projected label does not, the geometry it was at
+ODE_ACQUISITION = (
+    "Incidence_angle",
+    "Emission_angle",
+    "Phase_angle",
+    "Solar_longitude",
+    "Solar_distance",
+    "Solar_time",
+)
+
+INDEX_NOTE = "NOTE: Index Record:"
+
+INDEX_AZIMUTHS = {"NORTH_AZIMUTH": 38, "SUB_SOLAR_AZIMUTH": 39}
+
+PIXEL_RESOLUTION_M = 6.0
+
+WARP_ALGORITHM = "forwardpatch"
+
+INTERPOLATION = "bilinear"
+
+PATCH_SIZE = 50
+
+REFLECTANCE_RANGE = (0.0, 1.0)
+
+MAP = """Group = Mapping
+  ProjectionName = {name}
+  CenterLatitude = {latitude}
+  CenterLongitude = {longitude}
+  LongitudeDomain = 360
+End_Group
+End
+"""
+
+SAMPLED_LINE_STEP = 256
+
+CROP_MARGIN_LINES = SAMPLED_LINE_STEP
+
+SAMPLES_ACROSS = 5

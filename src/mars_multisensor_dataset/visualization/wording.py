@@ -1,0 +1,80 @@
+"""How a measurement reads once it is put into words."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+
+from mars_multisensor_dataset.analysis.models.instrument import PIXEL_KM2
+from mars_multisensor_dataset.analysis.stats.models import Spread
+from mars_multisensor_dataset.building.configs import sharad
+from mars_multisensor_dataset.visualization import config
+
+
+def compact(value: float) -> str:
+    """Write a count short enough to read at a glance.
+
+    Args:
+        value: The count.
+
+    Returns:
+        written: The count itself when small, and otherwise in thousands and up.
+    """
+    for limit, suffix in config.STEPS:
+        if value >= limit:
+            return f"{value / limit:,.2f} {suffix}"
+    return f"{value:,.0f}"
+
+
+def area(km2: float) -> str:
+    """Write a ground area, to a hundredth below ten km2 and whole above."""
+    return f"{km2:,.0f} km2" if km2 >= 10.0 else f"{km2:,.2f} km2"
+
+
+def duration(days: float) -> str:
+    """Write a length of time in the units it reads well in.
+
+    Args:
+        days: The length in days.
+
+    Returns:
+        written: The length as a phrase, such as "18 hours" or "47 days".
+    """
+    if days < 1.0:
+        return f"{days * 24.0:.0f} hours"
+    if days < 10.0:
+        return f"{days:.1f} days"
+    return f"{days:,.0f} days"
+
+
+def pixels(count: float, iid: str) -> str:
+    """Write a pixel count, in traces for SHARAD."""
+    return f"{compact(count)} {'traces' if iid == sharad.LAYOUT.instrument else 'px'}"
+
+
+def pixels_of_ground(km2: float, iid: str) -> str:
+    """Write the pixels a ground holds, in traces for SHARAD."""
+    return pixels(km2 / PIXEL_KM2[iid], iid)
+
+
+def spread(
+    measured: Spread,
+    written: Callable[[float], str],
+    bounds: Callable[[float], str] | None = None,
+) -> str:
+    """Write the mean of a measurement read off many tiles, then its least and most.
+
+    Args:
+        measured: The measurement read off every tile.
+        written: How the mean is written.
+        bounds: How the least and the most are written, or None to write them alike.
+
+    Returns:
+        written: The mean, then the least and the most unless every tile agreed.
+    """
+    if not measured.counted:
+        return config.NOTHING
+    mean = written(measured.mean)
+    if measured.agreed:
+        return mean
+    low, high = map(bounds or written, (measured.low, measured.high))
+    return f"{mean} ({low} to {high})"

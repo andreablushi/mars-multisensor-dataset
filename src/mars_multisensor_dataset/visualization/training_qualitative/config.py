@@ -1,0 +1,94 @@
+"""How the training qualitative notebook picks a tile and draws what landed on it."""
+
+from __future__ import annotations
+
+import ipywidgets as widgets
+
+from mars_multisensor_dataset.building.configs import crism
+
+COORDINATE = widgets.Layout(width="200px")
+NO_TRACK = "The selection holds nothing to measure on this tile."
+
+TRACE_WIDTH = 1.2
+
+SURVEY = dict(color="#1a1a1a", linestyle=(0, (6, 3)), linewidth=0.8)
+
+TITLE_BAND = 0.42
+
+NOTHING_LANDED = "nothing on this tile"
+
+STRETCH = (2, 98)
+CLIP = 2.0
+STD_FLOOR = 1e-6
+
+ELEVATION_CMAP = "turbo"
+
+DRAWN_PIXELS = 1000
+
+ROW_HEIGHT = 4.5
+CRISM_ROW_HEIGHT = 5.5
+
+MOSAIC = "mosaic"
+
+RAW_COUNTS = (0.0, 4095.0)
+
+DOWNLOADED = "Downloaded sample"
+
+BUILT_STAGES = (
+    "Preprocessed sample",
+    "Model input",
+    "Min-max input",
+    "Global min-max input",
+)
+
+STRETCHED = (DOWNLOADED, BUILT_STAGES[0])
+
+SHARAD_SAMPLES = {
+    "Ice poor, Amazonis Planitia": ("s_00579101", "b217_c0322"),
+    "Ice rich, north polar layered deposits": ("s_00926003", "b327_c0020"),
+}
+
+SHARAD_NOISE_SAMPLES = (
+    ("s_07711801", "b217_c0057"),
+    ("s_00926003", "b327_c0020"),
+    ("s_00196301", "b284_c0102"),
+    ("s_00294501", "b013_c0082"),
+    ("s_00223801", "b028_c0099"),
+    ("s_00293902", "b321_c0019"),
+    ("s_00579101", "b217_c0322"),
+)
+
+NOISE_STATISTICS = (
+    "Noise mean (dB)",
+    "Noise spread (dB)",
+    "Threshold over noise (dB)",
+    "Kept",
+    "PD",
+)
+
+SHARAD_KINDS = ("radargram", "cluttergram")
+
+RANGES = (
+    "Array",
+    "Cropped min (dB)",
+    "Cropped max (dB)",
+    "Model input min (z)",
+    "Model input max (z)",
+)
+
+VIEWS = {
+    "True colour R600 G530 B440": (crism.Detector.VISIBLE, (600.0, 530.0, 440.0)),
+    "False colour R2529 G1506 B1080": (
+        crism.Detector.INFRARED,
+        (2529.0, 1506.0, 1080.0),
+    ),
+}
+
+ICE_SAMPLES = {
+    "Ice rich, Deuteronilus Mensae": "b239_c0035",
+    "Ice poor, Meridiani Planum": "b175_c0657",
+}
+
+ICE_CMAP = "RdBu"
+ICE_ALPHA = 0.5
+ICE_PANEL = widgets.Layout(width="50%")

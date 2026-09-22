@@ -1,0 +1,183 @@
+"""Cutting one CTX scan to the tiles it was kept for, projected by ISIS onto each."""
+
+from __future__ import annotations
+
+import logging
+from collections.abc import Callable
+from pathlib import Path
+
+import numpy as np
+import tifffile
+
+from mars_multisensor_dataset.building.configs import ctx as configs
+from mars_multisensor_dataset.building.preprocessing.common import cut, geometry
+from mars_multisensor_dataset.building.preprocessing.common.models.overlap import (
+    Overlap,
+)
+from mars_multisensor_dataset.building.preprocessing.ctx import projection
+from mars_multisensor_dataset.building.preprocessing.ctx.isis import (
+    export_image,
+    read_cube_label,
+    run_isis,
+)
+from mars_multisensor_dataset.building.preprocessing.ctx.models.observation import (
+    CtxObservation,
+)
+from mars_multisensor_dataset.building.preprocessing.ctx.models.sample import (
+    BLANK,
+    CtxSample,
+)
+from mars_multisensor_dataset.building.preprocessing.ctx.normalize import (
+    normalized_pixels,
+)
+from mars_multisensor_dataset.building.preprocessing.ctx.pool import pooled_sample
+from mars_multisensor_dataset.common.maths import box
+from mars_multisensor_dataset.common.models.tile import Tile
+from mars_multisensor_dataset.common.pds import labels
+
+# Nothing here reads the export's no-data tag: what a scan left blank is `BLANK`
+logging.getLogger("tifffile").setLevel(logging.ERROR)
+
+
+def kept_pixels(image: Path, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
+    """Return the pixels one cut keeps, reading no more of the scan than holds them.
+
+    Args:
+        image: The scan's TIFF, read chunk by chunk.
+        bounds: The lines to keep and then the samples, as the cut left them.
+
+    Returns:
+        pixels: The pixels of those lines and samples, as lines by samples.
+    """
+    lines, samples = bounds
+    # A box over the meridian keeps two ends of a strip, so the window spans both.
+    top, left = int(lines.min()), int(samples.min())
+    window = tifffile.imread(
+        image,
+        selection=(
+            slice(top, int(lines.max()) + 1),
+            slice(left, int(samples.max()) + 1),
+        ),
+    )
+    return geometry.kept_part(window, (lines - top, samples - left))
+
+
+def reached_lines(observation: CtxObservation, frame: Tile) -> tuple[int, int] | None:
+    """Return the first and last scan lines a tile's box reaches, with a margin.
+
+    Args:
+        observation: The calibrated scan.
+        frame: The local frame of the tile it was kept for.
+
+    Returns:
+        lines: The first and last line, counted from one, or None where it misses.
+    """
+    points = (observation.latitude, observation.latitude, observation.longitude, 0.0)
+    reached = observation.line[box.inside(points, box.bounds_box(frame))]
+    if not reached.size:
+        return None
+    return (
+        max(1, int(reached.min()) - configs.CROP_MARGIN_LINES),
+        min(observation.lines, int(reached.max()) + configs.CROP_MARGIN_LINES),
+    )
+
+
+def projected_pixels(
+    observation: CtxObservation,
+    cube: Path,
+    frame: Tile,
+    export: Callable[[Path, Path], None] = export_image,
+) -> tuple[np.ndarray, Overlap, dict[str, str]] | None:
+    """Return the pixels a tile's box keeps of one scan's cube, projected by ISIS.
+
+    Args:
+        observation: The calibrated scan, which says where its lines fall.
+        cube: The cube projected, in the scan's camera geometry.
+        frame: The local frame of the tile it was kept for.
+        export: What writes the projected cube as a TIFF of counts.
+
+    Returns:
+        projected: The pixels the box keeps as lines by samples, what it keeps of
+            the projected grid, and the projected label merged over the scan's
+            own, or None where the scan reaches none of the box.
+
+    Raises:
+        RuntimeError: When an ISIS application fails.
+    """
+    reached = reached_lines(observation, frame)
+    if reached is None:
+        return None
+    first, last = reached
+    min_lat, max_lat, west, span = box.bounds_box(frame)
+    work = cube.parent / frame.name
+    trimmed, template, projected, image = (
+        work.with_suffix(suffix) for suffix in (".cut.cub", ".map", ".map.cub", ".tif")
+    )
+    template.write_text(projection.map_template(frame.grid))
+    try:
+        run_isis(
+            "crop",
+            {
+                "from": cube,
+                "to": trimmed,
+                "line": first,
+                "nlines": last - first + 1,
+            },
+        )
+        run_isis(
+            "cam2map",
+            {
+                "from": trimmed,
+                "to": projected,
+                "map": template,
+                "pixres": "mpp",
+                "resolution": configs.PIXEL_RESOLUTION_M,
+                "warpalgorithm": configs.WARP_ALGORITHM,
+                "interp": configs.INTERPOLATION,
+                "patchsize": configs.PATCH_SIZE,
+                "defaultrange": "map",
+                "minlat": min_lat,
+                "maxlat": max_lat,
+                "minlon": west,
+                "maxlon": west + span,
+            },
+        )
+        export(projected, image)
+        label = labels.merge(read_cube_label(projected), observation.label)
+        held = cut.overlap(projection.grid_position(label), frame)
+        if held is None:
+            return None
+        pixels = kept_pixels(image, held.bounds)
+    finally:
+        for path in work.parent.glob(f"{work.name}.*"):
+            path.unlink()
+    return pixels, held, label
+
+
+def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
+    """Return one scan holding only the pixels its tile's box keeps, projected by ISIS.
+
+    Args:
+        observation: The calibrated scan.
+        frame: The local frame of the tile it was kept for.
+
+    Returns:
+        sample: The scan cut to that tile and averaged over its blocks, or None
+            where it reaches none of it.
+
+    Raises:
+        RuntimeError: When an ISIS application fails.
+    """
+    projected = projected_pixels(observation, observation.cube, frame)
+    if projected is None:
+        return None
+    pixels, held, label = projected
+    measured = pixels != BLANK
+    sample = CtxSample(
+        position=held.position,
+        label=label,
+        inside=held.inside,
+        valid=geometry.partial_mask(measured),
+        image=normalized_pixels(pixels, measured, observation.statistics),
+    )
+    return pooled_sample(sample, observation.pool)

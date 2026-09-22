@@ -1,0 +1,156 @@
+"""Each SHARAD track's noise, measured and gated the way a build does it."""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from functools import partial
+
+import ipywidgets as widgets
+import numpy as np
+from matplotlib.figure import Figure
+
+from mars_multisensor_dataset.analysis import paths
+from mars_multisensor_dataset.analysis.utils.tile_group import tile_grid
+from mars_multisensor_dataset.building.preprocessing.common.models.sample import Sample
+from mars_multisensor_dataset.building.preprocessing.sharad.denoise import (
+    measured_noise,
+)
+from mars_multisensor_dataset.building.preprocessing.sharad.models.sample import (
+    SharadSample,
+)
+from mars_multisensor_dataset.building.preprocessing.sharad.normalize import (
+    radargram_db,
+)
+from mars_multisensor_dataset.building.preprocessing.sharad.window import (
+    rows_below_atmosphere,
+)
+from mars_multisensor_dataset.common.config import training_settings
+from mars_multisensor_dataset.common.disk.slugify import slugify
+from mars_multisensor_dataset.common.models.tile import Tile
+from mars_multisensor_dataset.visualization import panels
+from mars_multisensor_dataset.visualization.training_qualitative import config, product
+from mars_multisensor_dataset.visualization.training_qualitative.preprocessing import (
+    cached_panels,
+    shown_crop,
+)
+
+SHARAD_FALSE_ALARM = training_settings().preprocessing["SHARAD"]["false_alarm"]
+
+
+def plot_sharad_noise(false_alarm: float = SHARAD_FALSE_ALARM) -> widgets.VBox:
+    """Show each SHARAD noise sample preprocessed and profiled.
+
+    Args:
+        false_alarm: The share of a crop's pure noise left over its threshold.
+
+    Returns:
+        panels: Every noise sample's rows, then what its crop was taken under.
+    """
+    grid = tile_grid()
+    gate = product.sharad_gate_name(false_alarm=false_alarm)
+    return widgets.VBox(
+        [
+            cached_panels(
+                paths.PANELS_ROOT
+                / slugify("SHARAD")
+                / f"noise_{identifier}_{tile}_{gate}.json",
+                "SHARAD",
+                (identifier,),
+                grid.tile_named(tile),
+                partial(noise_images, false_alarm=false_alarm),
+            )
+            for identifier, tile in config.SHARAD_NOISE_SAMPLES
+        ]
+    )
+
+
+def cropped_radargram(identifier: str, sample: SharadSample) -> np.ndarray:
+    """Return a crop's radargram in dB before its gate.
+
+    Args:
+        identifier: The track, its files already in the download cache.
+        sample: The crop the build would write of it.
+
+    Returns:
+        cropped: The radargram in dB, delay rows by the valid traces the gate is
+            measured on.
+    """
+    cropped = radargram_db(product.sharad_power(identifier)[:, sample.traces])
+    return cropped[:, sample.valid]
+
+
+def noise_images(
+    name: str, identifiers: Sequence[str], frame: Tile, false_alarm: float
+) -> tuple[list[widgets.Widget], list[Sample]]:
+    """Draw one SHARAD track preprocessed and profiled, then its noise.
+
+    Args:
+        name: The instrument, as the build names it.
+        identifiers: The track alone, its files already in the download cache.
+        frame: The tile it is cut to.
+        false_alarm: The share of a crop's pure noise left over its threshold.
+
+    Returns:
+        rows: The radargram preprocessed beside its mean delay profile,
+            in one figure, then what its noise measures.
+        samples: The crop the build would write.
+    """
+    (identifier,) = identifiers
+    observation, sample = product.observed_sample(
+        name, identifier, frame, false_alarm=false_alarm
+    )
+    noise = measured_noise(cropped_radargram(identifier, sample), observation.gate)
+    preprocessed = sample.power[:, sample.valid]
+    zenith = float(np.median(sample.incidence_deg[sample.valid]))
+    rows = rows_below_atmosphere(sample.power, sample.valid)
+    figure = Figure(figsize=(12, 14), layout="constrained")
+    figure.suptitle(
+        f"{identifier} on {frame.name}, solar zenith {zenith:.0f}°", fontsize=14
+    )
+    axes = figure.subplots(1, 2, width_ratios=(1, 1.1))
+    shown_crop(
+        figure,
+        axes[0],
+        preprocessed,
+        (preprocessed.min(), preprocessed.max()),
+        "Preprocessed (dB)",
+        rows,
+    )
+    axes[0].set_xlabel("Trace")
+    profile = 10 * np.log10((10 ** (noise.averaged / 10)).mean(axis=1))
+    surface = int(np.median(noise.averaged.argmax(axis=0)))
+    axis = axes[-1]
+    axis.plot(profile, np.arange(len(profile)), color="k", linewidth=0.8)
+    axis.axvline(
+        noise.threshold,
+        color="tab:red",
+        label=f"threshold, false alarm {observation.gate.false_alarm:g}",
+    )
+    axis.axhspan(
+        0,
+        surface - observation.gate.guard_rows,
+        color="tab:blue",
+        alpha=0.15,
+        label="noise above",
+    )
+    axis.axhspan(
+        noise.deep, len(profile), color="tab:green", alpha=0.15, label="noise below"
+    )
+    axis.axhline(rows.start, color="tab:orange", linestyle="--", label="atmosphere cut")
+    axis.set_ylim(len(profile), 0)
+    axis.legend(loc="lower right")
+    axis.set_xlabel("dB")
+    panels.titled(axis, f"Mean delay profile, {observation.gate.looks} traces")
+    for axis in axes:
+        axis.set_ylabel("Delay row")
+    measured = (
+        f"{noise.mean:.2f}",
+        f"{noise.spread:.2f}",
+        f"{noise.threshold - noise.mean:.2f}",
+        f"{(noise.averaged >= noise.threshold).mean():.3f}",
+        f"{(noise.averaged[~noise.mask] > noise.threshold).mean():.3f}",
+    )
+    return [
+        panels.rendered(figure),
+        panels.written("Noise", config.NOISE_STATISTICS, [measured]),
+    ], [sample]

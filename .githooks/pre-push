@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Block the push when ruff reports lint errors or formatting issues.
+set -euo pipefail
+
+echo "Running ruff before push..."
+uv run ruff check .
+uv run ruff format --check .
+echo "Ruff passed."

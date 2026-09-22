@@ -1,0 +1,28 @@
+"""How the evaluation set is labelled, once its config has been read."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .class_rule import (
+    ClassRule,
+)
+
+
+@dataclass(slots=True)
+class NomenclatureSettings:
+    """The settled choices for labelling the tiles the selection kept.
+
+    Attributes:
+        excluded: The IAU descriptors a labelled tile is best kept clear of.
+        classes: What every class is read from, in config order.
+        balanced: Whether every class is drawn to one size, or every accepted tile.
+        per_class: How many tiles are drawn per class, or None for the scarcest.
+        seed: The number the draw is made with, so it is the same every run.
+    """
+
+    excluded: list[str]
+    classes: dict[str, ClassRule]
+    balanced: bool
+    per_class: int | None
+    seed: int

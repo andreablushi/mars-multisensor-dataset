@@ -1,0 +1,34 @@
+# How every build runs, whichever dataset it builds.
+
+# Products built at once, one per core; a run on a platform is given its own.
+workers: 8
+
+# Downloads at once from each archive, which wait on it and not on the cores.
+# JPL answers 503 past about ten connections from one address, so it stays under that.
+downloads:
+  jpl: 8
+  wustl: 16
+  spice: 4
+
+# What each instrument's reader is handed, the same in every build so they match.
+preprocessing:
+  # The percentiles a CTX scan is clipped at, how many lines and samples apart
+  # the counts its statistics are measured on sit, and how many pixels a side
+  # every crop is averaged over.
+  CTX:
+    clip: [1, 99]
+    stride: 8
+    pool: 8
+  # The passes, window width and sigma CRISM spikes are removed with, the sigma as
+  # crism_ml sets it, and how many lines a column is levelled over along the track.
+  CRISM:
+    spikes: {passes: 3, window: 3, sigma: 5.0}
+    levelling: 51
+  # How many traces a SHARAD crop is averaged over along each delay row, the share of
+  # its pure noise left over the threshold, the rows kept between an echo and the
+  # noise beside it, and how far over the noise a row's mean power stands to hold one.
+  SHARAD:
+    looks: 8
+    false_alarm: 0.3
+    guard_rows: 30
+    echo_margin_db: 1.0

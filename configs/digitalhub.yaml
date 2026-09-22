@@ -1,0 +1,45 @@
+# What a run submitted to DigitalHub is given, and what it publishes.
+
+# The project every run and every published archive belongs to.
+project: mars-multisensor-features
+
+# The repository the platform clones, and where that clone lands on the job.
+repository: https://github.com/andreablushi/mars-multisensor-dataset
+source_root: /shared
+
+# The interpreter and the platform's own base image a job runs on, which installs
+# requirements.txt from its clone with uv.
+python_version: PYTHON3_13
+base_image: python:3.13-slim
+
+# What each stage is scheduled on, its profile settling the limit it is killed at.
+# A stage marked shared queues on the shared pool, the rest on the reserved one.
+# A stage marked isis installs ISIS when its job starts, which only the CTX builds need.
+resources:
+  pipeline:
+    profile: cpu
+    shared: false
+    cpu: 8
+    memory: 32Gi
+    disk: 64Gi
+  selection:
+    profile: cpu
+    shared: false
+    cpu: 8
+    memory: 32Gi
+    disk: 64Gi
+  # A build's disk holds 5 GiB of crops before they go up, beside the products still being cut
+  build_training:
+    profile: cpu
+    shared: false
+    isis: true
+    cpu: 8
+    memory: 56Gi
+    disk: 64Gi
+  build_evaluation:
+    profile: cpu
+    shared: false
+    isis: true
+    cpu: 8
+    memory: 56Gi
+    disk: 64Gi

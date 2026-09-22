@@ -1,0 +1,136 @@
+"""Writing one crop into the store, as arrays that say what their own axes are."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import numpy as np
+
+from mars_multisensor_dataset.building import paths
+from mars_multisensor_dataset.building.common.layout import Axis, Layout
+from mars_multisensor_dataset.building.preprocessing.common.models.sample import Sample
+from mars_multisensor_dataset.common.disk.files import write_npz
+from mars_multisensor_dataset.common.disk.slugify import slugify
+from mars_multisensor_dataset.common.maths import box, physics
+from mars_multisensor_dataset.common.models.tile import Tile
+
+# What the arrays placing a crop are called, and what the masks beside them are.
+NORTH = "north"
+EAST = "east"
+INSIDE = "inside"
+VALID = "valid"
+MEASURED = "measured_ground"
+
+# What the placing arrays are measured in, degrees from the centre or a grid's metres.
+DEGREES = "degrees"
+METRES = "metres"
+
+# What the crop is described by: its axes, its tile, its units and its label.
+META = "meta"
+
+# What the offsets are stored as, which holds a centimetre over any tile.
+STORED = np.float32
+
+
+def sample_path(frame: Tile, instrument: str, identifier: str) -> Path:
+    """Return where one cropped observation's file belongs under the dataset's root."""
+    return (
+        Path(frame.band_name)
+        / frame.column_name
+        / slugify(instrument)
+        / f"{slugify(identifier)}{paths.SAMPLE_SUFFIX}"
+    )
+
+
+def native(values: np.ndarray) -> np.ndarray:
+    """Return one big-endian PDS array in the byte order the machine reads."""
+    return values.astype(values.dtype.newbyteorder("="), copy=False)
+
+
+def stored_array(values: np.ndarray, dtype: str | None) -> np.ndarray:
+    """Return one array in the byte order the machine reads, as it is written.
+
+    Args:
+        values: The array, in any byte order.
+        dtype: The dtype it is written as, or None to keep its own.
+
+    Returns:
+        stored: The array as it is written.
+    """
+    values = native(values)
+    return values.astype(dtype or values.dtype, copy=False)
+
+
+def write_sample(
+    held: Sample, layout: Layout, frame: Tile, identifier: str, root: Path
+) -> Path:
+    """Write one sample down, its arrays and what describes them in one file.
+
+    Args:
+        held: The sample, whose position and masks are written beside the values.
+        layout: How that instrument's arrays are laid out.
+        frame: The tile it was cut to.
+        identifier: What that instrument was asked for, its observation or sheet.
+        root: The dataset's own root directory.
+
+    Returns:
+        path: The file it was written as, relative to the dataset's root.
+
+    Raises:
+        ValueError: When the layout declares an array the crop does not carry.
+    """
+    position = held.position
+    ground = tuple(layout.dims[at] for at in layout.axis_indices(Axis.GROUND))
+    # A separable position holds one ground axis each, any other a value per sample.
+    north, east = position.dims_along(ground)
+    along = {
+        layout.measurement: layout.dims,
+        NORTH: north,
+        EAST: east,
+        MEASURED: ground,
+        **layout.beside,
+    }
+    arrays = {}
+    for name in layout.beside:
+        alongside = getattr(held, name)
+        if alongside is None:
+            raise ValueError(f"{layout.instrument} declares {name} but holds none.")
+        arrays[name] = stored_array(alongside, layout.stored_beside.get(name))
+    arrays[layout.measurement] = stored_array(
+        getattr(held, layout.measurement), layout.stored
+    )
+    arrays[NORTH] = np.asarray(position.north, dtype=STORED)
+    arrays[EAST] = np.asarray(position.east, dtype=STORED)
+    arrays[MEASURED] = held.measured_ground
+    for name, mask in ((INSIDE, held.inside), (VALID, held.valid)):
+        # The two the rooted mask is made of, kept for whoever wants them apart.
+        if mask is not None:
+            arrays[name] = native(mask)
+            along[name] = ground
+
+    path = sample_path(frame, layout.instrument, identifier)
+    grid = position.grid
+    described = {
+        "instrument": layout.instrument,
+        "identifier": identifier,
+        "tile": frame.name,
+        "band": frame.band,
+        "column": frame.column,
+        "measurement": layout.measurement,
+        "separable": position.separable,
+        "centre_lon": frame.centre_lon,
+        "centre_lat": frame.centre_lat,
+        "box": box.box_edges(frame),
+        "position_units": DEGREES if grid is None else METRES,
+        "radii_m": [physics.EQUATORIAL_RADIUS_M, physics.POLAR_RADIUS_M],
+        "polar": None if grid is None else list(grid),
+        "dims": {name: list(axes) for name, axes in along.items()},
+        "axes": list(layout.axes),
+        "ground": list(ground),
+        "label": held.label,
+        **{name: getattr(held, name) for name in layout.described},
+    }
+    # Compressed, and written whole then moved, so a crop a reader finds was finished.
+    write_npz(root / path, arrays | {META: np.array(json.dumps(described))})
+    return path

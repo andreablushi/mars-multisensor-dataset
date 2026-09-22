@@ -1,0 +1,91 @@
+# A run downloads every set still missing and measures every set not yet measured.
+
+# Jobs at once in each half: download threads, then coverage processes.
+workers: 16
+
+# The side every tile of the grid Mars is split into is sized to, in km.
+tile_km: 32
+
+# The side of the tile groups ODE is asked about at once, in degrees.
+tile_group_deg: 10
+
+# The side of one coverage cell, in km. For computation purpose.
+cell_km: 0.5
+
+# What a run downloads and measures, as IHID/IID/PT narrowed by a colon and an ODE product id pattern.
+instruments:
+  - MRO/CTX/EDR
+  - MRO/CRISM/TRDR:msp*_if*_trr3
+  - MRO/SHARAD/USRDRV2
+
+# The column of the geometry table published beside each SHARAD track read into the least signal phase distortion of a look over each tile, and of its night side.
+sharad_distortion: PHASE/1.0E16
+
+# Which products a box returns: b box overlap, f footprint overlap, o inside, i containing.
+loc: f
+
+# What a window has to hold before a tile earns a place in the dataset.
+criteria:
+  # The coverage each instrument is asked of a tile, as a share of its area.
+  constraints:
+    - {CTX: 0.80}
+    - {CRISM: 0.80}
+    - {SHARAD: 0.0}
+
+  # The pixels an instrument has to land on a tile to count, powers of two preferred
+  admits: {CTX: 32768, CRISM: 4096, SHARAD: 64}
+
+  # The solar zenith angle past which an instrument's look is taken at night, in degrees: refused for CTX and CRISM, preferred for SHARAD
+  solar_zenith: {CTX: 90.0, CRISM: 85.0, SHARAD: 100.0}
+
+  # How far Mars may turn inside a window, in degrees of Ls; 90 is one season
+  span_ls: 36000.0
+
+  # The share of a tile's ground one degree of Ls inside a window costs its score
+  ls_price: 0.0
+
+  # What instruments are excluded from the window, and kept whenever they came
+  timeless: [SHARAD]
+
+  # The share of its own cells the other kept looks also reach, past which a look is redundant
+  redundant_share_threshold: {CTX: 0.75, CRISM: 0.75, SHARAD: 0.3}
+
+# How the tiles the selection kept are labelled.
+ground_truth:
+  # The evaluation classes, read from the IAU nomenclature ODE publishes.
+  nomenclature:
+    # The IAU descriptors the draw keeps tiles clear of first, beside every other class.
+    excluded: [Tholus, Patera, Mons, Vallis, Mensa, Collis, Cavus, Chasma, Catena, Rupes, Dorsum, Sulcus, Labes]
+
+    # Whether every class is drawn to one size, or every accepted tile is drawn instead.
+    balanced: false
+
+    # How many tiles are drawn of every class, or null for as many as the scarcest class holds.
+    per_class: null
+
+    # The number the draw is made with, so the set is the same every run.
+    seed: 42
+
+    # Every class, by the IAU descriptor or the named features it is read from.
+    classes:
+      crater: {descriptor: Crater, diameter_km: [24, 40]}
+      chaos: {descriptor: Chaos}
+      dune_field: {descriptor: Unda}
+      polar_layered_deposits: {names: [Planum Boreum, Planum Australe]}
+      ice_rich_plains:
+        names: [Arcadia Planitia, Utopia Planitia, Acidalia Planitia, Sisyphi Planum, Argentea Planum, Parva Planum, Malea Planum]
+        latitudes: [[38.0, 50.0], [-72.0, -55.0]]
+      ice_poor_plains:
+        names: [Meridiani Planum, Daedalia Planum, Hesperia Planum, Syrtis Major Planum, Solis Planum]
+        latitudes: [[-30.0, 30.0]]
+      medusae_fossae:
+        names: [Lucus Planum, Eumenides Dorsum, Gordii Dorsum, Amazonis Mensa, Medusae Fossae, Medusae Sulci, Zephyria Planum, Aeolis Planum, Zephyria Mensae]
+
+  # The subsurface ice the SWIM maps place under every tile between 60S and 60N.
+  swim:
+    # The consistency from which a point is icy, per depth (Morgan, Putzig et al. 2025).
+    threshold_1_5m: 0.4
+    threshold_5m: 0.5
+
+    # The share of a tile's points icy at a depth from which the tile is icy there.
+    icy_share: 0.5

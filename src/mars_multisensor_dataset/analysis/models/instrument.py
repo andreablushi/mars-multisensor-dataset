@@ -1,0 +1,78 @@
+"""The ODE instrument set a download is asked for, and the ground its pixels cover."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from mars_multisensor_dataset.common.disk.slugify import slugify
+from mars_multisensor_dataset.common.maths.physics import METRES_PER_KM
+
+SHARAD_SWATH_M = 3000.0
+
+# A sounding is as wide as its swath and as long as a spacing ODE never publishes
+SHARAD_ALONG_TRACK_M = 460.0
+
+# Ground one pixel covers in square kilometres, by instrument
+PIXEL_KM2 = {
+    "CTX": (48.0 / METRES_PER_KM) ** 2,
+    "CRISM": (180.0 / METRES_PER_KM) ** 2,
+    "SHARAD": SHARAD_SWATH_M * SHARAD_ALONG_TRACK_M / METRES_PER_KM**2,
+}
+
+
+@dataclass(frozen=True)
+class InstrumentSet:
+    """An ODE instrument host, instrument, and product type triple.
+
+    Attributes:
+        ihid: Instrument host id (for example "MRO").
+        iid: Instrument id (for example "CTX").
+        pt: Product type (for example "EDR").
+        product_id: An ODE product id pattern the set is narrowed to.
+    """
+
+    ihid: str
+    iid: str
+    pt: str
+    product_id: str | None
+
+    @classmethod
+    def from_key(cls, key: str) -> InstrumentSet:
+        """Build a set from its canonical identifier.
+
+        Args:
+            key: An IHID/IID/PT triple, optionally with a colon and a product pattern.
+
+        Returns:
+            instrument: The instrument set.
+        """
+        triple, _, pattern = key.partition(":")
+        return cls(
+            *(part.strip() for part in triple.split("/")),
+            product_id=pattern.strip() or None,
+        )
+
+    @property
+    def label(self) -> str:
+        """Return the short readable name for this set.
+
+        Returns:
+            label: The instrument and product type, with its pattern if any.
+        """
+        name = f"{self.iid} {self.pt}"
+        return f"{name} {self.product_id}" if self.product_id else name
+
+    @property
+    def key(self) -> str:
+        """Return the canonical IHID/IID/PT identifier.
+
+        Returns:
+            key: The three identifiers joined by slashes, the pattern after a colon.
+        """
+        key = f"{self.ihid}/{self.iid}/{self.pt}"
+        return f"{key}:{self.product_id}" if self.product_id else key
+
+    @property
+    def slug(self) -> str:
+        """Return the canonical identifier as a filesystem safe name."""
+        return slugify(self.key)

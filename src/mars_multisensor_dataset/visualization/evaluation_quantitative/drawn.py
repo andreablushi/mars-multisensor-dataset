@@ -1,0 +1,38 @@
+"""The drawn tiles of the evaluation set, one at a time, grouped by class."""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+
+import ipywidgets as widgets
+
+from mars_multisensor_dataset.analysis.ground_truth.nomenclature.models.label import (
+    Label,
+)
+from mars_multisensor_dataset.visualization import panels
+from mars_multisensor_dataset.visualization.evaluation_quantitative import config
+from mars_multisensor_dataset.visualization.labelled import TileStepper
+
+from ...analysis.ground_truth.nomenclature.models.settings import (
+    NomenclatureSettings,
+)
+
+
+def plot(labels: Sequence[Label], settings: NomenclatureSettings) -> widgets.Widget:
+    """Step through the drawn tiles of every class over the mosaic."""
+    grouped = drawn_by_class(labels, settings)
+    if not grouped:
+        return panels.unavailable(config.NOTHING_DRAWN)
+    area = widgets.Layout(align_items="flex-start", grid_gap="24px")
+    return TileStepper(grouped, widgets.HBox(layout=area)).box
+
+
+def drawn_by_class(
+    labels: Sequence[Label], settings: NomenclatureSettings
+) -> dict[str, list[Label]]:
+    """Group the drawn tiles of every class holding any, in config order."""
+    return {
+        name: drawn
+        for name in settings.classes
+        if (drawn := [label for label in labels if label.drawn and label.label == name])
+    }

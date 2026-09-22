@@ -1,0 +1,33 @@
+"""Where a build writes what it makes, and what those files are called."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from mars_multisensor_dataset.common.disk.slugify import slugify
+from mars_multisensor_dataset.common.paths import DATA_ROOT, VERSION_ROOT
+
+BUILDING_ROOT = DATA_ROOT / "building"
+DATASETS_ROOT = VERSION_ROOT / "dataset"
+
+PREPROCESSING_ROOT = BUILDING_ROOT / "preprocessing"
+CRISM_ROOT = PREPROCESSING_ROOT / "crism"
+SHARAD_ROOT = PREPROCESSING_ROOT / "sharad"
+MOLA_ROOT = PREPROCESSING_ROOT / "mola"
+CTX_ROOT = PREPROCESSING_ROOT / "ctx"
+
+TILE_METADATA_NAME = "tiles.parquet"
+OBSERVATION_METADATA_NAME = "observations.parquet"
+DATASET_MANIFEST_NAME = "dataset.json"
+SAMPLE_SUFFIX = ".npz"
+INDEX_NAMES = (TILE_METADATA_NAME, OBSERVATION_METADATA_NAME, DATASET_MANIFEST_NAME)
+
+
+def dataset_root(name: str) -> Path:
+    """Return where one named build of the dataset is written, which need not exist."""
+    return DATASETS_ROOT / slugify(name)
+
+
+def crop_paths(root: Path) -> list[Path]:
+    """Return every crop file the build under `root` holds, in no particular order."""
+    return list(root.rglob(f"*{SAMPLE_SUFFIX}"))

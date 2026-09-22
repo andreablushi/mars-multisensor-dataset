@@ -1,0 +1,83 @@
+"""The groups the tiles of the grid are gathered into, each asked of ODE at once."""
+
+from __future__ import annotations
+
+from mars_multisensor_dataset.analysis.models.tile_group import TileGroup
+from mars_multisensor_dataset.analysis.partition import Tessellate
+from mars_multisensor_dataset.common.config import analysis_settings
+from mars_multisensor_dataset.common.maths.geodesy import HALF_TURN, TURN
+from mars_multisensor_dataset.common.models.tile import Tile
+
+
+def group_name(bands: int, tile: Tile, tile_group_deg: float) -> str:
+    """Return the group one tile is grouped into.
+
+    Args:
+        bands: How many bands the grid the tile sits on is split into.
+        tile: The tile to place.
+        tile_group_deg: The side a group is sized to, in degrees.
+
+    Returns:
+        name: The group, by its row of bands and its sector of longitude.
+    """
+    rows = max(1, round(tile_group_deg / (HALF_TURN / bands)))
+    sectors = max(1, round(TURN / tile_group_deg))
+    centre = (tile.west_lon + tile.span / 2.0) % TURN
+    sector = min(int(centre / TURN * sectors), sectors - 1)
+    return f"r{tile.band // rows:02d}_s{sector:02d}"
+
+
+def tile_grid() -> Tessellate:
+    """Return the grid the analysis config splits Mars into."""
+    return Tessellate.of(analysis_settings().tile_km)
+
+
+def group_of(tile: Tile) -> str:
+    """Return the group the analysis config puts one tile in."""
+    return group_name(
+        len(tile_grid().columns), tile, analysis_settings().tile_group_deg
+    )
+
+
+def group_of_tile_named(name: str) -> str:
+    """Return the group the analysis config puts the tile of one name in."""
+    return group_of(tile_grid().tile_named(name))
+
+
+def every_tile(grid: Tessellate) -> list[Tile]:
+    """Return every tile of one grid, south to north and west to east."""
+    return [
+        grid.tile_of(band, column)
+        for band, count in enumerate(grid.columns)
+        for column in range(count)
+    ]
+
+
+def every_tile_group(grid: Tessellate, tile_group_deg: float) -> list[TileGroup]:
+    """Return every group the tiles of one grid are grouped into.
+
+    Args:
+        grid: The grid whose tiles are grouped.
+        tile_group_deg: The side a group is sized to, in degrees.
+
+    Returns:
+        groups: Every group, south to north and west to east.
+    """
+    bands = len(grid.columns)
+    grouped: dict[str, list[Tile]] = {}
+    for tile in every_tile(grid):
+        grouped.setdefault(group_name(bands, tile, tile_group_deg), []).append(tile)
+    groups = []
+    for name, tiles in grouped.items():
+        circling = any(tile.circles_a_pole for tile in tiles)
+        groups.append(
+            TileGroup(
+                name=name,
+                tiles=tuple(tiles),
+                min_lat=min(tile.min_lat for tile in tiles),
+                max_lat=max(tile.max_lat for tile in tiles),
+                west_lon=0.0 if circling else min(tile.west_lon for tile in tiles),
+                east_lon=0.0 if circling else max(tile.east_lon for tile in tiles),
+            )
+        )
+    return groups

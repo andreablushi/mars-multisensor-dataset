@@ -1,0 +1,48 @@
+"""The measured dataset read as one, before the filter is asked of it."""
+
+from __future__ import annotations
+
+from mars_multisensor_dataset.analysis.coverage import artifacts as coverage_artifacts
+from mars_multisensor_dataset.analysis.coverage.models.summary import Summary
+from mars_multisensor_dataset.analysis.partition import split_bands_columns
+from mars_multisensor_dataset.analysis.stats.models import (
+    CatalogueStats,
+    InstrumentStats,
+    Spread,
+)
+from mars_multisensor_dataset.analysis.stats.order import config_rank
+from mars_multisensor_dataset.common.config import analysis_settings
+
+
+def read_catalogue() -> CatalogueStats:
+    """Read the grid-wide index as one dataset.
+
+    Returns:
+        stats: What it holds, and nothing measured at all when no tile was.
+    """
+    tile_km = analysis_settings().tile_km
+    # One row per tile carries its area, which every set of it shares
+    by_tile: dict[str, Summary] = {}
+    by_instrument: dict[str, list[Summary]] = {}
+    for row in coverage_artifacts.read_index():
+        by_tile.setdefault(row.tile, row)
+        by_instrument.setdefault(row.iid, []).append(row)
+    return CatalogueStats(
+        tiles=sum(split_bands_columns(tile_km)),
+        tile_km=tile_km,
+        measured=len(by_tile),
+        tile_km2=Spread.over([row.tile_area_km2 for row in by_tile.values()]),
+        instruments=sorted(
+            (
+                InstrumentStats(
+                    iid=iid,
+                    tiles=len({row.tile for row in rows}),
+                    observations=sum(row.n_obs for row in rows),
+                    first=min(row.t_first for row in rows),
+                    last=max(row.t_last for row in rows),
+                )
+                for iid, rows in by_instrument.items()
+            ),
+            key=lambda instrument: config_rank(instrument.iid),
+        ),
+    )

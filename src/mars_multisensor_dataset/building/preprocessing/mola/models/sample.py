@@ -1,0 +1,24 @@
+"""One MOLA grid cut to the tile it was kept for."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import numpy as np
+
+from mars_multisensor_dataset.building.preprocessing.common.models.sample import Sample
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class MolaSample(Sample):
+    """The elevation one grid holds over one tile.
+
+    Attributes:
+        elevation: The elevation above the areoid in whole metres, lines by samples.
+        delay: The radargram row the nadir echo lands on, held to the window.
+        delay_inside: Which of those rows the window holds.
+    """
+
+    elevation: np.ndarray
+    delay: np.ndarray
+    delay_inside: np.ndarray

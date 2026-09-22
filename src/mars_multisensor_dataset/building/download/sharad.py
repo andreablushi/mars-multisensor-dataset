@@ -1,0 +1,104 @@
+"""Downloading one SHARAD track from ODE, only the columns its tiles keep."""
+
+from __future__ import annotations
+
+import httpx
+import numpy as np
+
+from mars_multisensor_dataset.building.configs import sharad as configs
+from mars_multisensor_dataset.building.download import archive
+from mars_multisensor_dataset.building.preprocessing.sharad.crop import kept_columns
+from mars_multisensor_dataset.common.models.tile import Tile
+from mars_multisensor_dataset.common.pds import labels, tables
+
+
+def column_spans(
+    columns: np.ndarray, lines: int, samples: int, itemsize: int, start: int
+) -> tuple[tuple[int, int], ...]:
+    """Return the bytes some columns of a line by line image take up in its file.
+
+    Args:
+        columns: The sorted columns to keep, counted from zero.
+        lines: How many lines the image holds.
+        samples: How many columns each line holds.
+        itemsize: How many bytes one value takes.
+        start: The byte of the file the image starts at.
+
+    Returns:
+        spans: The first and past-the-last byte of each run of columns, line by line.
+    """
+    breaks = np.flatnonzero(np.diff(columns) != 1) + 1
+    runs = [
+        (int(run[0]), int(run[-1]) + 1) for run in np.split(columns, breaks) if run.size
+    ]
+    row = samples * itemsize
+    return tuple(
+        (start + line * row + first * itemsize, start + line * row + last * itemsize)
+        for line in range(lines)
+        for first, last in runs
+    )
+
+
+def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
+    """Download one track's geometry, and only the columns its tiles keep of the rest.
+
+    Args:
+        identifier: The observation to fetch.
+        client: The client every query and download goes over.
+        frames: The tiles it is cut to, which settle the columns downloaded.
+
+    Raises:
+        FileNotFoundError: When ODE offers no download for a product.
+        FetchError: When the archive will not serve the byte ranges asked.
+    """
+    products = {kind: configs.NAMING.product(identifier, kind) for kind in configs.Kind}
+    files = {
+        kind: configs.CACHE.product_files(identifier, kind) for kind in configs.Kind
+    }
+    if all(path.exists() for held in files.values() for path in held.values()):
+        return
+    geometry_files = files[configs.Kind.GEOMETRY]
+    archive.download_product(
+        client,
+        products[configs.Kind.GEOMETRY],
+        geometry_files,
+        pt=configs.PRODUCT_TYPES[configs.Kind.GEOMETRY],
+        **configs.ODE,
+    )
+    radargram = files[configs.Kind.OBSERVATION]
+    offered = archive.product_urls(
+        client,
+        products[configs.Kind.OBSERVATION],
+        pt=configs.PRODUCT_TYPES[configs.Kind.OBSERVATION],
+        **configs.ODE,
+    )
+    archive.download_files({".lbl": radargram[".lbl"]}, offered, client=client)
+    lines, samples, _, _, dtype = labels.image_layout(labels.load(radargram[".lbl"]))
+    # Every other column is left a hole, which `crop` never reads.
+    columns = kept_columns(tables.load_table(geometry_files[".tab"])[0], frames)
+    itemsize = np.dtype(dtype).itemsize
+    archive.download_files(
+        {".img": radargram[".img"]},
+        offered,
+        client=client,
+        spans=column_spans(columns, lines, samples, itemsize, 0),
+        size=lines * samples * itemsize,
+    )
+    # The combined simulation holds several arrays of the radargram's size in turn.
+    itemsize = np.dtype(configs.CLUTTER_TYPE).itemsize
+    size = lines * samples * itemsize
+    start = configs.CLUTTER_ARRAY * size
+    clutter = archive.product_urls(
+        client,
+        products[configs.Kind.CLUTTER],
+        pt=configs.PRODUCT_TYPES[configs.Kind.CLUTTER],
+        **configs.ODE,
+    )
+    archive.download_files(
+        {".img": files[configs.Kind.CLUTTER][".img"]},
+        clutter,
+        client=client,
+        spans=column_spans(columns, lines, samples, itemsize, start),
+        size=size,
+        origin=start,
+    )

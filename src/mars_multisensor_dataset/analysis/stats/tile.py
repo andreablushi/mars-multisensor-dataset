@@ -1,0 +1,133 @@
+"""One tile as the selection left it, and what the observations it keeps left on it."""
+
+from __future__ import annotations
+
+from collections import Counter, defaultdict
+from collections.abc import Mapping, Sequence
+
+from mars_multisensor_dataset.analysis.coverage.models.coverage import SetCoverage
+from mars_multisensor_dataset.analysis.selector.merge import merge_track
+from mars_multisensor_dataset.analysis.selector.models.selection import Selection
+from mars_multisensor_dataset.analysis.stats.artifacts import read_tile_selection
+from mars_multisensor_dataset.analysis.stats.models import (
+    InstrumentReach,
+    TileStats,
+    TileTrack,
+)
+from mars_multisensor_dataset.common.config import analysis_settings
+
+# How many tiles are held read at once, so every panel of one shares it.
+TILE_CACHE = 8
+
+# The tiles held read, so every panel of one shares the reading
+_tracks_read: dict[str, TileTrack | None] = {}
+
+
+def read_tile_track(coverage: Sequence[SetCoverage]) -> TileTrack | None:
+    """Read one tile as the selection left it, however many panels ask for it.
+
+    Args:
+        coverage: The tile's instrument sets, in the order they are drawn.
+
+    Returns:
+        tile_track: Its track and kept observations, or None if the selection holds
+            nothing to measure on it.
+    """
+    key = coverage[0].summary.tile
+    if key not in _tracks_read:
+        if len(_tracks_read) >= TILE_CACHE:
+            _tracks_read.clear()
+        selection = read_tile_selection(key)
+        _tracks_read[key] = (
+            None if selection is None else track_tile(coverage, selection)
+        )
+    return _tracks_read[key]
+
+
+def track_tile(
+    coverage: Sequence[SetCoverage], selection: Selection
+) -> TileTrack | None:
+    """Place the observations one tile keeps on the track they were taken over.
+
+    Args:
+        coverage: The tile's instrument sets, in any order.
+        selection: What the selection left of it, and the observations it keeps.
+
+    Returns:
+        tile_track: Its track and where its kept observations sit, or None if
+            nothing is measurable.
+    """
+    track = merge_track(coverage, analysis_settings().criteria)
+    if track is None:
+        return None
+    index_of = {
+        observation.pdsid: index for index, observation in enumerate(track.observations)
+    }
+    return TileTrack(
+        track=track,
+        window=selection.tile,
+        taken=tuple(
+            sorted(
+                index_of[observation.pdsid]
+                for observation in selection.observations
+                if observation.pdsid in index_of
+            )
+        ),
+    )
+
+
+def measure_tile(tile_track: TileTrack) -> TileStats:
+    """Measure what the instruments left on one tile, given the observations it keeps.
+
+    Args:
+        tile_track: Its track, its window, and where its kept observations sit.
+
+    Returns:
+        stats: What it holds.
+    """
+    track = tile_track.track
+    # What each instrument left inside the window, and which of them each cell holds
+    cells_by_iid: defaultdict[str, set[int]] = defaultdict(set)
+    observations_by_iid: Counter[str] = Counter()
+    iids_by_cell: defaultdict[int, set[str]] = defaultdict(set)
+    landed_km2_by_iid: defaultdict[str, float] = defaultdict(float)
+    for index in tile_track.taken:
+        iid = track.iids[track.owners[index]]
+        cells_by_iid[iid].update(track.cells[index])
+        observations_by_iid[iid] += 1
+        for cell in track.cells[index].tolist():
+            iids_by_cell[cell].add(iid)
+        landed_km2_by_iid[iid] += len(track.cells[index]) * track.grid.cell_km2
+    overlaps: defaultdict[tuple[str, ...], float] = defaultdict(float)
+    for cell in sorted(iids_by_cell):
+        overlaps[tuple(sorted(iids_by_cell[cell]))] += track.grid.cell_km2
+    return TileStats(
+        window=tile_track.window,
+        iids=list(dict.fromkeys(track.iids)),
+        reached={
+            iid: InstrumentReach(
+                km2=len(cells_reached) * track.grid.cell_km2,
+                landed_km2=landed_km2_by_iid[iid],
+                observations_taken=observations_by_iid[iid],
+            )
+            for iid, cells_reached in cells_by_iid.items()
+        },
+        overlaps=dict(sorted(overlaps.items(), key=lambda ground: -ground[1])),
+    )
+
+
+def ground_by_instrument_count(
+    overlaps: Mapping[tuple[str, ...], float],
+) -> dict[int, float]:
+    """Add up the ground each number of instruments reaches at once.
+
+    Args:
+        overlaps: The ground each set of instruments reaches, counting a cell once.
+
+    Returns:
+        ground: The ground in km2 by how many instruments reach it, fewest first.
+    """
+    summed: defaultdict[int, float] = defaultdict(float)
+    for instrument_names, km2 in overlaps.items():
+        summed[len(instrument_names)] += km2
+    return dict(sorted(summed.items()))

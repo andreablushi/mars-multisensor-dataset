@@ -1,0 +1,23 @@
+# Artifacts and data
+/data
+
+# Temporary Markdown files
+CLAUDE.md
+notes.md
+analysis.md
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# uv
+.python-version
+.venv/
+.ruff_cache/
+
+# Environment variables
+.env
+.env.*
+!.env.example

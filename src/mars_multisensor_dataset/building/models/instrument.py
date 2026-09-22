@@ -1,0 +1,137 @@
+"""How each instrument goes from an ODE product to a crop, and which a build has."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Any
+
+import httpx
+
+from mars_multisensor_dataset.building.common.layout import Layout
+from mars_multisensor_dataset.building.configs import crism as crism_configs
+from mars_multisensor_dataset.building.configs import ctx as ctx_configs
+from mars_multisensor_dataset.building.configs import mola as mola_configs
+from mars_multisensor_dataset.building.configs import sharad as sharad_configs
+from mars_multisensor_dataset.building.download import crism as crism_download
+from mars_multisensor_dataset.building.download import ctx as ctx_download
+from mars_multisensor_dataset.building.download import mola as mola_download
+from mars_multisensor_dataset.building.download import sharad as sharad_download
+from mars_multisensor_dataset.building.preprocessing.common.models.sample import Sample
+from mars_multisensor_dataset.building.preprocessing.crism import crop as crism_crop
+from mars_multisensor_dataset.building.preprocessing.crism import read as crism_read
+from mars_multisensor_dataset.building.preprocessing.crism.correction import (
+    centre_wavelengths,
+)
+from mars_multisensor_dataset.building.preprocessing.ctx import crop as ctx_crop
+from mars_multisensor_dataset.building.preprocessing.ctx import read as ctx_read
+from mars_multisensor_dataset.building.preprocessing.mola import crop as mola_crop
+from mars_multisensor_dataset.building.preprocessing.mola import read as mola_read
+from mars_multisensor_dataset.building.preprocessing.sharad import crop as sharad_crop
+from mars_multisensor_dataset.building.preprocessing.sharad import read as sharad_read
+from mars_multisensor_dataset.common.models.tile import Tile
+
+
+class Archive(StrEnum):
+    """The lanes downloads wait on: one per archive, and the SPICE server."""
+
+    JPL = "jpl"
+    WUSTL = "wustl"
+    SPICE = "spice"
+
+
+@dataclass(frozen=True, slots=True)
+class Instrument:
+    """How one instrument goes from a product ODE holds to a crop in the dataset.
+
+    Attributes:
+        layout: What its arrays hold, and which of them it is stored for.
+        fetch: What brings one product down into the cache, as much as its tiles need.
+        read_observation: What reads a fetched product off disk, given its settings,
+            or None where it measured nothing.
+        crop: What cuts that observation to a tile's box, or None where it misses.
+        archive: Which archive its products are downloaded from.
+        worker_bytes: What one build holds of its largest product at once.
+        discard: What deletes the built product, or None for a small archive.
+        place: What readies a fetched product on the SPICE server, or None.
+        observation_id: What reads a kept product's observation, or None.
+        grid_of: What names the one product that covers a tile, or None.
+    """
+
+    layout: Layout
+    fetch: Callable[[str, httpx.Client, tuple[Tile, ...]], None]
+    read_observation: Callable[..., Any]
+    crop: Callable[[Any, Tile], Sample | None]
+    archive: Archive
+    worker_bytes: int
+    discard: Callable[[str], None] | None = None
+    place: Callable[[str], None] | None = None
+    observation_id: Callable[[str], str | None] | None = None
+    grid_of: Callable[[Tile], str] | None = None
+
+
+INSTRUMENTS = {
+    one.layout.instrument: one
+    for one in (
+        Instrument(
+            centre_wavelengths.LAYOUT,
+            crism_download.fetch,
+            crism_read.read_observation,
+            crism_crop.crop,
+            Archive.WUSTL,
+            discard=crism_configs.CACHE.discard,
+            observation_id=crism_configs.NAMING.observation_id,
+            # A hyperspectral observation takes 601 MB against 325 MB, so it goes first.
+            worker_bytes=1024**3,
+        ),
+        Instrument(
+            ctx_configs.LAYOUT,
+            ctx_download.fetch,
+            ctx_read.read_observation,
+            ctx_crop.crop,
+            Archive.JPL,
+            discard=ctx_configs.CACHE.discard,
+            place=ctx_download.place,
+            observation_id=ctx_configs.NAMING.observation_id,
+            # A tile's window, its crop and two masks, beside ISIS measured at 513 MB.
+            worker_bytes=2 * 1024**3,
+        ),
+        Instrument(
+            mola_configs.LAYOUT,
+            mola_download.fetch,
+            mola_read.read_observation,
+            mola_crop.crop,
+            Archive.WUSTL,
+            grid_of=mola_download.mola_grid,
+            # The whole gridded record is 2 GB, so a sheet is held for the run.
+            worker_bytes=256 * 1024**2,
+        ),
+        Instrument(
+            sharad_configs.LAYOUT,
+            sharad_download.fetch,
+            sharad_read.read_observation,
+            sharad_crop.crop,
+            Archive.WUSTL,
+            discard=sharad_configs.CACHE.discard,
+            observation_id=sharad_configs.NAMING.observation_id,
+            # A radargram, its geometry and its clutter measured 222 MB at peak.
+            worker_bytes=256 * 1024**2,
+        ),
+    )
+}
+
+
+def observation_identifier(iid: str, pdsid: str) -> str | None:
+    """Return what the instrument building one product asks for, or None.
+
+    Args:
+        iid: The instrument the product was taken by.
+        pdsid: The product as the selection names it.
+
+    Returns:
+        identifier: Its observation, or None where no instrument here reads it.
+    """
+    named = INSTRUMENTS.get(iid)
+    parse = named.observation_id if named else None
+    return parse(pdsid) if parse else None

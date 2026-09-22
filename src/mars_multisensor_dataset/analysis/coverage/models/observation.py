@@ -1,0 +1,49 @@
+"""One observation's ground, and the set of it a coverage computation is handed."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+
+from shapely.geometry.base import BaseGeometry
+
+from mars_multisensor_dataset.analysis.coverage.models.region import TileRegion
+from mars_multisensor_dataset.common.models.tile import Tile
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectedObservation:
+    """One observation's ground, ready to be folded into a union.
+
+    Attributes:
+        pdsid: The PDS product identifier.
+        ihid: The instrument host identifier.
+        iid: The instrument identifier.
+        pt: The product type.
+        start: When the observation started.
+        shape: The projected footprint, clipped to the tile.
+    """
+
+    pdsid: str
+    ihid: str
+    iid: str
+    pt: str
+    start: datetime
+    shape: BaseGeometry
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectedSet:
+    """One instrument set's ground on one tile, ready to be measured.
+
+    Attributes:
+        tile: The tile the footprints were cut to.
+        set_key: The instrument set identifier the records were asked for by.
+        region: That tile projected into equal-area metres.
+        observations: The observations that landed on it, in chronological order.
+    """
+
+    tile: Tile
+    set_key: str
+    region: TileRegion
+    observations: list[ProjectedObservation]
