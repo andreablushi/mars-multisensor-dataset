@@ -216,11 +216,11 @@ def clean_detectors(identifier: str) -> dict[str, Detector]:
         identifier: The observation, its files already in the download cache.
 
     Returns:
-        detectors: Every detector that landed, filled and with its mask.
+        detectors: Every detector that landed and measured, filled and with its mask.
 
     Raises:
         FileNotFoundError: When any file the observation needs is missing.
-        ValueError: When a window keeps no band of a cube.
+        ValueError: When a window keeps no band of a cube, or no detector measured.
     """
 
     def cleaned(detector: Detector) -> Detector:
@@ -249,9 +249,15 @@ def clean_detectors(identifier: str) -> dict[str, Detector]:
         cube[:, :, kept] = block
         return replace(detector, mask=mask)
 
-    return {
-        name: cleaned(detector) for name, detector in read_detectors(identifier).items()
-    }
+    detectors = {}
+    for name, detector in read_detectors(identifier).items():
+        try:
+            detectors[name] = cleaned(detector)
+        except masking.NoMeasurement:
+            continue
+    if not detectors:
+        raise ValueError(f"No detector of {identifier} holds a measurement.")
+    return detectors
 
 
 def read_observation(identifier: str) -> CrismObservation:

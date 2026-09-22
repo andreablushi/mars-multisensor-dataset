@@ -14,6 +14,10 @@ WINDOWS = {"l": (1020.0, 2650.0), "s": (400.0, 1060.0)}
 BRIGHTNESS = (-0.05, 1.0)
 
 
+class NoMeasurement(ValueError):
+    """Raised when every cell of one detector's cube is refused."""
+
+
 def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: str) -> Mask:
     """Fill everything one cube holds that is not a measurement.
 
@@ -27,7 +31,8 @@ def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: str) -> Mask:
 
     Raises:
         KeyError: When no window is configured for that detector.
-        ValueError: When nothing survives the mask or nothing is measured.
+        ValueError: When the window keeps no band of the cube.
+        NoMeasurement: When no cell of the cube is a measurement.
     """
     centre = bands_calibration.centres(table)
     low, high = WINDOWS[detector]
@@ -59,8 +64,8 @@ def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: str) -> Mask:
 
     # One stand-in for every refused cell, read off what the cube still measures.
     refused = scattered | dead
+    if refused.all():
+        raise NoMeasurement(f"No cell of this {detector} cube is a measurement.")
     fill = float(np.mean(cube, where=~refused))
-    if not np.isfinite(fill):
-        raise ValueError(f"No cell of this {detector} cube is a measurement.")
     np.copyto(cube, fill, where=refused)
     return Mask(columns, bands, edges, int(scattered.sum()), pixels, fill)
