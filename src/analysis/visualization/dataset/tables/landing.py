@@ -12,7 +12,7 @@ from analysis.visualization.common.models.tables import Row
 
 _LANDED = (
     "Instrument",
-    "Mean observations offered",
+    "Observations offered",
     "Mean pixels landed per observation",
     "Pixels asked",
     "Mean coverage inside a tile",
@@ -32,7 +32,7 @@ def landed(read: DatasetStats) -> widgets.Widget:
         rows.append(
             (
                 iid,
-                wording.spread(read.offered[iid], lambda offered: f"{offered:,.1f}"),
+                wording.span(read.offered[iid], lambda offered: f"{offered:,.0f}"),
                 wording.spread(
                     measured, lambda pixels: f"{quantities.compact(pixels)}{unit}"
                 )

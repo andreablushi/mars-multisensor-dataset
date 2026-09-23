@@ -27,6 +27,15 @@ def spread(measured: Spread, written: Callable[[float], str]) -> str:
     return f"{middle} ± {written(measured.deviation)}"
 
 
+def span(measured: Spread, written: Callable[[float], str]) -> str:
+    """Write the least and the most a measurement read off many tiles."""
+    if not measured.counted:
+        return NOTHING
+    if measured.agreed:
+        return written(measured.low)
+    return f"{written(measured.low)} to {written(measured.high)}"
+
+
 def ground(km2: float, of_km2: float) -> str:
     """Write an amount of ground and what share of something it is."""
     if not km2:
