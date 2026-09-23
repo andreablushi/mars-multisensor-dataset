@@ -56,7 +56,6 @@ def fetch_tables(
         ledger_path.open("a", encoding="utf-8") as handle,
     ):
         scratch = Path(held)
-        # Every table of one product type is laid out alike, so one label says it all
         label = scratch / "layout.lbl"
         http.streamed(
             next(one[".lbl"] for one in urls.values() if ".lbl" in one),

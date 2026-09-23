@@ -34,7 +34,6 @@ def annotate_companions(settings: Settings, force: bool = False) -> int:
     failed = 0
     for key, companion in settings.companions.items():
         instrument_set = InstrumentSet.from_key(key)
-        # A file whose every line already names every field is read no further
         named = [f'"{field}"' for field in companion.columns]
         unsettled = [
             path

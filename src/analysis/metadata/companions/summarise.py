@@ -41,7 +41,6 @@ def summarise_table(
         table, {"ROWS": str(rows), "ROW_BYTES": str(row_bytes)}, columns
     )
     latitude = read[companion.latitude]
-    # A row is a point, so it is tested as a box of no size
     point = (latitude, latitude, read[companion.longitude] % 360.0, 0.0)
     summaries: dict[str, Summary] = {}
     for name, group in groups.items():
