@@ -29,9 +29,10 @@ def plot(picked: Sequence[Selection], labels: Sequence[Label]) -> widgets.Widget
             lon, lat = zip(
                 *(
                     geodesy.bbox_centre(
-                        held.min_lat, held.max_lat, held.west_lon, held.east_lon
+                        one.min_lat, one.max_lat, one.west_lon, one.east_lon
                     )
-                    for held in (boxes[one.tile] for one in drawn if one.label == label)
+                    for one in drawn
+                    if one.label == label
                 ),
                 strict=True,
             )

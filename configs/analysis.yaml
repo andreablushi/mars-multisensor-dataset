@@ -51,7 +51,7 @@ ground_truth:
 
   # Every class, by the IAU descriptor or the named features it is read from.
   classes:
-    crater: {descriptor: Crater, diameter_km: [8, 32]}
+    crater: {descriptor: Crater, diameter_km: [26, 40]}
     chaos: {descriptor: Chaos}
     dune_field: {descriptor: Unda}
     polar_layered_deposits: {names: [Planum Boreum, Planum Australe]}

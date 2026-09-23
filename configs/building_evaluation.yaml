@@ -9,4 +9,4 @@ workers: 8
 # Downloads at once from each archive, which wait on it and not on the cores.
 downloads:
   jpl: 4
-  wustl: 8
+  wustl: 4

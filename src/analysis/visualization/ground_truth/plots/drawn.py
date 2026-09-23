@@ -41,7 +41,7 @@ def plot(labels: Sequence[Label], settings: Settings) -> widgets.Widget:
         if one is None:
             return
         note.value = escape(f"{tile.index + 1} of {len(tile.options)}, {one.feature}")
-        grid = placing.placed(one.tile)
+        grid = placing.placed(one.tile, one)
         if grid is None:
             crop = panels.unavailable(
                 mosaic.BASEMAP_FAILED.format(reason=mosaic.NO_BOX)
