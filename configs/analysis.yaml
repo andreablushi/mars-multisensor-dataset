@@ -18,6 +18,14 @@ instruments:
   - MRO/CRISM/TRDR:*sp*_if*_trr3
   - MRO/SHARAD/USRDRV2
 
+# The table published beside a set's products, whose columns its records carry as medians.
+companions:
+  MRO/SHARAD/USRDRV2:
+    pt: USGEOMV2
+    latitude: LATITUDE
+    longitude: LONGITUDE
+    columns: {Solar_zenith_angle: SZA, Signal_phase_distortion: PHASE/1.0E16}
+
 # Which products a box returns: b box overlap, f footprint overlap, o inside, i containing.
 loc: f
 

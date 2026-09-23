@@ -18,7 +18,6 @@ EVALUATION_STATS_ROOT = STATS_ROOT / "evaluation"
 SELECTION_ROOT = ANALYSIS_ROOT / "selection"
 LABELS_ROOT = ANALYSIS_ROOT / "labels"
 FEATURES_PATH = LABELS_ROOT / "features.jsonl"
-SOUNDINGS_PATH = METADATA_ROOT / "soundings.jsonl"
 
 STATS_NAME = "stats.json"
 SELECTED_TILES_NAME = "tiles.parquet"
@@ -41,6 +40,20 @@ def metadata_file(root: Path, group: str, instrument_set: InstrumentSet) -> Path
         path: The path to the JSONL output file.
     """
     return root / group / f"{instrument_set.slug}.jsonl"
+
+
+def companion_ledger(root: Path, instrument_set: InstrumentSet, pt: str) -> Path:
+    """Return the ledger of every companion table one set's products were read off.
+
+    Args:
+        root: The metadata root directory.
+        instrument_set: The set the companion is published beside.
+        pt: The product type the companion is published under.
+
+    Returns:
+        path: The path to the JSONL ledger, beside the groups rather than in one.
+    """
+    return root / f"{instrument_set.slug}.{pt.lower()}.jsonl"
 
 
 def events_path(root: Path, source: Path) -> Path:

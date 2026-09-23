@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from analysis.ground_truth.models.settings import Settings as GroundTruth
+from analysis.models.companion import Companion
 from analysis.models.instrument import InstrumentSet
 from analysis.selector.models.filter import Filter
 
@@ -22,6 +23,7 @@ class Settings:
         workers: How many jobs each half runs at once.
         window: What a window has to hold before a tile earns a place.
         ground_truth: How the tiles the selection kept are labelled.
+        companions: The table published beside a set's products, by the set's key.
         union_threads: How many threads one coverage job accumulates on.
     """
 
@@ -33,6 +35,7 @@ class Settings:
     workers: int
     window: Filter
     ground_truth: GroundTruth
+    companions: dict[str, Companion] = field(default_factory=dict)
     union_threads: int = 1
 
     @property
