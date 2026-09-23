@@ -18,6 +18,7 @@ from analysis.coverage.artifacts import index
 from analysis.ground_truth import artifacts, draw, fetch, label
 from analysis.ground_truth.models.label import Label
 from analysis.metadata import file_explorer
+from analysis.metadata.sounding import annotate
 from analysis.models.progress import CoverageSummary, DownloadSummary
 from analysis.selector import select
 from analysis.stats.artifacts import store
@@ -76,7 +77,7 @@ def archived(project, name: str):
 
 
 def compute_coverage(force: bool = False, workers: int | None = None) -> int:
-    """Download the ODE metadata still missing and measure the coverage it left.
+    """Download the ODE metadata still missing, measure its coverage and soundings.
 
     Args:
         force: Whether to redo finished work rather than skip it.
@@ -99,7 +100,9 @@ def compute_coverage(force: bool = False, workers: int | None = None) -> int:
         planner.unfinished(file_explorer.find_sets()),
         printing,
     )
-    return 1 if computed.failed or downloaded.failed else 0
+    unsounded = annotate.annotate_soundings(choices, force)
+    printing.print(f"soundings: {unsounded} tracks left unmeasured")
+    return 1 if computed.failed or downloaded.failed or unsounded else 0
 
 
 def compute_labels(force: bool = False) -> list[Label]:
