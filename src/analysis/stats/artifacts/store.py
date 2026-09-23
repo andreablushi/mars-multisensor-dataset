@@ -12,7 +12,7 @@ from analysis.stats.models.spread import Spread
 from common.disk.files import atomic_path
 
 # The layout of a published file, raised whenever what is written changes.
-STATS_SHAPE = 3
+STATS_SHAPE = 4
 
 
 def stats_path(root: Path = paths.STATS_ROOT) -> Path:
@@ -49,7 +49,7 @@ def write_stats_file(held: DatasetStats, root: Path = paths.STATS_ROOT) -> Path:
             "per_look": _numbers_by_iid(aggregate.pixels_per_look),
             "pixel_km2": _numbers_by_iid(aggregate.pixel_km2),
         },
-        "offered": _numbers_by_iid(held.offered),
+        "selected": _numbers_by_iid(held.selected),
         "overlap": _numbers_of(held.overlap),
     }
     path = stats_path(root)
@@ -84,7 +84,7 @@ def read_stats_file(root: Path = paths.STATS_ROOT) -> DatasetStats:
             pixels_per_look=_spreads_by_iid(held["per_look"]),
             pixel_km2=_spreads_by_iid(held["pixel_km2"]),
         ),
-        offered=_spreads_by_iid(saved["offered"]),
+        selected=_spreads_by_iid(saved["selected"]),
         overlap=_spread_of(saved["overlap"]),
         iids=saved["iids"],
     )

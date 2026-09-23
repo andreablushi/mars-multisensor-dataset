@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from collections.abc import Mapping
 
 from analysis.stats.models.tile import InstrumentReach, TileLooks, TileStats
@@ -54,7 +53,6 @@ def measured_tile(looks: TileLooks) -> TileStats:
     return TileStats(
         window=window,
         iids=list(dict.fromkeys(track.iids)),
-        offered=dict(Counter(track.iids[owner] for owner in track.owners)),
         pixel_km2=pixel_km2,
         reached={
             iid: InstrumentReach(

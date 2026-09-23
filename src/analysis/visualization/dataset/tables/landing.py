@@ -12,13 +12,14 @@ from analysis.visualization.common.models.tables import Row
 
 _LANDED = (
     "Instrument",
-    "Observations offered",
+    "Mean observations selected",
     "Mean pixels landed per observation",
     "Pixels asked",
     "Mean coverage inside a tile",
     "Least",
 )
 _BLANK = ""
+_WHOLE = "{:,.0f}".format
 
 
 def landed(read: DatasetStats) -> widgets.Widget:
@@ -29,10 +30,13 @@ def landed(read: DatasetStats) -> widgets.Widget:
         # A sounder counts traces, not picture elements, so its pixels go unmarked
         unit = "" if iid == wording.SOUNDER else " px"
         measured = read.held.pixels_per_look[iid]
+        selected = read.selected[iid]
         rows.append(
             (
                 iid,
-                wording.span(read.offered[iid], lambda offered: f"{offered:,.0f}"),
+                f"{selected.mean:,.1f} ({wording.span(selected, _WHOLE)})"
+                if selected.counted
+                else wording.NOTHING,
                 wording.spread(
                     measured, lambda pixels: f"{quantities.compact(pixels)}{unit}"
                 )

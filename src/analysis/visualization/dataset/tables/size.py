@@ -21,10 +21,10 @@ def final(read: DatasetStats) -> widgets.Widget:
         ("Longest window", quantities.duration(held.days.high)),
     ]
     for iid in read.iids:
-        measured = read.offered[iid]
+        measured = read.selected[iid]
         rows.append(
             (
-                f"{iid} observations offered",
+                f"{iid} observations selected",
                 f"{measured.mean * measured.counted:,.0f}",
             )
         )

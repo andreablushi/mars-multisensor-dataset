@@ -28,8 +28,14 @@ def dataset_stats(measured: Sequence[TileStats]) -> DatasetStats:
     grounded = [one for one in held if one.window.kept]
     return DatasetStats(
         held=aggregate_tiles(held, iids),
-        offered={
-            iid: Spread.over([one.offered.get(iid, 0) for one in held]) for iid in iids
+        selected={
+            iid: Spread.over(
+                [
+                    one.reached[iid].observations_taken if iid in one.reached else 0
+                    for one in grounded
+                ]
+            )
+            for iid in iids
         },
         # The share of a tile every instrument at once reaches, one by one
         overlap=Spread.over(
