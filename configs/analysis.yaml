@@ -48,8 +48,8 @@ window:
   # What instruments are excluded from the window, and kept whenever they came
   timeless: [SHARAD]
 
-  # The share of its own cells a look must hold that no other kept look does
-  gain_share: {CTX: 0.25, CRISM: 0.25, SHARAD: 0.35}
+  # The share of its own cells a look shares with another past which the two are redundant
+  redundant_share_threshold: {CTX: 0.75, CRISM: 0.75, SHARAD: 0.3}
 
 # How the tiles the selection kept are labelled.
 ground_truth:

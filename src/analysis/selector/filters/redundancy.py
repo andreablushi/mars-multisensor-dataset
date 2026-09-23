@@ -50,26 +50,66 @@ def trimmed(
     for index in kept + standing:
         counter.hold(track.owners[index], track.cells[index])
     constraints = criteria.windowed + criteria.standing
-    # Try to drop each observation, oldest first, SHARAD worst first, keep the rest
+    # Drop each redundant observation but the best of its group, oldest or worst first
     dropped: set[int] = set()
-    for index in kept + standing:
-        owner, cells = track.owners[index], track.cells[index]
-        filled = counter.observations_per_cell[owner]
-        alone = int(np.count_nonzero(filled[cells] == 1))
-        if alone >= criteria.gain(track.iids[owner], cells.size):
-            continue
-        counter.release(owner, cells)
-        # If the window can do without the observation
-        if coverage_constraints(constraints, counter.cells_reached) is not None:
-            dropped.add(index)
-        else:
-            counter.hold(owner, cells)
+    for looks in (kept, standing):
+        for group in redundant_groups(track, looks, criteria):
+            for index in group[:-1]:
+                owner, cells = track.owners[index], track.cells[index]
+                counter.release(owner, cells)
+                # If the window can do without the observation
+                if coverage_constraints(constraints, counter.cells_reached) is not None:
+                    dropped.add(index)
+                else:
+                    counter.hold(owner, cells)
     reached = coverage_constraints(criteria.windowed, counter.cells_reached)
     return (
         [index for index in kept if index not in dropped],
         sorted(index for index in standing if index not in dropped),
         reached,
     )
+
+
+def redundant_groups(
+    track: Track, looks: list[int], criteria: Filter
+) -> list[list[int]]:
+    """Gather the looks redundant with each other, directly or through another look.
+
+    Args:
+        track: The tile's observations on one time axis.
+        looks: The looks to gather, worst first.
+        criteria: The filter holding the share past which two looks are redundant.
+
+    Returns:
+        groups: Each group of one instrument's redundant looks, worst first.
+    """
+    filled = np.zeros((len(looks), track.grid.cells), dtype=np.float32)
+    for row, index in enumerate(looks):
+        filled[row, track.cells[index]] = 1.0
+    shared = filled @ filled.T
+    sizes = np.diag(shared)
+    owners = np.array([track.owners[index] for index in looks])
+    thresholds = np.array(
+        [
+            criteria.redundant_share_threshold.get(track.iids[owner], 1.0)
+            for owner in owners
+        ]
+    )
+    overlapping = shared > (thresholds * sizes)[:, None]
+    linked = (overlapping | overlapping.T) & (owners[:, None] == owners[None, :])
+    groups: list[list[int]] = []
+    seen: set[int] = set()
+    for start in range(len(looks)):
+        if start in seen:
+            continue
+        members, frontier = {start}, [start]
+        while frontier:
+            fresh = set(np.flatnonzero(linked[frontier].any(axis=0)).tolist()) - members
+            members |= fresh
+            frontier = list(fresh)
+        seen |= members
+        groups.append([looks[row] for row in sorted(members)])
+    return groups
 
 
 def sharad_drop_order(track: Track, looks: list[int]) -> list[int]:
