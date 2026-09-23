@@ -13,6 +13,7 @@ from building.download import sharad as download
 from building.metadata.tile import tile_metadata
 from building.preprocessing.sharad import preprocess
 from building.preprocessing.sharad.models.sample import SharadSample
+from common.fetch.http import TLS_CONTEXT
 
 FIGURE_SIZE = (5.0, 6.0)
 
@@ -47,7 +48,7 @@ def plot(picked: Selection) -> widgets.Widget:
         Returns:
             sample: The track cut to the tile, or None where it reaches none of it.
         """
-        with httpx.Client() as client:
+        with httpx.Client(verify=TLS_CONTEXT) as client:
             download.fetch(identifier, client)
         return preprocess.crop(preprocess.read_observation(identifier), frame)
 

@@ -65,7 +65,7 @@ class ODEClient:
 
     def __init__(self) -> None:
         """Open the client ODE is asked through."""
-        self._client = httpx.Client()
+        self._client = httpx.Client(verify=http.TLS_CONTEXT)
 
     def query(self, params: dict[str, str]) -> dict[str, Any]:
         """Run one ODE query over this client's connections.

@@ -20,6 +20,7 @@ from building.common.pds import labels
 from building.configs.sharad import NAMING
 from building.download.archive import bring, published
 from common import console as printing
+from common.fetch.http import TLS_CONTEXT
 from common.fetch.ode import ODEClient
 from common.maths.tessellate import Tessellate
 
@@ -66,7 +67,7 @@ def fetch_distortions(
     failed = 0
     progress = console.logged(ancillary.pt.lower())
     with (
-        httpx.Client() as client,
+        httpx.Client(verify=TLS_CONTEXT) as client,
         tempfile.TemporaryDirectory() as held,
         ThreadPoolExecutor(max_workers=workers) as pool,
     ):

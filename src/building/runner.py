@@ -35,6 +35,7 @@ from building.models.progress import (
 from building.models.settings import Settings
 from building.preprocessing.common import store
 from common.console import named_failure
+from common.fetch.http import TLS_CONTEXT
 
 # The share of the box's memory a build may hold, the rest being unmetered.
 MEMORY_SHARE = 0.45
@@ -71,7 +72,7 @@ def run_build(
     limits = httpx.Limits(
         max_connections=connections, max_keepalive_connections=connections
     )
-    with httpx.Client(limits=limits) as ode:
+    with httpx.Client(limits=limits, verify=TLS_CONTEXT) as ode:
         try:
             indexed = metadata_read.read_observation_metadata(root)
             named = frozenset(one.path for one in indexed)

@@ -14,6 +14,7 @@ from matplotlib.axes import Axes
 
 from analysis.visualization.common import panels
 from analysis.visualization.common.models.box import Box
+from common.fetch.http import TLS_CONTEXT
 from common.maths import geodesy
 
 BASEMAP_URL = "https://planetarymaps.usgs.gov/cgi-bin/mapserv"
@@ -75,6 +76,7 @@ def crop(box: Box, pixels: int = BASEMAP_PIXELS) -> bytes:
     longest = max(wide, tall)
     response = httpx.get(
         BASEMAP_URL,
+        verify=TLS_CONTEXT,
         params={
             "map": BASEMAP_MAP,
             "SERVICE": "WMS",
