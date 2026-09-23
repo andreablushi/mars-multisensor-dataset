@@ -5,8 +5,6 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from analysis.selector.models.rank import Rank
-
 # One instrument answering a constraint: the sets that speak for it and its floor
 Answer = tuple[tuple[int, ...], int]
 # A constraint any one of its instruments can answer, and what a window is asked.
@@ -23,11 +21,9 @@ class Filter:
         span_ls: How far round its year Mars may turn inside a window, in degrees.
         timeless: The instruments the ground answers for whenever they came.
         gain_share: The part of its own cells a look holds alone to be kept, by iid.
-        ranking: What a timeless instrument's looks are ranked by, first rule first.
         least: The pixels each set has to land on the tile, by set.
         windowed: What a window is scored on, tightest constraint first.
         standing: What the whole record answers for, tightest first.
-        ranks: Where each ranked look stands, the best lowest, by product identifier.
     """
 
     constraints: list[dict[str, float]]
@@ -35,11 +31,9 @@ class Filter:
     admits: dict[str, float] = field(default_factory=dict)
     timeless: list[str] = field(default_factory=list)
     gain_share: dict[str, float] = field(default_factory=dict)
-    ranking: list[Rank] = field(default_factory=list)
     least: list[float] = field(default_factory=list)
     windowed: Constraints = field(default_factory=list)
     standing: Constraints = field(default_factory=list)
-    ranks: dict[str, list[float]] = field(default_factory=dict)
 
     def gain(self, iid: str, cells: int) -> int:
         """Return how many of its cells a look has to hold alone to be kept.

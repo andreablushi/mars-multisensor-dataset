@@ -18,11 +18,11 @@ from analysis import planner
 from analysis.console import describe, render
 from analysis.coverage import compute
 from analysis.metadata import download, file_explorer
-from analysis.metadata.ode import ODEClient
 from analysis.models.job import Job, Outcome
 from analysis.models.progress import ProgressEvent
 from analysis.models.settings import Settings
 from analysis.utils import tile_group
+from common.fetch.ode import ODEClient
 from common.maths.tessellate import Tessellate
 
 

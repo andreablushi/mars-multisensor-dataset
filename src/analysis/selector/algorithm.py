@@ -7,7 +7,7 @@ from bisect import bisect_left
 from collections.abc import Sequence
 
 from analysis.coverage import ground
-from analysis.selector.filters import redundancy, timeless
+from analysis.selector.filters import redundancy
 from analysis.selector.filters.coverage_constraints import coverage_constraints
 from analysis.selector.models.counter import Counter
 from analysis.selector.models.filter import Filter
@@ -73,7 +73,7 @@ def search(track: Track, criteria: Filter) -> Survey | None:
     if picked is None:
         return None
     # Clean up the record to only what is worth keeping, and report reached
-    kept, reached = redundancy.trimmed(track, picked, criteria)
+    kept, standing, reached = redundancy.trimmed(track, picked, criteria)
     return Survey(
         area_km2=track.grid.area_km2,
         start=track.observations[kept[0]].t_start,
@@ -81,7 +81,7 @@ def search(track: Track, criteria: Filter) -> Survey | None:
         days=track.times[kept[-1]] - track.times[kept[0]],
         geo_mean=_scored(track, reached),
         kept=tuple(kept),
-        standing=timeless.fresh_looks(track, criteria),
+        standing=tuple(standing),
     )
 
 

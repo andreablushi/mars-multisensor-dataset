@@ -5,11 +5,10 @@ from __future__ import annotations
 from typing import Any, TypeAlias
 
 import analysis.metadata.provenance as provenance
-from analysis.metadata.ode import ODEClient
 from analysis.models.instrument import InstrumentSet
 from analysis.models.tile_group import TileGroup
 from common.fetch import ode
-from common.fetch.ode import ODEError
+from common.fetch.ode import ODEClient, ODEError
 
 # A group circling a pole is asked in two halves, no ODE box reaching round
 LONGITUDE_HALVES = ((0.0, 180.0), (180.0, 360.0))
@@ -68,11 +67,7 @@ def fetch_products(
     )
     for west_lon, east_lon in spans:
         params = {
-            "query": "product",
-            "target": ode.ODE_TARGET,
-            "ihid": instrument_set.ihid,
-            "iid": instrument_set.iid,
-            "pt": instrument_set.pt,
+            **product_params(instrument_set, instrument_set.pt),
             "minlat": str(group.min_lat),
             "maxlat": str(group.max_lat),
             "westernlon": str(west_lon),
@@ -89,6 +84,25 @@ def fetch_products(
             kept = {f: item[f] for f in RETAINED_FIELDS if f in item}
             records.append(kept | stamped)
     return records
+
+
+def product_params(instrument_set: InstrumentSet, pt: str) -> dict[str, str]:
+    """Return what names one instrument's products of one type to ODE.
+
+    Args:
+        instrument_set: The instrument host and instrument asked about.
+        pt: The product type asked for.
+
+    Returns:
+        params: The query parameters naming them.
+    """
+    return {
+        "query": "product",
+        "target": ode.ODE_TARGET,
+        "ihid": instrument_set.ihid,
+        "iid": instrument_set.iid,
+        "pt": pt,
+    }
 
 
 def every_product(

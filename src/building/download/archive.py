@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import httpx
 
@@ -27,37 +26,9 @@ def query(client: httpx.Client, **params: str) -> list[dict]:
         ODEError: When ODE reports an error of its own.
         FetchError: When ODE refuses the query, or every attempt fails.
     """
-
-    def accepted(payload: Any) -> dict[str, Any] | None:
-        """Return the results one reply carries, or None to ask again.
-
-        Args:
-            payload: The parsed response body.
-
-        Returns:
-            results: The ODEResults object, or None when the reply holds none.
-
-        Raises:
-            ODEError: When ODE reports an error of its own.
-        """
-        results = payload.get("ODEResults") if isinstance(payload, dict) else None
-        if not isinstance(results, dict):
-            return None
-        if str(results.get("Status", "")).upper() == "ERROR":
-            raise ode.ODEError(str(results.get("Error", "unknown ODE error")))
-        return results
-
-    results = http.fetched_json(
-        ode.ODE_BASE_URL,
-        {
-            **ode.OUTPUT,
-            "query": "product",
-            "results": "f",
-            "target": ode.ODE_TARGET,
-            **params,
-        },
-        accepted=accepted,
-        client=client,
+    results = ode.fetch_results(
+        {"query": "product", "results": "f", "target": ode.ODE_TARGET, **params},
+        client,
     )
     # ODE answers a query that matched nothing with a sentence, not a product.
     products = results.get("Products", {})

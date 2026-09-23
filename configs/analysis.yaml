@@ -18,13 +18,15 @@ instruments:
   - MRO/CRISM/TRDR:*sp*_if*_trr3
   - MRO/SHARAD/USRDRV2
 
-# The table published beside a set's products, whose columns its records carry as medians.
-companions:
+# The table published beside a set's products, read into the least signal phase distortion of a look, and of its night side.
+ancillary:
   MRO/SHARAD/USRDRV2:
     pt: USGEOMV2
     latitude: LATITUDE
     longitude: LONGITUDE
-    columns: {Solar_zenith_angle: SZA, Signal_phase_distortion: PHASE/1.0E16}
+    solar_zenith: SZA
+    night_above: 90.0
+    distortion: PHASE/1.0E16
 
 # Which products a box returns: b box overlap, f footprint overlap, o inside, i containing.
 loc: f
@@ -47,12 +49,7 @@ window:
   timeless: [SHARAD]
 
   # The share of its own cells a look must hold that no other kept look does
-  gain_share: {CTX: 0.25, CRISM: 0.25, SHARAD: 0.5}
-
-  # What a timeless instrument's looks are ranked by, first rule first: past a bar, or lowest
-  ranking:
-    - {iid: SHARAD, name: Solar_zenith_angle, above: 90.0}
-    - {iid: SHARAD, name: Signal_phase_distortion}
+  gain_share: {CTX: 0.25, CRISM: 0.25, SHARAD: 0.35}
 
 # How the tiles the selection kept are labelled.
 ground_truth:

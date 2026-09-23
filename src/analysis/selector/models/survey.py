@@ -22,7 +22,7 @@ class Survey:
         days: How long it lasts.
         geo_mean: The insisted shares rooted together, as a share of the tile.
         kept: The observations it holds, as their places on the timeline, oldest first.
-        standing: The observations kept from outside the window, oldest first.
+        standing: The timeless observations kept whenever they came, oldest first.
     """
 
     area_km2: float
@@ -38,9 +38,9 @@ class Survey:
         """Name every observation the tile keeps, in time order.
 
         Returns:
-            taken: The window's observations and those from outside it, oldest first.
+            taken: The window's observations and the timeless ones, oldest first.
         """
-        return tuple(sorted(set(self.kept) | set(self.standing)))
+        return tuple(sorted(self.kept + self.standing))
 
 
 @dataclass(frozen=True, slots=True)

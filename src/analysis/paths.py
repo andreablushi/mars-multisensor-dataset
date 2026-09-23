@@ -42,20 +42,6 @@ def metadata_file(root: Path, group: str, instrument_set: InstrumentSet) -> Path
     return root / group / f"{instrument_set.slug}.jsonl"
 
 
-def companion_ledger(root: Path, instrument_set: InstrumentSet, pt: str) -> Path:
-    """Return the ledger of every companion table one set's products were read off.
-
-    Args:
-        root: The metadata root directory.
-        instrument_set: The set the companion is published beside.
-        pt: The product type the companion is published under.
-
-    Returns:
-        path: The path to the JSONL ledger, beside the groups rather than in one.
-    """
-    return root / f"{instrument_set.slug}.{pt.lower()}.jsonl"
-
-
 def events_path(root: Path, source: Path) -> Path:
     """Return the per-observation events file for one instrument set.
 

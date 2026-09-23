@@ -54,7 +54,7 @@ class SelectedObservation:
         pt: The product type.
         pdsid: The PDS product identifier, which is what a download asks for.
         t_start: When the observation started.
-        standing: Whether it was kept from outside the window.
+        standing: Whether it was kept as a timeless look, whenever it came.
     """
 
     tile: str
