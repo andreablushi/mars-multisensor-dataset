@@ -28,16 +28,18 @@ class Ancillary:
 
 @dataclass(frozen=True, slots=True)
 class Distortion:
-    """The least signal phase distortion of one look's rows inside one group.
+    """The least signal phase distortion of one look's rows over one tile.
 
     Attributes:
         group: The tile group the look was listed in.
+        tile: The tile its rows fall on, such as "b123_c0456".
         pdsid: The PDS product identifier.
         night: The least of its rows on the night side, or None when none were.
-        overall: The least of every row, or None when none fell inside.
+        overall: The least of every row.
     """
 
     group: str
+    tile: str
     pdsid: str
     night: float | None
-    overall: float | None
+    overall: float

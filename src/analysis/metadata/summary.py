@@ -1,4 +1,4 @@
-"""The distortion of every look, gathered into one file and read back."""
+"""The distortion of every look over each tile, gathered into one file and read back."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def summarise_ancillary(settings: Settings, force: bool = False) -> int:
         if not wanted:
             continue
         distortions, lost = fetch_distortions(
-            wanted, instrument_set, ancillary, settings.workers
+            wanted, instrument_set, ancillary, grid, settings.workers
         )
         failed += lost
         held.extend(distortions)
@@ -62,13 +62,13 @@ def summarise_ancillary(settings: Settings, force: bool = False) -> int:
 
 @functools.lru_cache(maxsize=1)
 def read_distortions(group: str | None = None) -> tuple[Distortion, ...]:
-    """Read the distortion of every look one group lists, kept for its next tile.
+    """Read the distortion of every look over each tile of one group, cached.
 
     Args:
         group: The name of the tile group, or None for every group.
 
     Returns:
-        distortions: Each look's distortion, in the order written.
+        distortions: Each look's distortion over each tile, in the order written.
     """
     path = paths.catalog_summary_path(paths.METADATA_ROOT)
     if not path.exists():

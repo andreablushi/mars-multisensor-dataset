@@ -20,7 +20,7 @@ GRID = Tessellate.of(SETTINGS.tile_km)
 
 def trimmed(
     track: Track, window: Window, criteria: Filter
-) -> tuple[list[int], list[int], list[int]]:
+) -> tuple[list[int], list[int], list[int]] | None:
     """Drop the observations a tile does not need, keeping the most recent or the best.
 
     Args:
@@ -30,8 +30,9 @@ def trimmed(
 
     Returns:
         kept: The window's observations worth keeping, oldest first.
-        standing: The timeless observations worth keeping, whenever they came.
+        standing: The timeless observations worth keeping, oldest first.
         reached: The cells each windowed constraint reaches once the rest are gone.
+        Or None when the timeless looks with a distortion no longer meet their bar.
     """
     answering = {
         owner for owner, iid in enumerate(track.iids) if iid in criteria.timeless
@@ -42,15 +43,19 @@ def trimmed(
         for index in range(window.first, window.last + 1)
         if track.owners[index] not in answering
     ]
-    standing = [index for index, owner in enumerate(track.owners) if owner in answering]
+    standing = sharad_drop_order(
+        track, [index for index, owner in enumerate(track.owners) if owner in answering]
+    )
     # Count what the window and the SHARAD looks hold in cells
     counter = Counter.empty(track.iids, track.grid.cells)
     for index in kept + standing:
         counter.hold(track.owners[index], track.cells[index])
+    if coverage_constraints(criteria.standing, counter.cells_reached) is None:
+        return None
     constraints = criteria.windowed + criteria.standing
     # Try to drop each observation, oldest first, SHARAD worst first, keep the rest
     dropped: set[int] = set()
-    for index in kept + sharad_drop_order(track, standing):
+    for index in kept + standing:
         owner, cells = track.owners[index], track.cells[index]
         filled = counter.observations_per_cell[owner]
         alone = int(np.count_nonzero(filled[cells] == 1))
@@ -65,32 +70,34 @@ def trimmed(
     reached = coverage_constraints(criteria.windowed, counter.cells_reached)
     return (
         [index for index in kept if index not in dropped],
-        [index for index in standing if index not in dropped],
+        sorted(index for index in standing if index not in dropped),
         reached,
     )
 
 
 def sharad_drop_order(track: Track, looks: list[int]) -> list[int]:
-    """Order SHARAD looks worst first, so the best over the same ground is kept.
+    """Order the SHARAD looks with a distortion over the tile worst first.
 
     Args:
         track: The tile's admissible observations on one time axis.
         looks: The SHARAD looks to order, as indices into the track.
 
     Returns:
-        ordered: The day side before the night, the most distorted and oldest first.
+        ordered: The looks with a distortion, day only before night, then the most
+            distorted, then the fewest cells first.
     """
-    tile = GRID.tile_named(track.observations[0].tile)
+    name = track.observations[0].tile
+    tile = GRID.tile_named(name)
     group = tile_group.group_name(len(GRID.columns), tile, SETTINGS.tile_group_deg)
-    distortions = {one.pdsid: one for one in summary.read_distortions(group)}
+    distortions = {
+        one.pdsid: one for one in summary.read_distortions(group) if one.tile == name
+    }
 
-    def rank(index: int) -> tuple[int, float, int]:
-        """Return where one look stands, the night side before the rest."""
-        held = distortions.get(track.observations[index].pdsid)
-        if held is None or held.overall is None:
-            return (2, 0.0, -index)
-        if held.night is None:
-            return (1, held.overall, -index)
-        return (0, held.night, -index)
+    def rank(index: int) -> tuple[bool, float, int]:
+        """Return how bad one look is, the higher the sooner it is dropped."""
+        held = distortions[track.observations[index].pdsid]
+        day = held.night is None
+        return (day, held.overall if day else held.night, -track.cells[index].size)
 
-    return sorted(looks, key=rank, reverse=True)
+    rated = [index for index in looks if track.observations[index].pdsid in distortions]
+    return sorted(rated, key=rank, reverse=True)

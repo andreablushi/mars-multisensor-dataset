@@ -1,14 +1,17 @@
-"""Loading the signal phase distortion one ancillary table holds over each group."""
+"""Loading the signal phase distortion one ancillary table holds over each tile."""
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from pathlib import Path
 
-from analysis.ground_truth import box
+import numpy as np
+
 from analysis.models.ancillary import Ancillary, Distortion
 from analysis.models.tile_group import TileGroup
 from building.common.pds import tables
+from common.maths.tessellate import Tessellate
 
 
 def load_distortions(
@@ -18,8 +21,9 @@ def load_distortions(
     columns: list[dict[str, str]],
     ancillary: Ancillary,
     groups: Mapping[str, TileGroup],
+    grid: Tessellate,
 ) -> list[Distortion]:
-    """Read the least distortion of the rows inside each group, and of the night ones.
+    """Read the least distortion of the rows over each tile, and of the night ones.
 
     Args:
         table: The fixed width table, one row per sample of its product.
@@ -28,22 +32,28 @@ def load_distortions(
         columns: The COLUMN objects of the columns the ancillary reads alone.
         ancillary: What the ancillary is, and which of its columns are read.
         groups: The groups the product still has to be read over, by name.
+        grid: The grid the tiles are cut from.
 
     Returns:
-        distortions: One per group.
+        distortions: One per tile of those groups its rows fall on.
     """
     rows = table.stat().st_size // int(label["ROW_BYTES"])
     read = tables.build_table(table, {**label, "ROWS": str(rows)}, columns)
-    latitude = read[ancillary.latitude]
-    point = (latitude, latitude, read[ancillary.longitude] % 360.0, 0.0)
-    distortion = read[ancillary.distortion]
-    night = read[ancillary.solar_zenith] > ancillary.night_above
+    flat = grid.flat_tile_indices(
+        *grid.tile_indices(read[ancillary.latitude], read[ancillary.longitude])
+    )
+    order = np.argsort(flat, kind="stable")
+    tiles, starts = np.unique(flat[order], return_index=True)
+    distortion = read[ancillary.distortion][order]
+    night = (read[ancillary.solar_zenith] > ancillary.night_above)[order]
+    overall = np.minimum.reduceat(distortion, starts).tolist()
+    nightly = np.minimum.reduceat(np.where(night, distortion, np.inf), starts)
+    dark = [None if math.isinf(one) else one for one in nightly.tolist()]
+    least = dict(zip(tiles.tolist(), zip(dark, overall)))
     distortions: list[Distortion] = []
     for name, group in groups.items():
-        inside = box.inside(point, box.bounds_box(group))
-        least = [
-            float(distortion[counted].min()) if counted.any() else None
-            for counted in (inside & night, inside)
-        ]
-        distortions.append(Distortion(name, pdsid, *least))
+        for tile in group.tiles:
+            held = least.get(int(grid.flat_tile_indices(tile.band, tile.column)))
+            if held is not None:
+                distortions.append(Distortion(name, tile.name, pdsid, *held))
     return distortions

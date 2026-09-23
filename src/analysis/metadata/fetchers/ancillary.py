@@ -20,24 +20,27 @@ from building.configs.sharad import NAMING
 from building.download.archive import bring, published
 from common import console as printing
 from common.fetch.ode import ODEClient
+from common.maths.tessellate import Tessellate
 
 
 def fetch_distortions(
     wanted: Mapping[str, dict[str, TileGroup]],
     instrument_set: InstrumentSet,
     ancillary: Ancillary,
+    grid: Tessellate,
     workers: int,
 ) -> tuple[list[Distortion], int]:
-    """Read the table of every product wanted over each group it is wanted in.
+    """Read the table of every product wanted over each tile of the groups asking.
 
     Args:
         wanted: The groups each product still has to be read over, by pdsid.
         instrument_set: The set the ancillary is published beside.
         ancillary: What the ancillary is, and which of its columns are read.
+        grid: The grid the tiles are cut from.
         workers: How many tables are brought down at once.
 
     Returns:
-        distortions: One per product and group it was wanted in.
+        distortions: One per product and tile its rows fall on.
         failed: How many tables could not be read, left to the next run.
     """
     tables: dict[str, str] = {}
@@ -81,7 +84,9 @@ def fetch_distortions(
                 client=client,
             )
             try:
-                return load_distortions(table, pdsid, label, columns, ancillary, groups)
+                return load_distortions(
+                    table, pdsid, label, columns, ancillary, groups, grid
+                )
             finally:
                 table.unlink(missing_ok=True)
 

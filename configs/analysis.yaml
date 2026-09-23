@@ -18,7 +18,7 @@ instruments:
   - MRO/CRISM/TRDR:*sp*_if*_trr3
   - MRO/SHARAD/USRDRV2
 
-# The table published beside a set's products, read into the least signal phase distortion of a look, and of its night side.
+# The table published beside a set's products, read into the least signal phase distortion of a look over each tile, and of its night side.
 ancillary:
   MRO/SHARAD/USRDRV2:
     pt: USGEOMV2
