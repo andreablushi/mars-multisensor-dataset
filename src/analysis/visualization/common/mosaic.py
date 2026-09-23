@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import io
-import threading
 from collections.abc import Callable
 from functools import lru_cache
-from html import escape
 
 import httpx
 import ipywidgets as widgets
@@ -27,8 +25,6 @@ BASEMAP_FAILED = "The basemap could not be fetched: {reason}"
 BASEMAP_LOADING = "Fetching the basemap..."
 BASEMAP_CACHE = 32
 
-PLACEHOLDER = "320px"
-
 NO_BOX = "this tile has no lon/lat box to crop the mosaic to"
 
 
@@ -36,31 +32,9 @@ def fetched(
     box: Box, draw: Callable[[bytes], widgets.Widget], pixels: int = BASEMAP_PIXELS
 ) -> widgets.Box:
     """Claim the space one crop goes in and fill it off the thread that fetches it."""
-    space = widgets.Box(
-        [
-            widgets.HTML(
-                f"<div style='width: {PLACEHOLDER}; height: {PLACEHOLDER};"
-                f" display: flex; align-items: center; justify-content: center;"
-                f" box-sizing: border-box; padding: 10px; text-align: center;"
-                f" background: #f2f2f2; border: 1px solid #d8d8d8;"
-                f" border-radius: 4px; color: {panels.GREY};"
-                f" font-family: sans-serif; font-size: 12px;'>"
-                f"{escape(BASEMAP_LOADING)}</div>"
-            )
-        ]
+    return panels.loaded(
+        lambda: crop(box, pixels), draw, BASEMAP_LOADING, BASEMAP_FAILED
     )
-
-    def fill() -> None:
-        """Crop the mosaic and put what it draws in the claimed space."""
-        try:
-            image = crop(box, pixels)
-        except Exception as exc:
-            space.children = (panels.unavailable(BASEMAP_FAILED.format(reason=exc)),)
-            return
-        space.children = (draw(image),)
-
-    threading.Thread(target=fill, daemon=True).start()
-    return space
 
 
 def read_mosaic(image: bytes) -> np.ndarray:
