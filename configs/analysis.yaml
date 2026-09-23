@@ -54,10 +54,8 @@ ground_truth:
     crater: {descriptor: Crater, diameter_km: [8, 32]}
     chaos: {descriptor: Chaos}
     dune_field: {descriptor: Unda}
-    fossae: {descriptor: Fossa}
-    labyrinthus: {descriptor: Labyrinthus}
     polar_layered_deposits: {names: [Planum Boreum, Planum Australe]}
-    shield_volcano:
-      names: [Olympus Mons, Ascraeus Mons, Pavonis Mons, Arsia Mons, Alba Mons, Elysium Mons]
     ice_rich_plains: {names: [Arcadia Planitia, Utopia Planitia], latitudes: [38, 50]}
-    ice_poor_plains: {names: [Amazonis Planitia, Elysium Planitia], latitudes: [-30, 30]}
+    ice_poor_plains:
+      names: [Meridiani Planum, Chryse Planitia, Isidis Planitia]
+      latitudes: [-30, 30]
