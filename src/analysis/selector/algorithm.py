@@ -73,10 +73,7 @@ def search(track: Track, criteria: Filter) -> Survey | None:
     if picked is None:
         return None
     # Clean up the record to only what is worth keeping, and report reached
-    trimmed = redundancy.trimmed(track, picked, criteria)
-    if trimmed is None:
-        return None
-    kept, standing, reached = trimmed
+    kept, standing, reached = redundancy.trimmed(track, picked, criteria)
     return Survey(
         area_km2=track.grid.area_km2,
         start=track.observations[kept[0]].t_start,

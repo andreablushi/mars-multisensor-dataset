@@ -20,7 +20,7 @@ GRID = Tessellate.of(SETTINGS.tile_km)
 
 def trimmed(
     track: Track, window: Window, criteria: Filter
-) -> tuple[list[int], list[int], list[int]] | None:
+) -> tuple[list[int], list[int], list[int]]:
     """Drop the observations a tile does not need, keeping the most recent or the best.
 
     Args:
@@ -32,7 +32,6 @@ def trimmed(
         kept: The window's observations worth keeping, oldest first.
         standing: The timeless observations worth keeping, oldest first.
         reached: The cells each windowed constraint reaches once the rest are gone.
-        Or None when the timeless looks with a distortion no longer meet their bar.
     """
     answering = {
         owner for owner, iid in enumerate(track.iids) if iid in criteria.timeless
@@ -50,8 +49,6 @@ def trimmed(
     counter = Counter.empty(track.iids, track.grid.cells)
     for index in kept + standing:
         counter.hold(track.owners[index], track.cells[index])
-    if coverage_constraints(criteria.standing, counter.cells_reached) is None:
-        return None
     constraints = criteria.windowed + criteria.standing
     # Try to drop each observation, oldest first, SHARAD worst first, keep the rest
     dropped: set[int] = set()
@@ -76,15 +73,15 @@ def trimmed(
 
 
 def sharad_drop_order(track: Track, looks: list[int]) -> list[int]:
-    """Order the SHARAD looks with a distortion over the tile worst first.
+    """Order the SHARAD looks worst first, so the best over the same ground is kept.
 
     Args:
         track: The tile's admissible observations on one time axis.
         looks: The SHARAD looks to order, as indices into the track.
 
     Returns:
-        ordered: The looks with a distortion, day only before night, then the most
-            distorted, then the fewest cells first.
+        ordered: The looks without a distortion over the tile first, oldest first,
+            then day only before night, the most distorted and fewest cells first.
     """
     name = track.observations[0].tile
     tile = GRID.tile_named(name)
@@ -93,11 +90,13 @@ def sharad_drop_order(track: Track, looks: list[int]) -> list[int]:
         one.pdsid: one for one in summary.read_distortions(group) if one.tile == name
     }
 
-    def rank(index: int) -> tuple[bool, float, int]:
+    def rank(index: int) -> tuple[int, float, int]:
         """Return how bad one look is, the higher the sooner it is dropped."""
-        held = distortions[track.observations[index].pdsid]
-        day = held.night is None
-        return (day, held.overall if day else held.night, -track.cells[index].size)
+        held = distortions.get(track.observations[index].pdsid)
+        if held is None:
+            return (2, 0.0, -index)
+        if held.night is None:
+            return (1, held.overall, -track.cells[index].size)
+        return (0, held.night, -track.cells[index].size)
 
-    rated = [index for index in looks if track.observations[index].pdsid in distortions]
-    return sorted(rated, key=rank, reverse=True)
+    return sorted(looks, key=rank, reverse=True)
