@@ -46,6 +46,14 @@ window:
   # What instruments are excluded from the window, and kept whenever they came
   timeless: [SHARAD]
 
+  # The share of its own cells a look must hold that no other kept look does
+  gain_share: {CTX: 0.001, CRISM: 0.001, SHARAD: 0.5}
+
+  # What a timeless instrument's looks are ranked by, first rule first: past a bar, or lowest
+  ranking:
+    - {iid: SHARAD, name: Solar_zenith_angle, above: 90.0}
+    - {iid: SHARAD, name: Signal_phase_distortion}
+
 # How the tiles the selection kept are labelled.
 ground_truth:
   # The IAU descriptors the draw keeps tiles clear of first, beside every other class.

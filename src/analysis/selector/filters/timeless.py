@@ -2,33 +2,39 @@
 
 from __future__ import annotations
 
-from collections.abc import Container
+import math
 
+import numpy as np
+
+from analysis.selector.models.counter import Counter
+from analysis.selector.models.filter import Filter
 from analysis.selector.models.track import Track
 
 
-def fresh_looks(
-    track: Track, instruments: Container[str], gain: int
-) -> tuple[int, ...]:
-    """Keep every look a timeless instrument left on the tile, whenever it came.
+def fresh_looks(track: Track, criteria: Filter) -> tuple[int, ...]:
+    """Keep the best look a timeless instrument left on each part of the tile.
 
     Args:
         track: The tile's admissible observations on one time axis.
-        instruments: The instruments the ground answers for whenever they came.
-        gain: The cells a look has to bring that its own set has not reached.
+        criteria: The filter read against the tile, its timeless, bars and ranks.
 
     Returns:
         standing: Where they sit on the axis, oldest first, only new ground kept.
     """
-    answering = {owner for owner, iid in enumerate(track.iids) if iid in instruments}
-    reached: dict[int, set[int]] = {}
+    answering = {
+        owner for owner, iid in enumerate(track.iids) if iid in criteria.timeless
+    }
+    unranked = [math.inf]
+    ranked = sorted(
+        (index for index, owner in enumerate(track.owners) if owner in answering),
+        key=lambda index: criteria.ranks.get(track.observations[index].pdsid, unranked),
+    )
+    counter = Counter.empty(track.iids, track.grid.cells)
     held: list[int] = []
-    for index, owner in enumerate(track.owners):
-        if owner not in answering:
-            continue
-        seen = reached.setdefault(owner, set())
-        cells = set(track.cells[index].tolist())
-        if len(cells - seen) >= gain:
-            seen.update(cells)
+    for index in ranked:
+        owner, cells = track.owners[index], track.cells[index]
+        fresh = int(np.count_nonzero(counter.observations_per_cell[owner][cells] == 0))
+        if fresh >= criteria.gain(track.iids[owner], cells.size):
+            counter.hold(owner, cells)
             held.append(index)
-    return tuple(held)
+    return tuple(sorted(held))

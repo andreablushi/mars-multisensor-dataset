@@ -20,6 +20,7 @@ from analysis.ground_truth.models.label import Label
 from analysis.metadata import file_explorer
 from analysis.metadata.companions import annotate
 from analysis.models.progress import CoverageSummary, DownloadSummary
+from analysis.selector import configs as filtering
 from analysis.selector import select
 from analysis.stats.artifacts import store
 from analysis.stats.dataset import aggregate, read
@@ -213,6 +214,8 @@ def run_selection(project, force: bool = False, workers: int | None = None):
     os.environ[PLAIN_LOG_ENV] = "1"
     print("fetching the measurements", flush=True)
     archives.unpack_archive(project, _COVERAGE, paths.COVERAGE_ROOT)
+    if filtering.FILTER.ranking:
+        archives.unpack_archive(project, _METADATA, paths.METADATA_ROOT)
     compute_selection(workers, force)
     print("done", flush=True)
     return tuple(archived(project, name) for name in (_SELECTION, _STATS, _LABELS))

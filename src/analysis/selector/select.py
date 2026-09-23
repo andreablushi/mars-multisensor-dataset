@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 
-from analysis import configs
+from analysis import configs, paths
 from analysis.coverage.artifacts import index
+from analysis.metadata import file_explorer
 from analysis.selector import configs as filtering
 from analysis.selector.artifacts import write
 from analysis.selector.models.selection import (
@@ -15,6 +17,7 @@ from analysis.selector.models.selection import (
     Selection,
 )
 from analysis.selector.models.survey import Study
+from common.disk.files import read_jsonl
 from common.maths.tessellate import Tessellate
 from common.models.tile import Tile
 
@@ -101,8 +104,17 @@ def _searched(group: str) -> list[Selection]:
     Returns:
         selections: The rows of every tile a measured set reached, in the order read.
     """
-    grid = Tessellate.of(configs.load().tile_km)
+    settings = configs.load()
+    grid = Tessellate.of(settings.tile_km)
+    ranks: dict[str, list[float]] = {}
+    for held in settings.instrument_sets:
+        rules = [rule for rule in filtering.FILTER.ranking if rule.iid == held.iid]
+        if not rules or not file_explorer.has_metadata(group, held):
+            continue
+        for item in read_jsonl(paths.metadata_file(paths.METADATA_ROOT, group, held)):
+            ranks[item["pdsid"]] = [rule.placed(item) for rule in rules]
+    criteria = dataclasses.replace(filtering.FILTER, ranks=ranks)
     return [
-        selected(Study.over(coverage, filtering.FILTER), grid.tile_named(name))
+        selected(Study.over(coverage, criteria), grid.tile_named(name))
         for name, coverage in index.load_group(group).items()
     ]
