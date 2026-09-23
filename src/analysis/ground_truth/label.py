@@ -12,7 +12,7 @@ from analysis.ground_truth.models.label import Label
 from analysis.ground_truth.models.rule import Rule
 from analysis.ground_truth.models.settings import Settings
 from analysis.selector.models.selection import SelectedTile
-from common.maths.geodesy import TURN, northward_m
+from common.maths.geodesy import bbox_centre, northward_m
 from common.maths.physics import METRES_PER_KM
 
 
@@ -43,18 +43,12 @@ def labelled_tiles(
         return feature.name in rule.names or feature.feature_class == rule.descriptor
 
     kept = [one for one in searched if one.kept]
-    tiles: box.Box = tuple(
-        np.array(held)
-        for held in zip(*(box.bounds_box(one) for one in kept), strict=True)
-    )
+    tiles = box.bounds_boxes(kept)
     owners = [
         {label for label, rule in settings.classes.items() if read_from(rule, one)}
         for one in features
     ]
-    bounds: box.Box = tuple(
-        np.array(held)
-        for held in zip(*(box.bounds_box(one) for one in features), strict=True)
-    )
+    bounds = box.bounds_boxes(features)
     relevant = np.array(
         [
             bool(owned) or one.feature_class in settings.excluded
@@ -72,8 +66,9 @@ def labelled_tiles(
                 )
                 if not smallest <= diameter <= largest:
                     continue
-                south, north, west, span = box.bounds_box(feature)
-                latitude, longitude = (south + north) / 2.0, (west + span / 2.0) % TURN
+                longitude, latitude = bbox_centre(
+                    feature.min_lat, feature.max_lat, feature.west_lon, feature.east_lon
+                )
                 hit = box.inside((latitude, latitude, longitude, 0.0), tiles)
                 offset = np.zeros(len(kept))
             elif (claimed := box.claimed_box(feature, rule.latitudes)) is None:

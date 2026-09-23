@@ -8,7 +8,6 @@ import ipywidgets as widgets
 from matplotlib.lines import Line2D
 
 from analysis.ground_truth.models.label import Label
-from analysis.selector.models.selection import Selection
 from analysis.visualization.common import mosaic, panels
 from analysis.visualization.dataset.plots import tiles
 from common.maths import geodesy
@@ -16,10 +15,9 @@ from common.maths import geodesy
 MARKER_SIZE = 18
 
 
-def plot(picked: Sequence[Selection], labels: Sequence[Label]) -> widgets.Widget:
+def plot(labels: Sequence[Label]) -> widgets.Widget:
     """Map every drawn tile at its centre, one colour per class."""
-    boxes = {one.tile.tile: one.tile for one in picked}
-    drawn = [one for one in labels if one.drawn and one.tile in boxes]
+    drawn = [one for one in labels if one.drawn]
     colours = panels.colours(list(dict.fromkeys(one.label for one in drawn)))
 
     def figure(image: bytes) -> widgets.Widget:

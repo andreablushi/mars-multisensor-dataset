@@ -6,8 +6,6 @@ import random
 from collections.abc import Sequence
 from dataclasses import replace
 
-import numpy as np
-
 from analysis.ground_truth import box
 from analysis.ground_truth.models.label import Label
 from analysis.selector.models.selection import Selection
@@ -32,12 +30,7 @@ def draw_training(
     taken = range(len(kept))
     if wanted < len(kept):
         taken = sorted(random.Random(settings.seed).sample(taken, wanted))
-    held_out: box.Box = tuple(
-        np.array(held)
-        for held in zip(
-            *(box.bounds_box(one) for one in labels if one.drawn), strict=True
-        )
-    )
+    held_out = box.bounds_boxes(one for one in labels if one.drawn)
     # Held out after the draw, so a new evaluation draw never reshuffles training
     return [
         kept[at]
@@ -60,16 +53,7 @@ def draw_evaluation(
     """
     drawn = {one.tile: one for one in labels if one.drawn}
     return [
-        replace(
-            one,
-            tile=replace(
-                one.tile,
-                min_lat=cut.min_lat,
-                max_lat=cut.max_lat,
-                west_lon=cut.west_lon,
-                east_lon=cut.east_lon,
-            ),
-        )
+        replace(one, tile=box.recut(one.tile, cut))
         for one in picked
         if (cut := drawn.get(one.tile.tile)) is not None
     ]
