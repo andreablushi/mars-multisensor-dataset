@@ -1,7 +1,8 @@
-"""Fetching every ancillary table still unread, reading it, and dropping it."""
+"""Fetching a sample of every ancillary table still unread, read and then dropped."""
 
 from __future__ import annotations
 
+import re
 import tempfile
 from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -22,6 +23,12 @@ from common import console as printing
 from common.fetch.ode import ODEClient
 from common.maths.tessellate import Tessellate
 
+SAMPLED_EVERY = 8
+
+RANGES_PER_REQUEST = 500
+
+PART = re.compile(rb"Content-Range: bytes \d+-\d+/\d+\r\n\r\n")
+
 
 def fetch_distortions(
     wanted: Mapping[str, dict[str, TileGroup]],
@@ -30,7 +37,7 @@ def fetch_distortions(
     grid: Tessellate,
     workers: int,
 ) -> tuple[list[Distortion], int]:
-    """Read the table of every product wanted over each tile of the groups asking.
+    """Read a sample of the table of every product wanted over each tile asking.
 
     Args:
         wanted: The groups each product still has to be read over, by pdsid.
@@ -43,14 +50,16 @@ def fetch_distortions(
         distortions: One per product and tile its rows fall on.
         failed: How many tables could not be read, left to the next run.
     """
-    tables: dict[str, str] = {}
+    tables: dict[str, tuple[str, int]] = {}
     label_url = ""
     with ODEClient() as asking:
         params = product_params(instrument_set, ancillary.pt)
         for item in every_product(asking, params, "pf"):
+            kbytes = published(item, "KBytes")
             for name, url in published(item).items():
                 if name.endswith(".tab"):
-                    tables[NAMING.parse(item["pdsid"])] = url
+                    size = int(float(kbytes[name] or 0))
+                    tables[NAMING.parse(item["pdsid"])] = (url, size)
                 elif name.endswith(".lbl"):
                     label_url = url
     distortions: list[Distortion] = []
@@ -72,17 +81,31 @@ def fetch_distortions(
         }
         columns = [one for one in labels.columns(layout) if one["NAME"] in asked]
         label = labels.load(layout)
+        row_bytes = int(label["ROW_BYTES"])
 
         def table_distortions(
             pdsid: str, groups: dict[str, TileGroup]
         ) -> list[Distortion]:
-            """Bring one table down, read it, and throw it away."""
+            """Bring a sample of one table down, read it, and throw it away."""
             table = scratch / f"{pdsid}.tab"
-            bring(
-                {".tab": table},
-                {".tab": tables.get(NAMING.parse(pdsid), "")},
-                client=client,
-            )
+            url, kbytes = tables.get(NAMING.parse(pdsid), ("", 0))
+            end = (kbytes - 1) * 1024 - row_bytes + 1
+            starts = range(0, max(end, 0), row_bytes * SAMPLED_EVERY)
+            chunks = [
+                starts[at : at + RANGES_PER_REQUEST]
+                for at in range(0, len(starts), RANGES_PER_REQUEST)
+            ]
+            sampled: list[bytes] = []
+            for chunk in chunks or [range(0)]:
+                spans = tuple((at, at + row_bytes) for at in chunk)
+                bring({".tab": table}, {".tab": url}, client=client, spans=spans)
+                body = table.read_bytes()
+                table.unlink()
+                rows = [
+                    body[at.end() : at.end() + row_bytes] for at in PART.finditer(body)
+                ]
+                sampled.extend(rows or [body])
+            table.write_bytes(b"".join(sampled))
             try:
                 return load_distortions(
                     table, pdsid, label, columns, ancillary, groups, grid

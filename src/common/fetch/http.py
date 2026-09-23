@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools
 import random
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -164,7 +164,7 @@ def streamed(
     retries: int = STREAM_RETRIES,
     backoff: float = BACKOFF_BASE,
     deadline: float = STREAM_DEADLINE,
-    span: tuple[int, int] | None = None,
+    spans: Sequence[tuple[int, int]] = (),
 ) -> None:
     """Stream one file to disk, asking again while the server keeps failing.
 
@@ -176,13 +176,14 @@ def streamed(
         retries: How many times to ask again after the first attempt.
         backoff: The base delay between attempts, in seconds.
         deadline: How long the whole transfer may run for, in seconds.
-        span: The first and past-the-last byte to keep, or None for the whole file.
+        spans: The first and past-the-last byte of each part to keep, or none for all.
 
     Raises:
         FetchError: When refused, when every attempt fails, or past the deadline.
     """
     reading = client.stream if client else httpx.stream
-    headers = {"Range": f"bytes={span[0]}-{span[1] - 1}"} if span else None
+    ranges = ",".join(f"{first}-{last - 1}" for first, last in spans)
+    headers = {"Range": f"bytes={ranges}"} if spans else None
     host = httpx.URL(url).host
     archive = throttle(host)
     started = time.monotonic()
@@ -210,7 +211,7 @@ def streamed(
                     raise FetchError(
                         f"{url} refused the request: HTTP {reply.status_code}"
                     )
-                if span and reply.status_code != httpx.codes.PARTIAL_CONTENT:
+                if spans and reply.status_code != httpx.codes.PARTIAL_CONTENT:
                     raise FetchError(f"{url} ignored the byte range it was asked for")
                 archive.answered()
                 # Nothing is left behind when a transfer fails part way through.
