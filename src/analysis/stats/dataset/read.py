@@ -5,14 +5,12 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from concurrent.futures import ProcessPoolExecutor
 
-from analysis import configs
 from analysis.coverage.artifacts import index
 from analysis.selector.models.selection import Selection
 from analysis.stats.models.tile import TileStats
 from analysis.stats.tile import measure
 from analysis.stats.tile import read as tile
-from analysis.utils import tile_group
-from common.maths.tessellate import Tessellate
+from analysis.utils.tile_group import group_of, tile_grid
 
 # Called with how many tile groups are read and how many there are
 Progress = Callable[[int, int], None]
@@ -31,12 +29,10 @@ def measure_every_tile(
     Returns:
         measured: One entry per tile with something to measure, a group at a time.
     """
-    settings = configs.load()
-    grid = Tessellate.of(settings.tile_km)
+    grid = tile_grid()
     by_group: dict[str, list[Selection]] = {}
     for one in picked:
-        held = grid.tile_of(one.tile.band, one.tile.column)
-        name = tile_group.group_name(len(grid.columns), held, settings.tile_group_deg)
+        name = group_of(grid.tile_of(one.tile.band, one.tile.column))
         by_group.setdefault(name, []).append(one)
     found: list[TileStats] = []
     with ProcessPoolExecutor(max_workers=workers) as pool:

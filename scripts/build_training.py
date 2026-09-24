@@ -11,8 +11,8 @@ from analysis.selector.models.selection import Selection
 from analysis.utils import dataset_list
 from building import draw
 from building.build import build_dataset
-from building.configs import run
 from building.models.settings import TrainingSettings
+from common.config import training_settings
 
 
 def training_selections(settings: TrainingSettings) -> list[Selection]:
@@ -36,7 +36,7 @@ def training_selections(settings: TrainingSettings) -> list[Selection]:
 
 
 run_build = checkpoint.build_handler(
-    run.training_settings,
+    training_settings,
     training_selections,
     (Artifact.SELECTION, Artifact.LABELS, Artifact.VERDICTS),
 )
@@ -54,7 +54,7 @@ def main() -> int:
         return submit.submitted(
             Function.BUILD_TRAINING, arguments.ref, force=arguments.force
         )
-    settings = run.training_settings()
+    settings = training_settings()
     return build_dataset(settings, training_selections(settings), arguments.force)
 
 

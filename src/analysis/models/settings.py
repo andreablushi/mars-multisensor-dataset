@@ -24,7 +24,6 @@ class Settings:
         window: What a window has to hold before a tile earns a place.
         ground_truth: How the tiles the selection kept are labelled.
         ancillary: The table published beside a set's products, by the set's key.
-        union_threads: How many threads one coverage job accumulates on.
     """
 
     tile_km: float
@@ -36,7 +35,6 @@ class Settings:
     window: Filter
     ground_truth: GroundTruth
     ancillary: dict[str, Ancillary] = field(default_factory=dict)
-    union_threads: int = 1
 
     @property
     def instrument_sets(self) -> list[InstrumentSet]:

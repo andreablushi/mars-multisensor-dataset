@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import ipywidgets as widgets
 
-from analysis import configs
 from analysis.stats.models.dataset import DatasetStats
 from analysis.stats.models.spread import Spread
 from analysis.visualization.common import quantities, tables, wording
 from analysis.visualization.common.models.tables import Row
+from common.config import analysis_settings
 
 _LANDED = (
     "Instrument",
@@ -24,7 +24,7 @@ _WHOLE = "{:,.0f}".format
 def landed(read: DatasetStats) -> widgets.Widget:
     """Tabulate what each instrument lands on a tile and how far it reaches."""
     rows: list[Row] = []
-    admits = configs.load().window.admits
+    admits = analysis_settings().window.admits
     for iid in read.iids:
         asked = admits.get(iid)
         # A sounder counts traces, not picture elements, so its pixels go unmarked

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from analysis import configs
 from analysis.coverage.models.coverage import SetCoverage
 from analysis.selector.models import track as timeline
 from analysis.selector.models.selection import Selection
 from analysis.stats.artifacts import selection
 from analysis.stats.models.tile import TileLooks
+from common.config import analysis_settings
 
 # How many tiles are held read at once, so every panel of one shares it.
 TILE_CACHE = 8
@@ -51,7 +51,7 @@ def place_kept_looks(
     Returns:
         looks: Its timeline and where its looks sit, or None if nothing measurable.
     """
-    criteria, track = timeline.over(coverage, configs.load().window)
+    criteria, track = timeline.over(coverage, analysis_settings().window)
     if track is None:
         return None
     at = {one.pdsid: index for index, one in enumerate(track.observations)}

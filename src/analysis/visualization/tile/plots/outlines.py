@@ -8,26 +8,19 @@ import numpy as np
 from shapely import wkt as reading
 from shapely.geometry.base import BaseGeometry
 
-from analysis import configs, paths
+from analysis import paths
 from analysis.metadata.loaders.observations import load_observations
 from analysis.models.instrument import InstrumentSet
-from analysis.utils import tile_group
+from analysis.utils.tile_group import group_of, tile_grid
 from analysis.visualization.common.models.coverage import Coverage
 from analysis.visualization.tile.models.outlines import Trace
-from common.maths.tessellate import Tessellate
 
 OUTLINE_CACHE = 4
 
 
 def read(coverage: Coverage) -> dict[str, BaseGeometry]:
     """Read the published footprint of every observation of one tile."""
-    settings = configs.load()
-    grid = Tessellate.of(settings.tile_km)
-    group = tile_group.group_name(
-        len(grid.columns),
-        grid.tile_named(coverage[0].summary.tile),
-        settings.tile_group_deg,
-    )
+    group = group_of(tile_grid().tile_named(coverage[0].summary.tile))
     found: dict[str, BaseGeometry] = {}
     for instrument in coverage:
         if instrument.observed:

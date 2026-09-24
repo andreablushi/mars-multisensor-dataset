@@ -7,12 +7,12 @@ from collections.abc import Callable
 import ipywidgets as widgets
 from IPython.display import display
 
-from analysis import configs
 from analysis.coverage.artifacts import index
 from analysis.stats.artifacts import selection
+from analysis.utils.tile_group import tile_grid
 from analysis.visualization.common import panels
 from analysis.visualization.common.models.coverage import Coverage
-from common.maths.tessellate import Tessellate
+from common.config import analysis_settings
 
 DEFAULT_LAT = 18.4
 DEFAULT_LON = 77.5
@@ -68,8 +68,8 @@ class TilePicker:
 
     def _confirmed(self, _button=None) -> None:
         """Load the tile holding the confirmed point and refill every claimed area."""
-        settings = configs.load()
-        grid = Tessellate.of(settings.tile_km)
+        settings = analysis_settings()
+        grid = tile_grid()
         band, column = grid.tile_indices(self._lat.value, self._lon.value)
         tile = grid.tile_of(int(band), int(column))
         # The config says in what order the sets are drawn

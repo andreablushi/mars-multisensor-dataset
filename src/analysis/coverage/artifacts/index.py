@@ -7,14 +7,14 @@ from dataclasses import replace
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from analysis import configs, paths
+from analysis import paths
 from analysis.coverage.artifacts.write import EVENTS, SUMMARY
 from analysis.coverage.models.coverage import Event, SetCoverage
 from analysis.coverage.models.summary import Summary
 from analysis.metadata import file_explorer
-from analysis.utils import tile_group
+from analysis.utils.tile_group import group_of
+from common.config import analysis_settings
 from common.disk.files import atomic_path
-from common.maths.tessellate import split_bands_columns
 from common.models.tile import Tile
 
 
@@ -74,10 +74,7 @@ def load_tile(tile: Tile) -> list[SetCoverage]:
     Returns:
         coverage: One entry per set, widest then busiest first, empty where none.
     """
-    settings = configs.load()
-    bands = len(split_bands_columns(settings.tile_km))
-    group = tile_group.group_name(bands, tile, settings.tile_group_deg)
-    return load_group(group, tile.name).get(tile.name, [])
+    return load_group(group_of(tile), tile.name).get(tile.name, [])
 
 
 def load_group(group: str, tile: str | None = None) -> dict[str, list[SetCoverage]]:
@@ -106,7 +103,7 @@ def load_group(group: str, tile: str | None = None) -> dict[str, list[SetCoverag
             measured.setdefault(row["tile"], []).append(
                 SetCoverage(events=by_tile.get(row["tile"], []), summary=Summary(**row))
             )
-    sets = configs.load().instrument_sets
+    sets = analysis_settings().instrument_sets
     completed: dict[str, list[SetCoverage]] = {}
     for name, held in measured.items():
         # A configured set that reached none of the tile is shown holding nothing

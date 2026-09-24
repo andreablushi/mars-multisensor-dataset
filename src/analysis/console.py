@@ -14,34 +14,29 @@ from analysis.models.progress import (
     DownloadSummary,
     ProgressEvent,
 )
-from analysis.models.settings import Settings
 from common import console as printing
 
 # How many progress lines a stage prints where no cursor can be moved
 LOGGED_LINES = 50
 
 
-def describe(
-    download: Plan, coverage: Plan, settings: Settings, console: Console
-) -> None:
+def describe(download: Plan, coverage: Plan, console: Console) -> None:
     """Print what each half of the run has to do before it starts.
 
     Args:
         download: The plan produced by the download planner.
         coverage: The plan produced by the coverage planner.
-        settings: The settled choices for the run, which size both halves.
         console: The console to print on.
     """
     console.print(
         f"download: {download.group_count} groups x {download.set_count} sets, "
         f"{len(download.jobs)} to run, {download.skipped_existing} already "
-        f"downloaded, {settings.workers} workers"
+        f"downloaded"
     )
     console.print(
         f"coverage: {coverage.group_count} groups, "
         f"{coverage.set_count} instrument sets, {len(coverage.jobs)} to compute, "
-        f"{coverage.skipped_existing} already done, "
-        f"{settings.workers} workers x {settings.union_threads} threads"
+        f"{coverage.skipped_existing} already done"
     )
 
 

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from analysis import configs
 from analysis.coverage.artifacts import index
 from analysis.coverage.models.summary import Summary
 from analysis.stats.models.catalogue import CatalogueStats, InstrumentStats
 from analysis.stats.models.spread import Spread
+from common.config import analysis_settings
 from common.maths.tessellate import split_bands_columns
 
 
@@ -16,7 +16,7 @@ def read_catalogue() -> CatalogueStats:
     Returns:
         stats: What it holds, and nothing measured at all when no tile was.
     """
-    tile_km = configs.load().tile_km
+    tile_km = analysis_settings().tile_km
     # One row per tile carries its area, which every set of it shares
     by_tile: dict[str, Summary] = {}
     by_instrument: dict[str, list[Summary]] = {}

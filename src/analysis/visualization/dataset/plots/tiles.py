@@ -12,8 +12,8 @@ from matplotlib.colors import to_rgba
 from matplotlib.figure import Figure
 from matplotlib.patches import Patch
 
-from analysis import configs
 from analysis.selector.models.selection import Selection
+from analysis.utils.tile_group import tile_grid
 from analysis.visualization.common import mosaic, panels
 from analysis.visualization.common.models.box import Box
 from common.maths.physics import RADIUS_M
@@ -45,7 +45,7 @@ TILE_ALPHA = 0.45
 
 def plot(picked: Sequence[Selection]) -> widgets.Widget:
     """Map every tile of Mars, the kept ones in green and every other one in red."""
-    grid = Tessellate.of(configs.load().tile_km)
+    grid = tile_grid()
     kept = np.zeros(sum(grid.columns), dtype=bool)
     held = [one.tile for one in picked if one.tile.kept]
     kept[

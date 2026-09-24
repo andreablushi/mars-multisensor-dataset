@@ -6,13 +6,13 @@ from html import escape
 
 import ipywidgets as widgets
 
-from analysis import configs
 from analysis.stats.tile import read
 from analysis.visualization.common import mosaic, panels, wording
 from analysis.visualization.common.models.box import Box
 from analysis.visualization.common.models.coverage import Coverage
 from analysis.visualization.tile.models.placing import Placed
 from analysis.visualization.tile.plots import placing
+from common.config import analysis_settings
 
 MAP_FIGURE_SIZE = (7.0, 6.0)
 REPORT_WIDTH = "360px"
@@ -37,7 +37,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
     title = panels.title(coverage)
     box = grid.box()
     verdict = WINDOW_FOUND if looks and looks.window.kept else WINDOW_MISSING
-    criteria = configs.load().window
+    criteria = analysis_settings().window
     asked = "\n".join(
         [ASKED_HEADING]
         + [

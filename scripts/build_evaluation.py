@@ -11,8 +11,8 @@ from analysis.selector.models.selection import Selection
 from analysis.utils import dataset_list
 from building import draw, paths
 from building.build import build_dataset
-from building.configs import run
 from building.models.settings import Settings
+from common.config import evaluation_settings
 
 
 def evaluation_selections(settings: Settings) -> list[Selection]:
@@ -34,7 +34,7 @@ def evaluation_selections(settings: Settings) -> list[Selection]:
 
 
 run_build = checkpoint.build_handler(
-    run.evaluation_settings,
+    evaluation_settings,
     evaluation_selections,
     (Artifact.SELECTION, Artifact.LABELS),
 )
@@ -52,7 +52,7 @@ def main() -> int:
         return submit.submitted(
             Function.BUILD_EVALUATION, arguments.ref, force=arguments.force
         )
-    settings = run.evaluation_settings()
+    settings = evaluation_settings()
     return build_dataset(settings, evaluation_selections(settings), arguments.force)
 
 

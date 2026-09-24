@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import (
     Executor,
@@ -45,7 +46,7 @@ def run_jobs(
 
 
 def run_pipeline(
-    settings: Settings, console: Console, force: bool = False
+    settings: Settings, console: Console, force: bool = False, cores: int | None = None
 ) -> tuple[list[Outcome], list[Outcome]]:
     """Download every set still missing and measure every set not yet measured.
 
@@ -53,11 +54,14 @@ def run_pipeline(
         settings: The settled choices for the run.
         console: The console to render on.
         force: Whether to download and measure finished sets again.
+        cores: The cores the run is given, or None for the machine's.
 
     Returns:
         fetched: Every finished download outcome.
         measured: Every finished coverage outcome.
     """
+    # The coverage jobs run side by side, so each takes a share of the machine
+    threads = max(1, (cores or os.process_cpu_count() or 1) // settings.workers)
     futures: list[Future[Outcome]] = []
     fetched: list[Outcome] = []
     with ODEClient() as client:
@@ -67,7 +71,7 @@ def run_pipeline(
         rewriting = {job.output_path for job in plan.jobs}
         stored = [held for held in file_explorer.find_sets() if held not in rewriting]
         backlog = planner.coverage_plan(stored, groups, force=force)
-        describe(plan, backlog, settings, console)
+        describe(plan, backlog, console)
         with (
             ProcessPoolExecutor(max_workers=settings.workers) as measuring,
             ThreadPoolExecutor(max_workers=settings.workers) as fetching,
@@ -76,7 +80,7 @@ def run_pipeline(
             def measure(job: Job) -> Future[Outcome]:
                 """Put one coverage job on the pool, sized as the run is configured."""
                 return measuring.submit(
-                    compute.compute, job, settings.grid_cells, settings.union_threads
+                    compute.compute, job, settings.grid_cells, threads
                 )
 
             def measured() -> Iterator[ProgressEvent]:

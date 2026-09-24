@@ -12,7 +12,7 @@ from dhub.paths import Artifact, Function
 from digitalhub_runtime_python import handler
 from rich.console import Console
 
-from analysis import configs, console, paths, planner, runner
+from analysis import console, paths, planner, runner
 from analysis.coverage.artifacts import index
 from analysis.ground_truth import artifacts, draw, fetch, label
 from analysis.ground_truth.models.label import Label
@@ -23,6 +23,7 @@ from analysis.selector import select
 from analysis.stats.artifacts import store
 from analysis.stats.dataset import aggregate, read
 from analysis.utils import dataset_list
+from common.config import analysis_settings
 from common.console import PLAIN_LOG_ENV
 
 _SELECTED = (Artifact.SELECTION, Artifact.STATS, Artifact.LABELS)
@@ -38,10 +39,10 @@ def compute_coverage(force: bool = False, workers: int | None = None) -> int:
     Returns:
         code: A process exit code, non zero when either half had a failure.
     """
-    choices = configs.load(workers=workers)
+    choices = analysis_settings(workers)
     printing = Console()
     started_at = time.monotonic()
-    fetched, outcomes = runner.run_pipeline(choices, printing, force)
+    fetched, outcomes = runner.run_pipeline(choices, printing, force, workers)
     elapsed = time.monotonic() - started_at
     downloaded = DownloadSummary.from_outcomes(fetched, elapsed)
     computed = CoverageSummary.from_outcomes(outcomes, elapsed)
@@ -66,7 +67,7 @@ def compute_labels(force: bool = False) -> list[Label]:
     Returns:
         labels: Every labelled tile, the drawn ones marked so.
     """
-    settings = configs.load().ground_truth
+    settings = analysis_settings().ground_truth
     refused = artifacts.read_refused()
     labels = draw.drawn_labels(
         label.labelled_tiles(
@@ -92,7 +93,7 @@ def compute_selection(workers: int | None = None, force: bool = False) -> None:
         workers: How many processes to run on at once, or None for the config.
         force: Whether to fetch the feature catalogue again rather than read it.
     """
-    workers = configs.load(workers=workers).workers
+    workers = analysis_settings(workers).workers
     picked = select.select_dataset(workers, console.logged("selection"))
     kept = sum(1 for one in picked if one.tile.kept)
     print(f"{kept:,} of {len(picked):,} tiles earned a place", flush=True)
@@ -164,7 +165,7 @@ def run_selection(project, force: bool = False, workers: int | None = None):
     """
     os.environ[PLAIN_LOG_ENV] = "1"
     archives.download_artifact(project, Artifact.COVERAGE)
-    if configs.load().ancillary:
+    if analysis_settings().ancillary:
         archives.download_artifact(project, Artifact.METADATA)
     archives.download_artifact(project, Artifact.VERDICTS)
     compute_selection(workers, force)

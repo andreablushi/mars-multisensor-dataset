@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from analysis import configs
 from analysis.ground_truth import box
+from analysis.utils.tile_group import tile_grid
 from analysis.visualization.tile.models.placing import Placed
 from common.maths.geodesy import HALF_TURN
-from common.maths.tessellate import Tessellate
 
 
 def placed(name: str, cut=None) -> Placed | None:
@@ -20,7 +19,7 @@ def placed(name: str, cut=None) -> Placed | None:
     Returns:
         placed: Where it falls in lon and lat, or None where no crop covers it.
     """
-    tile = Tessellate.of(configs.load().tile_km).tile_named(name)
+    tile = tile_grid().tile_named(name)
     grid = Placed(tile if cut is None else box.recut(tile, cut))
     # A tile wrapping the pole has no lon/lat box a plate carree crop can cover
     lon, _ = grid.outline()

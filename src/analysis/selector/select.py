@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 
-from analysis import configs
 from analysis.coverage.artifacts import index
 from analysis.selector.artifacts import write
 from analysis.selector.models.selection import (
@@ -14,7 +13,8 @@ from analysis.selector.models.selection import (
     Selection,
 )
 from analysis.selector.models.survey import Study
-from common.maths.tessellate import Tessellate
+from analysis.utils.tile_group import tile_grid
+from common.config import analysis_settings
 from common.models.tile import Tile
 
 # Called with how many tile groups are searched and how many there are
@@ -100,9 +100,8 @@ def _searched(group: str) -> list[Selection]:
     Returns:
         selections: The rows of every tile a measured set reached, in the order read.
     """
-    settings = configs.load()
-    grid = Tessellate.of(settings.tile_km)
+    window = analysis_settings().window
     return [
-        selected(Study.over(coverage, settings.window), grid.tile_named(name))
+        selected(Study.over(coverage, window), tile_grid().tile_named(name))
         for name, coverage in index.load_group(group).items()
     ]
