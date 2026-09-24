@@ -16,7 +16,6 @@ _LANDED = (
     "Mean pixels landed per observation",
     "Pixels asked",
     "Mean coverage inside a tile",
-    "Least",
 )
 _BLANK = ""
 _WHOLE = "{:,.0f}".format
@@ -34,16 +33,14 @@ def landed(read: DatasetStats) -> widgets.Widget:
         rows.append(
             (
                 iid,
-                f"{selected.mean:,.1f} ({wording.span(selected, _WHOLE)})"
-                if selected.counted
-                else wording.NOTHING,
+                wording.spread(selected, "{:,.1f}".format, _WHOLE),
                 wording.spread(
                     measured, lambda pixels: f"{quantities.compact(pixels)}{unit}"
                 )
                 if measured.counted
                 else wording.UNCOUNTED,
                 f"{asked:,.0f}" if asked else wording.NOTHING,
-                *_share(read.held.reached[iid]),
+                _share(read.held.reached[iid]),
             )
         )
     # The ground no one instrument answers for, so it carries none of their columns
@@ -53,7 +50,7 @@ def landed(read: DatasetStats) -> widgets.Widget:
             _BLANK,
             _BLANK,
             _BLANK,
-            *_share(read.overlap),
+            _share(read.overlap),
         )
     )
     return tables.written(
@@ -61,17 +58,13 @@ def landed(read: DatasetStats) -> widgets.Widget:
     )
 
 
-def _share(measured: Spread) -> tuple[str, str]:
+def _share(measured: Spread) -> str:
     """Write how much of a tile something reaches.
 
     Args:
         measured: The share read off every tile that earned a window.
 
     Returns:
-        mean: The mean share with its spread.
-        least: The least any tile gave it.
+        share: The mean share, then the least and the most any tile gave it.
     """
-    return (
-        wording.spread(measured, lambda share: f"{share:.1%}"),
-        f"{measured.low:.1%}",
-    )
+    return wording.spread(measured, lambda share: f"{share:.1%}")

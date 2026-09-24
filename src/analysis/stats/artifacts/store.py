@@ -12,7 +12,7 @@ from analysis.stats.models.spread import Spread
 from common.disk.files import atomic_path
 
 # The layout of a published file, raised whenever what is written changes.
-STATS_SHAPE = 4
+STATS_SHAPE = 5
 
 
 def stats_path(root: Path = paths.STATS_ROOT) -> Path:
@@ -50,6 +50,7 @@ def write_stats_file(held: DatasetStats, root: Path = paths.STATS_ROOT) -> Path:
             "pixel_km2": _numbers_by_iid(aggregate.pixel_km2),
         },
         "selected": _numbers_by_iid(held.selected),
+        "downloads": held.downloads,
         "overlap": _numbers_of(held.overlap),
     }
     path = stats_path(root)
@@ -85,6 +86,7 @@ def read_stats_file(root: Path = paths.STATS_ROOT) -> DatasetStats:
             pixel_km2=_spreads_by_iid(held["pixel_km2"]),
         ),
         selected=_spreads_by_iid(saved["selected"]),
+        downloads=saved["downloads"],
         overlap=_spread_of(saved["overlap"]),
         iids=saved["iids"],
     )
@@ -126,7 +128,6 @@ def _numbers_of(measured: Spread) -> list[float]:
     return [
         measured.mean,
         measured.middle,
-        measured.deviation,
         measured.low,
         measured.high,
         measured.counted,
@@ -142,5 +143,5 @@ def _spread_of(saved: Sequence[float]) -> Spread:
     Returns:
         spread: The measurement.
     """
-    mean, middle, deviation, low, high, counted = saved
-    return Spread(mean, middle, deviation, low, high, int(counted))
+    mean, middle, low, high, counted = saved
+    return Spread(mean, middle, low, high, int(counted))

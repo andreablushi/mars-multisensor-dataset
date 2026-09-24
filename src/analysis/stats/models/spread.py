@@ -1,4 +1,4 @@
-"""One measurement taken over many tiles, and how much they disagree."""
+"""One measurement taken over many tiles, and how far apart they lie."""
 
 from __future__ import annotations
 
@@ -14,7 +14,6 @@ class Spread:
     Attributes:
         mean: Their average.
         middle: Their median, which a handful of wide tiles cannot pull.
-        deviation: The standard deviation, and nought where there is only one.
         low: The least of them.
         high: The most of them.
         counted: How many there were.
@@ -22,7 +21,6 @@ class Spread:
 
     mean: float
     middle: float
-    deviation: float
     low: float
     high: float
     counted: int
@@ -38,11 +36,10 @@ class Spread:
             spread: The spread, empty at nought where no tile took it.
         """
         if not values:
-            return cls(0.0, 0.0, 0.0, 0.0, 0.0, 0)
+            return cls(0.0, 0.0, 0.0, 0.0, 0)
         return cls(
             mean=statistics.fmean(values),
             middle=statistics.median(values),
-            deviation=statistics.pstdev(values) if len(values) > 1 else 0.0,
             low=min(values),
             high=max(values),
             counted=len(values),

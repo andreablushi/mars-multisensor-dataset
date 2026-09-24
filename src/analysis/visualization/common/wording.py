@@ -17,23 +17,19 @@ def counted(number: float, noun: str) -> str:
     return f"{number:,.0f} {noun}" + ("" if number == 1 else "s")
 
 
-def spread(measured: Spread, written: Callable[[float], str]) -> str:
-    """Write a measurement read off many tiles, and how far they sit from it."""
+def spread(
+    measured: Spread,
+    written: Callable[[float], str],
+    bounds: Callable[[float], str] | None = None,
+) -> str:
+    """Write the mean of a measurement read off many tiles, then its least and most."""
     if not measured.counted:
         return NOTHING
-    middle = written(measured.mean)
+    mean = written(measured.mean)
     if measured.agreed:
-        return middle
-    return f"{middle} ± {written(measured.deviation)}"
-
-
-def span(measured: Spread, written: Callable[[float], str]) -> str:
-    """Write the least and the most a measurement read off many tiles."""
-    if not measured.counted:
-        return NOTHING
-    if measured.agreed:
-        return written(measured.low)
-    return f"{written(measured.low)} to {written(measured.high)}"
+        return mean
+    bounds = bounds or written
+    return f"{mean} ({bounds(measured.low)} to {bounds(measured.high)})"
 
 
 def ground(km2: float, of_km2: float) -> str:

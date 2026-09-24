@@ -18,7 +18,6 @@ def final(read: DatasetStats) -> widgets.Widget:
         ("Tiles searched", f"{held.searched:,}"),
         ("Tiles kept", f"{held.kept:,}"),
         ("Mean window", wording.spread(held.days, quantities.duration)),
-        ("Longest window", quantities.duration(held.days.high)),
     ]
     for iid in read.iids:
         measured = read.selected[iid]
@@ -28,4 +27,5 @@ def final(read: DatasetStats) -> widgets.Widget:
                 f"{measured.mean * measured.counted:,.0f}",
             )
         )
+        rows.append((f"{iid} observations to download", f"{read.downloads[iid]:,}"))
     return tables.written("The dataset the filter leaves", _HEADINGS, rows)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from analysis.selector.models.selection import Selection
 from analysis.stats.models.dataset import Aggregate, DatasetStats
 from analysis.stats.models.spread import Spread
 from analysis.stats.models.tile import TileStats
@@ -13,11 +14,14 @@ from analysis.stats.tile import measure
 SHARE_CEILING = 1.01
 
 
-def dataset_stats(measured: Sequence[TileStats]) -> DatasetStats:
+def dataset_stats(
+    measured: Sequence[TileStats], picked: Sequence[Selection]
+) -> DatasetStats:
     """Read every tile the selection searched as one dataset.
 
     Args:
         measured: What the looks each tile keeps left on it, in any order.
+        picked: What the search left of every tile, whose products are counted.
 
     Returns:
         stats: What the filter left of them.
@@ -26,6 +30,7 @@ def dataset_stats(measured: Sequence[TileStats]) -> DatasetStats:
     # A tile claiming more ground than it holds is left out of every figure
     held = [one for one in measured if plausible(one)]
     grounded = [one for one in held if one.window.kept]
+    names = {one.window.tile for one in grounded}
     return DatasetStats(
         held=aggregate_tiles(held, iids),
         selected={
@@ -34,6 +39,19 @@ def dataset_stats(measured: Sequence[TileStats]) -> DatasetStats:
                     one.reached[iid].observations_taken if iid in one.reached else 0
                     for one in grounded
                 ]
+            )
+            for iid in iids
+        },
+        # A product landing on many tiles is still downloaded once
+        downloads={
+            iid: len(
+                {
+                    look.pdsid
+                    for one in picked
+                    if one.tile.tile in names
+                    for look in one.observations
+                    if look.iid == iid
+                }
             )
             for iid in iids
         },

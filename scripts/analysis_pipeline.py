@@ -146,10 +146,12 @@ def compute_selection(workers: int | None = None, force: bool = False) -> None:
     print(f"{kept:,} of {len(picked):,} tiles earned a place", flush=True)
     # Read off the selection just written, so they never stand for an old filter
     measured = read.measure_every_tile(picked, workers, console.logged("stats"))
-    store.write_stats_file(aggregate.dataset_stats(measured))
+    store.write_stats_file(aggregate.dataset_stats(measured, picked))
     drawn = {one.tile for one in compute_labels(force) if one.drawn}
     store.write_stats_file(
-        aggregate.dataset_stats([one for one in measured if one.window.tile in drawn]),
+        aggregate.dataset_stats(
+            [one for one in measured if one.window.tile in drawn], picked
+        ),
         paths.EVALUATION_STATS_ROOT,
     )
 

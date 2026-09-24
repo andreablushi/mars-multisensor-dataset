@@ -35,11 +35,13 @@ class DatasetStats:
     Attributes:
         held: Every tile searched, read as one.
         selected: How many observations of each instrument a kept tile keeps.
+        downloads: How many distinct products of each instrument the kept tiles keep.
         overlap: The share of a tile every instrument reaches at once, over the kept.
         iids: The instruments reported on, in the order they are drawn.
     """
 
     held: Aggregate
     selected: dict[str, Spread]
+    downloads: dict[str, int]
     overlap: Spread
     iids: list[str]
