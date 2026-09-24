@@ -5,9 +5,11 @@ from __future__ import annotations
 import os
 from dataclasses import replace
 
-from analysis import paths
 from analysis.models.settings import Settings
 from common.config import load_config
+from common.paths import CONFIGS_ROOT
+
+CONFIG_PATH = CONFIGS_ROOT / "analysis.yaml"
 
 
 def load(workers: int | None = None) -> Settings:
@@ -19,7 +21,7 @@ def load(workers: int | None = None) -> Settings:
     Returns:
         choices: The settled choices for the run.
     """
-    settings = load_config(paths.CONFIG_PATH, Settings, workers=workers)
+    settings = load_config(CONFIG_PATH, Settings, workers=workers)
     # The coverage jobs run side by side, so each takes a share of the machine
     cores = workers or os.process_cpu_count() or 1
     return replace(settings, union_threads=max(1, cores // settings.workers))

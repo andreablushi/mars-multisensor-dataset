@@ -43,7 +43,6 @@ class Instrument:
         observation_id: What reads a kept product's observation, or None.
         identifiers: What asks an archive what covers a tile, or None.
         worker_bytes: What one build holds of its largest product at once.
-        held_bytes: What reads a downloaded product's size, or None.
     """
 
     layout: Layout
@@ -55,7 +54,6 @@ class Instrument:
     observation_id: Callable[[str], str | None] | None = None
     identifiers: Callable[[Tile, httpx.Client], list[str]] | None = None
     worker_bytes: int = 512 * 1024**2
-    held_bytes: Callable[[str], int] | None = None
 
 
 INSTRUMENTS = {
@@ -69,7 +67,6 @@ INSTRUMENTS = {
         observation_id=crism_configs.NAMING.parse,
         # A hyperspectral observation takes 601 MB against 325 MB, so it goes first.
         worker_bytes=1024**3,
-        held_bytes=crism.held_bytes,
     ),
     ctx_configs.LAYOUT.instrument: Instrument(
         ctx_configs.LAYOUT,

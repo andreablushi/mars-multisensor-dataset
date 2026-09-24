@@ -5,9 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from analysis.models.instrument import InstrumentSet
-from common.paths import CONFIGS_ROOT, DATA_ROOT
-
-CONFIG_PATH = CONFIGS_ROOT / "analysis.yaml"
+from common.paths import DATA_ROOT
 
 ANALYSIS_ROOT = DATA_ROOT / "analysis"
 METADATA_ROOT = ANALYSIS_ROOT / "metadata"

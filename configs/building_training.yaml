@@ -8,7 +8,7 @@ workers: 8
 
 # Downloads at once from each archive, which wait on it and not on the cores.
 downloads:
-  jpl: 8
+  jpl: 4
   wustl: 8
 
 # What share of the tiles the selection kept to build, above zero and up to one.

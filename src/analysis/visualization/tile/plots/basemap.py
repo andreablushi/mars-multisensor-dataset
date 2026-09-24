@@ -6,7 +6,7 @@ from html import escape
 
 import ipywidgets as widgets
 
-from analysis.selector import configs as filtering
+from analysis import configs
 from analysis.stats.tile import read
 from analysis.visualization.common import mosaic, panels, wording
 from analysis.visualization.common.models.box import Box
@@ -37,7 +37,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
     title = panels.title(coverage)
     box = grid.box()
     verdict = WINDOW_FOUND if looks and looks.window.kept else WINDOW_MISSING
-    criteria = filtering.FILTER
+    criteria = configs.load().window
     asked = "\n".join(
         [ASKED_HEADING]
         + [

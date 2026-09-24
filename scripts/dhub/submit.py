@@ -6,11 +6,9 @@ import tomllib
 
 import digitalhub as dh
 
-from building.models import budget
+from building.preprocessing.ctx import isis
 from common import paths
-from dhub import configs, credentials, isis
-
-UNITS = {"Ki": 1024, "Mi": 1024**2, "Gi": 1024**3, "Ti": 1024**4}
+from dhub import configs, credentials
 
 
 def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
@@ -55,7 +53,6 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
 
     # Start the job, told where the clone lands and what the box holds
     root = platform.source_root
-    budgeted = asked.budget or asked.memory
     run = function.run(
         action="job",
         profile=asked.profile,
@@ -65,11 +62,6 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
             {"name": "PYTHONPATH", "value": f"{root}:{root}/src:{root}/scripts"},
             *credentials.minting_envs(),
             *(isis.ENVS if asked.isis else []),
-            # What the build plans against, which is under the box so it may misjudge
-            {
-                "name": budget.MEMORY_ENV,
-                "value": str(int(budgeted[:-2]) * UNITS[budgeted[-2:]]),
-            },
         ],
         parameters=parameters | {"workers": asked.cpu},
         wait=False,

@@ -3,13 +3,12 @@
 
 from __future__ import annotations
 
-import argparse
 import os
 import time
 from collections import Counter
 
-from dhub import archives, submit
-from dhub import configs as platform
+from dhub import archives, args, submit
+from dhub.artifacts import Artifact
 from digitalhub_runtime_python import handler
 from rich.console import Console
 
@@ -24,57 +23,12 @@ from analysis.selector import select
 from analysis.stats.artifacts import store
 from analysis.stats.dataset import aggregate, read
 from analysis.utils import dataset_list
-from common.console import PLAIN_LOG_ENV, print_interrupted
+from common.console import PLAIN_LOG_ENV
 
 PIPELINE_HANDLER = "scripts.analysis_pipeline:run_pipeline"
 SELECTION_HANDLER = "scripts.analysis_pipeline:run_selection"
 
-_PUBLISHED = platform.load().publishes
-_COVERAGE = _PUBLISHED["coverage"]
-_METADATA = _PUBLISHED["metadata"]
-_SELECTION = _PUBLISHED["selection"]
-_STATS = _PUBLISHED["stats"]
-_SUMMARY = _PUBLISHED["summary"]
-_LABELS = _PUBLISHED["labels"]
-_VERDICTS = _PUBLISHED["verdicts"]
-
-# Where each archive is packed from, shared by two handlers.
-ARCHIVED = {
-    _COVERAGE: (
-        paths.COVERAGE_ROOT,
-        "Coverage events and summaries; unpack under data/analysis/.",
-    ),
-    _METADATA: (
-        paths.METADATA_ROOT,
-        "The ODE records behind each measurement; unpack under data/analysis/.",
-    ),
-    _SELECTION: (
-        paths.SELECTION_ROOT,
-        "The tiles and observations the filter keeps; unpack under data/analysis/.",
-    ),
-    _STATS: (
-        paths.STATS_ROOT,
-        "What the filter left of the dataset; unpack under data/analysis/.",
-    ),
-    _LABELS: (
-        paths.LABELS_ROOT,
-        "Every labelled tile, the drawn ones marked; unpack under data/analysis/.",
-    ),
-}
-
-
-def archived(project, name: str):
-    """Publish one archive this pipeline leaves, by the name it is published under.
-
-    Args:
-        project: The DigitalHub project the archive is logged into.
-        name: The name it goes up as, which is what says where it is packed from.
-
-    Returns:
-        artifact: The logged artifact.
-    """
-    root, held = ARCHIVED[name]
-    return archives.published_archive(project, root, name, held)
+_SELECTED = (Artifact.SELECTION, Artifact.STATS, Artifact.LABELS)
 
 
 def compute_coverage(force: bool = False, workers: int | None = None) -> int:
@@ -157,7 +111,9 @@ def compute_selection(workers: int | None = None, force: bool = False) -> None:
     )
 
 
-@handler(outputs=[_COVERAGE, _SUMMARY, _SELECTION, _STATS, _LABELS])
+@handler(
+    outputs=[one.published for one in (Artifact.COVERAGE, Artifact.SUMMARY, *_SELECTED)]
+)
 def run_pipeline(project, force: bool = False, workers: int | None = None):
     """Run every stage on DigitalHub and publish everything each one left on disk.
 
@@ -179,30 +135,23 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
     os.environ[PLAIN_LOG_ENV] = "1"
     print("measuring coverage", flush=True)
     failed = compute_coverage(force, workers)
-    coverage = archived(project, _COVERAGE)
-    print("uploading the summary", flush=True)
-    summary = project.log_artifact(
-        name=_SUMMARY,
-        kind="artifact",
-        source=str(paths.COVERAGE_ROOT / paths.SUMMARY_NAME),
-        path=archives.published_at(project, archives.ANALYSIS_DIR, paths.SUMMARY_NAME),
-        description="One row per tile and instrument set.",
-    )
-    archived(project, _METADATA)
+    coverage = archives.published_artifact(project, Artifact.COVERAGE)
+    summary = archives.published_artifact(project, Artifact.SUMMARY)
+    archives.published_artifact(project, Artifact.METADATA)
     # Report a failure only once uploaded, and never select from short coverage
     if failed:
         raise RuntimeError("the run had failures; the archives hold what finished")
-    archives.download_file(project, _VERDICTS, paths.VERDICTS_PATH)
+    archives.download_artifact(project, Artifact.VERDICTS)
     compute_selection(workers, force)
     print("done", flush=True)
     return (
         coverage,
         summary,
-        *(archived(project, name) for name in (_SELECTION, _STATS, _LABELS)),
+        *(archives.published_artifact(project, one) for one in _SELECTED),
     )
 
 
-@handler(outputs=[_SELECTION, _STATS, _LABELS])
+@handler(outputs=[one.published for one in _SELECTED])
 def run_selection(project, force: bool = False, workers: int | None = None):
     """Select the dataset on DigitalHub under the filter, and publish what it leaves.
 
@@ -217,14 +166,13 @@ def run_selection(project, force: bool = False, workers: int | None = None):
         labels: The archive of every labelled tile.
     """
     os.environ[PLAIN_LOG_ENV] = "1"
-    print("fetching the measurements", flush=True)
-    archives.unpack_archive(project, _COVERAGE, paths.COVERAGE_ROOT)
+    archives.download_artifact(project, Artifact.COVERAGE)
     if configs.load().ancillary:
-        archives.unpack_archive(project, _METADATA, paths.METADATA_ROOT)
-    archives.download_file(project, _VERDICTS, paths.VERDICTS_PATH)
+        archives.download_artifact(project, Artifact.METADATA)
+    archives.download_artifact(project, Artifact.VERDICTS)
     compute_selection(workers, force)
     print("done", flush=True)
-    return tuple(archived(project, name) for name in (_SELECTION, _STATS, _LABELS))
+    return tuple(archives.published_artifact(project, one) for one in _SELECTED)
 
 
 def main() -> int:
@@ -233,20 +181,13 @@ def main() -> int:
     Returns:
         code: A process exit code, non zero when a stage or an image build failed.
     """
-    parsed = argparse.ArgumentParser(description=__doc__)
-    parsed.add_argument(
-        "--dh", action="store_true", help="submit to DigitalHub instead of running here"
-    )
+    parsed = args.script_parser(__doc__, "redo finished work rather than skip it")
     parsed.add_argument(
         "--only-stats",
         action="store_true",
         help="skip the download and the measurement, and select, read the stats "
         "and label alone",
     )
-    parsed.add_argument(
-        "--force", action="store_true", help="redo finished work rather than skip it"
-    )
-    parsed.add_argument("--ref", default="main", help="branch, tag, or commit to run")
     arguments = parsed.parse_args()
 
     if arguments.dh:
@@ -263,8 +204,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    try:
-        raise SystemExit(main())
-    except KeyboardInterrupt:
-        print_interrupted("finished files")
-        raise SystemExit(130) from None
+    args.run_script(main, "finished files")

@@ -1,13 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Every name is read from the file the runs are settled from, so nothing drifts
+# The project is read from the file the runs are settled from, so it never drifts
 config="$(dirname "$0")/../configs/digitalhub.yaml"
 project="$(sed -n 's/^project: *//p' "$config")"
-
-published() {
-    sed -n "/^publishes:/,/^[^ #]/{s/^  $1: *//p;}" "$config"
-}
 
 download_one() {
     local name="$1"
@@ -75,13 +71,13 @@ fi
 
 for name in "${names[@]}"; do
     case "$name" in
-        coverage) download_one "$(published coverage)" data/analysis/coverage ;;
-        metadata) download_one "$(published metadata)" data/analysis/metadata ;;
-        selection) download_one "$(published selection)" data/analysis/selection ;;
-        stats) download_one "$(published stats)" data/analysis/stats ;;
-        summary) download_one "$(published summary)" data/analysis/coverage shares ;;
-        labels) download_one "$(published labels)" data/analysis/labels ;;
-        verdicts) download_one "$(published verdicts)" data/analysis shares ;;
+        coverage) download_one coverage data/analysis/coverage ;;
+        metadata) download_one metadata data/analysis/metadata ;;
+        selection) download_one selection data/analysis/selection ;;
+        stats) download_one stats data/analysis/stats ;;
+        summary) download_one summary data/analysis/coverage shares ;;
+        labels) download_one labels data/analysis/labels ;;
+        verdicts) download_one verdicts data/analysis shares ;;
         *)
             echo "nothing is published under \`$name\`" >&2
             usage >&2

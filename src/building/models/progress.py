@@ -10,9 +10,8 @@ from dataclasses import dataclass, field
 # What a product is doing between being planned and being finished, in order.
 QUEUED = "queued"
 FETCHING = "fetching"
-HOLDING = "holding"
 BUILDING = "building"
-STAGES = (QUEUED, FETCHING, HOLDING, BUILDING)
+STAGES = (QUEUED, FETCHING, BUILDING)
 
 # How many of the products a build is waiting on it names, the longest held first.
 NAMED = 3

@@ -6,13 +6,12 @@ import threading
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
+from pathlib import Path
 
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn
 from rich.progress import Progress as Bar
 
-from building.models import budget as memory
-from building.models.budget import Budget
 from building.models.job import Outcome, Plan
 from building.models.progress import Progress
 from building.models.settings import Settings
@@ -24,17 +23,19 @@ LOGGED_LINES = 100
 # How often a run says what it is doing, so a stalled build does not look slow
 WATCHED_SECONDS = 300.0
 
-# What one gibibyte is, which the memory a run holds is said in
-GIB = 1024**3
+# Where a container writes the most memory it has held, by cgroup version.
+CGROUP_PEAKS = (
+    Path("/sys/fs/cgroup/memory.peak"),
+    Path("/sys/fs/cgroup/memory/memory.max_usage_in_bytes"),
+)
 
 
-def describe(plan: Plan, settings: Settings, budget: Budget, console: Console) -> None:
+def describe(plan: Plan, settings: Settings, console: Console) -> None:
     """Print what a build has to do before it starts.
 
     Args:
         plan: What the planner worked out.
         settings: The settled choices for the build, which size it.
-        budget: The memory those builds share, settling how many run at once.
         console: The console to print on.
     """
     crops = sum(len(job.frames) for job in plan.jobs)
@@ -48,8 +49,7 @@ def describe(plan: Plan, settings: Settings, budget: Budget, console: Console) -
         f"built as {settings.name}; "
         f"build pool {settings.workers}, download pools "
         f"{', '.join(f'{name} {n}' for name, n in settings.downloads.items())}, "
-        f"{settings.in_flight} products may wait, "
-        f"{budget.total / GIB:.0f} GiB between them"
+        f"{settings.in_flight} products may wait"
     )
 
 
@@ -86,8 +86,21 @@ def _high_water() -> str:
     Returns:
         held: The high water mark to print, or empty where nothing counts one.
     """
-    peak = memory.peak_bytes()
-    return f", peak {peak / 1024**3:.1f} GiB" if peak else ""
+    counted = list(CGROUP_PEAKS)
+    try:
+        # A container reads its own cgroup as the root, and a host process does not
+        for line in Path("/proc/self/cgroup").read_text().splitlines():
+            if line.startswith("0::"):
+                own = line.partition("::")[2].strip().lstrip("/")
+                counted.append(Path("/sys/fs/cgroup") / own / "memory.peak")
+    except OSError:
+        pass
+    for path in counted:
+        try:
+            return f", peak {int(path.read_text().split()[0]) / 1024**3:.1f} GiB"
+        except (OSError, ValueError):
+            continue
+    return ""
 
 
 def render(

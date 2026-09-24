@@ -1,10 +1,9 @@
-"""The credentials a platform run holds, which lapse long before the run ends."""
+"""What a job is given to mint its own credentials, which lapse before a run ends."""
 
 from __future__ import annotations
 
 import os
 
-from digitalhub.stores.client.base.factory import get_client
 from dotenv import load_dotenv
 
 from common import paths
@@ -31,8 +30,3 @@ def minting_envs() -> list[dict[str, str]]:
             raise RuntimeError(f"{name} is unset; see .env.example")
         told.append({"name": name, "value": value})
     return told
-
-
-def refresh() -> None:
-    """Mint the run's credentials again, the platform's and the store's alike."""
-    get_client().eval_retry()

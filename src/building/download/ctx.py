@@ -6,9 +6,9 @@ import json
 
 import httpx
 
-from building.common.isis import run_isis
 from building.configs import ctx as configs
 from building.download import archive
+from building.preprocessing.ctx.isis import run_isis
 from common.disk.files import atomic_path
 from common.fetch import http
 

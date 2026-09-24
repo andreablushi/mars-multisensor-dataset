@@ -14,8 +14,6 @@ from analysis.selector.models.window import Window
 from analysis.utils import tile_group
 from common.maths.tessellate import Tessellate
 
-SETTINGS = configs.load()
-GRID = Tessellate.of(SETTINGS.tile_km)
 HYPERSPECTRAL = "hsp"
 
 
@@ -133,9 +131,11 @@ def sharad_drop_order(track: Track, looks: list[int]) -> list[int]:
         ordered: The looks without a distortion over the tile first, oldest first,
             then day only before night, the most distorted and fewest cells first.
     """
+    settings = configs.load()
+    grid = Tessellate.of(settings.tile_km)
     name = track.observations[0].tile
-    tile = GRID.tile_named(name)
-    group = tile_group.group_name(len(GRID.columns), tile, SETTINGS.tile_group_deg)
+    tile = grid.tile_named(name)
+    group = tile_group.group_name(len(grid.columns), tile, settings.tile_group_deg)
     distortions = {
         one.pdsid: one for one in summary.read_distortions(group) if one.tile == name
     }

@@ -1,4 +1,4 @@
-"""Running USGS ISIS, which a job finds through ISISROOT."""
+"""USGS ISIS, which calibrates CTX: how an image installs it, and how it is run."""
 
 from __future__ import annotations
 
@@ -7,6 +7,51 @@ import subprocess
 from pathlib import Path
 
 from building.common.pds import labels
+
+ROOT = "/opt/isis"
+
+DATA = "/opt/isisdata"
+
+VERSION = "10.0.0"
+
+ENVS = [
+    {"name": "ISISROOT", "value": ROOT},
+    {"name": "ISISDATA", "value": DATA},
+    {"name": "LANG", "value": "C.UTF-8"},
+]
+
+MAMBA = "https://micro.mamba.pm/api/micromamba/linux-64/latest"
+
+HELD = {
+    "mro": (
+        "calibration/ctx*",
+        "kernels/iak/**",
+        "kernels/ik/**",
+        "kernels/fk/**",
+        "kernels/sclk/**",
+    ),
+    "base": (
+        "kernels/lsk/**",
+        "kernels/pck/**",
+        "kernels/iak/**",
+        "translations/**",
+        "templates/**",
+        "dems/molaMarsPlanetaryRadius0005*",
+    ),
+}
+
+INSTRUCTIONS = [
+    'python3 -c "import io,tarfile,urllib.request; tarfile.open(fileobj=io.BytesIO('
+    f"urllib.request.urlopen('{MAMBA}').read()),mode='r:bz2')"
+    ".extract('bin/micromamba','/usr/local')\"",
+    f"export MAMBA_ROOT_PREFIX=/opt/mamba && micromamba create -y -q -p {ROOT} "
+    f"-c conda-forge -c usgs-astrogeology isis={VERSION} && micromamba clean -a -y",
+    *(
+        f"PATH={ROOT}/bin:$PATH ISISROOT={ROOT} downloadIsisData {mission} {DATA} "
+        f'--include="{{{",".join(held)}}}"'
+        for mission, held in HELD.items()
+    ),
+]
 
 
 def run_isis(app: str, parameters: dict[str, object]) -> None:

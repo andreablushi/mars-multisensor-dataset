@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ipywidgets as widgets
 
-from analysis.selector import configs as filtering
+from analysis import configs
 from analysis.stats.models.dataset import DatasetStats
 from analysis.stats.models.spread import Spread
 from analysis.visualization.common import quantities, tables, wording
@@ -24,8 +24,9 @@ _WHOLE = "{:,.0f}".format
 def landed(read: DatasetStats) -> widgets.Widget:
     """Tabulate what each instrument lands on a tile and how far it reaches."""
     rows: list[Row] = []
+    admits = configs.load().window.admits
     for iid in read.iids:
-        asked = filtering.FILTER.admits.get(iid)
+        asked = admits.get(iid)
         # A sounder counts traces, not picture elements, so its pixels go unmarked
         unit = "" if iid == wording.SOUNDER else " px"
         measured = read.held.pixels_per_look[iid]

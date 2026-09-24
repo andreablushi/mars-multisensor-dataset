@@ -7,7 +7,6 @@ from concurrent.futures import ProcessPoolExecutor
 
 from analysis import configs
 from analysis.coverage.artifacts import index
-from analysis.selector import configs as filtering
 from analysis.selector.artifacts import write
 from analysis.selector.models.selection import (
     SelectedObservation,
@@ -101,8 +100,9 @@ def _searched(group: str) -> list[Selection]:
     Returns:
         selections: The rows of every tile a measured set reached, in the order read.
     """
-    grid = Tessellate.of(configs.load().tile_km)
+    settings = configs.load()
+    grid = Tessellate.of(settings.tile_km)
     return [
-        selected(Study.over(coverage, filtering.FILTER), grid.tile_named(name))
+        selected(Study.over(coverage, settings.window), grid.tile_named(name))
         for name, coverage in index.load_group(group).items()
     ]

@@ -23,7 +23,7 @@ BACKOFF_BASE = 0.5
 BACKOFF_MAX = 30.0
 RETRYABLE_STATUS = frozenset({403, 429, 500, 502, 503, 504})
 # Which of those mean the caller is asking too often, and so hold the host back
-CROWDED_STATUS = frozenset({403, 429})
+CROWDED_STATUS = frozenset({403, 429, 503})
 # Fewer tries for a transfer than a query, one running for minutes not seconds
 STREAM_RETRIES = 5
 

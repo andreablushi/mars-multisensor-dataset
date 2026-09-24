@@ -23,12 +23,10 @@ from building.metadata.observation import (
     ObservationMetadata,
     observation_metadata,
 )
-from building.models.budget import Budget, memory_bytes
 from building.models.job import Job, Outcome, Plan
 from building.models.progress import (
     BUILDING,
     FETCHING,
-    HOLDING,
     QUEUED,
     Progress,
 )
@@ -36,9 +34,6 @@ from building.models.settings import Settings
 from building.preprocessing.common import store
 from common.console import named_failure
 from common.fetch.http import TLS_CONTEXT
-
-# The share of the box's memory a build may hold, the rest being unmetered.
-MEMORY_SHARE = 0.45
 
 CHECKPOINT_BYTES = 100 * 1024**3
 
@@ -65,8 +60,6 @@ def run_build(
     Returns:
         collected: Every finished outcome, in completion order.
     """
-    # Every core builds, and what each build holds is measured as it lands.
-    budget = Budget(int(memory_bytes() * MEMORY_SHARE))
     # Reused, so a run pays for a connection once a host rather than once a file
     connections = sum(settings.downloads.values()) * 2
     limits = httpx.Limits(
@@ -89,7 +82,7 @@ def run_build(
                 console.print(f"dropping {dropped:,} crops the index does not name")
         published = named if checkpoint else frozenset()
         plan = planner.build_plan(picked, root, ode, force=force, published=published)
-        printing.describe(plan, settings, budget, console)
+        printing.describe(plan, settings, console)
         progress = Progress(len(plan.jobs))
         # A download waits on the network and a build on the cores, so the pools differ.
         with (
@@ -102,7 +95,7 @@ def run_build(
                 for archive, downloads in settings.downloads.items()
             }
             held = _outcomes(
-                plan.jobs, ode, fetching, building, root, settings, budget, progress
+                plan.jobs, ode, fetching, building, root, settings, progress
             )
             with closing(held) as outcomes:
                 if checkpoint is not None:
@@ -164,7 +157,6 @@ def _outcomes(
     building: ProcessPoolExecutor,
     root: Path,
     settings: Settings,
-    budget: Budget,
     progress: Progress,
 ) -> Iterator[Outcome]:
     """Fetch every product and build it the moment there is room, in whatever order.
@@ -176,7 +168,6 @@ def _outcomes(
         building: The processes the builds run on.
         root: The dataset's own root directory.
         settings: The settled choices, bounding how many products run at once.
-        budget: The memory the builds running at once share between them.
         progress: What every product still in the build is doing.
 
     Yields:
@@ -186,62 +177,50 @@ def _outcomes(
     # A place to land in, since a build still running holds no thread.
     waiting = threading.Semaphore(settings.in_flight)
 
-    def finish(outcome: Outcome, ticket: object, held: int) -> None:
-        """Record what one job left and give back everything it took.
+    def finish(outcome: Outcome, ticket: object) -> None:
+        """Record what one job left and give back its place.
 
         Args:
             outcome: What the job left, whether it was built or failed.
             ticket: What the job was tracked by while it was still in the build.
-            held: How much memory it was holding, and zero where it held none.
         """
-        if held:
-            budget.release(held)
         progress.left(ticket, finished=True)
         finished.put(outcome)
         waiting.release()
 
     def fetched(job: Job) -> None:
-        """Bring one product down, take the memory it needs, and hand it on.
+        """Bring one product down and hand it on to be built.
 
         Args:
             job: The product to fetch.
         """
         # The place is taken before the download, so the room is never given elsewhere.
         waiting.acquire()
-        steps = INSTRUMENTS[job.instrument]
-        ticket, held = progress.entered(job.label, QUEUED), 0
+        ticket = progress.entered(job.label, QUEUED)
         try:
             progress.moved(ticket, FETCHING)
-            steps.fetch(job.identifier, ode)
-            # Only now is there a product to measure, and so a share to ask for.
-            progress.moved(ticket, HOLDING)
-            held = budget.acquire(
-                steps.held_bytes(job.identifier)
-                if steps.held_bytes
-                else steps.worker_bytes
-            )
+            INSTRUMENTS[job.instrument].fetch(job.identifier, ode)
             progress.moved(ticket, BUILDING)
             building.submit(build_product, job, root).add_done_callback(
-                partial(built, job, ticket, held)
+                partial(built, job, ticket)
             )
         except Exception as error:  # noqa: BLE001
             # The download failed or the pool is closing, so this builds nowhere.
-            finish(Outcome(job, error=error), ticket, held)
+            finish(Outcome(job, error=error), ticket)
 
-    def built(job: Job, ticket: object, held: int, done: Future[Outcome]) -> None:
+    def built(job: Job, ticket: object, done: Future[Outcome]) -> None:
         """Record what one job's build left, a worker the pool lost included.
 
         Args:
             job: The job that was built.
             ticket: What the job was tracked by while it was still in the build.
-            held: How much memory it was holding while it built.
             done: What the build pool left.
         """
         try:
             outcome = done.result()
         except Exception as error:  # noqa: BLE001
             outcome = Outcome(job, error=error)
-        finish(outcome, ticket, held)
+        finish(outcome, ticket)
 
     # Every path leaves one outcome and gives its place back, or it waits for ever.
     for job in jobs:

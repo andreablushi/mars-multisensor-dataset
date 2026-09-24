@@ -10,12 +10,12 @@ from pathlib import Path
 import numpy as np
 import tifffile
 
-from building.common.isis import read_cube_label, run_isis
 from building.common.pds import labels
 from building.configs import ctx as configs
 from building.preprocessing.common import geometry
 from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.ctx import projection
+from building.preprocessing.ctx.isis import read_cube_label, run_isis
 from building.preprocessing.ctx.models.observation import CtxObservation
 from building.preprocessing.ctx.models.sample import BLANK, CtxSample
 from common.maths import geodesy
