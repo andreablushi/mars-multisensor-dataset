@@ -42,9 +42,7 @@ def traced(shape: BaseGeometry) -> list[Trace]:
 @lru_cache(maxsize=OUTLINE_CACHE)
 def _published(group: str, set_key: str) -> dict[str, BaseGeometry]:
     """Read one instrument set's published footprints, held for its panels."""
-    path = paths.metadata_file(
-        paths.METADATA_ROOT, group, InstrumentSet.from_key(set_key)
-    )
+    path = paths.metadata_path(group, InstrumentSet.from_key(set_key))
     return {
         observation.pdsid: reading.loads(observation.wkt)
         for observation in load_observations(path).observations

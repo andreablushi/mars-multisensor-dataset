@@ -55,7 +55,7 @@ def summarise_ancillary(settings: Settings, force: bool = False) -> int:
         )
         failed += lost
         held.extend(distortions)
-    parquet.write(held, DISTORTIONS, paths.catalog_summary_path(paths.METADATA_ROOT))
+    parquet.write(held, DISTORTIONS, paths.DISTORTIONS_PATH)
     read_distortions.cache_clear()
     return failed
 
@@ -70,9 +70,8 @@ def read_distortions(group: str | None = None) -> tuple[Distortion, ...]:
     Returns:
         distortions: Each look's distortion over each tile, in the order written.
     """
-    path = paths.catalog_summary_path(paths.METADATA_ROOT)
-    if not path.exists():
+    if not paths.DISTORTIONS_PATH.exists():
         return ()
     filters = None if group is None else [("group", "==", group)]
-    rows = pq.read_table(path, schema=DISTORTIONS, filters=filters)
+    rows = pq.read_table(paths.DISTORTIONS_PATH, schema=DISTORTIONS, filters=filters)
     return tuple(Distortion(**row) for row in rows.to_pylist())

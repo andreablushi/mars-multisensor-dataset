@@ -17,7 +17,7 @@ class Artifact(Enum):
     SELECTION = analysis_paths.SELECTION_ROOT
     STATS = analysis_paths.STATS_ROOT
     LABELS = analysis_paths.LABELS_ROOT
-    SUMMARY = analysis_paths.COVERAGE_ROOT / analysis_paths.SUMMARY_NAME
+    SUMMARY = analysis_paths.COVERAGE_SUMMARY_PATH
     VERDICTS = analysis_paths.VERDICTS_PATH
     DATASET = building_paths.DATASETS_ROOT
 

@@ -5,11 +5,15 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 
-from analysis import paths
 from analysis.models.instrument import InstrumentSet
 from analysis.models.job import Job, Plan
 from analysis.models.tile_group import TileGroup
-from analysis.paths import events_path, metadata_file, set_summary_path
+from analysis.paths import (
+    EVENTS_SUFFIX,
+    SET_SUMMARY_SUFFIX,
+    coverage_path,
+    metadata_path,
+)
 
 
 def _outstanding[T, R](
@@ -45,7 +49,6 @@ def _outstanding[T, R](
 def download_plan(
     groups: Sequence[TileGroup],
     instrument_sets: Sequence[InstrumentSet],
-    out_root: Path = paths.METADATA_ROOT,
     *,
     force: bool = False,
 ) -> Plan:
@@ -54,7 +57,6 @@ def download_plan(
     Args:
         groups: Every group the tiles are grouped into.
         instrument_sets: The instrument sets to download for each group.
-        out_root: The metadata output root directory.
         force: When True, include jobs whose output file already exists.
 
     Returns:
@@ -67,7 +69,7 @@ def download_plan(
     ]
     jobs, skipped = _outstanding(
         pairs,
-        lambda pair: metadata_file(out_root, pair[0].name, pair[1]),
+        lambda pair: metadata_path(pair[0].name, pair[1]),
         lambda pair, output: Job(
             group=pair[0], instrument_set=pair[1], output_path=output
         ),
@@ -84,7 +86,6 @@ def download_plan(
 def coverage_plan(
     sources: Sequence[Path],
     groups: Sequence[TileGroup],
-    groups_root: Path = paths.GROUPS_ROOT,
     *,
     force: bool = False,
 ) -> Plan:
@@ -93,7 +94,6 @@ def coverage_plan(
     Args:
         sources: The instrument set metadata files discovered on disk.
         groups: Every group, which each source is matched to by its directory.
-        groups_root: The per-group coverage root directory.
         force: When True, recompute sets that are already done.
 
     Returns:
@@ -102,11 +102,11 @@ def coverage_plan(
     named = {group.name: group for group in groups}
     jobs, skipped = _outstanding(
         sorted(sources, key=lambda path: -path.stat().st_size),
-        lambda source: set_summary_path(groups_root, source),
+        lambda source: coverage_path(source, SET_SUMMARY_SUFFIX),
         lambda source, output: Job(
             group=named[source.parent.name],
             source=source,
-            events_path=events_path(groups_root, source),
+            events_path=coverage_path(source, EVENTS_SUFFIX),
             summary_path=output,
         ),
         force=force,
@@ -119,21 +119,18 @@ def coverage_plan(
     )
 
 
-def unfinished(
-    sources: Sequence[Path], groups_root: Path = paths.GROUPS_ROOT
-) -> tuple[Path, ...]:
+def unfinished(sources: Sequence[Path]) -> tuple[Path, ...]:
     """Return the instrument sets that still have no coverage artifact.
 
     Args:
         sources: The instrument set metadata files discovered on disk.
-        groups_root: The per-group coverage root directory.
 
     Returns:
         files: The metadata files with no summary beside them, in discovery order.
     """
     sources_left, _ = _outstanding(
         sources,
-        lambda source: set_summary_path(groups_root, source),
+        lambda source: coverage_path(source, SET_SUMMARY_SUFFIX),
         lambda source, _output: source,
         force=False,
     )

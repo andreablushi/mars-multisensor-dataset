@@ -27,7 +27,7 @@ def reindex() -> int:
     found = sorted(paths.GROUPS_ROOT.glob(f"*/*{paths.SET_SUMMARY_SUFFIX}"))
     tables = [pq.read_table(path, schema=SUMMARY) for path in found]
     combined = pa.concat_tables(tables) if tables else SUMMARY.empty_table()
-    with atomic_path(paths.catalog_summary_path()) as tmp:
+    with atomic_path(paths.COVERAGE_SUMMARY_PATH) as tmp:
         pq.write_table(combined, tmp, compression="zstd")
     return combined.num_rows
 
@@ -38,7 +38,7 @@ def catalogued_rows() -> list[Summary]:
     Returns:
         rows: One row per tile and instrument set measured, in index order.
     """
-    path = paths.catalog_summary_path()
+    path = paths.COVERAGE_SUMMARY_PATH
     if not path.exists():
         return []
     return [Summary(**row) for row in pq.read_table(path, schema=SUMMARY).to_pylist()]
