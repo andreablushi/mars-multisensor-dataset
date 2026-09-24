@@ -1,4 +1,4 @@
-"""What every statistic is handed back as, one tile and all of them."""
+"""What every statistic is handed back as, for one tile and for all of them."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-from analysis.selector.models.filter import Filter
 from analysis.selector.models.selection import SelectedTile
 from analysis.selector.models.track import Track
 
@@ -124,31 +123,18 @@ class DatasetStats:
 
 
 @dataclass(frozen=True, slots=True)
-class TileLooks:
-    """One tile's timeline, the window it earned, and the looks it keeps.
+class TileTrack:
+    """One tile's track, the window it earned, and where the observations it keeps sit.
 
     Attributes:
-        criteria: The filter the tile was read under.
         track: Its admissible observations on one time axis.
         window: The window the selection gave it, or refused it.
         taken: Where the observations it keeps sit on that axis, oldest first.
     """
 
-    criteria: Filter
     track: Track
     window: SelectedTile
     taken: tuple[int, ...]
-
-    @property
-    def open_for(self) -> list[tuple[datetime, datetime]]:
-        """Return the stretch of time the tile's window is open over.
-
-        Returns:
-            stretches: The one stretch it earned, or nothing.
-        """
-        if not self.window.kept:
-            return []
-        return [(self.window.start, self.window.end)]
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,7 +165,7 @@ class InstrumentReach:
 
 @dataclass(frozen=True, slots=True)
 class TileStats:
-    """One tile, and what the looks it keeps left on it.
+    """One tile, and what the observations it keeps left on it.
 
     Attributes:
         window: The window the selection gave it, with its name, box and span.
@@ -197,8 +183,8 @@ class TileStats:
 
 
 @dataclass(frozen=True, slots=True)
-class Landed:
-    """What one instrument set landed on a tile, look by look.
+class Landing:
+    """What one instrument set landed on a tile, observation by observation.
 
     Attributes:
         label: The set's short readable name.
@@ -214,7 +200,7 @@ class Landed:
 
 
 @dataclass(frozen=True, slots=True)
-class Series:
+class Timeline:
     """What one instrument set observed of the ground on show.
 
     Attributes:

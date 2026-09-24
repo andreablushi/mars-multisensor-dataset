@@ -7,16 +7,14 @@ import functools
 import pyarrow.parquet as pq
 
 from analysis import paths
-from analysis.metadata import file_explorer
 from analysis.metadata.fetchers.ancillary import fetch_distortions
 from analysis.models.ancillary import Distortion
 from analysis.models.instrument import InstrumentSet
 from analysis.models.settings import Settings
 from analysis.models.tile_group import TileGroup
-from analysis.utils import tile_group
+from analysis.utils.tile_group import every_tile_group, tile_grid
 from common.disk import parquet
 from common.disk.files import read_jsonl
-from common.maths.tessellate import Tessellate
 
 DISTORTIONS = parquet.schema_of(Distortion)
 
@@ -33,12 +31,11 @@ def summarise_ancillary(settings: Settings, force: bool = False) -> int:
     """
     summarised = [] if force else list(read_distortions())
     done = {(known.group, known.pdsid) for known in summarised}
-    grid = Tessellate.of(settings.tile_km)
+    grid = tile_grid()
     groups = {
-        group.name: group
-        for group in tile_group.every_tile_group(grid, settings.tile_group_deg)
+        group.name: group for group in every_tile_group(grid, settings.tile_group_deg)
     }
-    sets = file_explorer.find_sets()
+    sets = paths.metadata_files()
     failed = 0
     for key, ancillary in settings.ancillary.items():
         instrument_set = InstrumentSet.from_key(key)

@@ -1,4 +1,4 @@
-"""Computing one instrument set's coverage of every tile of a group, start to finish."""
+"""The coverage job: one instrument set measured on every tile of its group."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from analysis.metadata.loaders.observations import load_observations
 from analysis.models.job import CoverageJob, Outcome
 
 
-def compute(job: CoverageJob, grid_cells: int, union_threads: int) -> Outcome:
+def compute_coverage(job: CoverageJob, grid_cells: int, union_threads: int) -> Outcome:
     """Measure one instrument set's coverage of every tile of its group, and write it.
 
     Args:

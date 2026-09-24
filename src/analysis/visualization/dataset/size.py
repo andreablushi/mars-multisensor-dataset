@@ -8,8 +8,6 @@ from analysis.stats.models import DatasetStats
 from analysis.visualization import panels, wording
 from analysis.visualization.panels import Row
 
-_FINAL = ("Statistic", "Value")
-
 
 def final(dataset: DatasetStats) -> widgets.Widget:
     """Tabulate the dataset the filter leaves behind."""
@@ -27,4 +25,4 @@ def final(dataset: DatasetStats) -> widgets.Widget:
             ),
             (f"{iid} observations to download", f"{dataset.downloads[iid]:,}"),
         ]
-    return panels.written("The dataset the filter leaves", _FINAL, rows)
+    return panels.written("The dataset the filter leaves", panels.STATISTIC_VALUE, rows)

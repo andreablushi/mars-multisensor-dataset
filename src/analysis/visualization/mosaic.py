@@ -1,4 +1,4 @@
-"""The mosaic under a tile, or under Mars: fetching one crop of it, and drawing it."""
+"""The mosaic of Mars: one crop of it fetched, and drawn under a tile or the planet."""
 
 from __future__ import annotations
 
@@ -10,14 +10,16 @@ from functools import lru_cache
 import httpx
 import ipywidgets as widgets
 import numpy as np
-from matplotlib import image as reading
+from cartopy import crs
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from matplotlib.image import imread
 
 from analysis.visualization import panels
 from common.fetch.http import TLS_CONTEXT
 from common.maths import geodesy
 from common.maths.box import Crop
+from common.maths.physics import RADIUS_M
 
 BASEMAP_URL = "https://planetarymaps.usgs.gov/cgi-bin/mapserv"
 BASEMAP_MAP = "/maps/mars/mars_simp_cyl.map"
@@ -28,6 +30,23 @@ BASEMAP_FAILED = "The basemap could not be fetched: {reason}"
 
 NO_BOX = BASEMAP_FAILED.format(
     reason="this tile has no lon/lat box to crop the mosaic to"
+)
+
+MARS = Crop(-180.0, -90.0, 180.0, 90.0)
+MARS_PIXELS = 2400
+MARS_FIGURE_SIZE = (14.0, 7.6)
+
+GLOBE = crs.Globe(semimajor_axis=RADIUS_M, semiminor_axis=RADIUS_M, ellipse=None)
+LONLAT = crs.PlateCarree(globe=GLOBE)
+ROBINSON = crs.Robinson(globe=GLOBE)
+GRATICULE = "#ffffff"
+
+MARS_LAID = dict(
+    extent=MARS.extent,
+    origin="upper",
+    interpolation="nearest",
+    transform=LONLAT,
+    regrid_shape=(MARS_PIXELS, MARS_PIXELS // 2),
 )
 
 
@@ -91,7 +110,7 @@ def read_mosaic(image: bytes) -> np.ndarray:
     Returns:
         pixels: Its pixels, rows from the north.
     """
-    return reading.imread(io.BytesIO(image), format="png")
+    return imread(io.BytesIO(image), format="png")
 
 
 def board(size: tuple[float, float], box: Crop, image: bytes) -> tuple[Figure, Axes]:
@@ -124,9 +143,42 @@ def board(size: tuple[float, float], box: Crop, image: bytes) -> tuple[Figure, A
     return figure, axis
 
 
+def mars_board(image: bytes, title: str) -> tuple[Figure, Axes]:
+    """Open a figure with the mosaic of Mars drawn under its graticule.
+
+    Args:
+        image: The mosaic of the whole planet, as `crop` hands it back.
+        title: What the map is titled.
+
+    Returns:
+        figure: The figure the map is drawn on.
+        axis: The map itself, in lon and lat.
+    """
+    figure, axis = panels.board(MARS_FIGURE_SIZE, ROBINSON)
+    axis.set_global()
+    axis.imshow(read_mosaic(image), cmap="gray", **MARS_LAID)
+    lines = axis.gridlines(
+        LONLAT, draw_labels=True, color=GRATICULE, linewidth=0.4, alpha=0.5
+    )
+    lines.xlabel_style = lines.ylabel_style = {"size": 8}
+    axis.set_title(title, fontsize=12, loc="left")
+    return figure, axis
+
+
 @lru_cache(maxsize=32)
 def crop(box: Crop, pixels: int = BASEMAP_PIXELS) -> bytes:
-    """Fetch the mosaic over one lon/lat box, held for the panels sharing it."""
+    """Fetch the mosaic over one lon/lat box, held for the panels sharing it.
+
+    Args:
+        box: The lon/lat box to fetch.
+        pixels: How many pixels the crop's longer side is fetched at.
+
+    Returns:
+        image: The crop, as the PNG the map server sent.
+
+    Raises:
+        ValueError: When the server answers with something other than an image.
+    """
     tall = box.north - box.south
     wide = (box.east - box.west) * geodesy.longitude_stretch(box.centre_lat)
     longest = max(wide, tall)

@@ -1,4 +1,4 @@
-"""Reading every config file through Hydra into the model it settles."""
+"""Every config file, read through Hydra into the model it settles."""
 
 from __future__ import annotations
 

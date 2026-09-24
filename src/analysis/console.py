@@ -27,7 +27,7 @@ def describe(download: Plan, coverage: Plan, console: Console) -> None:
         console.print(f"{stage}: {len(plan.jobs)} to run, {plan.skipped} already done")
 
 
-def report(stage: str, done: int, total: int, label: str = "") -> None:
+def print_progress(stage: str, done: int, total: int, label: str = "") -> None:
     """Print how far a stage has got, once every fiftieth of it.
 
     Args:
@@ -37,7 +37,7 @@ def report(stage: str, done: int, total: int, label: str = "") -> None:
         label: What just finished, where the stage names its units.
     """
     if done % max(1, total // LOGGED_LINES) == 0 or done == total:
-        printing.reached(stage, done, total, label)
+        printing.print_progress_line(stage, done, total, label)
 
 
 class Tracker:
@@ -80,16 +80,16 @@ class Tracker:
         self.done += 1
         if outcome.failed:
             self.failed += 1
-            printing.named_failure(
+            printing.print_failure(
                 outcome.label, outcome.error, self.failed, self.console
             )
         self.bar.update(self.task, completed=self.done)
         if self.bar.disable:
-            report(self.stage, self.done, self.total, outcome.label)
+            print_progress(self.stage, self.done, self.total, outcome.label)
 
 
 def print_summary(
-    downloads: Sequence[Outcome],
+    downloaded: Sequence[Outcome],
     measured: Sequence[Outcome],
     elapsed: float,
     missing: Sequence[Path],
@@ -98,18 +98,18 @@ def print_summary(
     """Print the totals for a finished run.
 
     Args:
-        downloads: Every finished download.
+        downloaded: Every finished download.
         measured: Every finished coverage job.
         elapsed: How long the two halves took, in seconds.
-        missing: The instrument sets that still have no artifact on disk.
+        missing: The metadata files that still have no coverage summary on disk.
         console: The console to print on.
     """
     succeeded = [outcome for outcome in measured if not outcome.failed]
     empty = sum(1 for outcome in succeeded if not outcome.events)
     discarded = sum(outcome.discarded for outcome in measured)
-    download_failed = sum(outcome.failed for outcome in downloads)
+    download_failed = sum(outcome.failed for outcome in downloaded)
     console.print(
-        f"download: {len(downloads) - download_failed} done, {download_failed} failed"
+        f"download: {len(downloaded) - download_failed} done, {download_failed} failed"
     )
     console.print(
         f"coverage: {len(succeeded) - empty} done, "

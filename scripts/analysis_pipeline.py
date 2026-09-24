@@ -14,11 +14,10 @@ from rich.console import Console
 
 from analysis import paths, planner, runner
 from analysis.console import print_summary
-from analysis.coverage import artifacts as index
+from analysis.coverage import artifacts as coverage_artifacts
 from analysis.ground_truth import artifacts, fetch
 from analysis.ground_truth.labels import draw_labels, label_tiles
 from analysis.ground_truth.models.label import Label
-from analysis.metadata import file_explorer
 from analysis.metadata.summary import summarise_ancillary
 from analysis.selector import select
 from analysis.selector.artifacts import read_selected_tiles
@@ -27,7 +26,7 @@ from analysis.stats.dataset import dataset_stats, measure_every_tile
 from common.config import analysis_settings
 from common.console import PLAIN_LOG_ENV
 
-_SELECTED = (Artifact.SELECTION, Artifact.STATS, Artifact.LABELS)
+SELECTION_ARTIFACTS = (Artifact.SELECTION, Artifact.STATS, Artifact.LABELS)
 
 
 def compute_coverage(force: bool = False, workers: int | None = None) -> int:
@@ -43,19 +42,14 @@ def compute_coverage(force: bool = False, workers: int | None = None) -> int:
     settings = analysis_settings(workers)
     console = Console()
     started_at = time.monotonic()
-    fetched, measured = runner.run_pipeline(settings, console, force, workers)
+    downloaded, measured = runner.pipeline_outcomes(settings, console, force, workers)
     elapsed = time.monotonic() - started_at
-    index.reindex()
-    print_summary(
-        fetched,
-        measured,
-        elapsed,
-        planner.unfinished(file_explorer.find_sets()),
-        console,
-    )
+    coverage_artifacts.reindex()
+    unmeasured = planner.unmeasured_sources(paths.metadata_files())
+    print_summary(downloaded, measured, elapsed, unmeasured, console)
     unread = summarise_ancillary(settings, force)
     console.print(f"ancillary: {unread} tables left unread")
-    failed = any(outcome.failed for outcome in [*fetched, *measured])
+    failed = any(outcome.failed for outcome in [*downloaded, *measured])
     return 1 if failed or unread else 0
 
 
@@ -80,8 +74,10 @@ def compute_labels(force: bool = False) -> list[Label]:
         refused,
     )
     artifacts.write_labels(labels)
-    drawable = Counter(one.label for one in labels if one.tile not in refused)
-    drawn = Counter(one.label for one in labels if one.drawn)
+    drawable = Counter(
+        labelled.label for labelled in labels if labelled.tile not in refused
+    )
+    drawn = Counter(labelled.label for labelled in labels if labelled.drawn)
     for name in settings.classes:
         print(f"labels: {drawn[name]} of {drawable[name]} {name} tiles drawn")
     return labels
@@ -96,20 +92,26 @@ def compute_selection(workers: int | None = None, force: bool = False) -> None:
     """
     workers = analysis_settings(workers).workers
     selection = select.select_dataset(workers)
-    kept = sum(1 for one in selection if one.tile.kept)
+    kept = sum(1 for selected in selection if selected.tile.kept)
     print(f"selection: {kept:,} of {len(selection):,} tiles kept", flush=True)
     # Read off the selection just written, so they never stand for an old filter
     measured = measure_every_tile(selection, workers)
     write_stats(dataset_stats(measured, selection))
-    drawn = {one.tile for one in compute_labels(force) if one.drawn}
+    drawn = {labelled.tile for labelled in compute_labels(force) if labelled.drawn}
     write_stats(
-        dataset_stats([one for one in measured if one.window.tile in drawn], selection),
+        dataset_stats(
+            [tile_stats for tile_stats in measured if tile_stats.window.tile in drawn],
+            selection,
+        ),
         paths.EVALUATION_STATS_ROOT,
     )
 
 
 @handler(
-    outputs=[one.published for one in (Artifact.COVERAGE, Artifact.SUMMARY, *_SELECTED)]
+    outputs=[
+        artifact.published
+        for artifact in (Artifact.COVERAGE, Artifact.SUMMARY, *SELECTION_ARTIFACTS)
+    ]
 )
 def run_pipeline(project, force: bool = False, workers: int | None = None):
     """Run every stage on DigitalHub and publish everything each one left on disk.
@@ -144,11 +146,14 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
     return (
         coverage,
         summary,
-        *(archives.published_artifact(project, one) for one in _SELECTED),
+        *(
+            archives.published_artifact(project, artifact)
+            for artifact in SELECTION_ARTIFACTS
+        ),
     )
 
 
-@handler(outputs=[one.published for one in _SELECTED])
+@handler(outputs=[artifact.published for artifact in SELECTION_ARTIFACTS])
 def run_selection(project, force: bool = False, workers: int | None = None):
     """Select the dataset on DigitalHub under the filter, and publish what it leaves.
 
@@ -169,7 +174,10 @@ def run_selection(project, force: bool = False, workers: int | None = None):
     archives.download_artifact(project, Artifact.VERDICTS)
     compute_selection(workers, force)
     print("done", flush=True)
-    return tuple(archives.published_artifact(project, one) for one in _SELECTED)
+    return tuple(
+        archives.published_artifact(project, artifact)
+        for artifact in SELECTION_ARTIFACTS
+    )
 
 
 def main() -> int:

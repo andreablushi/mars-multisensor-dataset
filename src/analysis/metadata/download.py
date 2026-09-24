@@ -1,4 +1,4 @@
-"""Downloading one instrument set's metadata of one group, start to finish."""
+"""One instrument set's metadata over one group, downloaded start to finish."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from common.disk.files import write_jsonl
 from common.fetch.ode import ODEClient
 
 
-def download(job: DownloadJob, client: ODEClient, loc: str) -> Outcome:
+def download_outcome(job: DownloadJob, client: ODEClient, loc: str) -> Outcome:
     """Download one instrument set's metadata and write it out.
 
     Args:

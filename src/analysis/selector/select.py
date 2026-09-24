@@ -1,4 +1,4 @@
-"""Selecting the dataset: every measured tile searched, and what is kept."""
+"""The dataset selection: every measured tile searched, and the rows each leaves."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from analysis.selector.models.selection import (
 )
 from analysis.selector.models.survey import Survey
 from analysis.selector.models.track import Track
-from analysis.selector.search import search
+from analysis.selector.search import best_survey
 from analysis.utils.tile_group import tile_grid
 from common.config import analysis_settings
 from common.models.tile import Tile
@@ -36,7 +36,7 @@ def select_dataset(workers: int) -> list[Selection]:
         searched = pool.map(_group_selections, groups, chunksize=1)
         for done, group_selections in enumerate(searched, 1):
             selections.extend(group_selections)
-            console.report("selection", done, len(groups))
+            console.print_progress("selection", done, len(groups))
     selections.sort(key=lambda selection: (selection.tile.band, selection.tile.column))
     write_selection(selections)
     return selections
@@ -100,8 +100,8 @@ def _group_selections(group: str) -> list[Selection]:
     window = analysis_settings().window
     grid = tile_grid()
     selections = []
-    for name, coverage in coverage_artifacts.load_group(group).items():
+    for name, coverage in coverage_artifacts.read_group_coverage(group).items():
         track = merge_track(coverage, window)
-        survey = search(track, window) if track else None
+        survey = best_survey(track, window) if track else None
         selections.append(tile_selection(survey, track, grid.tile_named(name)))
     return selections

@@ -83,14 +83,12 @@ def fetch_distortions(
             column for column in labels.columns(layout) if column["NAME"] in asked
         ]
         label = labels.load(layout)
-        row_bytes = int(label["ROW_BYTES"])
         futures = {
             pool.submit(
                 sample_distortions,
                 client,
                 scratch,
                 tables,
-                row_bytes,
                 label,
                 columns,
                 ancillary,
@@ -102,12 +100,12 @@ def fetch_distortions(
         }
         for done, future in enumerate(as_completed(futures), 1):
             pdsid = futures[future]
-            console.report(ancillary.pt.lower(), done, len(futures))
+            console.print_progress(ancillary.pt.lower(), done, len(futures))
             try:
                 distortions.extend(future.result())
             except Exception as error:
                 failed += 1
-                printing.named_failure(pdsid, error, failed)
+                printing.print_failure(pdsid, error, failed)
     return distortions, failed
 
 
@@ -115,7 +113,6 @@ def sample_distortions(
     client: httpx.Client,
     scratch: Path,
     tables: Mapping[str, tuple[str, int]],
-    row_bytes: int,
     label: dict[str, str],
     columns: list[dict[str, str]],
     ancillary: Ancillary,
@@ -129,7 +126,6 @@ def sample_distortions(
         client: The client the byte ranges are asked over.
         scratch: The directory the sample is written to while it is read.
         tables: The URL and size in kilobytes of every table, by product name.
-        row_bytes: How many bytes one row of a table spans.
         label: The parsed label every table of the ancillary shares.
         columns: The COLUMN objects of the columns the ancillary reads alone.
         ancillary: What the ancillary is, and which of its columns are read.
@@ -141,6 +137,7 @@ def sample_distortions(
         distortions: One per tile of those groups the sampled rows fall on.
     """
     table = scratch / f"{pdsid}.tab"
+    row_bytes = int(label["ROW_BYTES"])
     url, kbytes = tables.get(NAMING.parse(pdsid), ("", 0))
     end = (kbytes - 1) * 1024 - row_bytes + 1
     starts = range(0, max(end, 0), row_bytes * SAMPLED_EVERY)

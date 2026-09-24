@@ -1,4 +1,4 @@
-"""Fetching the ODE feature catalogue, the one source every label is read from."""
+"""The ODE feature catalogue every label is read from, fetched once and cached."""
 
 from __future__ import annotations
 

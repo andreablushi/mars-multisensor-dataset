@@ -1,1 +1,1 @@
-"""Reading the computed artifacts back as widgets and figures."""
+"""The widgets and figures the notebooks show the computed artifacts as."""

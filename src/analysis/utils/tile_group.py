@@ -1,4 +1,4 @@
-"""Gathering the tiles of the grid into the groups ODE is asked about at once."""
+"""The groups the tiles of the grid are gathered into, each asked of ODE at once."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Counting what a sliding window holds, without recounting it each step."""
+"""The count of what a sliding window holds, kept without recounting each step."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ class Counter:
         """
         counter = cls(
             observations_per_cell=np.zeros(
-                (len(track.iids), track.grid.cells), dtype=np.int32
+                (len(track.iids), track.grid.cell_count), dtype=np.int32
             ),
             cells_reached=[0] * len(track.iids),
         )
@@ -50,11 +50,9 @@ class Counter:
             owner: The instrument set the observation belongs to.
             cells: The tile's cells it fills, each of them named once.
         """
-        row = self.observations_per_cell[owner]
-        counts = row[cells]
-        self.cells_reached[owner] += cells.size - int(np.count_nonzero(counts))
-        counts += 1
-        row[cells] = counts
+        counts = self.observations_per_cell[owner]
+        self.cells_reached[owner] += cells.size - int(np.count_nonzero(counts[cells]))
+        counts[cells] += 1
 
     def release(self, owner: int, cells: np.ndarray) -> None:
         """Drop one observation back out of the window.
@@ -63,9 +61,7 @@ class Counter:
             owner: The instrument set the observation belongs to.
             cells: The tile's cells it fills, each of them named once.
         """
-        row = self.observations_per_cell[owner]
-        counts = row[cells]
-        counts -= 1
-        row[cells] = counts
-        # ground nothing else left in the window reaches
-        self.cells_reached[owner] -= cells.size - int(np.count_nonzero(counts))
+        counts = self.observations_per_cell[owner]
+        counts[cells] -= 1
+        # Ground nothing else left in the window reaches
+        self.cells_reached[owner] -= cells.size - int(np.count_nonzero(counts[cells]))

@@ -42,14 +42,7 @@ def write_selection(selections: Sequence[Selection]) -> None:
 
 
 def read_selected_tiles() -> list[SelectedTile]:
-    """Read back every tile the selection stage searched, without what each keeps.
-
-    Returns:
-        tiles: One row per tile searched, in the order they were written.
-
-    Raises:
-        FileNotFoundError: When no selection has been written there.
-    """
+    """Read back every tile the selection stage searched, without what each keeps."""
     return [
         SelectedTile(**row) for row in _selection_rows(paths.SELECTED_TILES_PATH, TILES)
     ]

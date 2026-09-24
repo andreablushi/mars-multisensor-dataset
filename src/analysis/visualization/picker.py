@@ -1,4 +1,4 @@
-"""Picking what is drawn, which is one whole tile and nothing else."""
+"""The picker choosing the one tile every panel below it draws."""
 
 from __future__ import annotations
 
@@ -54,12 +54,20 @@ class TilePicker:
         display(widgets.VBox([controls, self._status]))
 
     def show_panel(self, render: Callable[[Coverage], widgets.Widget]) -> None:
-        """Claim an area here and fill it whenever the choice changes."""
+        """Claim an area here and fill it whenever the choice changes.
+
+        Args:
+            render: The panel the area is filled with.
+        """
         area = widgets.VBox()
         self._areas.pop(render, None)
         self._areas[render] = area
         display(area)
-        area.children = (render(self.coverage),)
+        area.children = (self._panel(render),)
+
+    def _panel(self, render: Callable[[Coverage], widgets.Widget]) -> widgets.Widget:
+        """Draw one panel for the confirmed tile, or a stand-in where it has none."""
+        return render(self.coverage) if self.coverage else panels.unavailable()
 
     def _confirmed(self, _button=None) -> None:
         """Load the tile holding the confirmed point and refill every claimed area."""
@@ -72,7 +80,7 @@ class TilePicker:
             for rank, chosen in enumerate(analysis_settings().instrument_sets)
         }
         self.coverage = sorted(
-            index.load_tile(tile),
+            index.read_tile_coverage(tile),
             key=lambda instrument: ranks.get(instrument.summary.set_key, len(ranks)),
         )
         try:
@@ -99,4 +107,4 @@ class TilePicker:
         for area in self._areas.values():
             area.children = ()
         for render, area in self._areas.items():
-            area.children = (render(self.coverage),)
+            area.children = (self._panel(render),)

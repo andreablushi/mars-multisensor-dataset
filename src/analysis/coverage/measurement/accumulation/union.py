@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
-from shapely import Polygon, area, covers, prepare, union_all
+from shapely import Polygon, area, covers, intersection, is_empty, prepare, union_all
 from shapely.errors import GEOSException
 from shapely.geometry.base import BaseGeometry
 
@@ -68,9 +68,10 @@ def new_ground_in_cell(
     contributions: list[tuple[int, float]] = []
     saturation = cap * (1.0 - SATURATION_TOLERANCE)
     for start in range(0, reaching.size, UNION_CHUNK):
-        kept, pieces = coarse_split.clipped_pieces(
-            footprints, reaching[start : start + UNION_CHUNK], rectangle
-        )
+        chunk = reaching[start : start + UNION_CHUNK]
+        pieces = intersection(footprints[chunk], rectangle)
+        alive = ~is_empty(pieces)
+        kept, pieces = chunk[alive], pieces[alive]
         if not kept.size:
             continue
         running = covered

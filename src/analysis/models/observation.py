@@ -36,20 +36,12 @@ class Observation:
 
     @property
     def is_track(self) -> bool:
-        """Report whether the footprint is a ground track rather than an area.
-
-        Returns:
-            track: True when the footprint carries no polygon and must be buffered.
-        """
+        """Return whether the footprint is a ground track, buffered into an area."""
         return self.wkt.startswith(("LINESTRING", "MULTILINESTRING"))
 
     @property
     def duration_s(self) -> float:
-        """Return how long the observation lasted.
-
-        Returns:
-            seconds: The elapsed seconds, or zero when no stop was published.
-        """
+        """Return the seconds the observation lasted, zero with no stop published."""
         return (self.stop - self.start).total_seconds() if self.stop else 0.0
 
 

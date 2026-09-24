@@ -1,12 +1,11 @@
-"""Splitting a tile into cells about the size of a footprint, for speed alone."""
+"""The coarse cells a tile is split into, each about a footprint wide, for speed."""
 
 from __future__ import annotations
 
-import math
 from collections.abc import Iterator
 
 import numpy as np
-from shapely import STRtree, area, bounds, intersection, is_empty
+from shapely import STRtree, area, bounds, intersection
 from shapely.geometry.base import BaseGeometry
 
 from analysis.coverage.models.grid import Grid
@@ -27,17 +26,16 @@ def grid_over(region: TileRegion, shapes: np.ndarray) -> Grid:
     Returns:
         grid: The grid, its side within the configured bounds.
     """
-    west, south, east, north = region.shape.bounds
     boxes = bounds(shapes)
-    spans = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
-    spans = spans[spans > 0.0]
+    box_areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+    box_areas = box_areas[box_areas > 0.0]
     side = MAX_UNION_CELLS
     # A set whose every footprint met the tile edge on has no span to size by
-    if spans.size:
-        typical = float(np.sqrt(np.median(spans)))
-        wanted = round(math.sqrt((east - west) * (north - south)) / typical)
+    if box_areas.size:
+        typical = float(np.sqrt(np.median(box_areas)))
+        wanted = round(region.span_m / typical)
         side = min(max(wanted, MIN_UNION_CELLS), MAX_UNION_CELLS)
-    return Grid(west=west, south=south, east=east, north=north, side=side)
+    return Grid(*region.shape.bounds, side=side)
 
 
 def reached_cells(
@@ -62,22 +60,3 @@ def reached_cells(
         reaching = np.sort(tree.query(rectangle))
         if reaching.size:
             yield rectangle, float(cap), reaching
-
-
-def clipped_pieces(
-    shapes: np.ndarray, reaching: np.ndarray, rectangle: BaseGeometry
-) -> tuple[np.ndarray, np.ndarray]:
-    """Cut the given shapes to one cell, dropping the ones that miss it.
-
-    Args:
-        shapes: Every projected footprint, indexed by the reaching indices.
-        reaching: The indices of the shapes to cut.
-        rectangle: The cell to cut them to.
-
-    Returns:
-        kept: The indices the cell keeps.
-        pieces: Their clipped shapes, one to each.
-    """
-    pieces = intersection(shapes[reaching], rectangle)
-    kept = ~is_empty(pieces)
-    return reaching[kept], pieces[kept]

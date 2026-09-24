@@ -45,7 +45,7 @@ def reindex() -> None:
         pq.write_table(combined, tmp, compression="zstd")
 
 
-def catalogued_rows() -> list[Summary]:
+def read_index() -> list[Summary]:
     """Read every row of the grid-wide summary.
 
     Returns:
@@ -74,12 +74,14 @@ def measured_groups() -> list[str]:
     )
 
 
-def load_tile(tile: Tile) -> list[SetCoverage]:
+def read_tile_coverage(tile: Tile) -> list[SetCoverage]:
     """Read every instrument set for one tile, widest then busiest first."""
-    return load_group(group_of(tile), tile.name).get(tile.name, [])
+    return read_group_coverage(group_of(tile), tile.name).get(tile.name, [])
 
 
-def load_group(group: str, tile: str | None = None) -> dict[str, list[SetCoverage]]:
+def read_group_coverage(
+    group: str, tile: str | None = None
+) -> dict[str, list[SetCoverage]]:
     """Read one group's measured sets, for every tile or for one alone.
 
     Args:

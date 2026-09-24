@@ -28,7 +28,7 @@ class Track:
         iids: The instrument each set belongs to, in the same order.
         grid: The grid the tile is searched over.
         refused: The observations left off the axis, with their sets and cells.
-        least: The pixels each set has to land on the tile, by set.
+        min_pixels: The pixels each set has to land on the tile, by set.
         windowed: What a window is scored on, tightest constraint first.
         standing: What the whole record answers for, tightest first.
     """
@@ -42,6 +42,6 @@ class Track:
     iids: list[str]
     grid: SearchGrid
     refused: Offered
-    least: list[float]
+    min_pixels: list[float]
     windowed: Constraints
     standing: Constraints

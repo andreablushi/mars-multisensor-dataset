@@ -1,62 +1,55 @@
-"""What each instrument set brought one tile, look by look and over time."""
+"""What each instrument set brought one tile, observation by observation, over time."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 
 from analysis.coverage.models.coverage import SetCoverage
-from analysis.selector.filters.admissible import landed_pixels
-from analysis.stats.models import Landed, Series, TileLooks
+from analysis.selector.filters.admit import landed_pixels
+from analysis.stats.models import Landing, TileTrack, Timeline
 
 
-def landed_per_set(looks: TileLooks) -> list[Landed]:
+def landings_per_set(tile_track: TileTrack) -> list[Landing]:
     """Read what every observation offered to one tile landed on it.
 
     Args:
-        looks: Its timeline and the filter it was read under.
+        tile_track: Its track, which holds the observations turned away too.
 
     Returns:
-        landed: One entry per instrument set, in the order the track indexes them.
+        landings: One entry per instrument set, in the order the track indexes them.
     """
-    track = looks.track
+    track = tile_track.track
     counted: list[list[float]] = [[] for _ in track.labels]
-    for index, owner in enumerate(track.owners):
-        counted[owner].append(
-            landed_pixels(
-                track.observations[index],
-                len(track.cells[index]),
-                track.grid.cell_km2,
-            )
-        )
-    for observation, owner, cells in track.refused:
+    offered = [*zip(track.observations, track.owners, track.cells), *track.refused]
+    for observation, owner, cells in offered:
         counted[owner].append(
             landed_pixels(observation, len(cells), track.grid.cell_km2)
         )
     return [
-        Landed(
+        Landing(
             label=track.labels[owner],
             iid=track.iids[owner],
             counts=sorted(counted[owner]),
-            bar=track.least[owner],
+            bar=track.min_pixels[owner],
         )
         for owner in range(len(track.labels))
     ]
 
 
-def coverage_over_time(coverage: Sequence[SetCoverage]) -> list[Series]:
+def timelines_per_set(coverage: Sequence[SetCoverage]) -> list[Timeline]:
     """Read every instrument set's observations of the whole tile.
 
     Args:
         coverage: The tile's instrument sets, in the order they are drawn.
 
     Returns:
-        series: One series per set, in the same order.
+        timelines: One timeline per set, in the same order.
     """
     area_km2 = coverage[0].summary.tile_area_km2
     first = min(instrument.summary.t_first for instrument in coverage)
     last = max(instrument.summary.t_last for instrument in coverage)
     return [
-        Series(
+        Timeline(
             label=instrument.label,
             iid=instrument.summary.iid,
             times=[observation.t_start for observation in instrument.events],

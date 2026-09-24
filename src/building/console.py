@@ -126,10 +126,10 @@ def render(
             collected.append(outcome)
             if outcome.error:
                 failed += 1
-                printing.named_failure(outcome.job.label, outcome.error, failed)
+                printing.print_failure(outcome.job.label, outcome.error, failed)
             if len(collected) % step == 0 or len(collected) == total:
                 # The one named is the one just finished, never the one under way
-                printing.reached(
+                printing.print_progress_line(
                     description,
                     len(collected),
                     total,

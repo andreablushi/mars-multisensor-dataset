@@ -9,11 +9,7 @@ from analysis import console
 from analysis.coverage import artifacts as index
 from analysis.selector.models.selection import Selection
 from analysis.stats.models import DatasetStats, Spread, TileStats
-from analysis.stats.tile import (
-    ground_by_instrument_count,
-    measured_tile,
-    place_kept_looks,
-)
+from analysis.stats.tile import ground_by_instrument_count, measure_tile, track_tile
 from analysis.utils.tile_group import group_of, tile_grid
 
 
@@ -39,7 +35,7 @@ def measure_every_tile(
         groups = pool.map(measure_group, by_group, by_group.values(), chunksize=1)
         for done, group_stats in enumerate(groups, 1):
             measured.extend(group_stats)
-            console.report("stats", done, len(by_group))
+            console.print_progress("stats", done, len(by_group))
     return measured
 
 
@@ -51,15 +47,15 @@ def measure_group(group: str, selections: Sequence[Selection]) -> list[TileStats
         selections: What the search left of each of its tiles.
 
     Returns:
-        measured: What each tile's kept looks left on it.
+        measured: What the observations each tile keeps left on it.
     """
-    coverage = index.load_group(group)
+    coverage = index.read_group_coverage(group)
     measured: list[TileStats] = []
     for selection in selections:
         tile_coverage = coverage.get(selection.tile.tile)
-        looks = place_kept_looks(tile_coverage, selection) if tile_coverage else None
-        if looks is not None:
-            measured.append(measured_tile(looks))
+        tile_track = track_tile(tile_coverage, selection) if tile_coverage else None
+        if tile_track is not None:
+            measured.append(measure_tile(tile_track))
     return measured
 
 
@@ -69,7 +65,7 @@ def dataset_stats(
     """Read every tile the selection searched as one dataset.
 
     Args:
-        measured: What the looks each tile keeps left on it, in any order.
+        measured: What the observations each tile keeps left on it, in any order.
         selections: What the search left of every tile, whose products are counted.
 
     Returns:

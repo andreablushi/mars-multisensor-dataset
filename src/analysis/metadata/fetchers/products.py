@@ -1,10 +1,9 @@
-"""Fetching one group and instrument set's product records, a page at a time."""
+"""One group and instrument set's product records, fetched a page at a time."""
 
 from __future__ import annotations
 
 from typing import Any
 
-import analysis.metadata.provenance as provenance
 from analysis.models.instrument import InstrumentSet
 from analysis.models.tile_group import TileGroup
 from common.fetch import ode
@@ -54,7 +53,6 @@ def fetch_products(
     Raises:
         ODEError: When ODE reports no usable count for a box.
     """
-    stamped = provenance.stamp(instrument_set)
     records: list[dict[str, Any]] = []
     # The two boxes a polar group is asked in overlap, so a product returns twice
     seen: set[tuple[str, str]] = set()
@@ -80,7 +78,7 @@ def fetch_products(
                 continue
             seen.add(identity)
             kept = {field: item[field] for field in RETAINED_FIELDS if field in item}
-            records.append(kept | stamped)
+            records.append(kept | {"instrument_set": instrument_set.key})
     return records
 
 

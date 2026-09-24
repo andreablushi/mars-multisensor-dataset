@@ -1,4 +1,4 @@
-"""Writing the evaluation labels down, and reading them back."""
+"""The evaluation labels written down and read back, and the review's refusals."""
 
 from __future__ import annotations
 

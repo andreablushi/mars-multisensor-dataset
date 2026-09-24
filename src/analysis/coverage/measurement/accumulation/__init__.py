@@ -1,1 +1,1 @@
-"""Folding one set's footprints together, as ground covered and as cells filled."""
+"""The union of one set's footprints, and the grids a tile is split into for it."""

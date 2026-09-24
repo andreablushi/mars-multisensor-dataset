@@ -11,7 +11,8 @@ import ipywidgets as widgets
 from analysis.ground_truth.models.label import Label
 from analysis.ground_truth.models.settings import Settings
 from analysis.visualization import mosaic, panels
-from analysis.visualization.tile import basemap, placing
+from analysis.visualization.tile import basemap
+from analysis.visualization.tile.placement import placed_tile
 
 PICKER = widgets.Layout(width="360px")
 STEP = widgets.Layout(width="40px")
@@ -56,14 +57,13 @@ def show_tile(
     if label is None:
         return
     note.value = escape(f"{tile.index + 1} of {len(tile.options)}, {label.feature}")
-    placed = placing.placed(label.tile, label)
+    placed = placed_tile(label.tile, label)
     if placed is None:
         crop = panels.unavailable(mosaic.NO_BOX)
     else:
-        box = placed.box()
         title = f"Tile {label.tile}, {label.label}"
         crop = mosaic.fetched(
-            box, lambda image: basemap.figure(placed, box, image, title)
+            placed.box(), lambda image: basemap.tile_map(placed, image, title)
         )
     area.children = (crop,)
 

@@ -5,46 +5,56 @@ from __future__ import annotations
 import ipywidgets as widgets
 from matplotlib.lines import Line2D
 
-from analysis.stats.models import TileLooks
-from analysis.stats.tile import read_tile
+from analysis.stats.models import TileTrack
+from analysis.stats.tile import read_tile_track
 from analysis.visualization import mosaic, panels
 from analysis.visualization.panels import Colour, Coverage
-from analysis.visualization.tile import outlines, placing
-from analysis.visualization.tile.placing import Placed
-from common.maths.box import Crop
+from analysis.visualization.tile import outlines
+from analysis.visualization.tile.placement import (
+    PlacedTile,
+    outlined_board,
+    placed_tile,
+)
 
 TRACE_WIDTH = 1.2
 
 
 def plot(coverage: Coverage) -> widgets.Widget:
     """Show the tile with the footprint of every observation it keeps."""
-    if not coverage:
-        return panels.unavailable()
-    placed = placing.placed(coverage[0].summary.tile)
+    placed = placed_tile(coverage[0].summary.tile)
     if placed is None:
         return panels.unavailable(mosaic.NO_BOX)
-    tile_looks = read_tile(coverage)
-    box = placed.box()
+    tile_track = read_tile_track(coverage)
     return mosaic.fetched(
-        box, lambda image: figure(placed, coverage, tile_looks, box, image)
+        placed.box(),
+        lambda image: footprints_map(placed, coverage, tile_track, image),
     )
 
 
-def figure(
-    placed: Placed,
+def footprints_map(
+    placed: PlacedTile,
     coverage: Coverage,
-    tile_looks: TileLooks | None,
-    box: Crop,
+    tile_track: TileTrack | None,
     image: bytes,
-) -> widgets.Widget:
-    """Draw the tile's crop with the footprints its window keeps traced on it."""
-    drawn, axis = placing.outlined_board(placed, (9.0, 6.0), box, image)
+) -> widgets.Image:
+    """Draw the tile's crop with the footprints its window keeps traced on it.
+
+    Args:
+        placed: Where the tile falls in lon and lat.
+        coverage: The tile's instrument sets, whose footprints are read.
+        tile_track: Its track and the observations it keeps, or None.
+        image: The tile's crop, as the mosaic fetched it.
+
+    Returns:
+        map: The map, rendered.
+    """
+    drawn, axis = outlined_board(placed, (9.0, 6.0), image)
     traced_colours: dict[str, Colour] = {}
-    if tile_looks is not None and tile_looks.window.kept:
-        track = tile_looks.track
+    if tile_track is not None and tile_track.window.kept:
+        track = tile_track.track
         footprints = outlines.read_footprints(coverage)
         colours = panels.colours(track.labels)
-        for index in tile_looks.taken:
+        for index in tile_track.taken:
             footprint = footprints[track.observations[index].pdsid]
             label = track.labels[track.owners[index]]
             for line_lon, line_lat in outlines.footprint_lines(footprint):

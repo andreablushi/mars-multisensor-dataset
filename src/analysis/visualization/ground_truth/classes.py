@@ -10,7 +10,6 @@ from matplotlib.lines import Line2D
 
 from analysis.ground_truth.models.label import Label
 from analysis.visualization import mosaic, panels
-from analysis.visualization.dataset import tiles
 from analysis.visualization.panels import Colour
 from common.maths import geodesy
 
@@ -22,7 +21,7 @@ def plot(labels: Sequence[Label]) -> widgets.Widget:
     drawn = [label for label in labels if label.drawn]
     colours = panels.colours(list(dict.fromkeys(label.label for label in drawn)))
     return mosaic.fetched(
-        tiles.MARS, partial(classes_map, drawn, colours), tiles.BASEMAP_PIXELS
+        mosaic.MARS, partial(classes_map, drawn, colours), mosaic.MARS_PIXELS
     )
 
 
@@ -39,7 +38,7 @@ def classes_map(
     Returns:
         map: The map, rendered.
     """
-    figure, axis = tiles.mars_board(image, f"{len(drawn):,} tiles drawn")
+    figure, axis = mosaic.mars_board(image, f"{len(drawn):,} tiles drawn")
     for name, colour in colours.items():
         lon, lat = zip(
             *(
@@ -58,7 +57,7 @@ def classes_map(
             color=colour,
             edgecolor="black",
             linewidth=0.4,
-            transform=tiles.LONLAT,
+            transform=mosaic.LONLAT,
         )
     panels.key_beside(
         figure,

@@ -1,4 +1,4 @@
-"""Reading the written filter against one tile, into what it asks of that one."""
+"""The floors the written filter sets one tile: its pixels per set, its constraints."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def tile_floors(
         grid: The grid the tile is searched over.
 
     Returns:
-        least: The pixels each set has to land on the tile, by set.
+        min_pixels: The pixels each set has to land on the tile, by set.
         windowed: What a window is scored on, tightest constraint first.
         standing: What the whole record answers for, tightest first.
     """
@@ -42,15 +42,15 @@ def tile_floors(
     for constraints in (windowed, standing):
         constraints.sort(key=lambda answers: -min(floor for _, floor in answers))
     # The whole-grid bar is scaled by the ground held, by one axis or by both
-    covered = grid.area_km2 / (grid.cells * grid.cell_km2)
-    least = [
+    inside_share = grid.area_km2 / (grid.cell_count * grid.cell_km2)
+    min_pixels = [
         criteria.admits.get(iid, 0.0)
         * (
             # A set publishing a swath width is a sounder, its pixels on a line
-            math.sqrt(covered)
+            math.sqrt(inside_share)
             if any(event.width_km is not None for event in instrument.events)
-            else covered
+            else inside_share
         )
         for iid, instrument in zip(iids, coverage, strict=True)
     ]
-    return least, windowed, standing
+    return min_pixels, windowed, standing

@@ -55,7 +55,14 @@ def counted(number: float, noun: str) -> str:
 
 
 def pixels(count: float | None) -> str:
-    """Write a pixel count, or that it was never measured."""
+    """Write a pixel count, or that it was never measured.
+
+    Args:
+        count: The pixel count, or None where it was never measured.
+
+    Returns:
+        written: The count in pixels, or that it was not counted.
+    """
     if count is None:
         return UNCOUNTED
     return f"{compact(count)} px"

@@ -34,6 +34,13 @@ def metadata_path(group: str, instrument_set: InstrumentSet) -> Path:
     return METADATA_ROOT / group / f"{instrument_set.slug}.jsonl"
 
 
+def metadata_files() -> list[Path]:
+    """Return every non-empty metadata file, one per group and set, sorted."""
+    return sorted(
+        path for path in METADATA_ROOT.glob("*/*.jsonl") if path.stat().st_size
+    )
+
+
 def coverage_path(source: Path, suffix: str) -> Path:
     """Return the coverage file one metadata file is measured into, by its suffix."""
     return GROUPS_ROOT / source.parent.name / f"{source.stem}{suffix}"

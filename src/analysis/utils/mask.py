@@ -1,4 +1,4 @@
-"""How a footprint's cells are packed, written once and read back."""
+"""The bytes a footprint's filled cells are packed into, and the cells read back."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ SPARSE = 1
 _INDEX = np.dtype("<u4")
 
 
-def encode(cells: np.ndarray, total: int) -> bytes:
+def packed_mask(cells: np.ndarray, total: int) -> bytes:
     """Pack the cells a footprint fills into whichever form is smaller.
 
     Args:
@@ -28,11 +28,11 @@ def encode(cells: np.ndarray, total: int) -> bytes:
     return bytes([DENSE]) + np.packbits(filled).tobytes()
 
 
-def cells_of(mask: bytes) -> np.ndarray:
+def filled_cells(mask: bytes) -> np.ndarray:
     """Return the cells one packed footprint fills.
 
     Args:
-        mask: One footprint's mask, as encode wrote it.
+        mask: One footprint's mask, as packed_mask wrote it.
 
     Returns:
         cells: The indices of the filled cells, in ascending order.

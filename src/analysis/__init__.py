@@ -1,1 +1,1 @@
-"""Measuring what the archives cover, and reading it back in the notebooks."""
+"""The analysis half: ODE metadata, its coverage, the selection, and its views."""

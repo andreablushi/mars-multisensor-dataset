@@ -1,23 +1,25 @@
-"""The tile on show, and everything the search left on it."""
+"""The window the tile on show earned, and the ground it reaches, as a table."""
 
 from __future__ import annotations
 
 import ipywidgets as widgets
 
-from analysis.stats.tile import ground_by_instrument_count, measured_tile, read_tile
+from analysis.stats.tile import (
+    ground_by_instrument_count,
+    measure_tile,
+    read_tile_track,
+)
 from analysis.visualization import panels, wording
 from analysis.visualization.panels import Coverage, Row
 
 
 def plot(coverage: Coverage) -> widgets.Widget:
     """Summarise what the search left on the tile on show."""
-    if not coverage:
-        return panels.unavailable()
-    tile_looks = read_tile(coverage)
-    if tile_looks is None:
+    tile_track = read_tile_track(coverage)
+    if tile_track is None:
         return panels.unavailable("No instrument set filled a cell of this tile.")
-    stats = measured_tile(tile_looks)
-    window = tile_looks.window
+    stats = measure_tile(tile_track)
+    window = tile_track.window
     # A window it earned always says when it opened, so only a refusal reads as none
     lasted = (
         f"{wording.duration(window.days)}, "

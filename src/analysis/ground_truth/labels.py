@@ -1,4 +1,4 @@
-"""Labelling the kept tiles by ODE's features, and drawing the balanced set held out."""
+"""The kept tiles labelled by ODE's features, and the balanced set drawn from them."""
 
 from __future__ import annotations
 
@@ -34,8 +34,8 @@ def label_tiles(
         labels: One label per tile a single class claims, in selection order.
     """
     kept = [tile for tile in searched if tile.kept]
-    tiles = box.bounds_boxes(kept)
-    owners = [
+    tile_boxes = box.bounds_boxes(kept)
+    feature_classes = [
         {
             label
             for label, rule in settings.classes.items()
@@ -43,56 +43,64 @@ def label_tiles(
         }
         for feature in features
     ]
-    bounds = box.bounds_boxes(features)
-    relevant = np.array(
+    feature_boxes = box.bounds_boxes(features)
+    counted = np.array(
         [
-            bool(owned) or feature.feature_class in settings.excluded
-            for owned, feature in zip(owners, features, strict=True)
+            bool(classes) or feature.feature_class in settings.excluded
+            for classes, feature in zip(feature_classes, features, strict=True)
         ]
     )
-    craters = label_craters(
-        kept, tiles, features, bounds, owners, relevant, settings.classes
+    crater_labels = label_craters(
+        kept,
+        tile_boxes,
+        features,
+        feature_boxes,
+        feature_classes,
+        counted,
+        settings.classes,
     )
-    textures = {
+    texture_latitudes = {
         label: rule.latitudes
         for label, rule in settings.classes.items()
         if rule.diameter_km is None
     }
     claims: list[dict[str, tuple[int, float]]] = [{} for _ in kept]
-    for at, feature in enumerate(features):
-        for label in owners[at] & textures.keys():
-            region = claimed_box(feature, textures[label])
+    for feature_index, feature in enumerate(features):
+        for label in feature_classes[feature_index] & texture_latitudes.keys():
+            region = claimed_box(feature, texture_latitudes[label])
             if region is None:
                 continue
-            offset = box.centre_offset(tiles, region)
-            for tile in np.flatnonzero(box.inside(tiles, region)):
-                claims[tile].setdefault(label, (at, float(offset[tile])))
+            offset = box.centre_offset(tile_boxes, region)
+            for tile in np.flatnonzero(box.inside(tile_boxes, region)):
+                claims[tile].setdefault(label, (feature_index, float(offset[tile])))
     labels = []
     for tile, claimed in enumerate(claims):
-        if tile in craters:
-            if craters[tile] is not None:
-                labels.append(craters[tile])
+        if tile in crater_labels:
+            if crater_labels[tile] is not None:
+                labels.append(crater_labels[tile])
             continue
         if len(claimed) != 1:
             continue
-        ((label, (at, offset)),) = claimed.items()
-        name = features[at].name
-        cut = kept[tile]
-        touched = np.flatnonzero(relevant & box.touching(bounds, box.bounds_box(cut)))
+        ((label, (feature_index, offset)),) = claimed.items()
+        name = features[feature_index].name
+        kept_tile = kept[tile]
+        touched = np.flatnonzero(
+            counted & box.touching(feature_boxes, box.bounds_box(kept_tile))
+        )
         labels.append(
             Label(
-                tile=cut.tile,
+                tile=kept_tile.tile,
                 label=label,
                 feature=name,
                 foreign=sum(
-                    features[other].name != name and owners[other] != {label}
+                    features[other].name != name and feature_classes[other] != {label}
                     for other in touched
                 ),
                 offset=offset,
-                min_lat=cut.min_lat,
-                max_lat=cut.max_lat,
-                west_lon=cut.west_lon,
-                east_lon=cut.east_lon,
+                min_lat=kept_tile.min_lat,
+                max_lat=kept_tile.max_lat,
+                west_lon=kept_tile.west_lon,
+                east_lon=kept_tile.east_lon,
             )
         )
     return labels
@@ -100,59 +108,59 @@ def label_tiles(
 
 def label_craters(
     kept: Sequence[SelectedTile],
-    tiles: box.Box,
+    tile_boxes: box.Box,
     features: Sequence[Feature],
-    bounds: box.Box,
-    owners: Sequence[set[str]],
-    relevant: np.ndarray,
+    feature_boxes: box.Box,
+    feature_classes: Sequence[set[str]],
+    counted: np.ndarray,
     classes: dict[str, Rule],
 ) -> dict[int, Label | None]:
     """Label every kept tile the centre of a crater sized for its class falls in.
 
     Args:
         kept: Every tile the selection kept.
-        tiles: Their boxes, stacked.
+        tile_boxes: Their boxes, stacked.
         features: Every feature ODE publishes.
-        bounds: Their boxes, stacked.
-        owners: The classes each feature is read into.
-        relevant: Which features count against a label they touch.
+        feature_boxes: Their boxes, stacked.
+        feature_classes: The classes each feature is read into.
+        counted: Which features count against a label they touch.
         classes: What every class is read from.
 
     Returns:
-        craters: Each tile a crater claims, labelled, or None where two classes do.
+        labels: Each tile a crater claims, labelled, or None where two classes do.
     """
-    sizes = {
+    crater_diameters = {
         label: rule.diameter_km
         for label, rule in classes.items()
         if rule.diameter_km is not None
     }
     claims: dict[int, dict[str, int]] = {}
-    for at, feature in enumerate(features):
+    for feature_index, feature in enumerate(features):
         diameter = northward_m(feature.max_lat - feature.min_lat) / METRES_PER_KM
-        sized = [
+        sized_classes = [
             label
-            for label in owners[at] & sizes.keys()
-            if sizes[label][0] <= diameter <= sizes[label][1]
+            for label in feature_classes[feature_index] & crater_diameters.keys()
+            if crater_diameters[label][0] <= diameter <= crater_diameters[label][1]
         ]
-        if not sized:
+        if not sized_classes:
             continue
         longitude, latitude = bbox_centre(
             feature.min_lat, feature.max_lat, feature.west_lon, feature.east_lon
         )
         centre = (latitude, latitude, longitude, 0.0)
-        for tile in np.flatnonzero(box.inside(centre, tiles)):
-            for label in sized:
-                claims.setdefault(int(tile), {}).setdefault(label, at)
+        for tile in np.flatnonzero(box.inside(centre, tile_boxes)):
+            for label in sized_classes:
+                claims.setdefault(int(tile), {}).setdefault(label, feature_index)
     labels: dict[int, Label | None] = {}
     for tile, claimed in claims.items():
         if len(claimed) != 1:
             labels[tile] = None
             continue
-        ((label, at),) = claimed.items()
-        crater = features[at]
+        ((label, feature_index),) = claimed.items()
+        crater = features[feature_index]
         # An object stands alone, while a texture may meet more of its own class
         touched = np.flatnonzero(
-            relevant & box.touching(bounds, box.bounds_box(crater))
+            counted & box.touching(feature_boxes, box.bounds_box(crater))
         )
         labels[tile] = Label(
             tile=kept[tile].tile,
@@ -206,13 +214,15 @@ def draw_labels(
     for label in labels:
         by_class[label.label].setdefault(label.feature, []).append(label)
     drawable = Counter(label.label for label in labels if label.tile not in refused)
-    wanted = settings.per_class or min(drawable[name] for name in settings.classes)
+    per_class = settings.per_class or min(drawable[name] for name in settings.classes)
     if short := {
-        name: drawable[name] for name in settings.classes if drawable[name] < wanted
+        name: drawable[name] for name in settings.classes if drawable[name] < per_class
     }:
-        raise ValueError(f"{wanted} tiles are drawn per class, but {short} hold fewer")
-    draw = random.Random(settings.seed)
-    taken: set[str] = set()
+        raise ValueError(
+            f"{per_class} tiles are drawn per class, but {short} hold fewer"
+        )
+    rng = random.Random(settings.seed)
+    drawn: set[str] = set()
     for by_feature in by_class.values():
         ranked = []
         for feature_labels in by_feature.values():
@@ -224,12 +234,12 @@ def draw_labels(
                         label.foreign,
                         turns[label.foreign],
                         label.offset,
-                        draw.random(),
+                        rng.random(),
                         label.tile,
                     )
                 )
                 turns[label.foreign] += 1
         # Skipped only once ranked, so a refusal never reshuffles what was accepted
-        kept = [tile for *_, tile in sorted(ranked) if tile not in refused]
-        taken.update(kept[:wanted])
-    return [replace(label, drawn=label.tile in taken) for label in labels]
+        accepted = [tile for *_, tile in sorted(ranked) if tile not in refused]
+        drawn.update(accepted[:per_class])
+    return [replace(label, drawn=label.tile in drawn) for label in labels]

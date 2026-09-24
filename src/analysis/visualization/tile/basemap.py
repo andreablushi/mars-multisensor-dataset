@@ -6,27 +6,27 @@ from html import escape
 
 import ipywidgets as widgets
 
-from analysis.stats.tile import read_tile
+from analysis.stats.tile import read_tile_track
 from analysis.visualization import mosaic, panels, wording
 from analysis.visualization.panels import Coverage
-from analysis.visualization.tile import placing
-from analysis.visualization.tile.placing import Placed
+from analysis.visualization.tile.placement import (
+    PlacedTile,
+    outlined_board,
+    placed_tile,
+)
 from common.config import analysis_settings
-from common.maths.box import Crop
 
 
 def plot(coverage: Coverage) -> widgets.Widget:
     """Show the ground the tile covers, and what the filter asked of it."""
-    if not coverage:
-        return panels.unavailable()
     summary = coverage[0].summary
-    tile_looks = read_tile(coverage)
-    placed = placing.placed(summary.tile)
+    tile_track = read_tile_track(coverage)
+    placed = placed_tile(summary.tile)
     if placed is None:
         return panels.unavailable(mosaic.NO_BOX)
     title = panels.title(coverage)
     box = placed.box()
-    if tile_looks and tile_looks.window.kept:
+    if tile_track and tile_track.window.kept:
         verdict = "There is a window that covers the tile"
     else:
         verdict = "No window available that respects the requirements"
@@ -67,7 +67,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
     return widgets.HBox(
         [
             report,
-            mosaic.fetched(box, lambda image: figure(placed, box, image, title)),
+            mosaic.fetched(box, lambda image: tile_map(placed, image, title)),
         ],
         layout=widgets.Layout(
             align_items="flex-start", flex_flow="row nowrap", grid_gap="24px"
@@ -75,9 +75,18 @@ def plot(coverage: Coverage) -> widgets.Widget:
     )
 
 
-def figure(placed: Placed, box: Crop, image: bytes, title: str) -> widgets.Widget:
-    """Draw the tile's crop of the mosaic, with the ground it covers outlined."""
-    drawn, axis = placing.outlined_board(placed, (7.0, 6.0), box, image, zorder=3)
+def tile_map(placed: PlacedTile, image: bytes, title: str) -> widgets.Image:
+    """Draw the tile's crop of the mosaic, with the ground it covers outlined.
+
+    Args:
+        placed: Where the tile falls in lon and lat.
+        image: The tile's crop, as the mosaic fetched it.
+        title: What the map is titled.
+
+    Returns:
+        map: The map, rendered.
+    """
+    drawn, axis = outlined_board(placed, (7.0, 6.0), image, zorder=3)
     axis.set_title(title, fontsize=12, loc="left")
     drawn.tight_layout()
     return panels.rendered(drawn)

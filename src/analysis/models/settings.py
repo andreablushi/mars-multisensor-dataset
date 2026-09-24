@@ -38,9 +38,5 @@ class Settings:
 
     @property
     def instrument_sets(self) -> list[InstrumentSet]:
-        """Return the instrument sets the keys name.
-
-        Returns:
-            sets: One set per key, in the order the config names them.
-        """
+        """Return the instrument sets the keys name, in the order the config does."""
         return [InstrumentSet.from_key(key) for key in self.instruments]

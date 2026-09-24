@@ -10,7 +10,6 @@ from analysis.stats.models import CatalogueStats, DatasetStats
 from analysis.visualization import panels, wording
 from analysis.visualization.panels import Row
 
-_MEASURED = ("Statistic", "Value")
 _INSTRUMENTS = (
     "Instrument",
     "Tiles reached",
@@ -25,7 +24,7 @@ def measured(catalogue: CatalogueStats) -> widgets.Widget:
     """Tabulate how big the measured dataset is."""
     return panels.written(
         "The ODE dataset that was measured",
-        _MEASURED,
+        panels.STATISTIC_VALUE,
         [
             ("Tiles Mars is split into", f"{catalogue.tiles:,}"),
             ("Tile side", f"{catalogue.tile_km:,.0f} km"),

@@ -1,4 +1,4 @@
-"""Where a tile's ground falls back onto lon and lat, and laying it on the mosaic."""
+"""Where a tile's ground falls back onto lon and lat, and its outline on the mosaic."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ TILE_EDGE = "#ffffff"
 TILE_WIDTH = 1.4
 
 
-class Placed:
+class PlacedTile:
     """Where one tile's ground falls on the mosaic, in lon and lat.
 
     Attributes:
@@ -65,7 +65,7 @@ class Placed:
         return crop_around(self.lon, self.lat, MIN_SPAN_DEG)
 
 
-def placed(name: str, cut=None) -> Placed | None:
+def placed_tile(name: str, cut=None) -> PlacedTile | None:
     """Lay one tile back onto the mosaic.
 
     Args:
@@ -77,30 +77,27 @@ def placed(name: str, cut=None) -> Placed | None:
         placed: Where it falls in lon and lat, or None where no crop covers it.
     """
     tile = tile_grid().tile_named(name)
-    placed_tile = Placed(tile if cut is None else box.recut(tile, cut))
+    placed = PlacedTile(tile if cut is None else box.recut(tile, cut))
     # A tile wrapping the pole has no lon/lat box a plate carree crop can cover
-    spread = placed_tile.lon.max() - placed_tile.lon.min()
-    return placed_tile if spread <= HALF_TURN else None
+    spread = placed.lon.max() - placed.lon.min()
+    return placed if spread <= HALF_TURN else None
 
 
 def outlined_board(
-    placed_tile: Placed, size: tuple[float, float], crop: Crop, image: bytes, **style
+    placed: PlacedTile, size: tuple[float, float], image: bytes, **style
 ) -> tuple[Figure, Axes]:
-    """Open a figure with one mosaic crop drawn on it, and the tile outlined on top.
+    """Open a figure with the tile's mosaic crop drawn on it, and the tile outlined.
 
     Args:
-        placed_tile: The tile to outline.
+        placed: The tile to outline.
         size: The figure's size in inches.
-        crop: The lon/lat box the crop covers.
-        image: The crop, as the mosaic fetched it.
+        image: The tile's crop, as the mosaic fetched it.
         style: Anything further the outline is drawn with.
 
     Returns:
         figure: The figure the crop is drawn on.
         axis: The crop itself, in lon and lat, with the tile outlined.
     """
-    figure, axis = mosaic.board(size, crop, image)
-    axis.plot(
-        placed_tile.lon, placed_tile.lat, color=TILE_EDGE, linewidth=TILE_WIDTH, **style
-    )
+    figure, axis = mosaic.board(size, placed.box(), image)
+    axis.plot(placed.lon, placed.lat, color=TILE_EDGE, linewidth=TILE_WIDTH, **style)
     return figure, axis

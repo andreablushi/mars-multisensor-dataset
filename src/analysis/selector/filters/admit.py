@@ -11,14 +11,14 @@ from analysis.utils import mask as packing
 
 
 def admitted_observations(
-    coverage: Sequence[SetCoverage], grid: SearchGrid, least: Sequence[float]
+    coverage: Sequence[SetCoverage], grid: SearchGrid, min_pixels: Sequence[float]
 ) -> tuple[Offered, Offered]:
     """Keep every observation big enough for the tile, and turn the rest away.
 
     Args:
         coverage: The tile's instrument sets, in any order.
         grid: The grid the tile is searched over.
-        least: The pixels each set has to land on the tile, by set.
+        min_pixels: The pixels each set has to land on the tile, by set.
 
     Returns:
         admitted: What the tile keeps, with each set and the cells it fills.
@@ -30,19 +30,19 @@ def admitted_observations(
         for observation in instrument.events:
             cells = [
                 cell
-                for cell in packing.cells_of(observation.mask).tolist()
+                for cell in packing.filled_cells(observation.mask).tolist()
                 if cell in grid.inside
             ]
             if not cells:
                 continue
             landed = landed_pixels(observation, len(cells), grid.cell_km2)
-            taken = admitted if landed >= least[owner] else refused
-            taken.append((observation, owner, cells))
+            verdict = admitted if landed >= min_pixels[owner] else refused
+            verdict.append((observation, owner, cells))
     return admitted, refused
 
 
 def landed_pixels(observation: Event, cells: int, cell_km2: float) -> float:
-    """Read how many pixels one observation landed inside the tile.
+    """Return how many pixels one observation landed inside the tile.
 
     Args:
         observation: The observation, carrying what it covered and what it landed.

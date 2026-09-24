@@ -81,7 +81,6 @@ def tile_region(tile: Tile) -> TileRegion:
     Returns:
         region: The projected box and its clipping regions.
     """
-    shape = tile_shape(tile)
     north = tile.min_lat >= 0.0
     polar = polar_wide = None
     if min(abs(tile.min_lat), abs(tile.max_lat)) >= frame.POLAR_REACH_DEG:
@@ -94,8 +93,7 @@ def tile_region(tile: Tile) -> TileRegion:
     return TileRegion(
         centre_lon=tile.centre_lon,
         centre_lat=tile.centre_lat,
-        shape=shape,
-        area_m2=shape.area,
+        shape=tile_shape(tile),
         tight=clip_region(tile, 0.0),
         wide=clip_region(tile, frame.CLIP_MARGIN_DEG),
         polar=polar,
@@ -197,9 +195,9 @@ def projected_footprints(
     shapes = np.full(len(geoms), _EMPTY, dtype=object)
     order = np.argsort(owners, kind="stable")
     projected, owners = projected[order], owners[order]
-    wanted = np.arange(shapes.size)
-    starts = np.searchsorted(owners, wanted, side="left")
-    ends = np.searchsorted(owners, wanted, side="right")
+    inputs = np.arange(shapes.size)
+    starts = np.searchsorted(owners, inputs, side="left")
+    ends = np.searchsorted(owners, inputs, side="right")
     counts = ends - starts
     shapes[counts == 1] = projected[starts[counts == 1]]
     for index in np.nonzero(counts > 1)[0]:
@@ -219,7 +217,7 @@ def single_parts(geoms: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
     Returns:
         parts: The flat single-part geometries.
-        inputs: The index of the input each came from.
+        owners: The index of the input each came from.
     """
     parts = np.asarray(geoms, dtype=object)
     owners = np.arange(parts.size)

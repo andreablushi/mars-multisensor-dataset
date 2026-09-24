@@ -1,4 +1,4 @@
-"""Loading the signal phase distortion one ancillary table holds over each tile."""
+"""The signal phase distortion one ancillary table holds over each tile."""
 
 from __future__ import annotations
 

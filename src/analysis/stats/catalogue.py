@@ -19,7 +19,7 @@ def read_catalogue() -> CatalogueStats:
     # One row per tile carries its area, which every set of it shares
     by_tile: dict[str, Summary] = {}
     by_instrument: dict[str, list[Summary]] = {}
-    for row in index.catalogued_rows():
+    for row in index.read_index():
         by_tile.setdefault(row.tile, row)
         by_instrument.setdefault(row.iid, []).append(row)
     return CatalogueStats(

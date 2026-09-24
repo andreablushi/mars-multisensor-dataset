@@ -15,7 +15,7 @@ from analysis.utils.tile_group import group_of, tile_grid
 HYPERSPECTRAL = "hsp"
 
 
-def trimmed(
+def trimmed_window(
     track: Track, first: int, last: int, criteria: Filter
 ) -> tuple[list[int], list[int], list[int]]:
     """Drop the observations a tile does not need, keeping the most recent or the best.
@@ -81,7 +81,7 @@ def redundant_groups(
         groups: Each group of one instrument's redundant looks, worst first and
             every hyperspectral look after every multispectral one.
     """
-    filled = np.zeros((len(indices), track.grid.cells), dtype=np.float32)
+    filled = np.zeros((len(indices), track.grid.cell_count), dtype=np.float32)
     for row, index in enumerate(indices):
         filled[row, track.cells[index]] = 1.0
     shared = filled @ filled.T

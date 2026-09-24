@@ -5,16 +5,14 @@ from __future__ import annotations
 import ipywidgets as widgets
 from matplotlib.figure import Figure
 
-from analysis.stats.instrument_sets import coverage_over_time
+from analysis.stats.instrument_sets import timelines_per_set
 from analysis.visualization import panels
 from analysis.visualization.panels import Coverage
 
 
 def plot(coverage: Coverage) -> widgets.Widget:
     """Draw the running coverage of the whole tile, beside its total."""
-    if not coverage:
-        return panels.unavailable()
-    timelines = coverage_over_time(coverage)
+    timelines = timelines_per_set(coverage)
     colours = panels.colours([timeline.label for timeline in timelines])
     figure = Figure(figsize=(13, 5))
     running, bars = figure.subplots(1, 2, width_ratios=[3, 1])

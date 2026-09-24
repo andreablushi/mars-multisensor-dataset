@@ -32,7 +32,7 @@ from building.models.progress import (
 )
 from building.models.settings import Settings
 from building.preprocessing.common import store
-from common.console import named_failure
+from common.console import print_failure
 from common.fetch.http import TLS_CONTEXT
 
 CHECKPOINT_BYTES = 100 * 1024**3
@@ -147,7 +147,7 @@ def _checkpointed(
         except Exception as error:  # noqa: BLE001
             # A checkpoint is insurance: a build outlives one it could not write.
             failed += 1
-            named_failure("the checkpoint", error, failed)
+            print_failure("the checkpoint", error, failed)
 
 
 def _outcomes(

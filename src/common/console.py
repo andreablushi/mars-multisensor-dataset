@@ -26,7 +26,9 @@ def plain_log() -> bool:
     return bool(os.environ.get(PLAIN_LOG_ENV))
 
 
-def reached(description: str, completed: int, total: int, label: str = "") -> None:
+def print_progress_line(
+    description: str, completed: int, total: int, label: str = ""
+) -> None:
     """Print how far a stage has got, in the plain form a platform log takes.
 
     Args:
@@ -41,7 +43,7 @@ def reached(description: str, completed: int, total: int, label: str = "") -> No
     )
 
 
-def named_failure(
+def print_failure(
     label: str, error: BaseException, counted: int, console: Console | None = None
 ) -> None:
     """Name one failure as a run hits it, a plain log naming only the first few.

@@ -31,29 +31,14 @@ def bounds_box(bounded) -> Box:
 
 
 def bounds_boxes(bounded) -> Box:
-    """Return the boxes many tiles or features are bounded by, stacked.
-
-    Args:
-        bounded: Everything to stack, each bounded by two latitudes and two longitudes.
-
-    Returns:
-        boxes: Their latitudes, west edges and eastward spans, one array each.
-    """
+    """Return the boxes many tiles or features are bounded by, stacked."""
     return tuple(
         np.array(edges) for edges in zip(*map(bounds_box, bounded), strict=True)
     )
 
 
 def recut[Bounded](bounded: Bounded, cut) -> Bounded:
-    """Return a copy of one bounded record, bounded by another's box instead.
-
-    Args:
-        bounded: The dataclass to copy.
-        cut: Anything bounded by two latitudes and two longitudes.
-
-    Returns:
-        recut: The copy, holding the box of the cut.
-    """
+    """Return a copy of one bounded record, bounded by another's box instead."""
     return replace(
         bounded,
         min_lat=cut.min_lat,
@@ -104,15 +89,7 @@ def inside(inner: Box, outer: Box) -> np.ndarray:
 
 
 def touching(one: Box, other: Box) -> np.ndarray:
-    """Return whether each pair of boxes shares any ground.
-
-    Args:
-        one: The boxes to test, one or an array of them.
-        other: The boxes they are tested against, one or an array of them.
-
-    Returns:
-        touching: One flag per pair.
-    """
+    """Return whether each pair of boxes shares any ground."""
     return (
         (np.asarray(one[0]) < other[1])
         & (np.asarray(one[1]) > other[0])
@@ -161,8 +138,8 @@ def crop_around(lon: np.ndarray, lat: np.ndarray, min_span_deg: float) -> Crop:
         crop: The crop, widened about its middle where a side falls short.
     """
     centre_lat = float((lat.min() + lat.max()) / 2.0)
-    south, north = floored(float(lat.min()), float(lat.max()), min_span_deg)
-    west, east = floored(
+    south, north = widened_edges(float(lat.min()), float(lat.max()), min_span_deg)
+    west, east = widened_edges(
         float(lon.min()),
         float(lon.max()),
         min_span_deg / longitude_stretch(centre_lat),
@@ -170,8 +147,8 @@ def crop_around(lon: np.ndarray, lat: np.ndarray, min_span_deg: float) -> Crop:
     return Crop(west, south, east, north)
 
 
-def floored(low: float, high: float, minimum: float) -> tuple[float, float]:
-    """Hold one side of a box open to a minimum width, about its middle.
+def widened_edges(low: float, high: float, minimum: float) -> tuple[float, float]:
+    """Return one side of a box held open to a minimum width, about its middle.
 
     Args:
         low: The lower edge.

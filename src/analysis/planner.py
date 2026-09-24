@@ -70,8 +70,8 @@ def coverage_plan(
     return Plan.of(jobs, [force or not job.summary_path.exists() for job in jobs])
 
 
-def unfinished(sources: Sequence[Path]) -> list[Path]:
-    """Return the instrument sets with no coverage summary beside them yet."""
+def unmeasured_sources(sources: Sequence[Path]) -> list[Path]:
+    """Return the metadata files with no coverage summary written for them yet."""
     return [
         source
         for source in sources

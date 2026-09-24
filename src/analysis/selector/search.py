@@ -14,7 +14,7 @@ from analysis.selector.models.survey import Survey
 from analysis.selector.models.track import Track
 
 
-def search(track: Track, criteria: Filter) -> Survey | None:
+def best_survey(track: Track, criteria: Filter) -> Survey | None:
     """Search a timeline for the window the ground is best studied over.
 
     Args:
@@ -66,7 +66,7 @@ def search(track: Track, criteria: Filter) -> Survey | None:
     if best is None:
         return None
     # Clean up the record to only what is worth keeping, and report reached
-    kept, kept_standing, reached = redundancy.trimmed(track, *best, criteria)
+    kept, kept_standing, reached = redundancy.trimmed_window(track, *best, criteria)
     return Survey(
         start=track.observations[kept[0]].t_start,
         end=track.observations[kept[-1]].t_start,
