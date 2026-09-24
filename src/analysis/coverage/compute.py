@@ -6,10 +6,10 @@ from analysis.coverage.artifacts import write
 from analysis.coverage.measurement import measure
 from analysis.coverage.projection import project
 from analysis.metadata.loaders.observations import load_observations
-from analysis.models.job import Job, Outcome
+from analysis.models.job import CoverageJob, Outcome
 
 
-def compute(job: Job, grid_cells: int, union_threads: int) -> Outcome:
+def compute(job: CoverageJob, grid_cells: int, union_threads: int) -> Outcome:
     """Measure one instrument set's coverage of every tile of its group, and write it.
 
     Args:

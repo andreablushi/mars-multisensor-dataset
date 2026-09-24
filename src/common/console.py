@@ -7,13 +7,10 @@ from collections.abc import Sequence
 
 from rich.console import Console
 
-# Set by a platform run, whose log takes plain flushed lines rather than a bar.
 PLAIN_LOG_ENV = "PIPELINE_PLAIN_LOG"
 
-# How many items are named before the rest are counted
 LISTED = 5
 
-# How many failures a run names as it hits them, the summary counting them all
 LOGGED_ERRORS = 50
 
 
@@ -41,15 +38,20 @@ def reached(description: str, completed: int, total: int, label: str = "") -> No
     )
 
 
-def named_failure(label: str, error: BaseException, counted: int) -> None:
-    """Name one failure as a run hits it, until too many have been named.
+def named_failure(
+    label: str, error: BaseException, counted: int, console: Console | None = None
+) -> None:
+    """Name one failure as a run hits it, a plain log naming only the first few.
 
     Args:
         label: What failed.
         error: What it raised.
         counted: How many have failed so far, this one counted.
+        console: The console a bar is drawn on, printed on in red off a plain log.
     """
-    if counted <= LOGGED_ERRORS:
+    if console is not None and not plain_log():
+        console.print(f"[red]error[/red] {label}: {error}")
+    elif counted <= LOGGED_ERRORS:
         print(f"error {label}: {error}", flush=True)
     elif counted == LOGGED_ERRORS + 1:
         print("the summary counts the failures from here", flush=True)

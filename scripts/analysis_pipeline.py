@@ -12,13 +12,13 @@ from dhub.paths import Artifact, Function
 from digitalhub_runtime_python import handler
 from rich.console import Console
 
-from analysis import console, paths, planner, runner
+from analysis import paths, planner, runner
+from analysis.console import print_summary
 from analysis.coverage.artifacts import index
 from analysis.ground_truth import artifacts, draw, fetch, label
 from analysis.ground_truth.models.label import Label
 from analysis.metadata import file_explorer
 from analysis.metadata.summary import summarise_ancillary
-from analysis.models.progress import CoverageSummary, DownloadSummary
 from analysis.selector import select
 from analysis.stats.artifacts import store
 from analysis.stats.dataset import aggregate, read
@@ -39,23 +39,23 @@ def compute_coverage(force: bool = False, workers: int | None = None) -> int:
     Returns:
         code: A process exit code, non zero when either half had a failure.
     """
-    choices = analysis_settings(workers)
-    printing = Console()
+    settings = analysis_settings(workers)
+    console = Console()
     started_at = time.monotonic()
-    fetched, outcomes = runner.run_pipeline(choices, printing, force, workers)
+    fetched, measured = runner.run_pipeline(settings, console, force, workers)
     elapsed = time.monotonic() - started_at
-    downloaded = DownloadSummary.from_outcomes(fetched, elapsed)
-    computed = CoverageSummary.from_outcomes(outcomes, elapsed)
-    console.print_summary(
-        downloaded,
-        computed,
-        index.reindex(),
+    index.reindex()
+    print_summary(
+        fetched,
+        measured,
+        elapsed,
         planner.unfinished(file_explorer.find_sets()),
-        printing,
+        console,
     )
-    unread = summarise_ancillary(choices, force)
-    printing.print(f"ancillary: {unread} tables left unread")
-    return 1 if computed.failed or downloaded.failed or unread else 0
+    unread = summarise_ancillary(settings, force)
+    console.print(f"ancillary: {unread} tables left unread")
+    failed = any(outcome.failed for outcome in [*fetched, *measured])
+    return 1 if failed or unread else 0
 
 
 def compute_labels(force: bool = False) -> list[Label]:
@@ -79,10 +79,10 @@ def compute_labels(force: bool = False) -> list[Label]:
         refused,
     )
     artifacts.write_labels(labels)
-    held = Counter(one.label for one in labels if one.tile not in refused)
+    drawable = Counter(one.label for one in labels if one.tile not in refused)
     drawn = Counter(one.label for one in labels if one.drawn)
     for name in settings.classes:
-        print(f"{name}: {drawn[name]} drawn of {held[name]}")
+        print(f"labels: {drawn[name]} of {drawable[name]} {name} tiles drawn")
     return labels
 
 
@@ -94,16 +94,16 @@ def compute_selection(workers: int | None = None, force: bool = False) -> None:
         force: Whether to fetch the feature catalogue again rather than read it.
     """
     workers = analysis_settings(workers).workers
-    picked = select.select_dataset(workers, console.logged("selection"))
-    kept = sum(1 for one in picked if one.tile.kept)
-    print(f"{kept:,} of {len(picked):,} tiles earned a place", flush=True)
+    selection = select.select_dataset(workers)
+    kept = sum(1 for one in selection if one.tile.kept)
+    print(f"selection: {kept:,} of {len(selection):,} tiles kept", flush=True)
     # Read off the selection just written, so they never stand for an old filter
-    measured = read.measure_every_tile(picked, workers, console.logged("stats"))
-    store.write_stats_file(aggregate.dataset_stats(measured, picked))
+    measured = read.measure_every_tile(selection, workers)
+    store.write_stats_file(aggregate.dataset_stats(measured, selection))
     drawn = {one.tile for one in compute_labels(force) if one.drawn}
     store.write_stats_file(
         aggregate.dataset_stats(
-            [one for one in measured if one.window.tile in drawn], picked
+            [one for one in measured if one.window.tile in drawn], selection
         ),
         paths.EVALUATION_STATS_ROOT,
     )

@@ -6,7 +6,7 @@ from collections.abc import Sequence
 
 from analysis.coverage.models.coverage import Event
 from analysis.coverage.models.summary import Summary
-from analysis.models.job import Job
+from analysis.models.job import CoverageJob
 from common.disk import parquet
 
 EVENTS = parquet.schema_of(Event)
@@ -14,7 +14,7 @@ SUMMARY = parquet.schema_of(Summary)
 
 
 def write_coverage(
-    job: Job, events: Sequence[Event], summaries: Sequence[Summary]
+    job: CoverageJob, events: Sequence[Event], summaries: Sequence[Summary]
 ) -> None:
     """Write one set's observation rows and the row describing it on each tile.
 

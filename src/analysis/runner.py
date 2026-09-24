@@ -1,48 +1,21 @@
-"""Running the pipeline's work: one pooled runner, and the two halves it drives."""
+"""Running the pipeline's two halves: downloading metadata, and measuring it."""
 
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Iterator, Sequence
-from concurrent.futures import (
-    Executor,
-    Future,
-    ProcessPoolExecutor,
-    ThreadPoolExecutor,
-    as_completed,
-)
-from contextlib import closing
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from functools import partial
 
 from rich.console import Console
 
 from analysis import planner
-from analysis.console import describe, render
+from analysis.console import Tracker, describe
 from analysis.coverage import compute
 from analysis.metadata import download, file_explorer
-from analysis.models.job import Job, Outcome
-from analysis.models.progress import ProgressEvent
+from analysis.models.job import Outcome
 from analysis.models.settings import Settings
-from analysis.utils import tile_group
+from analysis.utils.tile_group import every_tile_group, tile_grid
 from common.fetch.ode import ODEClient
-from common.maths.tessellate import Tessellate
-
-
-def run_jobs(
-    jobs: Sequence[Job], execute: Callable[[Job], Outcome], pool: Executor
-) -> Iterator[ProgressEvent]:
-    """Run every job on the pool, yielding progress as each one finishes.
-
-    Args:
-        jobs: The work to run.
-        execute: What to call for one job, which must never raise and must be picklable.
-        pool: The pool to run on, owned and shut down by the caller.
-
-    Yields:
-        event: One event per finished job, in completion order.
-    """
-    futures = [pool.submit(execute, job) for job in jobs]
-    for completed, future in enumerate(as_completed(futures), start=1):
-        yield ProgressEvent(completed=completed, outcome=future.result())
 
 
 def run_pipeline(
@@ -61,58 +34,40 @@ def run_pipeline(
         measured: Every finished coverage outcome.
     """
     # The coverage jobs run side by side, so each takes a share of the machine
-    threads = max(1, (cores or os.process_cpu_count() or 1) // settings.workers)
-    futures: list[Future[Outcome]] = []
+    union_threads = max(1, (cores or os.process_cpu_count() or 1) // settings.workers)
+    groups = every_tile_group(tile_grid(), settings.tile_group_deg)
+    downloads = planner.download_plan(groups, settings.instrument_sets, force=force)
+    rewriting = {job.output_path for job in downloads.jobs}
+    stored = [source for source in file_explorer.find_sets() if source not in rewriting]
+    backlog = planner.coverage_plan(stored, groups, force=force)
+    describe(downloads, backlog, console)
     fetched: list[Outcome] = []
-    with ODEClient() as client:
-        grid = Tessellate.of(settings.tile_km)
-        groups = tile_group.every_tile_group(grid, settings.tile_group_deg)
-        plan = planner.download_plan(groups, settings.instrument_sets, force=force)
-        rewriting = {job.output_path for job in plan.jobs}
-        stored = [held for held in file_explorer.find_sets() if held not in rewriting]
-        backlog = planner.coverage_plan(stored, groups, force=force)
-        describe(plan, backlog, console)
-        with (
-            ProcessPoolExecutor(max_workers=settings.workers) as measuring,
-            ThreadPoolExecutor(max_workers=settings.workers) as fetching,
-        ):
-
-            def measure(job: Job) -> Future[Outcome]:
-                """Put one coverage job on the pool, sized as the run is configured."""
-                return measuring.submit(
-                    compute.compute, job, settings.grid_cells, threads
-                )
-
-            def measured() -> Iterator[ProgressEvent]:
-                """Pass each download through, keeping it and measuring what landed."""
-                downloads = run_jobs(
-                    plan.jobs,
-                    lambda job: download.download(job, client, settings.loc),
-                    fetching,
-                )
-                for event in downloads:
-                    fetched.append(event.outcome)
-                    source = event.outcome.job.output_path
-                    if not event.outcome.failed and source.stat().st_size:
-                        futures.extend(
-                            measure(job)
-                            for job in planner.coverage_plan(
-                                [source], groups, force=force
-                            ).jobs
-                        )
-                    yield event
-
-            futures.extend(measure(job) for job in backlog.jobs)
-            with closing(measured()) as events:
-                render(events, len(plan.jobs), "download", console)
-            if futures:
-                render(
-                    (
-                        ProgressEvent(completed=done, outcome=future.result())
-                        for done, future in enumerate(futures, start=1)
-                    ),
-                    len(futures),
-                    "coverage",
-                    console,
-                )
-    return fetched, [future.result() for future in futures]
+    with (
+        ODEClient() as client,
+        ProcessPoolExecutor(max_workers=settings.workers) as coverage_pool,
+        ThreadPoolExecutor(max_workers=settings.workers) as download_pool,
+    ):
+        measure = partial(
+            compute.compute, grid_cells=settings.grid_cells, union_threads=union_threads
+        )
+        coverage_futures = [coverage_pool.submit(measure, job) for job in backlog.jobs]
+        download_futures = [
+            download_pool.submit(download.download, job, client, settings.loc)
+            for job in downloads.jobs
+        ]
+        with Tracker("download", len(download_futures), console) as tracker:
+            for future in as_completed(download_futures):
+                outcome = future.result()
+                fetched.append(outcome)
+                tracker.advance(outcome)
+                # A set is measured as soon as it lands, beside the backlog
+                source = outcome.job.output_path
+                if not outcome.failed and source.stat().st_size:
+                    landed = planner.coverage_plan([source], groups, force=force)
+                    coverage_futures += [
+                        coverage_pool.submit(measure, job) for job in landed.jobs
+                    ]
+        with Tracker("coverage", len(coverage_futures), console) as tracker:
+            for future in coverage_futures:
+                tracker.advance(future.result())
+    return fetched, [future.result() for future in coverage_futures]

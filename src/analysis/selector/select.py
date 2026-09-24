@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 
+from analysis import console
 from analysis.coverage.artifacts import index
 from analysis.selector.artifacts import write
 from analysis.selector.models.selection import (
@@ -17,16 +17,12 @@ from analysis.utils.tile_group import tile_grid
 from common.config import analysis_settings
 from common.models.tile import Tile
 
-# Called with how many tile groups are searched and how many there are
-Progress = Callable[[int, int], None]
 
-
-def select_dataset(workers: int, progress: Progress | None = None) -> list[Selection]:
+def select_dataset(workers: int) -> list[Selection]:
     """Search every measured tile under the filter, and write the selection out.
 
     Args:
         workers: How many processes to search on at once, as the run is configured.
-        progress: Called with how many tile groups are searched and how many there are.
 
     Returns:
         picked: What the search left of each tile, band by band, west to east.
@@ -37,8 +33,7 @@ def select_dataset(workers: int, progress: Progress | None = None) -> list[Selec
         searched = pool.map(_searched, groups, chunksize=1)
         for done, found in enumerate(searched, 1):
             picked.extend(found)
-            if progress is not None:
-                progress(done, len(groups))
+            console.report("selection", done, len(groups))
     picked.sort(key=lambda one: (one.tile.band, one.tile.column))
     write.write_selection(picked)
     return picked

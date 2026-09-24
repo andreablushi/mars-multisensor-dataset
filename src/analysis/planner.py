@@ -1,12 +1,12 @@
-"""Turning what a run could do into the jobs it still has to do."""
+"""The download and coverage jobs a run still has to do."""
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 from analysis.models.instrument import InstrumentSet
-from analysis.models.job import Job, Plan
+from analysis.models.job import CoverageJob, DownloadJob, Plan
 from analysis.models.tile_group import TileGroup
 from analysis.paths import (
     EVENTS_SUFFIX,
@@ -14,36 +14,6 @@ from analysis.paths import (
     coverage_path,
     metadata_path,
 )
-
-
-def _outstanding[T, R](
-    candidates: Iterable[T],
-    output_for: Callable[[T], Path],
-    result_for: Callable[[T, Path], R],
-    *,
-    force: bool,
-) -> tuple[tuple[R, ...], int]:
-    """Keep every candidate whose output is not already on disk.
-
-    Args:
-        candidates: What the run could do, in the order to do it.
-        output_for: The file whose presence marks a candidate as finished.
-        result_for: Builds what to return for a candidate and its output path.
-        force: When True, include candidates that are already finished.
-
-    Returns:
-        held: The results for the candidates outstanding.
-        skipped: How many were skipped.
-    """
-    outstanding: list[R] = []
-    skipped = 0
-    for candidate in candidates:
-        output = output_for(candidate)
-        if output.exists() and not force:
-            skipped += 1
-            continue
-        outstanding.append(result_for(candidate, output))
-    return tuple(outstanding), skipped
 
 
 def download_plan(
@@ -60,36 +30,24 @@ def download_plan(
         force: When True, include jobs whose output file already exists.
 
     Returns:
-        plan: The plan describing the selection and the jobs to run.
+        plan: The jobs to run, and how many were already downloaded.
     """
-    pairs = [
-        (group, instrument_set)
+    jobs = [
+        DownloadJob(
+            group=group,
+            instrument_set=instrument_set,
+            output_path=metadata_path(group.name, instrument_set),
+        )
         for group in groups
         for instrument_set in instrument_sets
     ]
-    jobs, skipped = _outstanding(
-        pairs,
-        lambda pair: metadata_path(pair[0].name, pair[1]),
-        lambda pair, output: Job(
-            group=pair[0], instrument_set=pair[1], output_path=output
-        ),
-        force=force,
-    )
-    return Plan(
-        jobs=jobs,
-        group_count=len(groups),
-        set_count=len(instrument_sets),
-        skipped_existing=skipped,
-    )
+    return Plan.of(jobs, [force or not job.output_path.exists() for job in jobs])
 
 
 def coverage_plan(
-    sources: Sequence[Path],
-    groups: Sequence[TileGroup],
-    *,
-    force: bool = False,
+    sources: Sequence[Path], groups: Sequence[TileGroup], *, force: bool = False
 ) -> Plan:
-    """Build the coverage jobs still needed for a run.
+    """Build the coverage jobs still needed for a run, the largest set first.
 
     Args:
         sources: The instrument set metadata files discovered on disk.
@@ -97,41 +55,25 @@ def coverage_plan(
         force: When True, recompute sets that are already done.
 
     Returns:
-        plan: The plan describing the discovery and the jobs to run.
+        plan: The jobs to run, and how many were already measured.
     """
     named = {group.name: group for group in groups}
-    jobs, skipped = _outstanding(
-        sorted(sources, key=lambda path: -path.stat().st_size),
-        lambda source: coverage_path(source, SET_SUMMARY_SUFFIX),
-        lambda source, output: Job(
+    jobs = [
+        CoverageJob(
             group=named[source.parent.name],
             source=source,
             events_path=coverage_path(source, EVENTS_SUFFIX),
-            summary_path=output,
-        ),
-        force=force,
-    )
-    return Plan(
-        jobs=jobs,
-        group_count=len({source.parent for source in sources}),
-        set_count=len(sources),
-        skipped_existing=skipped,
-    )
+            summary_path=coverage_path(source, SET_SUMMARY_SUFFIX),
+        )
+        for source in sorted(sources, key=lambda path: -path.stat().st_size)
+    ]
+    return Plan.of(jobs, [force or not job.summary_path.exists() for job in jobs])
 
 
-def unfinished(sources: Sequence[Path]) -> tuple[Path, ...]:
-    """Return the instrument sets that still have no coverage artifact.
-
-    Args:
-        sources: The instrument set metadata files discovered on disk.
-
-    Returns:
-        files: The metadata files with no summary beside them, in discovery order.
-    """
-    sources_left, _ = _outstanding(
-        sources,
-        lambda source: coverage_path(source, SET_SUMMARY_SUFFIX),
-        lambda source, _output: source,
-        force=False,
-    )
-    return sources_left
+def unfinished(sources: Sequence[Path]) -> list[Path]:
+    """Return the instrument sets with no coverage summary beside them yet."""
+    return [
+        source
+        for source in sources
+        if not coverage_path(source, SET_SUMMARY_SUFFIX).exists()
+    ]

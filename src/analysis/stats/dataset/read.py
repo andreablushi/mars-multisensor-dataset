@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor
 
+from analysis import console
 from analysis.coverage.artifacts import index
 from analysis.selector.models.selection import Selection
 from analysis.stats.models.tile import TileStats
@@ -12,19 +13,13 @@ from analysis.stats.tile import measure
 from analysis.stats.tile import read as tile
 from analysis.utils.tile_group import group_of, tile_grid
 
-# Called with how many tile groups are read and how many there are
-Progress = Callable[[int, int], None]
 
-
-def measure_every_tile(
-    picked: Sequence[Selection], workers: int, progress: Progress | None = None
-) -> list[TileStats]:
+def measure_every_tile(picked: Sequence[Selection], workers: int) -> list[TileStats]:
     """Measure what the selection kept of every tile it searched.
 
     Args:
         picked: What the search left of each tile, as the selection wrote it.
         workers: How many processes to measure on at once, as the run is configured.
-        progress: Called with how many tile groups are done and how many there are.
 
     Returns:
         measured: One entry per tile with something to measure, a group at a time.
@@ -39,8 +34,7 @@ def measure_every_tile(
         measured = pool.map(_measure_group, by_group, by_group.values(), chunksize=1)
         for done, stats in enumerate(measured, 1):
             found.extend(stats)
-            if progress is not None:
-                progress(done, len(by_group))
+            console.report("stats", done, len(by_group))
     return found
 
 

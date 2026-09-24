@@ -65,7 +65,6 @@ def fetch_distortions(
                     label_url = url
     distortions: list[Distortion] = []
     failed = 0
-    progress = console.logged(ancillary.pt.lower())
     with (
         httpx.Client(verify=TLS_CONTEXT) as client,
         tempfile.TemporaryDirectory() as held,
@@ -120,7 +119,7 @@ def fetch_distortions(
         }
         for done, future in enumerate(as_completed(futures), 1):
             pdsid = futures[future]
-            progress(done, len(futures))
+            console.report(ancillary.pt.lower(), done, len(futures))
             try:
                 distortions.extend(future.result())
             except Exception as error:

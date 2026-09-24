@@ -2,21 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress
 
-from analysis.models.job import Plan
-from analysis.models.progress import (
-    CoverageSummary,
-    DownloadSummary,
-    ProgressEvent,
-)
+from analysis.models.job import Outcome, Plan
 from common import console as printing
 
-# How many progress lines a stage prints where no cursor can be moved
 LOGGED_LINES = 50
 
 
@@ -24,109 +18,109 @@ def describe(download: Plan, coverage: Plan, console: Console) -> None:
     """Print what each half of the run has to do before it starts.
 
     Args:
-        download: The plan produced by the download planner.
-        coverage: The plan produced by the coverage planner.
+        download: The download jobs still to run.
+        coverage: The coverage jobs still to run.
         console: The console to print on.
     """
-    console.print(
-        f"download: {download.group_count} groups x {download.set_count} sets, "
-        f"{len(download.jobs)} to run, {download.skipped_existing} already "
-        f"downloaded"
-    )
-    console.print(
-        f"coverage: {coverage.group_count} groups, "
-        f"{coverage.set_count} instrument sets, {len(coverage.jobs)} to compute, "
-        f"{coverage.skipped_existing} already done"
-    )
+    for stage, plan in (("download", download), ("coverage", coverage)):
+        console.print(f"{stage}: {len(plan.jobs)} to run, {plan.skipped} already done")
 
 
-def render(
-    events: Iterable[ProgressEvent], total: int, description: str, console: Console
-) -> None:
-    """Draw a live progress bar while consuming runner events.
+def report(stage: str, done: int, total: int, label: str = "") -> None:
+    """Print how far a stage has got, once every fiftieth of it.
 
     Args:
-        events: The progress events produced by a runner.
-        total: The number of units in the run.
-        description: The label for the progress task.
-        console: The console to render on.
+        stage: The stage, carried on every line printed.
+        done: How many units are finished.
+        total: How many there are.
+        label: What just finished, where the stage names its units.
     """
-    # A platform log takes plain flushed lines, since no cursor can be moved there
-    if printing.plain_log():
-        step = max(1, total // LOGGED_LINES)
-        failed = 0
-        for event in events:
-            outcome = event.outcome
-            if outcome.failed:
-                failed += 1
-                printing.named_failure(outcome.label, outcome.error, failed)
-            if event.completed % step == 0 or event.completed == total:
-                printing.reached(description, event.completed, total, outcome.label)
-        return
-    with Progress(
-        BarColumn(bar_width=None),
-        MofNCompleteColumn(),
-        console=console,
-    ) as progress:
-        task = progress.add_task(description, total=total)
-        for event in events:
-            if event.outcome.failed:
-                console.print(
-                    f"[red]error[/red] {event.outcome.label}: {event.outcome.error}"
-                )
-            progress.update(task, completed=event.completed)
+    if done % max(1, total // LOGGED_LINES) == 0 or done == total:
+        printing.reached(stage, done, total, label)
 
 
-def logged(description: str) -> Callable[[int, int], None]:
-    """Return a progress callback printing how far a stage has got.
+class Tracker:
+    """One stage's progress, drawn as a bar or logged where no cursor can move."""
 
-    Args:
-        description: The label for the stage, carried on every line printed.
+    def __init__(self, stage: str, total: int, console: Console) -> None:
+        """Set up the stage's bar, left undrawn on a plain log.
 
-    Returns:
-        progress: A callback taking how many units are done and how many there are.
-    """
+        Args:
+            stage: The stage, labelling the bar or every line.
+            total: How many jobs it runs.
+            console: The console to draw on.
+        """
+        self.stage, self.total, self.console = stage, total, console
+        self.done = self.failed = 0
+        self.bar = Progress(
+            BarColumn(bar_width=None),
+            MofNCompleteColumn(),
+            console=console,
+            disable=printing.plain_log(),
+        )
+        self.task = self.bar.add_task(stage, total=total)
 
-    def moved(done: int, total: int) -> None:
-        """Print where the stage has reached, on the units it reports on."""
-        if done % max(1, total // LOGGED_LINES) == 0 or done == total:
-            printing.reached(description, done, total)
+    def __enter__(self) -> Tracker:
+        """Start drawing the bar."""
+        self.bar.start()
+        return self
 
-    return moved
+    def __exit__(self, *raised: object) -> None:
+        """Stop drawing the bar."""
+        self.bar.stop()
+
+    def advance(self, outcome: Outcome) -> None:
+        """Count one finished job, naming it when it failed.
+
+        Args:
+            outcome: The job that just finished.
+        """
+        self.done += 1
+        if outcome.failed:
+            self.failed += 1
+            printing.named_failure(
+                outcome.label, outcome.error, self.failed, self.console
+            )
+        self.bar.update(self.task, completed=self.done)
+        if self.bar.disable:
+            report(self.stage, self.done, self.total, outcome.label)
 
 
 def print_summary(
-    download: DownloadSummary,
-    coverage: CoverageSummary,
-    indexed: int,
+    downloads: Sequence[Outcome],
+    measured: Sequence[Outcome],
+    elapsed: float,
     missing: Sequence[Path],
     console: Console,
 ) -> None:
     """Print the totals for a finished run.
 
     Args:
-        download: The download half's totals.
-        coverage: The coverage half's totals.
-        indexed: Summary rows gathered into the catalogue index.
+        downloads: Every finished download.
+        measured: Every finished coverage job.
+        elapsed: How long the two halves took, in seconds.
         missing: The instrument sets that still have no artifact on disk.
         console: The console to print on.
     """
+    succeeded = [outcome for outcome in measured if not outcome.failed]
+    empty = sum(1 for outcome in succeeded if not outcome.events)
+    discarded = sum(outcome.discarded for outcome in measured)
+    download_failed = sum(outcome.failed for outcome in downloads)
     console.print(
-        f"downloaded {download.ran} sets, {download.failed} failed, "
-        f"in {download.elapsed:.1f}s"
+        f"download: {len(downloads) - download_failed} done, {download_failed} failed"
     )
     console.print(
-        f"computed {coverage.computed} sets, {coverage.events:,} observation rows, "
-        f"{coverage.failed} failed, {indexed:,} rows indexed, "
-        f"in {coverage.elapsed:.1f}s"
+        f"coverage: {len(succeeded) - empty} done, "
+        f"{len(measured) - len(succeeded)} failed, "
+        f"{sum(outcome.events for outcome in succeeded):,} observation rows"
     )
-    if coverage.empty or coverage.discarded:
+    console.print(f"download and coverage took {elapsed:.1f}s")
+    if empty or discarded:
         console.print(
-            f"[yellow]{coverage.empty} sets measured nothing, "
-            f"{coverage.discarded:,} records discarded for no footprint, "
+            f"[yellow]{empty} sets measured nothing, "
+            f"{discarded:,} records discarded for no footprint, "
             f"no start time, or no overlap[/yellow]"
         )
-    if not missing:
-        return
-    console.print(f"[yellow]{len(missing)} sets still have no artifact:[/yellow]")
-    printing.print_listed([str(source) for source in missing], console)
+    if missing:
+        console.print(f"[yellow]{len(missing)} sets still have no artifact:[/yellow]")
+        printing.print_listed([str(source) for source in missing], console)

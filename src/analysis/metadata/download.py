@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from analysis.metadata.fetchers.products import fetch_products
-from analysis.models.job import Job, Outcome
+from analysis.models.job import DownloadJob, Outcome
 from common.disk.files import write_jsonl
 from common.fetch.ode import ODEClient
 
 
-def download(job: Job, client: ODEClient, loc: str) -> Outcome:
+def download(job: DownloadJob, client: ODEClient, loc: str) -> Outcome:
     """Download one instrument set's metadata and write it out.
 
     Args:
