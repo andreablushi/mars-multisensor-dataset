@@ -8,7 +8,7 @@ import time
 from collections import Counter
 
 from dhub import archives, args, submit
-from dhub.artifacts import Artifact
+from dhub.artifacts import Artifact, Function
 from digitalhub_runtime_python import handler
 from rich.console import Console
 
@@ -24,9 +24,6 @@ from analysis.stats.artifacts import store
 from analysis.stats.dataset import aggregate, read
 from analysis.utils import dataset_list
 from common.console import PLAIN_LOG_ENV
-
-PIPELINE_HANDLER = "scripts.analysis_pipeline:run_pipeline"
-SELECTION_HANDLER = "scripts.analysis_pipeline:run_selection"
 
 _SELECTED = (Artifact.SELECTION, Artifact.STATS, Artifact.LABELS)
 
@@ -191,13 +188,8 @@ def main() -> int:
     arguments = parsed.parse_args()
 
     if arguments.dh:
-        if arguments.only_stats:
-            return submit.submitted(
-                "selection", SELECTION_HANDLER, arguments.ref, force=arguments.force
-            )
-        return submit.submitted(
-            "pipeline", PIPELINE_HANDLER, arguments.ref, force=arguments.force
-        )
+        stage = Function.SELECTION if arguments.only_stats else Function.PIPELINE
+        return submit.submitted(stage, arguments.ref, force=arguments.force)
     failed = 0 if arguments.only_stats else compute_coverage(arguments.force)
     compute_selection(force=arguments.force)
     return failed

@@ -1,4 +1,4 @@
-"""Everything a platform run publishes or reads back, and where each lands on disk."""
+"""What a platform run publishes or reads back, and the functions it runs as."""
 
 from __future__ import annotations
 
@@ -47,3 +47,21 @@ class Artifact(Enum):
             packed: True for a directory, False for a file published as it is.
         """
         return not self.path.suffix
+
+
+class Function(Enum):
+    """One stage as DigitalHub registers it, its value the handler a job calls."""
+
+    PIPELINE = "scripts.analysis_pipeline:run_pipeline"
+    SELECTION = "scripts.analysis_pipeline:run_selection"
+    BUILD_TRAINING = "scripts.build_training:run_build"
+    BUILD_EVALUATION = "scripts.build_evaluation:run_build"
+
+    @property
+    def registered(self) -> str:
+        """Return the name the function is registered under.
+
+        Returns:
+            name: Its member's name, in lower kebab case.
+        """
+        return self.name.lower().replace("_", "-")

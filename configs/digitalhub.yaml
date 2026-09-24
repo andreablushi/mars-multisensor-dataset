@@ -48,10 +48,3 @@ resources:
     memory: 40Gi
     disk: 120Gi
 
-# The function each run is registered as, the project scoping it so it needs no prefix
-functions:
-  pipeline: analysis-pipeline
-  selection: select-features
-  build_training: build-dataset
-  build_evaluation: build-evaluation
-

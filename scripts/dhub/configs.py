@@ -42,7 +42,6 @@ class Platform:
         python_version: The interpreter the image is built on.
         image_extras: What the platform itself asks for, beyond the pipeline.
         resources: The profile, cores, memory and disk of each stage.
-        functions: The function each stage is registered as, by stage.
     """
 
     project: str
@@ -51,7 +50,6 @@ class Platform:
     python_version: str
     image_extras: list[str]
     resources: dict[str, Resources]
-    functions: dict[str, str]
 
 
 def load() -> Platform:

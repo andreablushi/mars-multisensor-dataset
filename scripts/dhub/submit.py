@@ -9,14 +9,14 @@ import digitalhub as dh
 from building.preprocessing.ctx import isis
 from common import paths
 from dhub import configs, credentials
+from dhub.artifacts import Function
 
 
-def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
+def submitted(stage: Function, ref: str, **parameters) -> int:
     """Register a version of one stage from a pushed commit, and run it.
 
     Args:
-        stage: The stage to submit, naming its function and resources.
-        handler: The dotted path the platform imports and calls.
+        stage: The stage to submit, naming its function, handler and resources.
         ref: The branch, tag, or commit the platform clones.
         **parameters: What the handler is called with on the platform.
 
@@ -27,14 +27,14 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
     # The image is built from the repo's own dependencies, so it cannot drift
     manifest = (paths.REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     needs = tomllib.loads(manifest)["project"]["dependencies"] + platform.image_extras
-    asked = platform.resources[stage]
+    asked = platform.resources[stage.name.lower()]
     project = dh.get_or_create_project(platform.project)
     function = project.new_function(
-        name=platform.functions[stage],
+        name=stage.registered,
         kind="python",
         python_version=platform.python_version,
         code_src=f"git+{platform.repository}#{ref}",
-        handler=handler,
+        handler=stage.value,
         requirements=needs,
     )
 

@@ -7,6 +7,8 @@ from collections.abc import Callable, Sequence
 from functools import partial
 from pathlib import Path
 
+from digitalhub_runtime_python import handler
+
 from analysis.selector.models.selection import Selection
 from building import build, paths
 from building.models.settings import Settings
@@ -37,43 +39,55 @@ def checkpoint(project, root: Path, name: str, uploads: int):
     return dataset
 
 
-def published_dataset[T: Settings](
-    project,
-    settings: T,
+def build_handler[T: Settings](
+    settled: Callable[[int | None], T],
     selections: Callable[[T], list[Selection]],
     fetched: Sequence[Artifact],
-    force: bool = False,
-):
-    """Build one dataset on DigitalHub, the last checkpoint publishing what is left.
+) -> Callable:
+    """Return the handler a build's job calls, the last checkpoint publishing it all.
 
     Args:
-        project: The DigitalHub project the dataset is logged into.
-        settings: The settled choices for the build, naming the published dataset.
+        settled: What settles the build, given the cores the job was sized with.
         selections: What reads the tiles to build once everything fetched is down.
         fetched: What the build reads, brought down first onto the job's empty disk.
-        force: Whether to build from nothing rather than fill in what is missing.
 
     Returns:
-        dataset: The published dataset, one object per crop.
-
-    Raises:
-        RuntimeError: When a product failed.
+        run_build: The handler, as the platform imports and calls it.
     """
-    os.environ[PLAIN_LOG_ENV] = "1"
-    for one in fetched:
-        archives.download_artifact(project, one)
-    name = f"{Artifact.DATASET.published}-{settings.name}"
-    root = paths.dataset_root(settings.name, Artifact.DATASET.path)
-    # A job starts on an empty disk, so only the index of what is built comes down
-    if not force:
-        archives.download_files(project, name, root, paths.INDEX_NAMES)
-    print(f"building the dataset as {settings.name}", flush=True)
-    published = partial(checkpoint, project, root, name, settings.workers)
-    failed = build.build_dataset(settings, selections(settings), force, published)
-    dataset = published()
-    if failed:
-        raise RuntimeError(
-            "the build had failures; what was published holds what finished"
-        )
-    print("done", flush=True)
-    return dataset
+
+    @handler(outputs=[Artifact.DATASET.published])
+    def run_build(project, force: bool = False, workers: int | None = None):
+        """Build one dataset on DigitalHub and publish what it left on disk.
+
+        Args:
+            project: The DigitalHub project the dataset is logged into.
+            force: Whether to build from nothing rather than fill in what is missing.
+            workers: How many products to build at once, as the job was sized.
+
+        Returns:
+            dataset: The published dataset, one object per crop.
+
+        Raises:
+            RuntimeError: When a product failed.
+        """
+        os.environ[PLAIN_LOG_ENV] = "1"
+        for one in fetched:
+            archives.download_artifact(project, one)
+        settings = settled(workers)
+        name = f"{Artifact.DATASET.published}-{settings.name}"
+        root = paths.dataset_root(settings.name, Artifact.DATASET.path)
+        # A job starts on an empty disk, so only the index of what is built comes down
+        if not force:
+            archives.download_files(project, name, root, paths.INDEX_NAMES)
+        print(f"building the dataset as {settings.name}", flush=True)
+        published = partial(checkpoint, project, root, name, settings.workers)
+        failed = build.build_dataset(settings, selections(settings), force, published)
+        dataset = published()
+        if failed:
+            raise RuntimeError(
+                "the build had failures; what was published holds what finished"
+            )
+        print("done", flush=True)
+        return dataset
+
+    return run_build

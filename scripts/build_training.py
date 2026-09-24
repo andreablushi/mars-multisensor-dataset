@@ -4,8 +4,7 @@
 from __future__ import annotations
 
 from dhub import args, checkpoint, submit
-from dhub.artifacts import Artifact
-from digitalhub_runtime_python import handler
+from dhub.artifacts import Artifact, Function
 
 from analysis.ground_truth import artifacts
 from analysis.selector.models.selection import Selection
@@ -14,9 +13,6 @@ from building import draw
 from building.build import build_dataset
 from building.configs import run
 from building.models.settings import TrainingSettings
-
-BUILD_HANDLER = "scripts.build_training:run_build"
-FETCHED = (Artifact.SELECTION, Artifact.LABELS, Artifact.VERDICTS)
 
 
 def training_selections(settings: TrainingSettings) -> list[Selection]:
@@ -39,21 +35,11 @@ def training_selections(settings: TrainingSettings) -> list[Selection]:
     )
 
 
-@handler(outputs=[Artifact.DATASET.published])
-def run_build(project, force: bool = False, workers: int | None = None):
-    """Build the training dataset on DigitalHub and publish what it left on disk.
-
-    Args:
-        project: The DigitalHub project the dataset is logged into.
-        force: Whether to build the dataset again from nothing.
-        workers: How many products to build at once, as the job was sized.
-
-    Returns:
-        dataset: The published dataset, one object per crop.
-    """
-    return checkpoint.published_dataset(
-        project, run.training_settings(workers), training_selections, FETCHED, force
-    )
+run_build = checkpoint.build_handler(
+    run.training_settings,
+    training_selections,
+    (Artifact.SELECTION, Artifact.LABELS, Artifact.VERDICTS),
+)
 
 
 def main() -> int:
@@ -66,7 +52,7 @@ def main() -> int:
 
     if arguments.dh:
         return submit.submitted(
-            "build_training", BUILD_HANDLER, arguments.ref, force=arguments.force
+            Function.BUILD_TRAINING, arguments.ref, force=arguments.force
         )
     settings = run.training_settings()
     return build_dataset(settings, training_selections(settings), arguments.force)
