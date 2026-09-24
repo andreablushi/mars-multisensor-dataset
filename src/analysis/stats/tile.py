@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 
 from analysis.coverage.models.coverage import SetCoverage
+from analysis.selector.filters.admit import landed_pixels
 from analysis.selector.merge import merge_track
 from analysis.selector.models.selection import Selection
 from analysis.stats.artifacts import selection_by_tile
@@ -99,9 +100,8 @@ def measure_tile(tile_track: TileTrack) -> TileStats:
         if landed is None or observation.pixels is None or not observation.own_km2:
             pixels_by_iid[iid] = None
         else:
-            ground_km2 = len(track.cells[index]) * track.grid.cell_km2
-            pixels_by_iid[iid] = (
-                landed + observation.pixels * ground_km2 / observation.own_km2
+            pixels_by_iid[iid] = landed + landed_pixels(
+                observation, len(track.cells[index]), track.grid.cell_km2
             )
     overlaps: dict[tuple[str, ...], float] = {}
     for cell in sorted(iids_by_cell):
