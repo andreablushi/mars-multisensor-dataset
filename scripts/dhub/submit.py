@@ -11,6 +11,7 @@ from common import paths
 from dhub import configs, credentials, isis
 
 UNITS = {"Ki": 1024, "Mi": 1024**2, "Gi": 1024**3, "Ti": 1024**4}
+ISIS_STAGES = ("build_training", "build_evaluation")
 
 
 def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
@@ -43,7 +44,8 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
     built = function.run(
         action="build",
         profile=platform.resources["image"].profile,
-        instructions=isis.INSTRUCTIONS,
+        # Only the builds calibrate CTX, so only their image carries ISIS
+        instructions=isis.INSTRUCTIONS if stage in ISIS_STAGES else [],
         wait=True,
     )
     if built.status.state != "COMPLETED":
