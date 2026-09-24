@@ -16,6 +16,7 @@ from common.maths.tessellate import Tessellate
 
 SETTINGS = configs.load()
 GRID = Tessellate.of(SETTINGS.tile_km)
+HYPERSPECTRAL = "hsp"
 
 
 def trimmed(
@@ -81,7 +82,8 @@ def redundant_groups(
         criteria: The filter holding the share past which two looks are redundant.
 
     Returns:
-        groups: Each group of one instrument's redundant looks, worst first.
+        groups: Each group of one instrument's redundant looks, worst first and
+            every hyperspectral look after every multispectral one.
     """
     filled = np.zeros((len(looks), track.grid.cells), dtype=np.float32)
     for row, index in enumerate(looks):
@@ -108,7 +110,15 @@ def redundant_groups(
             members |= fresh
             frontier = list(fresh)
         seen |= members
-        groups.append([looks[row] for row in sorted(members)])
+        # A hyperspectral look goes last, so it outlasts a multispectral one
+        ordered = sorted(
+            members,
+            key=lambda row: (
+                track.observations[looks[row]].pdsid.startswith(HYPERSPECTRAL),
+                row,
+            ),
+        )
+        groups.append([looks[row] for row in ordered])
     return groups
 
 
