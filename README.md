@@ -16,7 +16,7 @@ CTX is calibrated and projected by [USGS ISIS](https://github.com/DOI-USGS/ISIS3
 Run the three scripts in this order, each here by default or on DigitalHub with `--dh`:
 
 ```bash
-uv run python scripts/analysis_pipeline.py   # coverage, selection, stats and labels
+uv run python scripts/analysis_pipeline.py   # coverage, ancillary, selection, stats and labels
 uv run python scripts/build_training.py      # the training dataset
 uv run python scripts/build_evaluation.py    # the evaluation dataset
 ```

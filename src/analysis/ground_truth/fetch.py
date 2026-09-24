@@ -7,9 +7,8 @@ from pathlib import Path
 
 from analysis import paths
 from analysis.ground_truth.models.feature import Feature
-from analysis.metadata.ode import ODEClient
 from common.disk.files import read_jsonl, write_jsonl
-from common.fetch.ode import ODE_TARGET
+from common.fetch.ode import ODE_TARGET, ODEClient
 
 
 def read_features(

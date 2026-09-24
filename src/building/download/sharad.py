@@ -33,7 +33,7 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
     """
     for kind, product_type in TYPES.items():
         product_id = configs.NAMING.product(observation_id, kind)
-        span = None
+        spans: tuple[tuple[int, int], ...] = ()
         if kind == configs.CLUTTER:
             radargram = configs.CACHE.files(
                 observation_id,
@@ -42,12 +42,14 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
             )
             lines, samples, *_ = labels.layout(labels.load(radargram[".lbl"]))
             size = lines * samples * np.dtype(configs.CLUTTER_TYPE).itemsize
-            span = (configs.CLUTTER_ARRAY * size, (configs.CLUTTER_ARRAY + 1) * size)
+            spans = (
+                (configs.CLUTTER_ARRAY * size, (configs.CLUTTER_ARRAY + 1) * size),
+            )
         archive.collect(
             client,
             product_id,
             configs.CACHE.files(observation_id, product_id, kind),
-            span=span,
+            spans=spans,
             pt=product_type,
             **ODE,
         )

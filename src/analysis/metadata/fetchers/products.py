@@ -5,11 +5,10 @@ from __future__ import annotations
 from typing import Any, TypeAlias
 
 import analysis.metadata.provenance as provenance
-from analysis.metadata.ode import ODEClient
 from analysis.models.instrument import InstrumentSet
 from analysis.models.tile_group import TileGroup
 from common.fetch import ode
-from common.fetch.ode import ODEError
+from common.fetch.ode import ODEClient, ODEError
 
 # A group circling a pole is asked in two halves, no ODE box reaching round
 LONGITUDE_HALVES = ((0.0, 180.0), (180.0, 360.0))
@@ -68,11 +67,7 @@ def fetch_products(
     )
     for west_lon, east_lon in spans:
         params = {
-            "query": "product",
-            "target": ode.ODE_TARGET,
-            "ihid": instrument_set.ihid,
-            "iid": instrument_set.iid,
-            "pt": instrument_set.pt,
+            **product_params(instrument_set, instrument_set.pt),
             "minlat": str(group.min_lat),
             "maxlat": str(group.max_lat),
             "westernlon": str(west_lon),
@@ -81,34 +76,72 @@ def fetch_products(
         }
         if instrument_set.product_id:
             params["productid"] = instrument_set.product_id
-        raw = client.query({**params, "results": "c"}).get("Count")
-        try:
-            total = int(raw)
-        except (TypeError, ValueError):
-            raise ODEError(f"ODE returned no product count, found {raw!r}") from None
-        offset = 0
-        while offset < total:
-            page = client.query(
-                {
-                    **params,
-                    "results": "opm",
-                    "order": PAGE_ORDER,
-                    "limit": str(PAGE_SIZE),
-                    "offset": str(offset),
-                }
-            )
-            found = page["Products"]["Product"]
-            # A box holding one product is answered with that product, not a list of one
-            items = found if isinstance(found, list) else [found]
-            # Nothing to advance by would page the same offset forever
-            if not items:
-                break
-            for item in items:
-                identity = (item["Footprint_C0_geometry"], item["UTC_start_time"])
-                if identity in seen:
-                    continue
-                seen.add(identity)
-                kept = {f: item[f] for f in RETAINED_FIELDS if f in item}
-                records.append(kept | stamped)
-            offset += len(items)
+        for item in every_product(client, params, "opm"):
+            identity = (item["Footprint_C0_geometry"], item["UTC_start_time"])
+            if identity in seen:
+                continue
+            seen.add(identity)
+            kept = {f: item[f] for f in RETAINED_FIELDS if f in item}
+            records.append(kept | stamped)
     return records
+
+
+def product_params(instrument_set: InstrumentSet, pt: str) -> dict[str, str]:
+    """Return what names one instrument's products of one type to ODE.
+
+    Args:
+        instrument_set: The instrument host and instrument asked about.
+        pt: The product type asked for.
+
+    Returns:
+        params: The query parameters naming them.
+    """
+    return {
+        "query": "product",
+        "target": ode.ODE_TARGET,
+        "ihid": instrument_set.ihid,
+        "iid": instrument_set.iid,
+        "pt": pt,
+    }
+
+
+def every_product(
+    client: ODEClient, params: dict[str, str], results: str
+) -> list[ProductRecord]:
+    """Fetch every product one query matches, a page at a time.
+
+    Args:
+        client: The ODE client to query with.
+        params: What names the products, excluding the results asked and the paging.
+        results: Which ODE result sections each product carries.
+
+    Returns:
+        products: Every product ODE answered with, in the order it returned them.
+
+    Raises:
+        ODEError: When ODE reports no usable count for the query.
+    """
+    raw = client.query({**params, "results": "c"}).get("Count")
+    try:
+        total = int(raw)
+    except (TypeError, ValueError):
+        raise ODEError(f"ODE returned no product count, found {raw!r}") from None
+    products: list[ProductRecord] = []
+    while len(products) < total:
+        page = client.query(
+            {
+                **params,
+                "results": results,
+                "order": PAGE_ORDER,
+                "limit": str(PAGE_SIZE),
+                "offset": str(len(products)),
+            }
+        )
+        found = page["Products"]["Product"]
+        # A box holding one product is answered with that product, not a list of one
+        items = found if isinstance(found, list) else [found]
+        # Nothing to advance by would page the same offset forever
+        if not items:
+            break
+        products.extend(items)
+    return products

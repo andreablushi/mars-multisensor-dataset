@@ -12,7 +12,7 @@ from analysis.ground_truth.models.label import Label
 from analysis.ground_truth.models.rule import Rule
 from analysis.ground_truth.models.settings import Settings
 from analysis.selector.models.selection import SelectedTile
-from common.maths.geodesy import northward_m
+from common.maths.geodesy import bbox_centre, northward_m
 from common.maths.physics import METRES_PER_KM
 
 
@@ -43,22 +43,20 @@ def labelled_tiles(
         return feature.name in rule.names or feature.feature_class == rule.descriptor
 
     kept = [one for one in searched if one.kept]
-    tiles: box.Box = tuple(
-        np.array(held)
-        for held in zip(*(box.bounds_box(one) for one in kept), strict=True)
-    )
+    tiles = box.bounds_boxes(kept)
     owners = [
         {label for label, rule in settings.classes.items() if read_from(rule, one)}
         for one in features
     ]
-    claims: list[dict[str, tuple[str, float]]] = [{} for _ in kept]
-    touched: list[list[int]] = [[] for _ in kept]
+    bounds = box.bounds_boxes(features)
+    relevant = np.array(
+        [
+            bool(owned) or one.feature_class in settings.excluded
+            for owned, one in zip(owners, features, strict=True)
+        ]
+    )
+    claims: list[dict[str, tuple[int, float]]] = [{} for _ in kept]
     for at, feature in enumerate(features):
-        if not owners[at] and feature.feature_class not in settings.excluded:
-            continue
-        bounds = box.bounds_box(feature)
-        for tile in np.flatnonzero(box.touching(tiles, bounds)):
-            touched[tile].append(at)
         for label in owners[at]:
             rule = settings.classes[label]
             if rule.diameter_km is not None:
@@ -68,15 +66,18 @@ def labelled_tiles(
                 )
                 if not smallest <= diameter <= largest:
                     continue
-                hit = box.inside(bounds, tiles)
-                offset = box.centre_offset(bounds, tiles)
+                longitude, latitude = bbox_centre(
+                    feature.min_lat, feature.max_lat, feature.west_lon, feature.east_lon
+                )
+                hit = box.inside((latitude, latitude, longitude, 0.0), tiles)
+                offset = np.zeros(len(kept))
             elif (claimed := box.claimed_box(feature, rule.latitudes)) is None:
                 continue
             else:
                 hit = box.inside(tiles, claimed)
                 offset = box.centre_offset(tiles, claimed)
             for tile in np.flatnonzero(hit):
-                claims[tile].setdefault(label, (feature.name, float(offset[tile])))
+                claims[tile].setdefault(label, (at, float(offset[tile])))
     labels = []
     for tile, held in enumerate(claims):
         chosen = {
@@ -86,12 +87,15 @@ def labelled_tiles(
         } or held
         if len(chosen) != 1:
             continue
-        ((label, (name, offset)),) = chosen.items()
+        ((label, (at, offset)),) = chosen.items()
+        name = features[at].name
         # An object stands alone, while a texture may meet more of its own class
         alone = settings.classes[label].diameter_km is not None
+        cut = features[at] if alone else kept[tile]
+        touched = np.flatnonzero(relevant & box.touching(bounds, box.bounds_box(cut)))
         foreign = sum(
-            features[at].name != name and (alone or owners[at] != {label})
-            for at in touched[tile]
+            features[other].name != name and (alone or owners[other] != {label})
+            for other in touched
         )
         labels.append(
             Label(
@@ -100,6 +104,10 @@ def labelled_tiles(
                 feature=name,
                 foreign=foreign,
                 offset=offset,
+                min_lat=cut.min_lat,
+                max_lat=cut.max_lat,
+                west_lon=cut.west_lon,
+                east_lon=cut.east_lon,
             )
         )
     return labels

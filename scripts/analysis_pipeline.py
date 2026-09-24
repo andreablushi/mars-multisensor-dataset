@@ -18,6 +18,7 @@ from analysis.coverage.artifacts import index
 from analysis.ground_truth import artifacts, draw, fetch, label
 from analysis.ground_truth.models.label import Label
 from analysis.metadata import file_explorer
+from analysis.metadata.summary import summarise_ancillary
 from analysis.models.progress import CoverageSummary, DownloadSummary
 from analysis.selector import select
 from analysis.stats.artifacts import store
@@ -76,7 +77,7 @@ def archived(project, name: str):
 
 
 def compute_coverage(force: bool = False, workers: int | None = None) -> int:
-    """Download the ODE metadata still missing and measure the coverage it left.
+    """Download the ODE metadata still missing, measure it, and read its ancillary.
 
     Args:
         force: Whether to redo finished work rather than skip it.
@@ -99,7 +100,9 @@ def compute_coverage(force: bool = False, workers: int | None = None) -> int:
         planner.unfinished(file_explorer.find_sets()),
         printing,
     )
-    return 1 if computed.failed or downloaded.failed else 0
+    unread = summarise_ancillary(choices, force)
+    printing.print(f"ancillary: {unread} tables left unread")
+    return 1 if computed.failed or downloaded.failed or unread else 0
 
 
 def compute_labels(force: bool = False) -> list[Label]:
@@ -210,6 +213,8 @@ def run_selection(project, force: bool = False, workers: int | None = None):
     os.environ[PLAIN_LOG_ENV] = "1"
     print("fetching the measurements", flush=True)
     archives.unpack_archive(project, _COVERAGE, paths.COVERAGE_ROOT)
+    if configs.load().ancillary:
+        archives.unpack_archive(project, _METADATA, paths.METADATA_ROOT)
     compute_selection(workers, force)
     print("done", flush=True)
     return tuple(archived(project, name) for name in (_SELECTION, _STATS, _LABELS))

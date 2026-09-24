@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import functools
 import random
+import ssl
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +36,9 @@ QUERY_DEADLINE = 900.0
 
 # How long one transfer may run in all, so a trickling server is given up on
 STREAM_DEADLINE = 10800.0
+
+TLS_CONTEXT = httpx.create_ssl_context()
+TLS_CONTEXT.verify_flags &= ~ssl.VERIFY_X509_STRICT
 
 
 @functools.cache
@@ -68,6 +72,22 @@ def gave_up(host: str, started: float, last: Exception | None) -> FetchError:
     cause = f"{type(last).__name__}: {last}" if last else "no attempt was made"
     elapsed = time.monotonic() - started
     return FetchError(f"gave up on {host} after {elapsed:.0f}s, {cause}")
+
+
+def certificate_refused(error: BaseException | None) -> bool:
+    """Return whether a failure is a server certificate that did not verify.
+
+    Args:
+        error: What an attempt failed with, followed through what caused it.
+
+    Returns:
+        refused: True when a certificate check lies anywhere in its chain.
+    """
+    while error is not None:
+        if isinstance(error, ssl.SSLCertVerificationError):
+            return True
+        error = error.__cause__ or error.__context__
+    return False
 
 
 def slept(attempt: int, backoff: float) -> None:
@@ -111,7 +131,7 @@ def fetched_json(
     Raises:
         FetchError: When refused, when no reply was readable, or past the deadline.
     """
-    asking = client or httpx
+    asking = client.get if client else functools.partial(httpx.get, verify=TLS_CONTEXT)
     host = httpx.URL(url).host
     archive = throttle(host)
     started = time.monotonic()
@@ -124,12 +144,16 @@ def fetched_json(
             break
         archive.wait()
         try:
-            reply = asking.get(
+            reply = asking(
                 url,
                 params=params,
                 timeout=httpx.Timeout(timeout, connect=CONNECT_TIMEOUT),
             )
         except httpx.HTTPError as error:
+            if certificate_refused(error):
+                raise FetchError(
+                    f"{host} failed its certificate check: {error}"
+                ) from error
             if isinstance(error, CONNECT_ERRORS):
                 archive.refused()
             last = error
@@ -164,7 +188,7 @@ def streamed(
     retries: int = STREAM_RETRIES,
     backoff: float = BACKOFF_BASE,
     deadline: float = STREAM_DEADLINE,
-    span: tuple[int, int] | None = None,
+    spans: Sequence[tuple[int, int]] = (),
 ) -> None:
     """Stream one file to disk, asking again while the server keeps failing.
 
@@ -176,13 +200,16 @@ def streamed(
         retries: How many times to ask again after the first attempt.
         backoff: The base delay between attempts, in seconds.
         deadline: How long the whole transfer may run for, in seconds.
-        span: The first and past-the-last byte to keep, or None for the whole file.
+        spans: The first and past-the-last byte of each part to keep, or none for all.
 
     Raises:
         FetchError: When refused, when every attempt fails, or past the deadline.
     """
-    reading = client.stream if client else httpx.stream
-    headers = {"Range": f"bytes={span[0]}-{span[1] - 1}"} if span else None
+    reading = (
+        client.stream if client else functools.partial(httpx.stream, verify=TLS_CONTEXT)
+    )
+    ranges = ",".join(f"{first}-{last - 1}" for first, last in spans)
+    headers = {"Range": f"bytes={ranges}"} if spans else None
     host = httpx.URL(url).host
     archive = throttle(host)
     started = time.monotonic()
@@ -210,7 +237,7 @@ def streamed(
                     raise FetchError(
                         f"{url} refused the request: HTTP {reply.status_code}"
                     )
-                if span and reply.status_code != httpx.codes.PARTIAL_CONTENT:
+                if spans and reply.status_code != httpx.codes.PARTIAL_CONTENT:
                     raise FetchError(f"{url} ignored the byte range it was asked for")
                 archive.answered()
                 # Nothing is left behind when a transfer fails part way through.
@@ -224,6 +251,10 @@ def streamed(
                         handle.write(chunk)
                 return
         except httpx.HTTPError as error:
+            if certificate_refused(error):
+                raise FetchError(
+                    f"{host} failed its certificate check: {error}"
+                ) from error
             if isinstance(error, CONNECT_ERRORS):
                 archive.refused()
             last = error

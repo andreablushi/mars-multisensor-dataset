@@ -40,8 +40,9 @@ def training_selections(settings: TrainingSettings) -> list[Selection]:
     Raises:
         FileNotFoundError: When no labels were written, so none can be held out.
     """
-    held_out = {one.tile for one in artifacts.read_labels() if one.drawn}
-    return draw.draw_training(dataset_list.read_dataset_list(), settings, held_out)
+    return draw.draw_training(
+        dataset_list.read_dataset_list(), settings, artifacts.read_labels()
+    )
 
 
 @handler(outputs=[_DATASET])

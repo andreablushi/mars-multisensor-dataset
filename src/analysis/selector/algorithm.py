@@ -7,7 +7,7 @@ from bisect import bisect_left
 from collections.abc import Sequence
 
 from analysis.coverage import ground
-from analysis.selector.filters import redundancy, timeless
+from analysis.selector.filters import redundancy
 from analysis.selector.filters.coverage_constraints import coverage_constraints
 from analysis.selector.models.counter import Counter
 from analysis.selector.models.filter import Filter
@@ -17,9 +17,6 @@ from analysis.selector.models.window import Window
 
 # How far Mars may turn for one more point of ground, in degrees; ten days at mean
 LS_PER_PERCENT = 5.25
-
-# The cells a look must bring that its own set has not, as a share of the tile
-GAIN_SHARE = 0.001
 
 _PRICE_PER_DEGREE = 0.01 / LS_PER_PERCENT
 
@@ -75,10 +72,8 @@ def search(track: Track, criteria: Filter) -> Survey | None:
                 picked, worth = Window(left, right, days), paid
     if picked is None:
         return None
-    # What a look has to bring the tile, which its own size is read for
-    gain = max(1, round(GAIN_SHARE * len(track.grid.inside)))
     # Clean up the record to only what is worth keeping, and report reached
-    kept, reached = redundancy.trimmed(track, picked, windowed, gain)
+    kept, standing, reached = redundancy.trimmed(track, picked, criteria)
     return Survey(
         area_km2=track.grid.area_km2,
         start=track.observations[kept[0]].t_start,
@@ -86,7 +81,7 @@ def search(track: Track, criteria: Filter) -> Survey | None:
         days=track.times[kept[-1]] - track.times[kept[0]],
         geo_mean=_scored(track, reached),
         kept=tuple(kept),
-        standing=timeless.fresh_looks(track, criteria.timeless, gain),
+        standing=tuple(standing),
     )
 
 

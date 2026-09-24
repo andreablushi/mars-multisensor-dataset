@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 
 from analysis.ground_truth.models.feature import Feature
@@ -37,6 +39,40 @@ def bounds_box(bounded) -> Box:
         box: Its latitudes, its west edge and its eastward span.
     """
     return bounded.min_lat, bounded.max_lat, bounded.west_lon, box_span(bounded)
+
+
+def bounds_boxes(bounded) -> Box:
+    """Return the boxes many tiles or features are bounded by, stacked.
+
+    Args:
+        bounded: Everything to stack, each bounded by two latitudes and two longitudes.
+
+    Returns:
+        boxes: Their latitudes, west edges and eastward spans, one array each.
+    """
+    return tuple(
+        np.array(held)
+        for held in zip(*(bounds_box(one) for one in bounded), strict=True)
+    )
+
+
+def recut[Bounded](bounded: Bounded, cut) -> Bounded:
+    """Return a copy of one bounded record, bounded by another's box instead.
+
+    Args:
+        bounded: The dataclass to copy.
+        cut: Anything bounded by two latitudes and two longitudes.
+
+    Returns:
+        recut: The copy, holding the box of the cut.
+    """
+    return replace(
+        bounded,
+        min_lat=cut.min_lat,
+        max_lat=cut.max_lat,
+        west_lon=cut.west_lon,
+        east_lon=cut.east_lon,
+    )
 
 
 def claimed_box(feature: Feature, latitudes: tuple[float, float] | None) -> Box | None:

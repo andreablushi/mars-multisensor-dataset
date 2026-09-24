@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import httpx
 
@@ -27,37 +26,9 @@ def query(client: httpx.Client, **params: str) -> list[dict]:
         ODEError: When ODE reports an error of its own.
         FetchError: When ODE refuses the query, or every attempt fails.
     """
-
-    def accepted(payload: Any) -> dict[str, Any] | None:
-        """Return the results one reply carries, or None to ask again.
-
-        Args:
-            payload: The parsed response body.
-
-        Returns:
-            results: The ODEResults object, or None when the reply holds none.
-
-        Raises:
-            ODEError: When ODE reports an error of its own.
-        """
-        results = payload.get("ODEResults") if isinstance(payload, dict) else None
-        if not isinstance(results, dict):
-            return None
-        if str(results.get("Status", "")).upper() == "ERROR":
-            raise ode.ODEError(str(results.get("Error", "unknown ODE error")))
-        return results
-
-    results = http.fetched_json(
-        ode.ODE_BASE_URL,
-        {
-            **ode.OUTPUT,
-            "query": "product",
-            "results": "f",
-            "target": ode.ODE_TARGET,
-            **params,
-        },
-        accepted=accepted,
-        client=client,
+    results = ode.fetch_results(
+        {"query": "product", "results": "f", "target": ode.ODE_TARGET, **params},
+        client,
     )
     # ODE answers a query that matched nothing with a sentence, not a product.
     products = results.get("Products", {})
@@ -65,18 +36,19 @@ def query(client: httpx.Client, **params: str) -> list[dict]:
     return entries if isinstance(entries, list) else [entries]
 
 
-def published(entry: dict) -> dict[str, str]:
-    """Read the name and URL of every file one ODE product entry offers.
+def published(entry: dict, field: str = "URL") -> dict[str, str]:
+    """Read one field of every file one ODE product entry offers, its URL by default.
 
     Args:
         entry: One product, as `query` returns it.
+        field: The field each file is read for, such as "URL" or "KBytes".
 
     Returns:
-        urls: The download URL of each file, keyed by its lowercase filename.
+        fields: That field of each file, keyed by its lowercase filename.
     """
     offered = entry.get("Product_files", {}).get("Product_file", [])
     return {
-        str(offer.get("FileName", "")).lower(): str(offer.get("URL", ""))
+        str(offer.get("FileName", "")).lower(): str(offer.get(field, ""))
         for offer in (offered if isinstance(offered, list) else [offered])
         if offer.get("Type") == "Product"
     }
@@ -110,7 +82,7 @@ def collect(
     product_id: str,
     destination: dict[str, Path],
     *,
-    span: tuple[int, int] | None = None,
+    spans: tuple[tuple[int, int], ...] = (),
     **params: str,
 ) -> None:
     """Download whichever halves of one ODE product are not on disk yet.
@@ -119,7 +91,7 @@ def collect(
         client: The client whose connections the query is asked over.
         product_id: The product to fetch.
         destination: Where each of its halves belongs, keyed by suffix.
-        span: The first and past-the-last byte of each half, or None for whole.
+        spans: The first and past-the-last byte of each part, or none for whole.
         params: What names the product to ODE, such as host, instrument and type.
 
     Raises:
@@ -130,7 +102,7 @@ def collect(
             destination,
             offers(client, product_id, **params),
             client=client,
-            span=span,
+            spans=spans,
         )
 
 
@@ -139,7 +111,7 @@ def bring(
     urls: dict[str, str],
     *,
     client: httpx.Client | None = None,
-    span: tuple[int, int] | None = None,
+    spans: tuple[tuple[int, int], ...] = (),
 ) -> None:
     """Stream whichever halves of one product are not on disk yet.
 
@@ -147,7 +119,7 @@ def bring(
         destination: Where each half belongs, keyed by suffix.
         urls: Where each half is served from, keyed by the same suffix.
         client: A client whose connections to reuse, or None to open one each.
-        span: The first and past-the-last byte of each half, or None for whole.
+        spans: The first and past-the-last byte of each part, or none for whole.
 
     Raises:
         FileNotFoundError: When a missing half is served from nowhere.
@@ -157,4 +129,4 @@ def bring(
             continue
         if not urls.get(suffix):
             raise FileNotFoundError(f"No {suffix} offered for {path.stem}.")
-        http.streamed(urls[suffix], path, TIMEOUT, client=client, span=span)
+        http.streamed(urls[suffix], path, TIMEOUT, client=client, spans=spans)

@@ -3,22 +3,24 @@
 from __future__ import annotations
 
 import random
-from collections.abc import Sequence, Set
+from collections.abc import Sequence
+from dataclasses import replace
 
+from analysis.ground_truth import box
 from analysis.ground_truth.models.label import Label
 from analysis.selector.models.selection import Selection
 from building.models.settings import TrainingSettings
 
 
 def draw_training(
-    picked: Sequence[Selection], settings: TrainingSettings, held_out: Set[str]
+    picked: Sequence[Selection], settings: TrainingSettings, labels: Sequence[Label]
 ) -> list[Selection]:
     """Keep the share of the kept tiles the training build covers, drawn at random.
 
     Args:
         picked: What the search left of every tile it searched.
         settings: The settled choices for the build, whose share sizes it.
-        held_out: The tiles another dataset holds, which training never sees.
+        labels: Every labelled tile, whose drawn boxes training never touches.
 
     Returns:
         kept: The selections to build, in the order the selection was written.
@@ -28,8 +30,13 @@ def draw_training(
     taken = range(len(kept))
     if wanted < len(kept):
         taken = sorted(random.Random(settings.seed).sample(taken, wanted))
+    held_out = box.bounds_boxes(one for one in labels if one.drawn)
     # Held out after the draw, so a new evaluation draw never reshuffles training
-    return [kept[at] for at in taken if kept[at].tile.tile not in held_out]
+    return [
+        kept[at]
+        for at in taken
+        if not box.touching(box.bounds_box(kept[at].tile), held_out).any()
+    ]
 
 
 def draw_evaluation(
@@ -42,7 +49,11 @@ def draw_evaluation(
         labels: Every labelled tile, the drawn ones marked so.
 
     Returns:
-        kept: The selections to build, in the order the selection was written.
+        kept: The selections to build, each cut to its label's box, in selection order.
     """
-    drawn = {one.tile for one in labels if one.drawn}
-    return [one for one in picked if one.tile.tile in drawn]
+    drawn = {one.tile: one for one in labels if one.drawn}
+    return [
+        replace(one, tile=box.recut(one.tile, cut))
+        for one in picked
+        if (cut := drawn.get(one.tile.tile)) is not None
+    ]

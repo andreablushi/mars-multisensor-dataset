@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import io
-from collections.abc import Sequence
+import threading
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from html import escape
 from itertools import cycle
@@ -18,6 +19,8 @@ from analysis.visualization.common.models.colours import Colour
 from analysis.visualization.common.models.coverage import Coverage
 
 GREY = "#8a8a8a"
+
+PLACEHOLDER = "320px"
 
 FIGURE_WIDTH = 11
 
@@ -107,6 +110,40 @@ def rendered(figure: Figure) -> widgets.Image:
         format="png",
         layout=widgets.Layout(max_width="100%", height="auto"),
     )
+
+
+def loaded[T](
+    fetch: Callable[[], T],
+    draw: Callable[[T], widgets.Widget],
+    waiting: str,
+    failed: str,
+) -> widgets.Box:
+    """Claim the space one figure goes in and fill it off the thread that fetches it."""
+    space = widgets.Box(
+        [
+            widgets.HTML(
+                f"<div style='width: {PLACEHOLDER}; height: {PLACEHOLDER};"
+                f" display: flex; align-items: center; justify-content: center;"
+                f" box-sizing: border-box; padding: 10px; text-align: center;"
+                f" background: #f2f2f2; border: 1px solid #d8d8d8;"
+                f" border-radius: 4px; color: {GREY};"
+                f" font-family: sans-serif; font-size: 12px;'>"
+                f"{escape(waiting)}</div>"
+            )
+        ]
+    )
+
+    def fill() -> None:
+        """Fetch what is drawn and put the figure in the claimed space."""
+        try:
+            held = fetch()
+        except Exception as exc:
+            space.children = (unavailable(failed.format(reason=exc)),)
+            return
+        space.children = (draw(held),)
+
+    threading.Thread(target=fill, daemon=True).start()
+    return space
 
 
 def unavailable(

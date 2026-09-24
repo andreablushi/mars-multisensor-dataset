@@ -71,7 +71,6 @@ class TileStats:
     Attributes:
         window: The window the selection gave it, with its name, box and span.
         iids: The instruments it holds, in the order they are drawn.
-        offered: How many observations of each instrument landed on it at all.
         pixel_km2: The ground one pixel covers, per instrument offered to the tile.
         reached: What each instrument left on it, by instrument.
         overlaps: The ground each set of instruments reaches, most ground first.
@@ -79,7 +78,6 @@ class TileStats:
 
     window: SelectedTile
     iids: list[str]
-    offered: dict[str, int]
     pixel_km2: dict[str, float]
     reached: dict[str, InstrumentReach]
     overlaps: dict[tuple[str, ...], float]
