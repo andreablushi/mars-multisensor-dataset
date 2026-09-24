@@ -8,11 +8,11 @@ workers: 8
 
 # Downloads at once from each archive, which wait on it and not on the cores.
 downloads:
-  jpl: 10
-  wustl: 10
+  jpl: 8
+  wustl: 8
 
 # What share of the tiles the selection kept to build, above zero and up to one.
-share: 0.02
+share: 1
 
 # The number every draw is made with, so a smaller build is a reproducible subset.
 seed: 42
