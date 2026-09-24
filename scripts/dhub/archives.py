@@ -15,7 +15,7 @@ from digitalhub.stores.data.api import get_default_store
 
 from analysis.paths import ANALYSIS_ROOT
 from common.paths import DATA_ROOT
-from dhub.artifacts import Artifact
+from dhub.paths import Artifact
 
 # The platform says twice per publish that 0.16 renames what it is called by.
 warnings.filterwarnings("ignore", ".*0\\.16", UserWarning)

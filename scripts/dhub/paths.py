@@ -1,24 +1,24 @@
-"""What a platform run publishes or reads back, and the functions it runs as."""
+"""Where what a platform run publishes or reads back lands, and what it runs as."""
 
 from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
 
-from analysis import paths
+from analysis import paths as analysis_paths
 from building import paths as building_paths
 
 
 class Artifact(Enum):
     """One artifact on DigitalHub, its value where it lands on disk."""
 
-    COVERAGE = paths.COVERAGE_ROOT
-    METADATA = paths.METADATA_ROOT
-    SELECTION = paths.SELECTION_ROOT
-    STATS = paths.STATS_ROOT
-    LABELS = paths.LABELS_ROOT
-    SUMMARY = paths.COVERAGE_ROOT / paths.SUMMARY_NAME
-    VERDICTS = paths.VERDICTS_PATH
+    COVERAGE = analysis_paths.COVERAGE_ROOT
+    METADATA = analysis_paths.METADATA_ROOT
+    SELECTION = analysis_paths.SELECTION_ROOT
+    STATS = analysis_paths.STATS_ROOT
+    LABELS = analysis_paths.LABELS_ROOT
+    SUMMARY = analysis_paths.COVERAGE_ROOT / analysis_paths.SUMMARY_NAME
+    VERDICTS = analysis_paths.VERDICTS_PATH
     DATASET = building_paths.DATASETS_ROOT
 
     @property

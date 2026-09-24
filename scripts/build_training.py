@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from dhub import args, checkpoint, submit
-from dhub.artifacts import Artifact, Function
+from dhub.paths import Artifact, Function
 
 from analysis.ground_truth import artifacts
 from analysis.selector.models.selection import Selection

@@ -9,7 +9,7 @@ import digitalhub as dh
 from building.preprocessing.ctx import isis
 from common import paths
 from dhub import configs, credentials
-from dhub.artifacts import Function
+from dhub.paths import Function
 
 
 def submitted(stage: Function, ref: str, **parameters) -> int:

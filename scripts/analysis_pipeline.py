@@ -8,7 +8,7 @@ import time
 from collections import Counter
 
 from dhub import archives, args, submit
-from dhub.artifacts import Artifact, Function
+from dhub.paths import Artifact, Function
 from digitalhub_runtime_python import handler
 from rich.console import Console
 

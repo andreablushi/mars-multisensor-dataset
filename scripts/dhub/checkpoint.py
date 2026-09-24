@@ -14,7 +14,7 @@ from building import build, paths
 from building.models.settings import Settings
 from common.console import PLAIN_LOG_ENV
 from dhub import archives
-from dhub.artifacts import Artifact
+from dhub.paths import Artifact
 
 
 def checkpoint(project, root: Path, name: str, uploads: int):
