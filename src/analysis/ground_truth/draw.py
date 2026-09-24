@@ -4,19 +4,22 @@ from __future__ import annotations
 
 import random
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import replace
 
 from analysis.ground_truth.models.label import Label
 from analysis.ground_truth.models.settings import Settings
 
 
-def drawn_labels(labels: Sequence[Label], settings: Settings) -> list[Label]:
+def drawn_labels(
+    labels: Sequence[Label], settings: Settings, refused: Collection[str] = ()
+) -> list[Label]:
     """Mark the tiles the balanced draw takes of every class.
 
     Args:
         labels: Every labelled tile.
         settings: The settled choices, which size the draw and seed it.
+        refused: The tiles the review refused, never taken.
 
     Returns:
         labels: The same labels in the same order, the ones drawn marked so.
@@ -29,7 +32,10 @@ def drawn_labels(labels: Sequence[Label], settings: Settings) -> list[Label]:
     }
     for one in labels:
         classes[one.label].setdefault(one.feature, []).append(one)
-    held = {label: sum(map(len, by.values())) for label, by in classes.items()}
+    held = {
+        label: sum(one.tile not in refused for tiles in by.values() for one in tiles)
+        for label, by in classes.items()
+    }
     wanted = settings.per_class or min(held.values())
     if short := {label: count for label, count in held.items() if count < wanted}:
         raise ValueError(f"{wanted} tiles are drawn per class, but {short} hold fewer")
@@ -51,5 +57,7 @@ def drawn_labels(labels: Sequence[Label], settings: Settings) -> list[Label]:
                     )
                 )
                 turns[one.foreign] += 1
-        taken.update(tile for *_, tile in sorted(ranked)[:wanted])
+        # Skipped only once ranked, so a refusal never reshuffles what was accepted
+        kept = [tile for *_, tile in sorted(ranked) if tile not in refused]
+        taken.update(kept[:wanted])
     return [replace(one, drawn=one.tile in taken) for one in labels]

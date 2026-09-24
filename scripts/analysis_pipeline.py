@@ -36,6 +36,7 @@ _SELECTION = _PUBLISHED["selection"]
 _STATS = _PUBLISHED["stats"]
 _SUMMARY = _PUBLISHED["summary"]
 _LABELS = _PUBLISHED["labels"]
+_VERDICTS = "verdicts"
 
 # Where each archive is packed from, shared by two handlers.
 ARCHIVED = {
@@ -122,6 +123,7 @@ def compute_labels(force: bool = False) -> list[Label]:
             settings,
         ),
         settings,
+        artifacts.read_refused(),
     )
     artifacts.write_labels(labels)
     held = Counter(one.label for one in labels)
@@ -187,6 +189,9 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
     # Report a failure only once uploaded, and never select from short coverage
     if failed:
         raise RuntimeError("the run had failures; the archives hold what finished")
+    project.get_artifact(_VERDICTS).download(
+        destination=str(paths.VERDICTS_PATH), overwrite=True
+    )
     compute_selection(workers, force)
     print("done", flush=True)
     return (
@@ -215,6 +220,9 @@ def run_selection(project, force: bool = False, workers: int | None = None):
     archives.unpack_archive(project, _COVERAGE, paths.COVERAGE_ROOT)
     if configs.load().ancillary:
         archives.unpack_archive(project, _METADATA, paths.METADATA_ROOT)
+    project.get_artifact(_VERDICTS).download(
+        destination=str(paths.VERDICTS_PATH), overwrite=True
+    )
     compute_selection(workers, force)
     print("done", flush=True)
     return tuple(archived(project, name) for name in (_SELECTION, _STATS, _LABELS))

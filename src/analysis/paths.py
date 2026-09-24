@@ -18,6 +18,7 @@ EVALUATION_STATS_ROOT = STATS_ROOT / "evaluation"
 SELECTION_ROOT = ANALYSIS_ROOT / "selection"
 LABELS_ROOT = ANALYSIS_ROOT / "labels"
 FEATURES_PATH = LABELS_ROOT / "features.jsonl"
+VERDICTS_PATH = ANALYSIS_ROOT / "verdicts.json"
 
 STATS_NAME = "stats.json"
 SELECTED_TILES_NAME = "tiles.parquet"
