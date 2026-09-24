@@ -9,11 +9,7 @@ from analysis.models.instrument import InstrumentSet
 
 
 def find_sets() -> list[Path]:
-    """Find every stored instrument set holding observations.
-
-    Returns:
-        files: The non-empty JSONL files, sorted, one per group and instrument set.
-    """
+    """Find every non-empty metadata file, sorted, one per group and instrument set."""
     return sorted(
         path
         for path in paths.METADATA_ROOT.glob("*/*.jsonl")
@@ -31,5 +27,5 @@ def has_metadata(group: str, instrument_set: InstrumentSet) -> bool:
     Returns:
         found: True when a non-empty metadata file for that set exists.
     """
-    held = paths.metadata_path(group, instrument_set)
-    return held.exists() and held.stat().st_size > 0
+    metadata = paths.metadata_path(group, instrument_set)
+    return metadata.exists() and metadata.stat().st_size > 0

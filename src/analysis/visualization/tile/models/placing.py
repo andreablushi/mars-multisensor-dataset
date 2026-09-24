@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from analysis.coverage.projection.geometry import footprints
+from analysis.coverage.projection import footprints
 from analysis.visualization.common.models.box import Box
 from common.maths import geodesy
 from common.models.tile import Tile
@@ -22,9 +22,8 @@ class Placed:
         Args:
             tile: The tile to place.
         """
-        region = footprints.tile_region(tile)
-        self._centre = (region.centre_lon, region.centre_lat)
-        self._bounds = region.shape.bounds
+        self._centre = (tile.centre_lon, tile.centre_lat)
+        self._bounds = footprints.tile_shape(tile).bounds
 
     def outline(self) -> tuple[np.ndarray, np.ndarray]:
         """Trace the whole tile as a closed lon/lat ring.

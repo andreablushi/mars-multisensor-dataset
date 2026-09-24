@@ -27,10 +27,11 @@ def measure_set(
     """
     tile, region = projected.tile, projected.region
     observations = projected.observations
-    fresh = union.new_ground(region, [one.shape for one in observations], union_threads)
-    cumulative = np.cumsum(fresh)
+    ground = union.new_ground(
+        region, [observation.shape for observation in observations], union_threads
+    )
+    cumulative = np.cumsum(ground)
     grid = fine_split.grid_over(region, grid_cells)
-    inside = fine_split.filled(grid, region.shape)
     events = [
         Event(
             tile=tile.name,
@@ -39,22 +40,16 @@ def measure_set(
             pt=observation.pt,
             pdsid=observation.pdsid,
             t_start=observation.start,
-            t_stop=observation.stop,
             own_km2=observation.shape.area / 1e6,
-            new_km2=float(first_seen) / 1e6,
-            cum_km2=float(covered) / 1e6,
             cum_frac=float(covered) / region.area_m2,
             width_km=observation.width_km,
             pixels=observation.shape.area / 1e6 / observation.pixel_km2,
             mask=packing.encode(
-                fine_split.filled(grid, observation.shape), grid.side**2
+                fine_split.filled_cells(grid, observation.shape), grid.side**2
             ),
         )
-        for observation, first_seen, covered in zip(
-            observations, fresh, cumulative, strict=True
-        )
+        for observation, covered in zip(observations, cumulative, strict=True)
     ]
-    first, last = events[0].t_start, events[-1].t_start
     return events, Summary(
         tile=tile.name,
         set_key=projected.set_key,
@@ -62,15 +57,14 @@ def measure_set(
         iid=events[0].iid,
         pt=events[0].pt,
         tile_area_km2=region.area_m2 / 1e6,
-        covered_km2=float(cumulative[-1]) / 1e6,
         covered_frac=float(cumulative[-1]) / region.area_m2,
         n_obs=len(events),
-        t_first=first,
-        t_last=last,
-        span_days=(last - first).total_seconds() / 86400.0,
-        mask_cells=int(inside.size),
+        t_first=events[0].t_start,
+        t_last=events[-1].t_start,
         pixels=sum(event.pixels for event in events),
         grid_side=grid.side,
         cell_km2=grid.cell_area_m2 / 1e6,
-        grid_mask=packing.encode(inside, grid.side**2),
+        grid_mask=packing.encode(
+            fine_split.filled_cells(grid, region.shape), grid.side**2
+        ),
     )

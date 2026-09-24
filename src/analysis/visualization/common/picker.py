@@ -7,7 +7,7 @@ from collections.abc import Callable
 import ipywidgets as widgets
 from IPython.display import display
 
-from analysis.coverage.artifacts import index
+from analysis.coverage import artifacts as index
 from analysis.stats.artifacts import selection
 from analysis.utils.tile_group import tile_grid
 from analysis.visualization.common import panels

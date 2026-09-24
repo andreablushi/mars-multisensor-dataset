@@ -6,7 +6,6 @@ import dataclasses
 import math
 from collections.abc import Sequence
 
-from analysis.coverage import ground
 from analysis.coverage.models.coverage import SetCoverage
 from analysis.selector.models.filter import Constraints, Filter
 from analysis.selector.models.grid import Grid
@@ -32,7 +31,7 @@ def clean_window(
         answers = [
             (
                 tuple(index for index, owner in enumerate(iids) if owner == iid),
-                max(1, math.ceil(ground.cells(share, grid.area_km2, grid.cell_km2))),
+                max(1, math.ceil(share * grid.area_km2 / grid.cell_km2)),
             )
             for iid, share in constraint.items()
         ]

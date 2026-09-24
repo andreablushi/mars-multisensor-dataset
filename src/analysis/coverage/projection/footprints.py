@@ -22,7 +22,8 @@ from shapely import (
 from shapely.geometry.base import BaseGeometry
 
 from analysis.coverage.models.region import TileRegion
-from common.maths import geodesy, physics
+from analysis.coverage.projection import frame
+from common.maths import geodesy
 from common.models.tile import Tile
 
 _EMPTY = Polygon()
@@ -30,18 +31,45 @@ _LINESTRING = 1
 _POLYGON = 3
 _FIRST_MULTIPART = 4
 
-# Tracks are clipped to a dilated box so buffering still reaches the edge
-LINE_CLIP_MARGIN_DEG = 2.0
 
-# Straight lon/lat edges curve once projected, so resample below this step
-MAX_SEGMENT_DEG = 0.25
+def tile_ring(tile: Tile) -> tuple[np.ndarray, np.ndarray]:
+    """Return the tile's box as a closed lon/lat ring, densified to project smoothly."""
+    return geodesy.bbox_ring(
+        tile.min_lat, tile.max_lat, tile.west_lon, tile.east_lon, frame.MAX_SEGMENT_DEG
+    )
 
-# Segments per quarter circle when a track is buffered to its swath.
-BUFFER_QUAD_SEGMENTS = 16
 
-POLAR_REACH_DEG = 60.0
+def ring_polygon(x: np.ndarray, y: np.ndarray) -> BaseGeometry:
+    """Close a projected ring into a polygon, repaired where it crosses itself.
 
-MAX_SEGMENT_M = 1000.0
+    Args:
+        x: The ring eastings in metres.
+        y: The ring northings in metres.
+
+    Returns:
+        polygon: The valid polygon the ring bounds.
+    """
+    polygon = Polygon(np.column_stack((x, y)))
+    # A box reaching every longitude crosses itself once projected
+    if not is_valid(polygon):
+        polygon = make_valid(polygon, method="structure", keep_collapsed=False)
+    return polygon
+
+
+def tile_shape(tile: Tile) -> BaseGeometry:
+    """Project one tile's box onto the equal-area plane centred on the tile.
+
+    Args:
+        tile: The tile to project.
+
+    Returns:
+        shape: The box in equal-area metres, prepared for repeated queries.
+    """
+    shape = ring_polygon(
+        *geodesy.laea_forward(*tile_ring(tile), tile.centre_lon, tile.centre_lat)
+    )
+    prepare(shape)
+    return shape
 
 
 def tile_region(tile: Tile) -> TileRegion:
@@ -53,79 +81,49 @@ def tile_region(tile: Tile) -> TileRegion:
     Returns:
         region: The projected box and its clipping regions.
     """
-    min_lat, max_lat = tile.min_lat, tile.max_lat
-    west_lon, east_lon = tile.west_lon, tile.east_lon
-    centre_lon, centre_lat = geodesy.bbox_centre(min_lat, max_lat, west_lon, east_lon)
-    lons, lats = geodesy.bbox_ring(
-        min_lat, max_lat, west_lon, east_lon, MAX_SEGMENT_DEG
-    )
-    x, y = geodesy.laea_forward(lons, lats, centre_lon, centre_lat)
-    shape = Polygon(np.column_stack((x, y)))
-    # A box reaching every longitude crosses itself once projected
-    if not is_valid(shape):
-        shape = make_valid(shape, method="structure", keep_collapsed=False)
-    prepare(shape)
-    north = min_lat >= 0.0
-    polar = None
-    if min(abs(min_lat), abs(max_lat)) >= POLAR_REACH_DEG:
-        polar = Polygon(
-            np.column_stack(
-                geodesy.stereographic_forward(
-                    lons, lats, 0.0, north, physics.POLAR_RADIUS_M
-                )
+    shape = tile_shape(tile)
+    north = tile.min_lat >= 0.0
+    polar = polar_wide = None
+    if min(abs(tile.min_lat), abs(tile.max_lat)) >= frame.POLAR_REACH_DEG:
+        polar = ring_polygon(
+            *geodesy.stereographic_forward(
+                *tile_ring(tile), *frame.ode_polar_grid(north)
             )
         )
-        if not is_valid(polar):
-            polar = make_valid(polar, method="structure", keep_collapsed=False)
+        polar_wide = buffer(polar, geodesy.northward_m(frame.CLIP_MARGIN_DEG))
     return TileRegion(
-        centre_lon=centre_lon,
-        centre_lat=centre_lat,
+        centre_lon=tile.centre_lon,
+        centre_lat=tile.centre_lat,
         shape=shape,
         area_m2=shape.area,
-        tight=clip_boxes(min_lat, max_lat, west_lon, east_lon),
-        wide=clip_boxes(
-            min_lat,
-            max_lat,
-            west_lon,
-            east_lon,
-            margin_deg=LINE_CLIP_MARGIN_DEG,
-        ),
+        tight=clip_region(tile, 0.0),
+        wide=clip_region(tile, frame.CLIP_MARGIN_DEG),
         polar=polar,
-        polar_wide=None
-        if polar is None
-        else buffer(polar, geodesy.northward_m(LINE_CLIP_MARGIN_DEG)),
+        polar_wide=polar_wide,
         north=north,
     )
 
 
-def clip_boxes(
-    min_lat: float,
-    max_lat: float,
-    west_lon: float,
-    east_lon: float,
-    *,
-    margin_deg: float = 0.0,
-) -> BaseGeometry:
+def clip_region(tile: Tile, margin_deg: float) -> BaseGeometry:
     """Build the lon/lat region a footprint is cut against.
 
     Args:
-        min_lat: The southernmost latitude in degrees.
-        max_lat: The northernmost latitude in degrees.
-        west_lon: The westernmost longitude in degrees.
-        east_lon: The easternmost longitude in degrees.
-        margin_deg: How far to widen the region, in degrees of latitude.
+        tile: The tile whose box is widened.
+        margin_deg: How far to widen the box, in degrees of latitude.
 
     Returns:
         region: The clipping region, as one rectangle or the union of two.
     """
-    lat_limit = min(max(abs(min_lat), abs(max_lat)), 89.0)
-    lon_margin = margin_deg / geodesy.longitude_stretch(lat_limit)
-    lat_lo = max(-90.0, min_lat - margin_deg)
-    lat_hi = min(90.0, max_lat + margin_deg)
-    span = geodesy.longitude_span(west_lon, east_lon) + 2.0 * lon_margin
+    stretch_lat = min(
+        max(abs(tile.min_lat), abs(tile.max_lat)), frame.MAX_STRETCH_LAT_DEG
+    )
+    lon_margin = margin_deg / geodesy.longitude_stretch(stretch_lat)
+    lat_lo = max(-90.0, tile.min_lat - margin_deg)
+    lat_hi = min(90.0, tile.max_lat + margin_deg)
+    span = geodesy.longitude_span(tile.west_lon, tile.east_lon) + 2.0 * lon_margin
     if span >= 360.0:
         return box(-180.0, lat_lo, 180.0, lat_hi)
-    west = float(geodesy.normalise_longitude(west_lon - lon_margin))
+    west = float(geodesy.normalise_longitude(tile.west_lon - lon_margin))
     east = west + span
     if east <= 180.0:
         return box(west, lat_lo, east, lat_hi)
@@ -138,7 +136,8 @@ def projected_footprints(
     region: TileRegion,
     geoms: np.ndarray,
     swath_widths_m: np.ndarray,
-    stereographic: bool = False,
+    *,
+    stereographic: bool,
 ) -> np.ndarray:
     """Return the ground a whole set of observations covers on the tile.
 
@@ -151,6 +150,10 @@ def projected_footprints(
     Returns:
         footprints: One clipped footprint per input, empty where it falls outside.
     """
+    if stereographic:
+        wide, tight, step = region.polar_wide, region.polar, frame.MAX_SEGMENT_M
+    else:
+        wide, tight, step = region.wide, region.tight, frame.MAX_SEGMENT_DEG
     parts, owners = single_parts(geoms)
     kinds = get_type_id(parts)
     # A footprint with any polygon is taken as areal, and its lines are dropped
@@ -158,31 +161,21 @@ def projected_footprints(
     areal[owners[kinds == _POLYGON]] = True
     keep = np.where(areal[owners], kinds == _POLYGON, kinds == _LINESTRING)
     parts, owners = parts[keep], owners[keep]
-    regions = np.asarray(
-        [region.polar_wide, region.polar]
-        if stereographic
-        else [region.wide, region.tight],
-        dtype=object,
-    )
-    clipped = intersection(parts, regions[areal[owners].astype(int)])
+    clips = np.asarray([wide, tight], dtype=object)
+    clipped = intersection(parts, clips[areal[owners].astype(int)])
     alive = ~is_empty(clipped)
     parts, owners = clipped[alive], owners[alive]
     radii = np.where(areal[owners], 0.0, np.asarray(swath_widths_m)[owners] / 2.0)
 
+    polar_grid = frame.ode_polar_grid(region.north)
     projected = transform(
-        segmentize(parts, MAX_SEGMENT_M if stereographic else MAX_SEGMENT_DEG),
+        segmentize(parts, step),
         lambda coords: np.column_stack(
             geodesy.laea_forward(
                 *(
-                    geodesy.stereographic_inverse(
-                        coords[:, 0],
-                        coords[:, 1],
-                        0.0,
-                        region.north,
-                        physics.POLAR_RADIUS_M,
-                    )
+                    geodesy.stereographic_inverse(*coords.T, *polar_grid)
                     if stereographic
-                    else (coords[:, 0], coords[:, 1])
+                    else coords.T
                 ),
                 region.centre_lon,
                 region.centre_lat,
@@ -191,7 +184,7 @@ def projected_footprints(
     )
     grown = radii > 0.0
     projected[grown] = buffer(
-        projected[grown], radii[grown], quad_segs=BUFFER_QUAD_SEGMENTS
+        projected[grown], radii[grown], quad_segs=frame.BUFFER_QUAD_SEGMENTS
     )
     # A footprint reaching far around the projection centre crosses itself
     broken = ~is_valid(projected)

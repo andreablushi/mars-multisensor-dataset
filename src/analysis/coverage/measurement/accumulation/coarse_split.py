@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator
 
 import numpy as np
 from shapely import STRtree, area, bounds, intersection, is_empty
@@ -17,7 +17,7 @@ MIN_UNION_CELLS = 4
 MAX_UNION_CELLS = 32
 
 
-def grid_over(region: TileRegion, shapes: Sequence[BaseGeometry]) -> Grid:
+def grid_over(region: TileRegion, shapes: np.ndarray) -> Grid:
     """Size a grid to the footprints it will hold, and lay it over the tile.
 
     Args:
@@ -28,18 +28,19 @@ def grid_over(region: TileRegion, shapes: Sequence[BaseGeometry]) -> Grid:
         grid: The grid, its side within the configured bounds.
     """
     west, south, east, north = region.shape.bounds
-    boxes = bounds(np.asarray(shapes, dtype=object))
+    boxes = bounds(shapes)
     spans = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+    spans = spans[spans > 0.0]
     side = MAX_UNION_CELLS
     # A set whose every footprint met the tile edge on has no span to size by
-    if (spans > 0.0).any():
-        typical = float(np.sqrt(np.median(spans[spans > 0.0])))
+    if spans.size:
+        typical = float(np.sqrt(np.median(spans)))
         wanted = round(math.sqrt((east - west) * (north - south)) / typical)
-        side = int(min(max(wanted, MIN_UNION_CELLS), MAX_UNION_CELLS))
+        side = min(max(wanted, MIN_UNION_CELLS), MAX_UNION_CELLS)
     return Grid(west=west, south=south, east=east, north=north, side=side)
 
 
-def cells(
+def reached_cells(
     grid: Grid, region: TileRegion, shapes: np.ndarray
 ) -> Iterator[tuple[BaseGeometry, float, np.ndarray]]:
     """Walk the cells that can hold ground, with what reaches each one.
@@ -54,16 +55,16 @@ def cells(
     """
     rectangles = grid.rectangles
     caps = area(intersection(rectangles, region.shape))
-    index = STRtree(shapes)
+    tree = STRtree(shapes)
     for rectangle, cap in zip(rectangles, caps, strict=True):
         if cap <= 0.0:
             continue
-        reaching = np.sort(index.query(rectangle))
+        reaching = np.sort(tree.query(rectangle))
         if reaching.size:
             yield rectangle, float(cap), reaching
 
 
-def clip(
+def clipped_pieces(
     shapes: np.ndarray, reaching: np.ndarray, rectangle: BaseGeometry
 ) -> tuple[np.ndarray, np.ndarray]:
     """Cut the given shapes to one cell, dropping the ones that miss it.
@@ -74,8 +75,8 @@ def clip(
         rectangle: The cell to cut them to.
 
     Returns:
-        kept: The indices the box keeps.
-        shapes: Their clipped shapes, one to each.
+        kept: The indices the cell keeps.
+        pieces: Their clipped shapes, one to each.
     """
     pieces = intersection(shapes[reaching], rectangle)
     kept = ~is_empty(pieces)

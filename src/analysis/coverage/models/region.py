@@ -18,7 +18,7 @@ class TileRegion:
         area_m2: The area of that box in square metres.
         tight: The box in lon/lat degrees, which a footprint with area is cut to.
         wide: The same box widened, which a track is cut to before it is buffered.
-        polar: The box in polar stereographic metres, or None where not poleward.
+        polar: The box in ODE's polar stereographic metres, or None where not poleward.
         polar_wide: The same box widened, or None for the same reason.
         north: Whether the tile lies north of the equator.
     """

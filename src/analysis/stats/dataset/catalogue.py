@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from analysis.coverage.artifacts import index
+from analysis.coverage import artifacts as index
 from analysis.coverage.models.summary import Summary
 from analysis.stats.models.catalogue import CatalogueStats, InstrumentStats
 from analysis.stats.models.spread import Spread

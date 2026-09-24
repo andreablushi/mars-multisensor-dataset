@@ -6,7 +6,6 @@ import math
 from bisect import bisect_left
 from collections.abc import Sequence
 
-from analysis.coverage import ground
 from analysis.selector.filters import redundancy
 from analysis.selector.filters.coverage_constraints import coverage_constraints
 from analysis.selector.models.counter import Counter
@@ -97,5 +96,5 @@ def _scored(track: Track, counts: Sequence[int], arc: float = 0.0) -> float:
         worth: The constraints rooted together as a share of the tile, less their arc.
     """
     rooted = math.prod(counts) ** (1.0 / len(counts))
-    geo_mean = ground.share(rooted, track.grid.cell_km2, track.grid.area_km2)
+    geo_mean = rooted * track.grid.cell_km2 / track.grid.area_km2
     return geo_mean - _PRICE_PER_DEGREE * arc

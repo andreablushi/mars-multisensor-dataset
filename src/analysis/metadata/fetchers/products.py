@@ -48,7 +48,7 @@ def fetch_products(
         client: The ODE client to query with.
         group: The group whose box the query is built from.
         instrument_set: The instrument host, instrument, and product type.
-        loc: Which products the box returns, recorded with each one.
+        loc: Which products the box returns.
 
     Returns:
         products: One record per distinct product, in the order ODE returned them.
@@ -56,7 +56,7 @@ def fetch_products(
     Raises:
         ODEError: When ODE reports no usable count for a box.
     """
-    stamped = provenance.stamp(group, instrument_set, loc)
+    stamped = provenance.stamp(group, instrument_set)
     records: list[ProductRecord] = []
     # The two boxes a polar group is asked in overlap, so a product returns twice
     seen: set[tuple[str, str]] = set()

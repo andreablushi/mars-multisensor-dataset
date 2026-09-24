@@ -41,7 +41,7 @@ def grid_over(region: TileRegion, grid_cells: int) -> Grid:
     )
 
 
-def filled(grid: Grid, shape: BaseGeometry) -> np.ndarray:
+def filled_cells(grid: Grid, shape: BaseGeometry) -> np.ndarray:
     """Find the cells of the grid whose centre a shape covers.
 
     Args:
@@ -62,8 +62,8 @@ def filled(grid: Grid, shape: BaseGeometry) -> np.ndarray:
         prepare(shape)
         inside = contains_xy(shape, across, down)
         if inside.any():
-            line, crosswise = np.nonzero(inside)
-            return rows[line] * grid.side + columns[crosswise]
+            hit_rows, hit_columns = np.nonzero(inside)
+            return rows[hit_rows] * grid.side + columns[hit_columns]
     # A footprint holding no cell centre is given the one cell it sits in
     if shape.area >= grid.cell_area_m2 * MIN_CELL_SHARE:
         point = shape.representative_point()

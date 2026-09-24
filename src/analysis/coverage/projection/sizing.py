@@ -6,9 +6,8 @@ import math
 from collections.abc import Sequence
 
 import numpy as np
-from shapely import from_wkt
 
-from analysis.coverage.projection.geometry import footprints
+from analysis.coverage.projection import footprints
 from analysis.models.observation import Observation
 from common.maths import geodesy, physics
 
@@ -23,11 +22,14 @@ SHARAD_ALONG_TRACK_M = 460.0
 FALLBACK_PIXEL_M = {"MRO/CRISM/TRDR:*sp*_if*_trr3": 180.0, "MRO/CTX/EDR": 5.4}
 
 
-def track_widths(observations: Sequence[Observation]) -> list[float | None]:
+def track_widths(
+    observations: Sequence[Observation], geoms: np.ndarray
+) -> list[float | None]:
     """Derive a swath width for every ground track among the observations.
 
     Args:
         observations: The observations to inspect.
+        geoms: Their parsed lon/lat footprints, in the same order.
 
     Returns:
         widths: One width in metres per observation, None where the footprint has area.
@@ -37,9 +39,7 @@ def track_widths(observations: Sequence[Observation]) -> list[float | None]:
         if not observation.is_track or observation.duration_s <= 0.0:
             continue
         # A track is published as lines, whose ground lengths add up to its own
-        parts, _ = footprints.single_parts(
-            np.asarray([from_wkt(observation.wkt)], dtype=object)
-        )
+        parts, _ = footprints.single_parts(geoms[position : position + 1])
         length = sum(
             geodesy.geodesic_length(*np.asarray(part.coords).T) for part in parts
         )
@@ -68,11 +68,11 @@ def ground_pixel_km2(
         KeyError: When a set publishes no scale and none is configured for it.
     """
     if width_km is not None:
-        return width_km * SHARAD_ALONG_TRACK_M / 1000.0
+        return width_km * SHARAD_ALONG_TRACK_M / physics.METRES_PER_KM
     scale = map_scale_m or FALLBACK_PIXEL_M.get(set_key)
     if scale is None:
         raise KeyError(
             f"{set_key} publishes no map scale and none is configured for it, "
             f"so it needs an entry in FALLBACK_PIXEL_M spelled exactly this way"
         )
-    return (scale / 1000.0) ** 2
+    return (scale / physics.METRES_PER_KM) ** 2

@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor
 
 from analysis import console
-from analysis.coverage.artifacts import index
+from analysis.coverage import artifacts as index
 from analysis.selector.models.selection import Selection
 from analysis.stats.models.tile import TileStats
 from analysis.stats.tile import measure

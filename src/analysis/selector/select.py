@@ -5,7 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ProcessPoolExecutor
 
 from analysis import console
-from analysis.coverage.artifacts import index
+from analysis.coverage import artifacts as index
 from analysis.selector.artifacts import write
 from analysis.selector.models.selection import (
     SelectedObservation,

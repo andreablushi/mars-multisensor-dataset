@@ -14,7 +14,7 @@ from rich.console import Console
 
 from analysis import paths, planner, runner
 from analysis.console import print_summary
-from analysis.coverage.artifacts import index
+from analysis.coverage import artifacts as index
 from analysis.ground_truth import artifacts, draw, fetch, label
 from analysis.ground_truth.models.label import Label
 from analysis.metadata import file_explorer
