@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from functools import cache
 
+from analysis.selector import artifacts
 from analysis.selector.models.selection import Selection
-from analysis.utils import dataset_list
 
 
 @cache
@@ -18,7 +18,7 @@ def read_selection() -> list[Selection]:
     Raises:
         FileNotFoundError: When no selection has been written.
     """
-    return dataset_list.read_dataset_list()
+    return artifacts.read_selection()
 
 
 @cache

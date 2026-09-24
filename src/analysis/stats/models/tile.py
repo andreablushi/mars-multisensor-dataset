@@ -15,7 +15,7 @@ class TileLooks:
     """One tile's timeline, the window it earned, and the looks it keeps.
 
     Attributes:
-        criteria: The filter as it was read against the tile.
+        criteria: The filter the tile was read under.
         track: Its admissible observations on one time axis.
         window: The window the selection gave it, or refused it.
         taken: Where the observations it keeps sit on that axis, oldest first.

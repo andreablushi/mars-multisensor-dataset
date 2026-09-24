@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
-class Grid:
+class SearchGrid:
     """One tile's grid, and what a window over it is measured against.
 
     Attributes:

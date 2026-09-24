@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 import numpy as np
@@ -23,35 +23,23 @@ class Counter:
     cells_reached: list[int]
 
     @classmethod
-    def empty(cls, iids: Sequence[str], grid_cells: int) -> Counter:
-        """Open a counter on a window holding nothing at all.
-
-        Args:
-            iids: The instrument each set of the tile belongs to, by set.
-            grid_cells: How many cells the tile holds.
-
-        Returns:
-            counter: The counter, counting nothing.
-        """
-        return cls(
-            observations_per_cell=np.zeros((len(iids), grid_cells), dtype=np.int32),
-            cells_reached=[0] * len(iids),
-        )
-
-    @classmethod
-    def over(cls, track: Track, first: int, last: int) -> Counter:
-        """Count afresh everything one stretch of the axis holds.
+    def over(cls, track: Track, indices: Iterable[int]) -> Counter:
+        """Count afresh everything some observations of the axis hold.
 
         Args:
             track: The tile's observations on one time axis.
-            first: The index of the earliest observation the stretch holds.
-            last: The index of the latest one.
+            indices: The observations to count, as indices into the track.
 
         Returns:
-            counter: The counter, counting that stretch.
+            counter: The counter, counting those observations.
         """
-        counter = cls.empty(track.iids, track.grid.cells)
-        for index in range(first, last + 1):
+        counter = cls(
+            observations_per_cell=np.zeros(
+                (len(track.iids), track.grid.cells), dtype=np.int32
+            ),
+            cells_reached=[0] * len(track.iids),
+        )
+        for index in indices:
             counter.hold(track.owners[index], track.cells[index])
         return counter
 
@@ -62,22 +50,22 @@ class Counter:
             owner: The instrument set the observation belongs to.
             cells: The tile's cells it fills, each of them named once.
         """
-        filled = self.observations_per_cell[owner]
-        held = filled[cells]
-        self.cells_reached[owner] += cells.size - int(np.count_nonzero(held))
-        held += 1
-        filled[cells] = held
+        row = self.observations_per_cell[owner]
+        counts = row[cells]
+        self.cells_reached[owner] += cells.size - int(np.count_nonzero(counts))
+        counts += 1
+        row[cells] = counts
 
     def release(self, owner: int, cells: np.ndarray) -> None:
-        """Drop the oldest observation back out of the window.
+        """Drop one observation back out of the window.
 
         Args:
             owner: The instrument set the observation belongs to.
             cells: The tile's cells it fills, each of them named once.
         """
-        filled = self.observations_per_cell[owner]
-        left = filled[cells]
-        left -= 1
-        filled[cells] = left
+        row = self.observations_per_cell[owner]
+        counts = row[cells]
+        counts -= 1
+        row[cells] = counts
         # ground nothing else left in the window reaches
-        self.cells_reached[owner] -= cells.size - int(np.count_nonzero(left))
+        self.cells_reached[owner] -= cells.size - int(np.count_nonzero(counts))

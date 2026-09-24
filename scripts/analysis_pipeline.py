@@ -20,9 +20,9 @@ from analysis.ground_truth.models.label import Label
 from analysis.metadata import file_explorer
 from analysis.metadata.summary import summarise_ancillary
 from analysis.selector import select
+from analysis.selector.artifacts import read_selected_tiles
 from analysis.stats.artifacts import store
 from analysis.stats.dataset import aggregate, read
-from analysis.utils import dataset_list
 from common.config import analysis_settings
 from common.console import PLAIN_LOG_ENV
 
@@ -71,7 +71,7 @@ def compute_labels(force: bool = False) -> list[Label]:
     refused = artifacts.read_refused()
     labels = draw.drawn_labels(
         label.labelled_tiles(
-            dataset_list.read_selected_tiles(),
+            read_selected_tiles(),
             fetch.read_features(refresh=force),
             settings,
         ),

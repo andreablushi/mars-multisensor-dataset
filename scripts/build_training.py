@@ -7,8 +7,8 @@ from dhub import args, checkpoint, submit
 from dhub.paths import Artifact, Function
 
 from analysis.ground_truth import artifacts
+from analysis.selector.artifacts import read_selection
 from analysis.selector.models.selection import Selection
-from analysis.utils import dataset_list
 from building import draw
 from building.build import build_dataset
 from building.models.settings import TrainingSettings
@@ -28,7 +28,7 @@ def training_selections(settings: TrainingSettings) -> list[Selection]:
         FileNotFoundError: When no labels were written, so none can be held out.
     """
     return draw.draw_training(
-        dataset_list.read_dataset_list(),
+        read_selection(),
         settings,
         artifacts.read_labels(),
         artifacts.read_refused(),

@@ -45,6 +45,9 @@ window:
   # How far Mars may turn inside a window, in degrees of Ls; 90 is one season
   span_ls: 90.0
 
+  # The share of a tile's ground one degree of Ls inside a window costs its score
+  ls_price: 0.0019
+
   # What instruments are excluded from the window, and kept whenever they came
   timeless: [SHARAD]
 

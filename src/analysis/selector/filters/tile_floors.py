@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-import dataclasses
 import math
 from collections.abc import Sequence
 
 from analysis.coverage.models.coverage import SetCoverage
 from analysis.selector.models.filter import Constraints, Filter
-from analysis.selector.models.grid import Grid
+from analysis.selector.models.search_grid import SearchGrid
 
 
-def clean_window(
-    criteria: Filter, coverage: Sequence[SetCoverage], grid: Grid
-) -> Filter:
+def tile_floors(
+    criteria: Filter, coverage: Sequence[SetCoverage], grid: SearchGrid
+) -> tuple[list[float], Constraints, Constraints]:
     """Settle everything the written filter asks of one tile.
 
     Args:
@@ -22,7 +21,9 @@ def clean_window(
         grid: The grid the tile is searched over.
 
     Returns:
-        criteria: The same filter, carrying what it asks of the tile.
+        least: The pixels each set has to land on the tile, by set.
+        windowed: What a window is scored on, tightest constraint first.
+        standing: What the whole record answers for, tightest first.
     """
     iids = [instrument.summary.iid for instrument in coverage]
     windowed: Constraints = []
@@ -36,26 +37,20 @@ def clean_window(
             for iid, share in constraint.items()
         ]
         # A constraint is out of the window only when everything answering it is
-        held = (
-            standing
-            if all(iid in criteria.timeless for iid in constraint)
-            else windowed
-        )
-        held.append(answers)
+        timeless = all(iid in criteria.timeless for iid in constraint)
+        (standing if timeless else windowed).append(answers)
+    for constraints in (windowed, standing):
+        constraints.sort(key=lambda answers: -min(floor for _, floor in answers))
     # The whole-grid bar is scaled by the ground held, by one axis or by both
     covered = grid.area_km2 / (grid.cells * grid.cell_km2)
-    return dataclasses.replace(
-        criteria,
-        least=[
-            criteria.admits.get(iid, 0.0)
-            * (
-                # A set publishing a swath width is a sounder, its pixels on a line
-                math.sqrt(covered)
-                if any(one.width_km is not None for one in instrument.events)
-                else covered
-            )
-            for iid, instrument in zip(iids, coverage, strict=True)
-        ],
-        windowed=sorted(windowed, key=lambda answers: -min(f for _, f in answers)),
-        standing=sorted(standing, key=lambda answers: -min(f for _, f in answers)),
-    )
+    least = [
+        criteria.admits.get(iid, 0.0)
+        * (
+            # A set publishing a swath width is a sounder, its pixels on a line
+            math.sqrt(covered)
+            if any(event.width_km is not None for event in instrument.events)
+            else covered
+        )
+        for iid, instrument in zip(iids, coverage, strict=True)
+    ]
+    return least, windowed, standing

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from analysis.coverage.models.coverage import SetCoverage
-from analysis.selector.models import track as timeline
+from analysis.selector.merge import merge_track
 from analysis.selector.models.selection import Selection
 from analysis.stats.artifacts import selection
 from analysis.stats.models.tile import TileLooks
@@ -51,7 +51,8 @@ def place_kept_looks(
     Returns:
         looks: Its timeline and where its looks sit, or None if nothing measurable.
     """
-    criteria, track = timeline.over(coverage, analysis_settings().window)
+    criteria = analysis_settings().window
+    track = merge_track(coverage, criteria)
     if track is None:
         return None
     at = {one.pdsid: index for index, one in enumerate(track.observations)}

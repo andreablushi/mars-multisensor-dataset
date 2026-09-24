@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from analysis.selector.models.filter import Constraints
 
 
-def coverage_constraints(
+def cells_per_constraint(
     constraints: Constraints, cells_reached: Sequence[int]
 ) -> list[int] | None:
     """Take what each constraint reaches, or refuse them all when one goes unmet.
@@ -29,9 +29,7 @@ def coverage_constraints(
                 if len(answering) == 1
                 else max((cells_reached[owner] for owner in answering), default=0)
             )
-            if reached < floor:
-                continue
-            if reached > cell_count:
+            if reached >= floor and reached > cell_count:
                 cell_count = reached
         if not cell_count:
             return None
