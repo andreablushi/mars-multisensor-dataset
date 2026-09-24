@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import queue
-import threading
 from collections.abc import Callable, Iterator, Sequence
-from concurrent.futures import Future, ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from contextlib import ExitStack, closing
-from functools import partial
 from pathlib import Path
 
 import httpx
@@ -24,14 +21,10 @@ from building.metadata.observation import (
     observation_metadata,
 )
 from building.models.job import Job, Outcome, Plan
-from building.models.progress import (
-    BUILDING,
-    FETCHING,
-    QUEUED,
-    Progress,
-)
+from building.models.progress import Progress
 from building.models.settings import Settings
 from building.preprocessing.common import store
+from building.scheduler import Scheduler
 from common.console import print_failure
 from common.fetch.http import TLS_CONTEXT
 
@@ -94,9 +87,9 @@ def run_build(
                 archive: pools.enter_context(ThreadPoolExecutor(max_workers=downloads))
                 for archive, downloads in settings.downloads.items()
             }
-            held = _outcomes(
-                plan.jobs, ode, fetching, building, root, settings, progress
-            )
+            held = Scheduler(
+                ode, fetching, building, build_product, root, settings, progress
+            ).outcomes(plan.jobs)
             with closing(held) as outcomes:
                 if checkpoint is not None:
                     outcomes = _checkpointed(outcomes, plan, root, checkpoint)
@@ -148,85 +141,6 @@ def _checkpointed(
             # A checkpoint is insurance: a build outlives one it could not write.
             failed += 1
             print_failure("the checkpoint", error, failed)
-
-
-def _outcomes(
-    jobs: tuple[Job, ...],
-    ode: httpx.Client,
-    fetching: dict[str, ThreadPoolExecutor],
-    building: ProcessPoolExecutor,
-    root: Path,
-    settings: Settings,
-    progress: Progress,
-) -> Iterator[Outcome]:
-    """Fetch every product and build it the moment there is room, in whatever order.
-
-    Args:
-        jobs: The products to fetch and build, heaviest first.
-        ode: The client every download is asked through.
-        fetching: The threads the downloads run on, by the archive they wait on.
-        building: The processes the builds run on.
-        root: The dataset's own root directory.
-        settings: The settled choices, bounding how many products run at once.
-        progress: What every product still in the build is doing.
-
-    Yields:
-        outcome: One outcome per job, in the order they finish.
-    """
-    finished: queue.Queue[Outcome] = queue.Queue()
-    # A place to land in, since a build still running holds no thread.
-    waiting = threading.Semaphore(settings.in_flight)
-
-    def finish(outcome: Outcome, ticket: object) -> None:
-        """Record what one job left and give back its place.
-
-        Args:
-            outcome: What the job left, whether it was built or failed.
-            ticket: What the job was tracked by while it was still in the build.
-        """
-        progress.left(ticket, finished=True)
-        finished.put(outcome)
-        waiting.release()
-
-    def fetched(job: Job) -> None:
-        """Bring one product down and hand it on to be built.
-
-        Args:
-            job: The product to fetch.
-        """
-        # The place is taken before the download, so the room is never given elsewhere.
-        waiting.acquire()
-        ticket = progress.entered(job.label, QUEUED)
-        try:
-            progress.moved(ticket, FETCHING)
-            INSTRUMENTS[job.instrument].fetch(job.identifier, ode)
-            progress.moved(ticket, BUILDING)
-            building.submit(build_product, job, root).add_done_callback(
-                partial(built, job, ticket)
-            )
-        except Exception as error:  # noqa: BLE001
-            # The download failed or the pool is closing, so this builds nowhere.
-            finish(Outcome(job, error=error), ticket)
-
-    def built(job: Job, ticket: object, done: Future[Outcome]) -> None:
-        """Record what one job's build left, a worker the pool lost included.
-
-        Args:
-            job: The job that was built.
-            ticket: What the job was tracked by while it was still in the build.
-            done: What the build pool left.
-        """
-        try:
-            outcome = done.result()
-        except Exception as error:  # noqa: BLE001
-            outcome = Outcome(job, error=error)
-        finish(outcome, ticket)
-
-    # Every path leaves one outcome and gives its place back, or it waits for ever.
-    for job in jobs:
-        fetching[INSTRUMENTS[job.instrument].archive].submit(fetched, job)
-    for _ in jobs:
-        yield finished.get()
 
 
 def build_product(job: Job, root: Path) -> Outcome:

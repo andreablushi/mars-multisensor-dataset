@@ -1,4 +1,4 @@
-"""Bringing one raw CTX scan down, and placing it with ISIS as it lands."""
+"""Bringing one raw CTX scan down, and placing it with ISIS once it has landed."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ SPICE_REFUSED = "talking to the server"
 
 
 def fetch(observation_id: str, client: httpx.Client) -> None:
-    """Bring the raw scan and what ODE says of it, then import and place it.
+    """Bring the raw scan and what ODE says of it, leaving it to be placed.
 
     Args:
         observation_id: The observation to fetch.
@@ -34,11 +34,11 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
 
     Raises:
         FileNotFoundError: When ODE carries no raw scan of that name.
-        RuntimeError: When ISIS fails to import it, or to place it after every retry.
     """
     files = configs.CACHE.files(observation_id, observation_id)
     cube, said = files[configs.CUBE_SUFFIX], files[configs.METADATA_SUFFIX]
-    if cube.exists() and said.exists():
+    raw = cube.with_suffix(configs.IMAGE_SUFFIX)
+    if (cube.exists() or raw.exists()) and said.exists():
         return
     entries = archive.query(client, productid=observation_id, results=FIELDS, **ODE)
     if not entries:
@@ -50,13 +50,27 @@ def fetch(observation_id: str, client: httpx.Client) -> None:
     }
     with atomic_path(said) as tmp:
         tmp.write_text(json.dumps(acquisition))
-    raw = cube.with_suffix(configs.IMAGE_SUFFIX)
     offered = archive.published(entries[0])
     archive.bring(
         {configs.IMAGE_SUFFIX: raw},
         {configs.IMAGE_SUFFIX: offered.get(f"{observation_id}{configs.IMAGE_SUFFIX}")},
         client=client,
     )
+
+
+def place(observation_id: str) -> None:
+    """Import a fetched raw scan into ISIS and place it with the SPICE server.
+
+    Args:
+        observation_id: The observation to place, its raw scan already fetched.
+
+    Raises:
+        RuntimeError: When ISIS fails to import it, or to place it after every retry.
+    """
+    cube = configs.CACHE.files(observation_id, observation_id)[configs.CUBE_SUFFIX]
+    if cube.exists():
+        return
+    raw = cube.with_suffix(configs.IMAGE_SUFFIX)
     staged = cube.with_suffix(f".staged{configs.CUBE_SUFFIX}")
     run_isis("mroctx2isis", {"from": raw, "to": staged})
     for attempt in range(SPICE_RETRIES + 1):

@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
 JPL = "jpl"
 WUSTL = "wustl"
+SPICE = "spice"
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,6 +41,7 @@ class Instrument:
         crop: What cuts that observation to a tile's box, or None where it misses.
         archive: Which archive its products are downloaded from.
         discard: What deletes the built product, or None for a small archive.
+        place: What readies a fetched product on the SPICE server, or None.
         observation_id: What reads a kept product's observation, or None.
         identifiers: What asks an archive what covers a tile, or None.
         worker_bytes: What one build holds of its largest product at once.
@@ -51,6 +53,7 @@ class Instrument:
     crop: Callable[..., Any]
     archive: str
     discard: Callable[[str], None] | None = None
+    place: Callable[[str], None] | None = None
     observation_id: Callable[[str], str | None] | None = None
     identifiers: Callable[[Tile, httpx.Client], list[str]] | None = None
     worker_bytes: int = 512 * 1024**2
@@ -75,6 +78,7 @@ INSTRUMENTS = {
         ctx.crop,
         JPL,
         discard=ctx_configs.CACHE.discard,
+        place=ctx_download.place,
         observation_id=ctx_configs.NAMING.parse,
         # A tile's window, its crop and two masks, beside ISIS measured at 513 MB.
         worker_bytes=2 * 1024**3,

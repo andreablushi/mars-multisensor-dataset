@@ -19,15 +19,6 @@ class Settings:
     workers: int
     downloads: dict[str, int]
 
-    @property
-    def in_flight(self) -> int:
-        """Return how many products may be in the build at once.
-
-        Returns:
-            held: Enough waiting to feed every builder while downloads are in flight.
-        """
-        return self.workers + sum(self.downloads.values())
-
 
 @dataclass(slots=True)
 class TrainingSettings(Settings):

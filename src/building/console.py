@@ -49,7 +49,7 @@ def describe(plan: Plan, settings: Settings, console: Console) -> None:
         f"built as {settings.name}; "
         f"build pool {settings.workers}, download pools "
         f"{', '.join(f'{name} {n}' for name, n in settings.downloads.items())}, "
-        f"{settings.in_flight} products may wait"
+        f"each archive holding {settings.workers} more that wait on a core"
     )
 
 

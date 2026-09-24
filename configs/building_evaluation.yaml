@@ -10,3 +10,4 @@ workers: 8
 downloads:
   jpl: 6
   wustl: 2
+  spice: 2

@@ -32,10 +32,10 @@ CONNECT_TIMEOUT = 30.0
 CONNECT_ERRORS = (httpx.ConnectError, httpx.ConnectTimeout)
 
 # How long one query may be asked for in all, an attempt count bounding nothing
-QUERY_DEADLINE = 900.0
+QUERY_DEADLINE = 300.0
 
 # How long one transfer may run in all, so a trickling server is given up on
-STREAM_DEADLINE = 10800.0
+STREAM_DEADLINE = 1800.0
 
 TLS_CONTEXT = httpx.create_ssl_context()
 TLS_CONTEXT.verify_flags &= ~ssl.VERIFY_X509_STRICT

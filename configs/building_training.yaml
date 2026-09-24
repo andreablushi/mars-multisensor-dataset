@@ -10,6 +10,7 @@ workers: 8
 downloads:
   jpl: 4
   wustl: 8
+  spice: 2
 
 # What share of the tiles the selection kept to build, above zero and up to one.
 share: 1

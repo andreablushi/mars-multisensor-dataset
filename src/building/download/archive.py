@@ -9,7 +9,7 @@ import httpx
 from common.fetch import http, ode
 
 # How long to wait for the larger half of a product.
-TIMEOUT = 300.0
+TIMEOUT = 60.0
 
 
 def query(client: httpx.Client, **params: str) -> list[dict]:
