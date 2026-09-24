@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from analysis.ground_truth import box
 from analysis.utils.tile_group import tile_grid
 from analysis.visualization.tile.models.placing import Placed
+from common.maths import box
 from common.maths.geodesy import HALF_TURN
 
 

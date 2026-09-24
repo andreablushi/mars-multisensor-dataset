@@ -15,7 +15,8 @@ from rich.console import Console
 from analysis import paths, planner, runner
 from analysis.console import print_summary
 from analysis.coverage import artifacts as index
-from analysis.ground_truth import artifacts, draw, fetch, label
+from analysis.ground_truth import artifacts, fetch
+from analysis.ground_truth.labels import draw_labels, label_tiles
 from analysis.ground_truth.models.label import Label
 from analysis.metadata import file_explorer
 from analysis.metadata.summary import summarise_ancillary
@@ -69,8 +70,8 @@ def compute_labels(force: bool = False) -> list[Label]:
     """
     settings = analysis_settings().ground_truth
     refused = artifacts.read_refused()
-    labels = draw.drawn_labels(
-        label.labelled_tiles(
+    labels = draw_labels(
+        label_tiles(
             read_selected_tiles(),
             fetch.read_features(refresh=force),
             settings,

@@ -1,13 +1,13 @@
-"""Boxes on Mars bounded by latitudes and longitudes, and how two of them meet."""
+"""Boxes on Mars bounded by latitudes and longitudes: how two meet, and map crops."""
 
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import NamedTuple
 
 import numpy as np
 
-from analysis.ground_truth.models.feature import Feature
-from common.maths.geodesy import TURN, longitude_span
+from common.maths.geodesy import TURN, longitude_span, longitude_stretch
 
 POLE = 90.0
 
@@ -15,18 +15,6 @@ POLE = 90.0
 Box = tuple[
     np.ndarray | float, np.ndarray | float, np.ndarray | float, np.ndarray | float
 ]
-
-
-def box_span(box) -> float:
-    """Return how far east a box reaches from its west edge.
-
-    Args:
-        box: Anything bounded by a west and an east longitude.
-
-    Returns:
-        span: The eastward span in degrees, 360 where it circles a pole.
-    """
-    return longitude_span(box.west_lon, box.east_lon)
 
 
 def bounds_box(bounded) -> Box:
@@ -38,7 +26,8 @@ def bounds_box(bounded) -> Box:
     Returns:
         box: Its latitudes, its west edge and its eastward span.
     """
-    return bounded.min_lat, bounded.max_lat, bounded.west_lon, box_span(bounded)
+    span = longitude_span(bounded.west_lon, bounded.east_lon)
+    return bounded.min_lat, bounded.max_lat, bounded.west_lon, span
 
 
 def bounds_boxes(bounded) -> Box:
@@ -51,8 +40,7 @@ def bounds_boxes(bounded) -> Box:
         boxes: Their latitudes, west edges and eastward spans, one array each.
     """
     return tuple(
-        np.array(held)
-        for held in zip(*(bounds_box(one) for one in bounded), strict=True)
+        np.array(edges) for edges in zip(*map(bounds_box, bounded), strict=True)
     )
 
 
@@ -73,22 +61,6 @@ def recut[Bounded](bounded: Bounded, cut) -> Bounded:
         west_lon=cut.west_lon,
         east_lon=cut.east_lon,
     )
-
-
-def claimed_box(feature: Feature, latitudes: tuple[float, float] | None) -> Box | None:
-    """Return the part of a feature's box a texture tile has to lie in.
-
-    Args:
-        feature: The feature.
-        latitudes: The latitudes the class is kept to, or None for anywhere.
-
-    Returns:
-        box: The box, or None where the latitudes leave none of it.
-    """
-    south, north, west, span = bounds_box(feature)
-    if latitudes is not None:
-        south, north = max(south, latitudes[0]), min(north, latitudes[1])
-    return (south, north, west, span) if south < north else None
 
 
 def centre_offset(inner: Box, outer: Box) -> np.ndarray:
@@ -149,3 +121,67 @@ def touching(one: Box, other: Box) -> np.ndarray:
             | ((np.asarray(other[2]) - one[2]) % TURN < one[3])
         )
     )
+
+
+class Crop(NamedTuple):
+    """One plate carree lon/lat box, as a mosaic crop is asked for and drawn over.
+
+    Attributes:
+        west: Its western edge in degrees.
+        south: Its southern edge in degrees.
+        east: Its eastern edge in degrees.
+        north: Its northern edge in degrees.
+    """
+
+    west: float
+    south: float
+    east: float
+    north: float
+
+    @property
+    def extent(self) -> tuple[float, float, float, float]:
+        """Return the crop as an image extent."""
+        return self.west, self.east, self.south, self.north
+
+    @property
+    def centre_lat(self) -> float:
+        """Return the latitude the crop is centred on."""
+        return (self.south + self.north) / 2.0
+
+
+def crop_around(lon: np.ndarray, lat: np.ndarray, min_span_deg: float) -> Crop:
+    """Return the crop holding every point, each side held open to a minimum.
+
+    Args:
+        lon: The longitudes to hold, on one turn.
+        lat: The latitudes to hold.
+        min_span_deg: The least ground each side spans, in degrees of latitude.
+
+    Returns:
+        crop: The crop, widened about its middle where a side falls short.
+    """
+    centre_lat = float((lat.min() + lat.max()) / 2.0)
+    south, north = floored(float(lat.min()), float(lat.max()), min_span_deg)
+    west, east = floored(
+        float(lon.min()),
+        float(lon.max()),
+        min_span_deg / longitude_stretch(centre_lat),
+    )
+    return Crop(west, south, east, north)
+
+
+def floored(low: float, high: float, minimum: float) -> tuple[float, float]:
+    """Hold one side of a box open to a minimum width, about its middle.
+
+    Args:
+        low: The lower edge.
+        high: The upper edge.
+        minimum: The width to hold it open to.
+
+    Returns:
+        edges: The edges, widened about their middle when closer than the minimum.
+    """
+    if high - low >= minimum:
+        return low, high
+    centre = (low + high) / 2.0
+    return centre - minimum / 2.0, centre + minimum / 2.0

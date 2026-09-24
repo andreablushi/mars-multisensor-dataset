@@ -8,11 +8,11 @@ from matplotlib.lines import Line2D
 from analysis.stats.models.tile import TileLooks
 from analysis.stats.tile import read
 from analysis.visualization.common import mosaic, panels
-from analysis.visualization.common.models.box import Box
 from analysis.visualization.common.models.colours import Colour
 from analysis.visualization.common.models.coverage import Coverage
 from analysis.visualization.tile.models.placing import Placed
 from analysis.visualization.tile.plots import outlines, placing
+from common.maths.box import Crop
 
 MAP_FIGURE_SIZE = (9.0, 6.0)
 
@@ -47,7 +47,7 @@ def figure(
     grid: Placed,
     coverage: Coverage,
     looks: TileLooks | None,
-    box: Box,
+    box: Crop,
     image: bytes,
     title: str,
 ) -> widgets.Widget:

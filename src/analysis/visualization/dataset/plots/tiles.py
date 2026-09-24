@@ -15,12 +15,12 @@ from matplotlib.patches import Patch
 from analysis.selector.models.selection import Selection
 from analysis.utils.tile_group import tile_grid
 from analysis.visualization.common import mosaic, panels
-from analysis.visualization.common.models.box import Box
+from common.maths.box import Crop
 from common.maths.physics import RADIUS_M
 from common.maths.tessellate import Tessellate
 
 MAP_FIGURE_SIZE = (14.0, 7.6)
-MARS = Box(-180.0, -90.0, 180.0, 90.0)
+MARS = Crop(-180.0, -90.0, 180.0, 90.0)
 BASEMAP_PIXELS = 2400
 RASTER_DEG = 0.1
 REGRID = (BASEMAP_PIXELS, BASEMAP_PIXELS // 2)

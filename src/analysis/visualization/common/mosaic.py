@@ -13,9 +13,9 @@ from matplotlib import image as reading
 from matplotlib.axes import Axes
 
 from analysis.visualization.common import panels
-from analysis.visualization.common.models.box import Box
 from common.fetch.http import TLS_CONTEXT
 from common.maths import geodesy
+from common.maths.box import Crop
 
 BASEMAP_URL = "https://planetarymaps.usgs.gov/cgi-bin/mapserv"
 BASEMAP_MAP = "/maps/mars/mars_simp_cyl.map"
@@ -30,7 +30,7 @@ NO_BOX = "this tile has no lon/lat box to crop the mosaic to"
 
 
 def fetched(
-    box: Box, draw: Callable[[bytes], widgets.Widget], pixels: int = BASEMAP_PIXELS
+    box: Crop, draw: Callable[[bytes], widgets.Widget], pixels: int = BASEMAP_PIXELS
 ) -> widgets.Box:
     """Claim the space one crop goes in and fill it off the thread that fetches it."""
     return panels.loaded(
@@ -50,7 +50,7 @@ def read_mosaic(image: bytes) -> np.ndarray:
     return reading.imread(io.BytesIO(image), format="png")
 
 
-def draw(axis: Axes, box: Box, image: bytes) -> None:
+def draw(axis: Axes, box: Crop, image: bytes) -> None:
     """Draw one mosaic crop onto an axis, labelled in lon and lat."""
     axis.imshow(
         read_mosaic(image),
@@ -69,7 +69,7 @@ def draw(axis: Axes, box: Box, image: bytes) -> None:
 
 
 @lru_cache(maxsize=BASEMAP_CACHE)
-def crop(box: Box, pixels: int = BASEMAP_PIXELS) -> bytes:
+def crop(box: Crop, pixels: int = BASEMAP_PIXELS) -> bytes:
     """Fetch the mosaic over one lon/lat box, held for the panels sharing it."""
     tall = box.north - box.south
     wide = (box.east - box.west) * geodesy.longitude_stretch(box.centre_lat)

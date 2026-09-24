@@ -8,11 +8,11 @@ import ipywidgets as widgets
 
 from analysis.stats.tile import read
 from analysis.visualization.common import mosaic, panels, wording
-from analysis.visualization.common.models.box import Box
 from analysis.visualization.common.models.coverage import Coverage
 from analysis.visualization.tile.models.placing import Placed
 from analysis.visualization.tile.plots import placing
 from common.config import analysis_settings
+from common.maths.box import Crop
 
 MAP_FIGURE_SIZE = (7.0, 6.0)
 REPORT_WIDTH = "360px"
@@ -80,7 +80,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
     )
 
 
-def figure(grid: Placed, box: Box, image: bytes, title: str) -> widgets.Widget:
+def figure(grid: Placed, box: Crop, image: bytes, title: str) -> widgets.Widget:
     """Draw the tile's crop of the mosaic, with the ground it covers outlined."""
     drawn, axis = panels.board(MAP_FIGURE_SIZE)
     mosaic.draw(axis, box, image)

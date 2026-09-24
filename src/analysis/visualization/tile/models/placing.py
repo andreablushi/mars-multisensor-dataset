@@ -5,8 +5,8 @@ from __future__ import annotations
 import numpy as np
 
 from analysis.coverage.projection import footprints
-from analysis.visualization.common.models.box import Box
 from common.maths import geodesy
+from common.maths.box import Crop, crop_around
 from common.models.tile import Tile
 
 MIN_SPAN_DEG = 0.5
@@ -54,35 +54,6 @@ class Placed:
         """
         return self._centre[0] + geodesy.normalise_longitude(lon - self._centre[0])
 
-    def box(self) -> Box:
-        """Return the lon/lat box the whole tile falls in, held open to a minimum.
-
-        Returns:
-            box: The box a mosaic crop is asked for over.
-        """
-        lon, lat = self.outline()
-        centre_lat = float((lat.min() + lat.max()) / 2.0)
-        south, north = _floored(float(lat.min()), float(lat.max()), MIN_SPAN_DEG)
-        west, east = _floored(
-            float(lon.min()),
-            float(lon.max()),
-            MIN_SPAN_DEG / geodesy.longitude_stretch(centre_lat),
-        )
-        return Box(west, south, east, north)
-
-
-def _floored(low: float, high: float, minimum: float) -> tuple[float, float]:
-    """Hold a side of a box open to a minimum width, about its middle.
-
-    Args:
-        low: The lower edge.
-        high: The upper edge.
-        minimum: The width to hold it open to.
-
-    Returns:
-        edges: The edges, widened about their middle when closer than the minimum.
-    """
-    if high - low >= minimum:
-        return low, high
-    centre = (low + high) / 2.0
-    return centre - minimum / 2.0, centre + minimum / 2.0
+    def box(self) -> Crop:
+        """Return the lon/lat crop the whole tile falls in, held open to a minimum."""
+        return crop_around(*self.outline(), MIN_SPAN_DEG)
