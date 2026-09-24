@@ -33,7 +33,7 @@ loc: f
 
 # What a window has to hold before a tile earns a place in the dataset.
 window:
-  # The coverage each instrument is asked of a tile, in percent of its area.
+  # The coverage each instrument is asked of a tile, as a share of its area.
   constraints:
     - {CTX: 0.60}
     - {CRISM: 0.50}
