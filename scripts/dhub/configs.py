@@ -20,6 +20,7 @@ class Resources:
         memory: The memory it is scheduled with, such as "32Gi".
         disk: The disk it is given.
         budget: The memory a build plans against, or None to plan against all of it.
+        shared: Whether it queues on the shared pool rather than the reserved one.
     """
 
     profile: str
@@ -27,6 +28,7 @@ class Resources:
     memory: str | None = None
     disk: str | None = None
     budget: str | None = None
+    shared: bool = False
 
 
 @dataclass(slots=True)
@@ -42,7 +44,6 @@ class Platform:
         resources: The profile, cores, memory, budget and disk of each stage.
         functions: The function each stage is registered as, by stage.
         publishes: What each stage publishes, by the name a download asks for.
-        shared: Whether every stage queues on the shared pool.
     """
 
     project: str
@@ -53,7 +54,6 @@ class Platform:
     resources: dict[str, Resources]
     functions: dict[str, str]
     publishes: dict[str, str]
-    shared: bool = False
 
 
 def load() -> Platform:
@@ -63,11 +63,10 @@ def load() -> Platform:
         platform: The settled choices, each profile marked for its pool.
     """
     platform = load_config(PLATFORM_CONFIG_PATH, Platform)
-    pool = "-shared" if platform.shared else ""
     return replace(
         platform,
         resources={
-            stage: replace(one, profile=one.profile + pool)
+            stage: replace(one, profile=one.profile + ("-shared" if one.shared else ""))
             for stage, one in platform.resources.items()
         },
     )
