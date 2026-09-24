@@ -7,10 +7,10 @@ import math
 import ipywidgets as widgets
 
 from analysis.stats.models import CatalogueStats, DatasetStats
-from analysis.visualization.common import quantities, tables, wording
-from analysis.visualization.common.models.tables import Row
+from analysis.visualization import panels, wording
+from analysis.visualization.panels import Row
 
-_TILES = ("Statistic", "Value")
+_MEASURED = ("Statistic", "Value")
 _INSTRUMENTS = (
     "Instrument",
     "Tiles reached",
@@ -21,26 +21,26 @@ _INSTRUMENTS = (
 )
 
 
-def measured(stats: CatalogueStats) -> widgets.Widget:
+def measured(catalogue: CatalogueStats) -> widgets.Widget:
     """Tabulate how big the measured dataset is."""
-    return tables.written(
+    return panels.written(
         "The ODE dataset that was measured",
-        _TILES,
+        _MEASURED,
         [
-            ("Tiles Mars is split into", f"{stats.tiles:,}"),
-            ("Tile side", f"{stats.tile_km:,.0f} km"),
-            ("Tiles measured", f"{stats.measured:,}"),
-            ("Mean tile size", wording.spread(stats.tile_km2, quantities.area)),
+            ("Tiles Mars is split into", f"{catalogue.tiles:,}"),
+            ("Tile side", f"{catalogue.tile_km:,.0f} km"),
+            ("Tiles measured", f"{catalogue.measured:,}"),
+            ("Mean tile size", wording.spread(catalogue.tile_km2, wording.area)),
         ],
     )
 
 
-def instruments(stats: CatalogueStats, read: DatasetStats) -> widgets.Widget:
+def instruments(catalogue: CatalogueStats, dataset: DatasetStats) -> widgets.Widget:
     """Tabulate what each instrument holds of the measured dataset."""
     rows: list[Row] = []
-    for instrument in stats.instruments:
+    for instrument in catalogue.instruments:
         # The median, since a handful of records publish a pixel far out from the rest
-        pixel_km2 = read.pixel_km2.get(instrument.iid)
+        pixel_km2 = dataset.pixel_km2.get(instrument.iid)
         if pixel_km2 is None or not pixel_km2.counted:
             resolution = wording.UNCOUNTED
         else:
@@ -55,4 +55,4 @@ def instruments(stats: CatalogueStats, read: DatasetStats) -> widgets.Widget:
                 instrument.last.date().isoformat(),
             )
         )
-    return tables.written("Global instrument coverage", _INSTRUMENTS, rows)
+    return panels.written("Global instrument coverage", _INSTRUMENTS, rows)

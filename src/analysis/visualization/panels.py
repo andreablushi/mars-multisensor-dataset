@@ -1,38 +1,31 @@
-"""How a figure reads: its colours, its axes, and what stands in for it."""
+"""How a panel reads: its colours, its axes, its tables, and what stands in for it."""
 
 from __future__ import annotations
 
 import io
-import threading
-from collections.abc import Callable, Sequence
-from datetime import datetime
+from collections.abc import Sequence
 from html import escape
 from itertools import cycle
 
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
+import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.ticker import PercentFormatter
 
-from analysis.visualization.common.models.colours import Colour
-from analysis.visualization.common.models.coverage import Coverage
+from analysis.coverage.models.coverage import SetCoverage
+
+# The colour one instrument set is drawn in
+Colour = tuple[float, float, float]
+
+# The tile every panel is drawn for
+Coverage = list[SetCoverage]
+
+# One row of a written table
+Row = Sequence[str]
 
 GREY = "#8a8a8a"
-
-PLACEHOLDER = "320px"
-
-FIGURE_WIDTH = 11
-
-KEY_WIDTH = 0.78
-KEY_SIDE = 0.80
-KEY_TOP = 0.92
-
-SURVEY_LINE = "#1a1a1a"
-SURVEY_STYLE = (0, (6, 3))
-SURVEY_WIDTH = 0.8
-SURVEY_SHADE = "#9e9e9e"
-SURVEY_ALPHA = 0.18
 
 
 def colours(labels: Sequence[str]) -> dict[str, Colour]:
@@ -48,19 +41,19 @@ def board(size: tuple[float, float], projection: object = None) -> tuple[Figure,
 
 def stacked(count: int, height: float, **shared) -> tuple[Figure, list[Axes]]:
     """Open a figure of one panel per instrument set, stacked."""
-    figure = Figure(figsize=(FIGURE_WIDTH, height))
+    figure = Figure(figsize=(11, height))
     axes = figure.subplots(count, 1, squeeze=False, **shared)
     return figure, [axis for row in axes for axis in row]
 
 
 def key_beside(figure: Figure, handles: Sequence) -> None:
     """Set a key beside a map, in a strip left clear down its right side."""
-    figure.tight_layout(rect=(0.0, 0.0, KEY_WIDTH, 1.0))
+    figure.tight_layout(rect=(0.0, 0.0, 0.78, 1.0))
     figure.legend(
         handles=handles,
         fontsize=8,
         loc="upper left",
-        bbox_to_anchor=(KEY_SIDE, KEY_TOP),
+        bbox_to_anchor=(0.80, 0.92),
         frameon=False,
     )
 
@@ -79,26 +72,13 @@ def note(axis: Axes, text: str, colour: str = GREY, size: float = 9) -> None:
     )
 
 
-def tidy(axis: Axes, percent: str, grid: str) -> None:
-    """Format an axis as percentages, grid it faintly, and drop its outer frame."""
-    target = axis.xaxis if percent == "x" else axis.yaxis
-    target.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
+def tidy(axis: Axes, grid: str, percent: str | None = None) -> None:
+    """Grid an axis faintly and drop its outer frame, reading one side as percent."""
+    if percent is not None:
+        target = axis.xaxis if percent == "x" else axis.yaxis
+        target.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
     axis.grid(axis=grid, alpha=0.25, linewidth=0.5)
     axis.spines[["top", "right"]].set_visible(False)
-
-
-def shade(axis: Axes, open_for: Sequence[tuple[datetime, datetime]]) -> None:
-    """Mark the stretches of time the windows are open over."""
-    for opened, closed in open_for:
-        axis.axvspan(opened, closed, color=SURVEY_SHADE, alpha=SURVEY_ALPHA, zorder=0)
-        for edge in (opened, closed):
-            axis.axvline(
-                edge,
-                color=SURVEY_LINE,
-                linestyle=SURVEY_STYLE,
-                linewidth=SURVEY_WIDTH,
-                zorder=4,
-            )
 
 
 def rendered(figure: Figure) -> widgets.Image:
@@ -112,38 +92,10 @@ def rendered(figure: Figure) -> widgets.Image:
     )
 
 
-def loaded[T](
-    fetch: Callable[[], T],
-    draw: Callable[[T], widgets.Widget],
-    waiting: str,
-    failed: str,
-) -> widgets.Box:
-    """Claim the space one figure goes in and fill it off the thread that fetches it."""
-    space = widgets.Box(
-        [
-            widgets.HTML(
-                f"<div style='width: {PLACEHOLDER}; height: {PLACEHOLDER};"
-                f" display: flex; align-items: center; justify-content: center;"
-                f" box-sizing: border-box; padding: 10px; text-align: center;"
-                f" background: #f2f2f2; border: 1px solid #d8d8d8;"
-                f" border-radius: 4px; color: {GREY};"
-                f" font-family: sans-serif; font-size: 12px;'>"
-                f"{escape(waiting)}</div>"
-            )
-        ]
-    )
-
-    def fill() -> None:
-        """Fetch what is drawn and put the figure in the claimed space."""
-        try:
-            held = fetch()
-        except Exception as exc:
-            space.children = (unavailable(failed.format(reason=exc)),)
-            return
-        space.children = (draw(held),)
-
-    threading.Thread(target=fill, daemon=True).start()
-    return space
+def written(title: str, headings: Sequence[str], rows: Sequence[Row]) -> widgets.HTML:
+    """Write a table out as a panel."""
+    frame = pd.DataFrame(rows, columns=list(headings))
+    return widgets.HTML(f"<b>{escape(title)}</b>{frame.to_html(index=False, border=0)}")
 
 
 def unavailable(

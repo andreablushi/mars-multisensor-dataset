@@ -14,7 +14,7 @@ from matplotlib.patches import Patch
 
 from analysis.selector.models.selection import Selection
 from analysis.utils.tile_group import tile_grid
-from analysis.visualization.common import mosaic, panels
+from analysis.visualization import mosaic, panels
 from common.maths.box import Crop
 from common.maths.physics import RADIUS_M
 from common.maths.tessellate import Tessellate
@@ -23,7 +23,6 @@ MAP_FIGURE_SIZE = (14.0, 7.6)
 MARS = Crop(-180.0, -90.0, 180.0, 90.0)
 BASEMAP_PIXELS = 2400
 RASTER_DEG = 0.1
-REGRID = (BASEMAP_PIXELS, BASEMAP_PIXELS // 2)
 
 GLOBE = crs.Globe(semimajor_axis=RADIUS_M, semiminor_axis=RADIUS_M, ellipse=None)
 LONLAT = crs.PlateCarree(globe=GLOBE)
@@ -35,7 +34,7 @@ LAID = dict(
     origin="upper",
     interpolation="nearest",
     transform=LONLAT,
-    regrid_shape=REGRID,
+    regrid_shape=(BASEMAP_PIXELS, BASEMAP_PIXELS // 2),
 )
 
 KEPT = "#2ca02c"
@@ -43,29 +42,41 @@ EXCLUDED = "#d62728"
 TILE_ALPHA = 0.45
 
 
-def plot(picked: Sequence[Selection]) -> widgets.Widget:
+def plot(selections: Sequence[Selection]) -> widgets.Widget:
     """Map every tile of Mars, the kept ones in green and every other one in red."""
     grid = tile_grid()
     kept = np.zeros(sum(grid.columns), dtype=bool)
-    held = [one.tile for one in picked if one.tile.kept]
+    kept_tiles = [selection.tile for selection in selections if selection.tile.kept]
     kept[
-        grid.flat_tile_indices([one.band for one in held], [one.column for one in held])
+        grid.flat_tile_indices(
+            [tile.band for tile in kept_tiles], [tile.column for tile in kept_tiles]
+        )
     ] = True
-    return mosaic.fetched(MARS, lambda image: figure(kept, grid, image), BASEMAP_PIXELS)
+    return mosaic.fetched(
+        MARS, lambda image: kept_map(kept, grid, image), BASEMAP_PIXELS
+    )
 
 
-def figure(kept: np.ndarray, grid: Tessellate, image: bytes) -> widgets.Widget:
-    """Draw the mosaic of Mars with every tile coloured by what the filter kept."""
+def kept_map(kept: np.ndarray, grid: Tessellate, image: bytes) -> widgets.Image:
+    """Draw the mosaic of Mars with every tile coloured by what the filter kept.
+
+    Args:
+        kept: Whether the filter kept each tile, by flat tile index.
+        grid: The tiling Mars is split into.
+        image: The mosaic of the whole planet, as fetched.
+
+    Returns:
+        map: The map, rendered.
+    """
     lat = np.arange(MARS.north - RASTER_DEG / 2.0, MARS.south, -RASTER_DEG)
     lon = np.arange(MARS.west + RASTER_DEG / 2.0, MARS.east, RASTER_DEG)
     bands, columns = grid.tile_indices(*np.meshgrid(lat, lon, indexing="ij"))
-    held = kept[grid.flat_tile_indices(bands, columns)]
     painted = np.where(
-        held[..., None],
+        kept[grid.flat_tile_indices(bands, columns)][..., None],
         to_rgba(KEPT, TILE_ALPHA),
         to_rgba(EXCLUDED, TILE_ALPHA),
     )
-    drawn, axis = mars_board(image, f"{int(kept.sum()):,} of {kept.size:,} tiles kept")
+    figure, axis = mars_board(image, f"{int(kept.sum()):,} of {kept.size:,} tiles kept")
     axis.imshow(painted, **LAID)
     axis.legend(
         handles=[
@@ -75,8 +86,8 @@ def figure(kept: np.ndarray, grid: Tessellate, image: bytes) -> widgets.Widget:
         fontsize=9,
         loc="lower left",
     )
-    drawn.tight_layout()
-    return panels.rendered(drawn)
+    figure.tight_layout()
+    return panels.rendered(figure)
 
 
 def mars_board(image: bytes, title: str) -> tuple[Figure, Axes]:
@@ -90,7 +101,7 @@ def mars_board(image: bytes, title: str) -> tuple[Figure, Axes]:
         figure: The figure the map is drawn on.
         axis: The map itself, in lon and lat.
     """
-    drawn, axis = panels.board(MAP_FIGURE_SIZE, ROBINSON)
+    figure, axis = panels.board(MAP_FIGURE_SIZE, ROBINSON)
     axis.set_global()
     axis.imshow(mosaic.read_mosaic(image), cmap="gray", **LAID)
     lines = axis.gridlines(
@@ -98,4 +109,4 @@ def mars_board(image: bytes, title: str) -> tuple[Figure, Axes]:
     )
     lines.xlabel_style = lines.ylabel_style = {"size": 8}
     axis.set_title(title, fontsize=12, loc="left")
-    return drawn, axis
+    return figure, axis

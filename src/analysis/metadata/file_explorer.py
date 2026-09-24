@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from analysis import paths
-from analysis.models.instrument import InstrumentSet
 
 
 def find_sets() -> list[Path]:
@@ -15,17 +14,3 @@ def find_sets() -> list[Path]:
         for path in paths.METADATA_ROOT.glob("*/*.jsonl")
         if path.stat().st_size > 0
     )
-
-
-def has_metadata(group: str, instrument_set: InstrumentSet) -> bool:
-    """Report whether one group holds downloaded records for an instrument set.
-
-    Args:
-        group: The name of the group.
-        instrument_set: The instrument set to look for.
-
-    Returns:
-        found: True when a non-empty metadata file for that set exists.
-    """
-    metadata = paths.metadata_path(group, instrument_set)
-    return metadata.exists() and metadata.stat().st_size > 0

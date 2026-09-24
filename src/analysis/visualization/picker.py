@@ -10,15 +10,10 @@ from IPython.display import display
 from analysis.coverage import artifacts as index
 from analysis.stats.artifacts import selection_by_tile
 from analysis.utils.tile_group import tile_grid
-from analysis.visualization.common import panels
-from analysis.visualization.common.models.coverage import Coverage
+from analysis.visualization import panels
+from analysis.visualization.panels import Coverage
 from common.config import analysis_settings
 
-DEFAULT_LAT = 18.4
-DEFAULT_LON = 77.5
-KEPT = "kept"
-NO_WINDOW = "no window"
-UNSEARCHED = "not in the selection"
 COORDINATE = widgets.Layout(width="200px")
 
 
@@ -32,17 +27,17 @@ class TilePicker:
     def __init__(self) -> None:
         """Build the picker, which reads nothing until a point is confirmed."""
         self.coverage: Coverage = []
-        self._areas: list[tuple[widgets.Box, Callable[[Coverage], widgets.Widget]]] = []
+        self._areas: dict[Callable[[Coverage], widgets.Widget], widgets.Box] = {}
         self._lat = widgets.BoundedFloatText(
             description="Latitude:",
-            value=DEFAULT_LAT,
+            value=18.4,
             min=-90.0,
             max=90.0,
             layout=COORDINATE,
         )
         self._lon = widgets.BoundedFloatText(
             description="Longitude:",
-            value=DEFAULT_LON,
+            value=77.5,
             min=-180.0,
             max=360.0,
             layout=COORDINATE,
@@ -61,45 +56,47 @@ class TilePicker:
     def show_panel(self, render: Callable[[Coverage], widgets.Widget]) -> None:
         """Claim an area here and fill it whenever the choice changes."""
         area = widgets.VBox()
-        self._areas = [claimed for claimed in self._areas if claimed[1] is not render]
-        self._areas.append((area, render))
+        self._areas.pop(render, None)
+        self._areas[render] = area
         display(area)
         area.children = (render(self.coverage),)
 
     def _confirmed(self, _button=None) -> None:
         """Load the tile holding the confirmed point and refill every claimed area."""
-        settings = analysis_settings()
         grid = tile_grid()
         band, column = grid.tile_indices(self._lat.value, self._lon.value)
         tile = grid.tile_of(int(band), int(column))
         # The config says in what order the sets are drawn
         ranks = {
-            chosen.key: rank for rank, chosen in enumerate(settings.instrument_sets)
+            chosen.key: rank
+            for rank, chosen in enumerate(analysis_settings().instrument_sets)
         }
         self.coverage = sorted(
             index.load_tile(tile),
-            key=lambda one: ranks.get(one.summary.set_key, len(ranks)),
+            key=lambda instrument: ranks.get(instrument.summary.set_key, len(ranks)),
         )
         try:
-            picked = selection_by_tile().get(tile.name)
+            selection = selection_by_tile().get(tile.name)
         except FileNotFoundError:
-            picked = None
-        if picked is None:
-            verdict = UNSEARCHED
+            selection = None
+        if selection is None:
+            verdict = "not in the selection"
+        elif selection.tile.kept:
+            verdict = "kept"
         else:
-            verdict = KEPT if picked.tile.kept else NO_WINDOW
+            verdict = "no window"
         if self.coverage:
-            note = widgets.HTML(
+            status = widgets.HTML(
                 f"Loaded <b>tile {tile.name}</b>, {tile.min_lat:.3f} to "
                 f"{tile.max_lat:.3f} lat, {tile.west_lon:.3f} to {tile.east_lon:.3f} "
                 f"lon, {verdict}. The cells below have filled in."
             )
         else:
-            note = panels.unavailable(
+            status = panels.unavailable(
                 f"Nothing has been downloaded or computed for tile {tile.name}."
             )
-        self._status.children = (note,)
-        for area, _ in self._areas:
+        self._status.children = (status,)
+        for area in self._areas.values():
             area.children = ()
-        for area, render in self._areas:
+        for render, area in self._areas.items():
             area.children = (render(self.coverage),)

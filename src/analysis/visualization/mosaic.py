@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import threading
 from collections.abc import Callable
 from functools import lru_cache
 
@@ -11,8 +12,9 @@ import ipywidgets as widgets
 import numpy as np
 from matplotlib import image as reading
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
-from analysis.visualization.common import panels
+from analysis.visualization import panels
 from common.fetch.http import TLS_CONTEXT
 from common.maths import geodesy
 from common.maths.box import Crop
@@ -23,19 +25,61 @@ BASEMAP_LAYER = "THEMIS"
 BASEMAP_PIXELS = 900
 BASEMAP_TIMEOUT = 30.0
 BASEMAP_FAILED = "The basemap could not be fetched: {reason}"
-BASEMAP_LOADING = "Fetching the basemap..."
-BASEMAP_CACHE = 32
 
-NO_BOX = "this tile has no lon/lat box to crop the mosaic to"
+NO_BOX = BASEMAP_FAILED.format(
+    reason="this tile has no lon/lat box to crop the mosaic to"
+)
 
 
 def fetched(
     box: Crop, draw: Callable[[bytes], widgets.Widget], pixels: int = BASEMAP_PIXELS
 ) -> widgets.Box:
-    """Claim the space one crop goes in and fill it off the thread that fetches it."""
-    return panels.loaded(
-        lambda: crop(box, pixels), draw, BASEMAP_LOADING, BASEMAP_FAILED
+    """Claim the space one crop goes in and fill it off the thread that fetches it.
+
+    Args:
+        box: The lon/lat box the crop covers.
+        draw: What turns the fetched crop into the figure shown.
+        pixels: How many pixels the crop's longer side is fetched at.
+
+    Returns:
+        space: A waiting placeholder, replaced by the figure once it is drawn.
+    """
+    space = widgets.Box(
+        [
+            widgets.HTML(
+                f"<div style='width: 320px; height: 320px;"
+                f" display: flex; align-items: center; justify-content: center;"
+                f" box-sizing: border-box; padding: 10px; text-align: center;"
+                f" background: #f2f2f2; border: 1px solid #d8d8d8;"
+                f" border-radius: 4px; color: {panels.GREY};"
+                f" font-family: sans-serif; font-size: 12px;'>"
+                f"Fetching the basemap...</div>"
+            )
+        ]
     )
+    threading.Thread(
+        target=lambda: _fill(space, box, draw, pixels), daemon=True
+    ).start()
+    return space
+
+
+def _fill(
+    space: widgets.Box, box: Crop, draw: Callable[[bytes], widgets.Widget], pixels: int
+) -> None:
+    """Fetch one crop and put the figure drawn from it in the claimed space.
+
+    Args:
+        space: The space claimed for the figure.
+        box: The lon/lat box the crop covers.
+        draw: What turns the fetched crop into the figure shown.
+        pixels: How many pixels the crop's longer side is fetched at.
+    """
+    try:
+        image = crop(box, pixels)
+    except Exception as exc:
+        space.children = (panels.unavailable(BASEMAP_FAILED.format(reason=exc)),)
+        return
+    space.children = (draw(image),)
 
 
 def read_mosaic(image: bytes) -> np.ndarray:
@@ -50,8 +94,19 @@ def read_mosaic(image: bytes) -> np.ndarray:
     return reading.imread(io.BytesIO(image), format="png")
 
 
-def draw(axis: Axes, box: Crop, image: bytes) -> None:
-    """Draw one mosaic crop onto an axis, labelled in lon and lat."""
+def board(size: tuple[float, float], box: Crop, image: bytes) -> tuple[Figure, Axes]:
+    """Open a figure with one mosaic crop drawn on it, labelled in lon and lat.
+
+    Args:
+        size: The figure's size in inches.
+        box: The lon/lat box the crop covers.
+        image: The crop, as `crop` hands it back.
+
+    Returns:
+        figure: The figure the crop is drawn on.
+        axis: The crop itself, in lon and lat.
+    """
+    figure, axis = panels.board(size)
     axis.imshow(
         read_mosaic(image),
         extent=box.extent,
@@ -66,9 +121,10 @@ def draw(axis: Axes, box: Crop, image: bytes) -> None:
     axis.tick_params(labelsize=8)
     # A footprint reaching well past the crop is cut to it rather than framed
     axis.autoscale(False)
+    return figure, axis
 
 
-@lru_cache(maxsize=BASEMAP_CACHE)
+@lru_cache(maxsize=32)
 def crop(box: Crop, pixels: int = BASEMAP_PIXELS) -> bytes:
     """Fetch the mosaic over one lon/lat box, held for the panels sharing it."""
     tall = box.north - box.south

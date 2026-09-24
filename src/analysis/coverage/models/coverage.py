@@ -47,12 +47,10 @@ class SetCoverage:
     Attributes:
         events: The set's observations in chronological order.
         summary: The single row describing the set as a whole.
-        pending: Whether the set has records downloaded but never measured.
     """
 
     events: list[Event]
     summary: Summary
-    pending: bool = False
 
     @property
     def label(self) -> str:
@@ -66,11 +64,5 @@ class SetCoverage:
 
     @property
     def reason(self) -> str:
-        """Return why the set holds nothing to draw.
-
-        Returns:
-            reason: What is missing, or an empty string when the set was observed.
-        """
-        if self.observed:
-            return ""
-        return "downloaded, not yet measured" if self.pending else "no observations"
+        """Return why the set holds nothing to draw, or nothing when it was observed."""
+        return "" if self.observed else "no observations"

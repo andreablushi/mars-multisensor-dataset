@@ -11,7 +11,6 @@ import pyarrow.parquet as pq
 from analysis import paths
 from analysis.coverage.models.coverage import Event, SetCoverage
 from analysis.coverage.models.summary import Summary
-from analysis.metadata import file_explorer
 from analysis.models.job import CoverageJob
 from analysis.utils.tile_group import group_of
 from common.config import analysis_settings
@@ -94,11 +93,9 @@ def load_group(group: str, tile: str | None = None) -> dict[str, list[SetCoverag
     directory = paths.GROUPS_ROOT / group
     filters = None if tile is None else [("tile", "==", tile)]
     measured: dict[str, list[SetCoverage]] = {}
-    finished: set[str] = set()
     # A set whose summary never landed was never finished, so it is passed over
     for summary_path in sorted(directory.glob(f"*{paths.SET_SUMMARY_SUFFIX}")):
         slug = summary_path.name.removesuffix(paths.SET_SUMMARY_SUFFIX)
-        finished.add(slug)
         events_path = summary_path.with_name(f"{slug}{paths.EVENTS_SUFFIX}")
         events = pq.read_table(events_path, schema=EVENTS, filters=filters)
         summaries = pq.read_table(summary_path, schema=SUMMARY, filters=filters)
@@ -125,14 +122,7 @@ def load_group(group: str, tile: str | None = None) -> dict[str, list[SetCoverag
         reached_keys = {instrument.summary.set_key for instrument in reached}
         blanks = [
             SetCoverage(
-                events=[],
-                summary=replace(
-                    blank,
-                    set_key=absent.key,
-                    iid=absent.iid,
-                ),
-                pending=absent.slug not in finished
-                and file_explorer.has_metadata(group, absent),
+                events=[], summary=replace(blank, set_key=absent.key, iid=absent.iid)
             )
             for absent in configured
             if absent.key not in reached_keys
