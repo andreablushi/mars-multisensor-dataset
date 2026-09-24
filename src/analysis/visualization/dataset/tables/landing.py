@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import ipywidgets as widgets
 
-from analysis.stats.models.dataset import DatasetStats
-from analysis.stats.models.spread import Spread
+from analysis.stats.models import DatasetStats, Spread
 from analysis.visualization.common import quantities, tables, wording
 from analysis.visualization.common.models.tables import Row
 from common.config import analysis_settings
@@ -29,7 +28,7 @@ def landed(read: DatasetStats) -> widgets.Widget:
         asked = admits.get(iid)
         # A sounder counts traces, not picture elements, so its pixels go unmarked
         unit = "" if iid == wording.SOUNDER else " px"
-        measured = read.held.pixels_per_look[iid]
+        measured = read.pixels_per_look[iid]
         selected = read.selected[iid]
         rows.append(
             (
@@ -41,7 +40,7 @@ def landed(read: DatasetStats) -> widgets.Widget:
                 if measured.counted
                 else wording.UNCOUNTED,
                 f"{asked:,.0f}" if asked else wording.NOTHING,
-                _share(read.held.reached[iid]),
+                _share(read.reached[iid]),
             )
         )
     # The ground no one instrument answers for, so it carries none of their columns

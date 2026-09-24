@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ipywidgets as widgets
 
-from analysis.stats.models.dataset import DatasetStats
+from analysis.stats.models import DatasetStats
 from analysis.visualization.common import quantities, tables, wording
 from analysis.visualization.common.models.tables import Row
 
@@ -13,11 +13,10 @@ _HEADINGS = ("Statistic", "Value")
 
 def final(read: DatasetStats) -> widgets.Widget:
     """Tabulate the dataset the filter leaves behind."""
-    held = read.held
     rows: list[Row] = [
-        ("Tiles searched", f"{held.searched:,}"),
-        ("Tiles kept", f"{held.kept:,}"),
-        ("Mean window", wording.spread(held.days, quantities.duration)),
+        ("Tiles searched", f"{read.searched:,}"),
+        ("Tiles kept", f"{read.kept:,}"),
+        ("Mean window", wording.spread(read.days, quantities.duration)),
     ]
     for iid in read.iids:
         measured = read.selected[iid]

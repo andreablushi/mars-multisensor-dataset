@@ -9,7 +9,7 @@ import ipywidgets as widgets
 
 from analysis.ground_truth.models.label import Label
 from analysis.ground_truth.models.settings import Settings
-from analysis.stats.artifacts import selection
+from analysis.stats.artifacts import selection_by_tile
 from analysis.visualization.common import mosaic, panels
 from analysis.visualization.tile.plots import basemap, placing, radargram
 
@@ -52,7 +52,7 @@ def plot(labels: Sequence[Label], settings: Settings) -> widgets.Widget:
             crop = mosaic.fetched(
                 box, lambda image: basemap.figure(grid, box, image, title)
             )
-        area.children = (radargram.plot(selection.selection_by_tile()[one.tile]), crop)
+        area.children = (radargram.plot(selection_by_tile()[one.tile]), crop)
 
     def regroup(_change=None) -> None:
         """Offer the tiles of the chosen class, the first of them shown."""

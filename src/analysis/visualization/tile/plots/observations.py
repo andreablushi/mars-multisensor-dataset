@@ -5,7 +5,8 @@ from __future__ import annotations
 import ipywidgets as widgets
 from matplotlib.lines import Line2D
 
-from analysis.stats.tile import read, series
+from analysis.stats.instrument_sets import coverage_over_time
+from analysis.stats.tile import read_tile
 from analysis.visualization.common import panels
 from analysis.visualization.common.models.coverage import Coverage
 
@@ -18,10 +19,10 @@ def plot(coverage: Coverage) -> widgets.Widget:
     """Draw one stacked panel per instrument set, over the whole tile."""
     if not coverage:
         return panels.unavailable()
-    looks = read.read_tile(coverage)
+    looks = read_tile(coverage)
     open_for = looks.open_for if looks else []
     timeless = looks.criteria.timeless if looks else frozenset()
-    drawn = series.coverage_over_time(coverage)
+    drawn = coverage_over_time(coverage)
     colours = panels.colours([one.label for one in drawn])
     figure, axes = panels.stacked(
         len(drawn), PANEL_HEIGHT * len(drawn), sharex=True, sharey=True

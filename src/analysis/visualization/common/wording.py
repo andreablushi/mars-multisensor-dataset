@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from analysis.stats.models.spread import Spread
+from analysis.stats.models import Spread
 from analysis.visualization.common import quantities
 
 NOTHING = "none"

@@ -6,8 +6,7 @@ import math
 
 import ipywidgets as widgets
 
-from analysis.stats.models.catalogue import CatalogueStats
-from analysis.stats.models.dataset import DatasetStats
+from analysis.stats.models import CatalogueStats, DatasetStats
 from analysis.visualization.common import quantities, tables, wording
 from analysis.visualization.common.models.tables import Row
 
@@ -41,7 +40,7 @@ def instruments(stats: CatalogueStats, read: DatasetStats) -> widgets.Widget:
     rows: list[Row] = []
     for instrument in stats.instruments:
         # The median, since a handful of records publish a pixel far out from the rest
-        pixel_km2 = read.held.pixel_km2.get(instrument.iid)
+        pixel_km2 = read.pixel_km2.get(instrument.iid)
         if pixel_km2 is None or not pixel_km2.counted:
             resolution = wording.UNCOUNTED
         else:

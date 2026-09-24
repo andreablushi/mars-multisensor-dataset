@@ -8,7 +8,7 @@ import ipywidgets as widgets
 from IPython.display import display
 
 from analysis.coverage import artifacts as index
-from analysis.stats.artifacts import selection
+from analysis.stats.artifacts import selection_by_tile
 from analysis.utils.tile_group import tile_grid
 from analysis.visualization.common import panels
 from analysis.visualization.common.models.coverage import Coverage
@@ -81,7 +81,7 @@ class TilePicker:
             key=lambda one: ranks.get(one.summary.set_key, len(ranks)),
         )
         try:
-            picked = selection.selection_by_tile().get(tile.name)
+            picked = selection_by_tile().get(tile.name)
         except FileNotFoundError:
             picked = None
         if picked is None:

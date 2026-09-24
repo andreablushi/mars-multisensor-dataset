@@ -6,7 +6,8 @@ import ipywidgets as widgets
 import numpy as np
 from matplotlib.ticker import FuncFormatter, MaxNLocator
 
-from analysis.stats.tile import landing, read
+from analysis.stats.instrument_sets import landed_per_set
+from analysis.stats.tile import read_tile
 from analysis.visualization.common import panels, quantities, wording
 from analysis.visualization.common.models.coverage import Coverage
 
@@ -35,10 +36,10 @@ def plot(coverage: Coverage) -> widgets.Widget:
     """Draw what each instrument lands on the tile, one observation at a time."""
     if not coverage:
         return panels.unavailable()
-    looks = read.read_tile(coverage)
+    looks = read_tile(coverage)
     if looks is None:
         return panels.unavailable(_NOTHING)
-    drawn = landing.landed_per_set(looks)
+    drawn = landed_per_set(looks)
     colours = panels.colours([one.label for one in drawn])
     tall = PANEL_HEIGHT * len(drawn) + TITLE_BAND
     figure, axes = panels.stacked(len(drawn), tall)

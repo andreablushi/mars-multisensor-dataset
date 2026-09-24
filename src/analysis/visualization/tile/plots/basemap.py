@@ -6,7 +6,7 @@ from html import escape
 
 import ipywidgets as widgets
 
-from analysis.stats.tile import read
+from analysis.stats.tile import read_tile
 from analysis.visualization.common import mosaic, panels, wording
 from analysis.visualization.common.models.coverage import Coverage
 from analysis.visualization.tile.models.placing import Placed
@@ -30,7 +30,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
     if not coverage:
         return panels.unavailable()
     summary = coverage[0].summary
-    looks = read.read_tile(coverage)
+    looks = read_tile(coverage)
     grid = placing.placed(summary.tile)
     if grid is None:
         return panels.unavailable(mosaic.BASEMAP_FAILED.format(reason=mosaic.NO_BOX))

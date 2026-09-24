@@ -22,8 +22,8 @@ from analysis.metadata import file_explorer
 from analysis.metadata.summary import summarise_ancillary
 from analysis.selector import select
 from analysis.selector.artifacts import read_selected_tiles
-from analysis.stats.artifacts import store
-from analysis.stats.dataset import aggregate, read
+from analysis.stats.artifacts import write_stats
+from analysis.stats.dataset import dataset_stats, measure_every_tile
 from common.config import analysis_settings
 from common.console import PLAIN_LOG_ENV
 
@@ -99,13 +99,11 @@ def compute_selection(workers: int | None = None, force: bool = False) -> None:
     kept = sum(1 for one in selection if one.tile.kept)
     print(f"selection: {kept:,} of {len(selection):,} tiles kept", flush=True)
     # Read off the selection just written, so they never stand for an old filter
-    measured = read.measure_every_tile(selection, workers)
-    store.write_stats_file(aggregate.dataset_stats(measured, selection))
+    measured = measure_every_tile(selection, workers)
+    write_stats(dataset_stats(measured, selection))
     drawn = {one.tile for one in compute_labels(force) if one.drawn}
-    store.write_stats_file(
-        aggregate.dataset_stats(
-            [one for one in measured if one.window.tile in drawn], selection
-        ),
+    write_stats(
+        dataset_stats([one for one in measured if one.window.tile in drawn], selection),
         paths.EVALUATION_STATS_ROOT,
     )
 

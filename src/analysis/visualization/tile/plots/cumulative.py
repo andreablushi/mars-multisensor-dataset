@@ -5,7 +5,7 @@ from __future__ import annotations
 import ipywidgets as widgets
 from matplotlib.figure import Figure
 
-from analysis.stats.tile import series
+from analysis.stats.instrument_sets import coverage_over_time
 from analysis.visualization.common import panels
 from analysis.visualization.common.models.coverage import Coverage
 
@@ -20,7 +20,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
     """Draw the running coverage of the whole tile, beside its total."""
     if not coverage:
         return panels.unavailable()
-    drawn = series.coverage_over_time(coverage)
+    drawn = coverage_over_time(coverage)
     colours = panels.colours([one.label for one in drawn])
     figure = Figure(figsize=CUMULATIVE_FIGURE_SIZE)
     running, bars = figure.subplots(1, 2, width_ratios=CUMULATIVE_WIDTH_RATIOS)

@@ -1,10 +1,77 @@
-"""What the looks a tile keeps left on it, instrument by instrument."""
+"""One tile as the selection left it, and what the looks it keeps left on it."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
-from analysis.stats.models.tile import InstrumentReach, TileLooks, TileStats
+from analysis.coverage.models.coverage import SetCoverage
+from analysis.selector.merge import merge_track
+from analysis.selector.models.selection import Selection
+from analysis.stats.artifacts import selection_by_tile
+from analysis.stats.models import InstrumentReach, TileLooks, TileStats
+from common.config import analysis_settings
+
+# How many tiles are held read at once, so every panel of one shares it.
+TILE_CACHE = 8
+
+# The tiles held read, so every panel of one shares the reading
+_read: dict[str, TileLooks | None] = {}
+
+
+def read_tile(coverage: Sequence[SetCoverage]) -> TileLooks | None:
+    """Read one tile as the selection left it, however many panels ask for it.
+
+    Args:
+        coverage: The tile's instrument sets, in the order they are drawn.
+
+    Returns:
+        looks: Its timeline and kept looks, or None where nothing is measurable.
+
+    Raises:
+        FileNotFoundError: When no selection has been written to read it off.
+    """
+    key = coverage[0].summary.tile
+    if key not in _read:
+        if len(_read) >= TILE_CACHE:
+            _read.clear()
+        selection = selection_by_tile().get(key)
+        _read[key] = (
+            None if selection is None else place_kept_looks(coverage, selection)
+        )
+    return _read[key]
+
+
+def place_kept_looks(
+    coverage: Sequence[SetCoverage], selection: Selection
+) -> TileLooks | None:
+    """Place the looks one tile keeps on the timeline they were taken over.
+
+    Args:
+        coverage: The tile's instrument sets, in any order.
+        selection: What the selection left of it, and the observations it keeps.
+
+    Returns:
+        looks: Its timeline and where its looks sit, or None if nothing measurable.
+    """
+    criteria = analysis_settings().window
+    track = merge_track(coverage, criteria)
+    if track is None:
+        return None
+    index_of = {
+        observation.pdsid: index for index, observation in enumerate(track.observations)
+    }
+    return TileLooks(
+        criteria=criteria,
+        track=track,
+        window=selection.tile,
+        taken=tuple(
+            sorted(
+                index_of[observation.pdsid]
+                for observation in selection.observations
+                if observation.pdsid in index_of
+            )
+        ),
+    )
 
 
 def measured_tile(looks: TileLooks) -> TileStats:
