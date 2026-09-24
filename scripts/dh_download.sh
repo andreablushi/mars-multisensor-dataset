@@ -59,6 +59,7 @@ With no name, every one of them comes down.
   stats        what the filter left of it     -> data/analysis/stats
   summary      one row per tile and set        -> data/analysis/coverage
   labels       the evaluation labels           -> data/analysis/labels
+  verdicts     the review of the drawn tiles   -> data/analysis
 EOF
 }
 
@@ -69,7 +70,7 @@ fi
 
 names=("$@")
 if [[ ${#names[@]} -eq 0 ]]; then
-    names=(coverage metadata selection stats summary labels)
+    names=(coverage metadata selection stats summary labels verdicts)
 fi
 
 for name in "${names[@]}"; do
@@ -80,6 +81,7 @@ for name in "${names[@]}"; do
         stats) download_one "$(published stats)" data/analysis/stats ;;
         summary) download_one "$(published summary)" data/analysis/coverage shares ;;
         labels) download_one "$(published labels)" data/analysis/labels ;;
+        verdicts) download_one "$(published verdicts)" data/analysis shares ;;
         *)
             echo "nothing is published under \`$name\`" >&2
             usage >&2

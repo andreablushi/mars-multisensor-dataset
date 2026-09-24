@@ -36,7 +36,7 @@ _SELECTION = _PUBLISHED["selection"]
 _STATS = _PUBLISHED["stats"]
 _SUMMARY = _PUBLISHED["summary"]
 _LABELS = _PUBLISHED["labels"]
-_VERDICTS = "verdicts"
+_VERDICTS = _PUBLISHED["verdicts"]
 
 # Where each archive is packed from, shared by two handlers.
 ARCHIVED = {
@@ -116,6 +116,7 @@ def compute_labels(force: bool = False) -> list[Label]:
         labels: Every labelled tile, the drawn ones marked so.
     """
     settings = configs.load().ground_truth
+    refused = artifacts.read_refused()
     labels = draw.drawn_labels(
         label.labelled_tiles(
             dataset_list.read_selected_tiles(),
@@ -123,10 +124,10 @@ def compute_labels(force: bool = False) -> list[Label]:
             settings,
         ),
         settings,
-        artifacts.read_refused(),
+        refused,
     )
     artifacts.write_labels(labels)
-    held = Counter(one.label for one in labels)
+    held = Counter(one.label for one in labels if one.tile not in refused)
     drawn = Counter(one.label for one in labels if one.drawn)
     for name in settings.classes:
         print(f"{name}: {drawn[name]} drawn of {held[name]}")
@@ -191,9 +192,7 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
     # Report a failure only once uploaded, and never select from short coverage
     if failed:
         raise RuntimeError("the run had failures; the archives hold what finished")
-    project.get_artifact(_VERDICTS).download(
-        destination=str(paths.VERDICTS_PATH), overwrite=True
-    )
+    archives.download_file(project, _VERDICTS, paths.VERDICTS_PATH)
     compute_selection(workers, force)
     print("done", flush=True)
     return (
@@ -222,9 +221,7 @@ def run_selection(project, force: bool = False, workers: int | None = None):
     archives.unpack_archive(project, _COVERAGE, paths.COVERAGE_ROOT)
     if configs.load().ancillary:
         archives.unpack_archive(project, _METADATA, paths.METADATA_ROOT)
-    project.get_artifact(_VERDICTS).download(
-        destination=str(paths.VERDICTS_PATH), overwrite=True
-    )
+    archives.download_file(project, _VERDICTS, paths.VERDICTS_PATH)
     compute_selection(workers, force)
     print("done", flush=True)
     return tuple(archived(project, name) for name in (_SELECTION, _STATS, _LABELS))

@@ -21,6 +21,7 @@ class Resources:
         disk: The disk it is given.
         budget: The memory a build plans against, or None to plan against all of it.
         shared: Whether it queues on the shared pool rather than the reserved one.
+        isis: Whether its image installs ISIS and its job is told where.
     """
 
     profile: str
@@ -29,6 +30,7 @@ class Resources:
     disk: str | None = None
     budget: str | None = None
     shared: bool = False
+    isis: bool = False
 
 
 @dataclass(slots=True)

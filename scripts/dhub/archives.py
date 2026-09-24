@@ -155,6 +155,17 @@ def download_files(project, name: str, into: Path, names: Sequence[str]) -> None
     print(f"filling in from {name}, {len(wanted):,} files of its index", flush=True)
 
 
+def download_file(project, name: str, path: Path) -> None:
+    """Put one published file back where a run reads it.
+
+    Args:
+        project: The DigitalHub project the file was logged into.
+        name: The name the file was published under.
+        path: Where it lands, replacing whatever is there.
+    """
+    project.get_artifact(name).download(destination=str(path), overwrite=True)
+
+
 def unpack_archive(project, name: str, into: Path) -> None:
     """Put a published archive back where the pipeline reads it, and nothing else.
 

@@ -26,6 +26,7 @@ _PUBLISHED = platform.load().publishes
 _DATASET = _PUBLISHED["dataset"]
 _SELECTION = _PUBLISHED["selection"]
 _LABELS = _PUBLISHED["labels"]
+_VERDICTS = _PUBLISHED["verdicts"]
 
 
 def training_selections(settings: TrainingSettings) -> list[Selection]:
@@ -35,13 +36,16 @@ def training_selections(settings: TrainingSettings) -> list[Selection]:
         settings: The settled choices for the build, which size the draw.
 
     Returns:
-        picked: The tiles to build with their windows, none held for evaluation.
+        picked: The tiles to build with their windows, none held out or refused.
 
     Raises:
         FileNotFoundError: When no labels were written, so none can be held out.
     """
     return draw.draw_training(
-        dataset_list.read_dataset_list(), settings, artifacts.read_labels()
+        dataset_list.read_dataset_list(),
+        settings,
+        artifacts.read_labels(),
+        artifacts.read_refused(),
     )
 
 
@@ -58,10 +62,11 @@ def run_build(project, force: bool = False, workers: int | None = None):
         dataset: The published dataset, one object per crop.
     """
     os.environ[PLAIN_LOG_ENV] = "1"
-    # The platform clones the repo alone, so both come off their archives
-    print("fetching the selection and the evaluation labels", flush=True)
+    # The platform clones the repo alone, so all three come off the platform
+    print("fetching the selection, the evaluation labels and the verdicts", flush=True)
     archives.unpack_archive(project, _SELECTION, analysis_paths.SELECTION_ROOT)
     archives.unpack_archive(project, _LABELS, analysis_paths.LABELS_ROOT)
+    archives.download_file(project, _VERDICTS, analysis_paths.VERDICTS_PATH)
     settings = load_config(
         paths.TRAINING_CONFIG_PATH, TrainingSettings, workers=workers
     )

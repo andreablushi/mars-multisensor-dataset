@@ -22,14 +22,23 @@ def spread(
     written: Callable[[float], str],
     bounds: Callable[[float], str] | None = None,
 ) -> str:
-    """Write the mean of a measurement read off many tiles, then its least and most."""
+    """Write the mean of a measurement read off many tiles, then its least and most.
+
+    Args:
+        measured: The measurement read off every tile.
+        written: How the mean is written.
+        bounds: How the least and the most are written, or None to write them alike.
+
+    Returns:
+        written: The mean, then the least and the most unless every tile agreed.
+    """
     if not measured.counted:
         return NOTHING
     mean = written(measured.mean)
     if measured.agreed:
         return mean
-    bounds = bounds or written
-    return f"{mean} ({bounds(measured.low)} to {bounds(measured.high)})"
+    low, high = map(bounds or written, (measured.low, measured.high))
+    return f"{mean} ({low} to {high})"
 
 
 def ground(km2: float, of_km2: float) -> str:

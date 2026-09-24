@@ -15,6 +15,7 @@ image_extras:
 
 # What each stage is scheduled on, its profile settling the limit it is killed at.
 # A stage marked shared queues on the shared pool, the rest on the reserved one.
+# A stage marked isis has ISIS installed in its image, which only the CTX builds need.
 resources:
   image:
     profile: cpu
@@ -35,6 +36,7 @@ resources:
   build_training:
     profile: cpu
     shared: true
+    isis: true
     cpu: 10
     memory: 40Gi
     budget: 32Gi
@@ -42,6 +44,7 @@ resources:
   build_evaluation:
     profile: cpu
     shared: false
+    isis: true
     cpu: 10
     memory: 40Gi
     budget: 32Gi
@@ -63,3 +66,4 @@ publishes:
   summary: summary
   dataset: dataset
   labels: labels
+  verdicts: verdicts

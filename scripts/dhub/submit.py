@@ -11,7 +11,6 @@ from common import paths
 from dhub import configs, credentials, isis
 
 UNITS = {"Ki": 1024, "Mi": 1024**2, "Gi": 1024**3, "Ti": 1024**4}
-ISIS_STAGES = ("build_training", "build_evaluation")
 
 
 def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
@@ -30,6 +29,7 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
     # The image is built from the repo's own dependencies, so it cannot drift
     manifest = (paths.REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     needs = tomllib.loads(manifest)["project"]["dependencies"] + platform.image_extras
+    asked = platform.resources[stage]
     project = dh.get_or_create_project(platform.project)
     function = project.new_function(
         name=platform.functions[stage],
@@ -45,7 +45,7 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
         action="build",
         profile=platform.resources["image"].profile,
         # Only the builds calibrate CTX, so only their image carries ISIS
-        instructions=isis.INSTRUCTIONS if stage in ISIS_STAGES else [],
+        instructions=isis.INSTRUCTIONS if asked.isis else [],
         wait=True,
     )
     if built.status.state != "COMPLETED":
@@ -54,7 +54,6 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
     function.refresh()
 
     # Start the job, told where the clone lands and what the box holds
-    asked = platform.resources[stage]
     root = platform.source_root
     budgeted = asked.budget or asked.memory
     run = function.run(
@@ -65,7 +64,7 @@ def submitted(stage: str, handler: str, ref: str, **parameters) -> int:
         envs=[
             {"name": "PYTHONPATH", "value": f"{root}:{root}/src:{root}/scripts"},
             *credentials.minting_envs(),
-            *isis.ENVS,
+            *(isis.ENVS if asked.isis else []),
             # What the build plans against, which is under the box so it may misjudge
             {
                 "name": budget.MEMORY_ENV,

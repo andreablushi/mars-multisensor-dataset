@@ -31,6 +31,12 @@ def dataset_stats(
     held = [one for one in measured if plausible(one)]
     grounded = [one for one in held if one.window.kept]
     names = {one.window.tile for one in grounded}
+    # A product landing on many tiles is still downloaded once
+    products: dict[str, set[str]] = {iid: set() for iid in iids}
+    for one in picked:
+        if one.tile.tile in names:
+            for look in one.observations:
+                products.get(look.iid, set()).add(look.pdsid)
     return DatasetStats(
         held=aggregate_tiles(held, iids),
         selected={
@@ -42,19 +48,7 @@ def dataset_stats(
             )
             for iid in iids
         },
-        # A product landing on many tiles is still downloaded once
-        downloads={
-            iid: len(
-                {
-                    look.pdsid
-                    for one in picked
-                    if one.tile.tile in names
-                    for look in one.observations
-                    if look.iid == iid
-                }
-            )
-            for iid in iids
-        },
+        downloads={iid: len(pdsids) for iid, pdsids in products.items()},
         # The share of a tile every instrument at once reaches, one by one
         overlap=Spread.over(
             [

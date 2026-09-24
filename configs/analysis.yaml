@@ -40,7 +40,7 @@ window:
     - {SHARAD: 0.0}
 
   # The pixels an instrument has to land on a tile to count, powers of two preferred
-  admits: {CTX: 1500000, CRISM: 4096, SHARAD: 64}
+  admits: {CTX: 2097152, CRISM: 4096, SHARAD: 64}
 
   # How far Mars may turn inside a window, in degrees of Ls; 90 is one season
   span_ls: 90.0
