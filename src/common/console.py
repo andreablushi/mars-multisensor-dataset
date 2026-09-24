@@ -7,10 +7,13 @@ from collections.abc import Sequence
 
 from rich.console import Console
 
+# Set by a platform run, whose log takes plain flushed lines rather than a bar.
 PLAIN_LOG_ENV = "PIPELINE_PLAIN_LOG"
 
+# How many items are named before the rest are counted
 LISTED = 5
 
+# How many failures a run names as it hits them, the summary counting them all
 LOGGED_ERRORS = 50
 
 

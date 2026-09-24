@@ -11,6 +11,7 @@ from rich.progress import BarColumn, MofNCompleteColumn, Progress
 from analysis.models.job import Outcome, Plan
 from common import console as printing
 
+# How many progress lines a stage prints where no cursor can be moved
 LOGGED_LINES = 50
 
 
@@ -56,6 +57,7 @@ class Tracker:
             BarColumn(bar_width=None),
             MofNCompleteColumn(),
             console=console,
+            # A platform log takes plain flushed lines, since no cursor can move there
             disable=printing.plain_log(),
         )
         self.task = self.bar.add_task(stage, total=total)

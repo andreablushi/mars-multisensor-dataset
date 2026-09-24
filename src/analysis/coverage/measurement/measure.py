@@ -53,15 +53,12 @@ def measure_set(
     return events, Summary(
         tile=tile.name,
         set_key=projected.set_key,
-        ihid=events[0].ihid,
         iid=events[0].iid,
-        pt=events[0].pt,
         tile_area_km2=region.area_m2 / 1e6,
         covered_frac=float(cumulative[-1]) / region.area_m2,
         n_obs=len(events),
         t_first=events[0].t_start,
         t_last=events[-1].t_start,
-        pixels=sum(event.pixels for event in events),
         grid_side=grid.side,
         cell_km2=grid.cell_area_m2 / 1e6,
         grid_mask=packing.encode(

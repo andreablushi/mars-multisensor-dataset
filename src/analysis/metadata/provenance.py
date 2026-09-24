@@ -6,12 +6,11 @@ from datetime import UTC, datetime
 from typing import Any
 
 from analysis.models.instrument import InstrumentSet
-from analysis.models.tile_group import TileGroup
 
 
-def stamp(group: TileGroup, instrument_set: InstrumentSet) -> dict[str, Any]:
+def stamp(instrument_set: InstrumentSet) -> dict[str, Any]:
     """Return the provenance fields every record of one download carries."""
-    return {"tile_group": group.name, "instrument_set": instrument_set.key}
+    return {"instrument_set": instrument_set.key}
 
 
 def set_key_of(item: dict[str, Any]) -> str:

@@ -119,7 +119,6 @@ def load_group(group: str, tile: str | None = None) -> dict[str, list[SetCoverag
             reached[0].summary,
             covered_frac=0.0,
             n_obs=0,
-            pixels=0.0,
             t_first=min(instrument.summary.t_first for instrument in reached),
             t_last=max(instrument.summary.t_last for instrument in reached),
         )
@@ -130,9 +129,7 @@ def load_group(group: str, tile: str | None = None) -> dict[str, list[SetCoverag
                 summary=replace(
                     blank,
                     set_key=absent.key,
-                    ihid=absent.ihid,
                     iid=absent.iid,
-                    pt=absent.pt,
                 ),
                 pending=absent.slug not in finished
                 and file_explorer.has_metadata(group, absent),

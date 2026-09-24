@@ -56,7 +56,7 @@ def fetch_products(
     Raises:
         ODEError: When ODE reports no usable count for a box.
     """
-    stamped = provenance.stamp(group, instrument_set)
+    stamped = provenance.stamp(instrument_set)
     records: list[ProductRecord] = []
     # The two boxes a polar group is asked in overlap, so a product returns twice
     seen: set[tuple[str, str]] = set()
