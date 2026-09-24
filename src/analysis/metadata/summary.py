@@ -31,19 +31,19 @@ def summarise_ancillary(settings: Settings, force: bool = False) -> int:
     Returns:
         failed: How many tables could not be read, left to the next run.
     """
-    held = [] if force else list(read_distortions())
-    done = {(one.group, one.pdsid) for one in held}
+    summarised = [] if force else list(read_distortions())
+    done = {(known.group, known.pdsid) for known in summarised}
     grid = Tessellate.of(settings.tile_km)
     groups = {
         group.name: group
         for group in tile_group.every_tile_group(grid, settings.tile_group_deg)
     }
-    stored = file_explorer.find_sets()
+    sets = file_explorer.find_sets()
     failed = 0
     for key, ancillary in settings.ancillary.items():
         instrument_set = InstrumentSet.from_key(key)
         wanted: dict[str, dict[str, TileGroup]] = {}
-        for source in (one for one in stored if one.stem == instrument_set.slug):
+        for source in (path for path in sets if path.stem == instrument_set.slug):
             name = source.parent.name
             for record in read_jsonl(source):
                 if (name, record["pdsid"]) not in done:
@@ -54,8 +54,8 @@ def summarise_ancillary(settings: Settings, force: bool = False) -> int:
             wanted, instrument_set, ancillary, grid, settings.workers
         )
         failed += lost
-        held.extend(distortions)
-    parquet.write(held, DISTORTIONS, paths.DISTORTIONS_PATH)
+        summarised.extend(distortions)
+    parquet.write(summarised, DISTORTIONS, paths.DISTORTIONS_PATH)
     read_distortions.cache_clear()
     return failed
 

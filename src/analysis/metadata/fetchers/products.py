@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, TypeAlias
+from typing import Any
 
 import analysis.metadata.provenance as provenance
 from analysis.models.instrument import InstrumentSet
@@ -33,15 +33,13 @@ RETAINED_FIELDS = (
     "Footprint_SP_geometry",
 )
 
-ProductRecord: TypeAlias = dict[str, Any]
-
 
 def fetch_products(
     client: ODEClient,
     group: TileGroup,
     instrument_set: InstrumentSet,
     loc: str,
-) -> list[ProductRecord]:
+) -> list[dict[str, Any]]:
     """Fetch all product metadata for a group and instrument set.
 
     Args:
@@ -57,7 +55,7 @@ def fetch_products(
         ODEError: When ODE reports no usable count for a box.
     """
     stamped = provenance.stamp(instrument_set)
-    records: list[ProductRecord] = []
+    records: list[dict[str, Any]] = []
     # The two boxes a polar group is asked in overlap, so a product returns twice
     seen: set[tuple[str, str]] = set()
     spans = (
@@ -81,7 +79,7 @@ def fetch_products(
             if identity in seen:
                 continue
             seen.add(identity)
-            kept = {f: item[f] for f in RETAINED_FIELDS if f in item}
+            kept = {field: item[field] for field in RETAINED_FIELDS if field in item}
             records.append(kept | stamped)
     return records
 
@@ -107,7 +105,7 @@ def product_params(instrument_set: InstrumentSet, pt: str) -> dict[str, str]:
 
 def every_product(
     client: ODEClient, params: dict[str, str], results: str
-) -> list[ProductRecord]:
+) -> list[dict[str, Any]]:
     """Fetch every product one query matches, a page at a time.
 
     Args:
@@ -126,7 +124,7 @@ def every_product(
         total = int(raw)
     except (TypeError, ValueError):
         raise ODEError(f"ODE returned no product count, found {raw!r}") from None
-    products: list[ProductRecord] = []
+    products: list[dict[str, Any]] = []
     while len(products) < total:
         page = client.query(
             {
@@ -137,9 +135,9 @@ def every_product(
                 "offset": str(len(products)),
             }
         )
-        found = page["Products"]["Product"]
+        answered = page["Products"]["Product"]
         # A box holding one product is answered with that product, not a list of one
-        items = found if isinstance(found, list) else [found]
+        items = answered if isinstance(answered, list) else [answered]
         # Nothing to advance by would page the same offset forever
         if not items:
             break

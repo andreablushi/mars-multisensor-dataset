@@ -32,8 +32,8 @@ def load_observations(path: Path) -> ObservationSet:
             continue
         stop, scale = item.get("UTC_stop_time"), item.get("Map_scale")
         north, south = (
-            None if not held or held.endswith("EMPTY") else held
-            for held in (
+            None if not polar or polar.endswith("EMPTY") else polar
+            for polar in (
                 item.get("Footprint_NP_geometry"),
                 item.get("Footprint_SP_geometry"),
             )
