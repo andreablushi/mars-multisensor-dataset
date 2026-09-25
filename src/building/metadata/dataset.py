@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from analysis import paths as analysis_paths
+from building.dispatcher import INSTRUMENTS
 from common import paths
 
 
@@ -29,14 +31,11 @@ class DatasetManifest:
     band_centres_nm: dict[str, tuple[float, ...]]
 
 
-def dataset_manifest(
-    instruments: tuple[str, ...], band_centres_nm: dict[str, tuple[float, ...]]
-) -> DatasetManifest:
+def dataset_manifest(instruments: Iterable[str]) -> DatasetManifest:
     """Return what to write beside the dataset to say what it is.
 
     Args:
-        instruments: The instruments the build covered.
-        band_centres_nm: The band grid of each instrument with a wavelength.
+        instruments: The instruments the dataset holds crops of.
 
     Returns:
         manifest: The manifest, its revision unset outside a checkout.
@@ -51,12 +50,15 @@ def dataset_manifest(
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         revision = None
+    held = tuple(sorted(instruments))
     return DatasetManifest(
         built_at=datetime.now(UTC).isoformat(timespec="seconds"),
-        instruments=tuple(sorted(instruments)),
+        instruments=held,
         selection=str(analysis_paths.SELECTION_ROOT.relative_to(paths.REPO_ROOT)),
         revision=revision,
         band_centres_nm={
-            name: band_centres_nm[name] for name in sorted(band_centres_nm)
+            name: INSTRUMENTS[name].layout.band_centres_nm
+            for name in held
+            if name in INSTRUMENTS and INSTRUMENTS[name].layout.band_centres_nm
         },
     )

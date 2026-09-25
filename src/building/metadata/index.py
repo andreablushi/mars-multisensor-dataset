@@ -10,7 +10,6 @@ from pathlib import Path
 import pyarrow.parquet as pq
 
 from building import paths
-from building.dispatcher import INSTRUMENTS
 from building.metadata import dataset, observation, tile
 from building.metadata.observation import ObservationMetadata
 from building.models.job import Outcome, Plan
@@ -65,15 +64,9 @@ def write_index(
         and one.identity not in rewritten
         and (not on_disk or (root / one.path).exists())
     ] + written
-    # What the dataset holds, which is every instrument in it and not a wish.
-    held = tuple(sorted({one.instrument for one in records}))
-    grids = {
-        name: INSTRUMENTS[name].layout.band_centres_nm
-        for name in held
-        if name in INSTRUMENTS and INSTRUMENTS[name].layout.band_centres_nm
-    }
     root.mkdir(parents=True, exist_ok=True)
     parquet.write(list(tiles.values()), tile.SCHEMA, root / paths.TILE_METADATA_NAME)
     parquet.write(records, observation.SCHEMA, root / paths.OBSERVATION_METADATA_NAME)
-    manifest = asdict(dataset.dataset_manifest(held, grids))
+    # What the dataset holds, which is every instrument in it and not a wish.
+    manifest = asdict(dataset.dataset_manifest({one.instrument for one in records}))
     (root / paths.DATASET_MANIFEST_NAME).write_text(json.dumps(manifest, indent=2))

@@ -68,11 +68,7 @@ class ObservationMetadata:
 
     @property
     def identity(self) -> tuple[str, str, str]:
-        """Return what tells this stored observation from every other.
-
-        Returns:
-            identity: The tile it was kept for, and the product it was cut from.
-        """
+        """Return the tile it was kept for, and the product it was cut from."""
         return (self.tile, self.instrument, self.identifier)
 
 
@@ -81,7 +77,7 @@ def observation_metadata(
     frame: Tile,
     layout: Layout,
     path: str,
-    t_start: datetime | None = None,
+    t_start: datetime | None,
 ) -> ObservationMetadata:
     """Return what one stored observation is read back through.
 
@@ -97,20 +93,13 @@ def observation_metadata(
     """
     values = getattr(held, layout.measurement)
     # A ground mask reaches every value on it, so it spreads over the instrument's axes.
-    ground = tuple(
-        size if holds == Axis.GROUND else 1
-        for size, holds in zip(values.shape, layout.axes, strict=True)
-    )
     measured_ground = held.measured_ground
-    on_ground = np.broadcast_to(measured_ground.reshape(ground), values.shape)
+    on_ground = _spread_mask(measured_ground, Axis.GROUND, values, layout)
     measured = on_ground
     # A band the observation never measured holds nothing, whatever the ground says.
     if held.measured_bands is not None:
-        bands = tuple(
-            size if holds == Axis.WAVELENGTH else 1
-            for size, holds in zip(values.shape, layout.axes, strict=True)
-        )
-        measured = on_ground & held.measured_bands.reshape(bands)
+        bands = _spread_mask(held.measured_bands, Axis.WAVELENGTH, values, layout)
+        measured = on_ground & bands
     # An integer holds no infinite identity, so the reduction starts at its type's edge.
     limits = (
         np.iinfo(values.dtype)
@@ -118,25 +107,22 @@ def observation_metadata(
         else np.finfo(values.dtype)
     )
     counted = int(measured.sum())
+    value_min = value_max = value_mean = value_std = None
     # A crop can reach the box and measure nothing, and nothing says nothing
-    smallest, largest, mean, deviation = (
-        (
-            float(np.min(values, where=measured, initial=limits.max)),
-            float(np.max(values, where=measured, initial=limits.min)),
-            float(np.mean(values, where=measured)),
-            float(np.std(values, where=measured)),
-        )
-        if counted
-        else (None, None, None, None)
-    )
+    if counted:
+        value_min = float(np.min(values, where=measured, initial=limits.max))
+        value_max = float(np.max(values, where=measured, initial=limits.min))
+        value_mean = float(np.mean(values, where=measured))
+        value_std = float(np.std(values, where=measured))
+    band_mean = band_std = band_valid_count = None
     # A band is the one axis a reader normalises against, so it survives the reduction.
-    over = tuple(axis for axis, holds in enumerate(layout.axes) if holds == Axis.GROUND)
-    band_mean, band_std, band_valid_count = None, None, None
     if counted and Axis.WAVELENGTH in layout.axes:
-        pooled = measured.sum(axis=over)
+        over = tuple(
+            axis for axis, holds in enumerate(layout.axes) if holds == Axis.GROUND
+        )
         band_mean = tuple(np.mean(values, axis=over, where=on_ground).tolist())
         band_std = tuple(np.std(values, axis=over, where=on_ground).tolist())
-        band_valid_count = tuple(pooled.tolist())
+        band_valid_count = tuple(measured.sum(axis=over).tolist())
     return ObservationMetadata(
         tile=frame.name,
         instrument=layout.instrument,
@@ -147,20 +133,41 @@ def observation_metadata(
         sample_spacing_m=relative_positioning.sample_spacing_m(held.position, frame),
         separable=held.position.separable,
         valid_count=counted,
-        value_min=smallest,
-        value_max=largest,
-        value_mean=mean,
-        value_std=deviation,
+        value_min=value_min,
+        value_max=value_max,
+        value_mean=value_mean,
+        value_std=value_std,
         band_mean=band_mean,
         band_std=band_std,
         band_valid_count=band_valid_count,
-        t_start=_moment(held.label, STARTED) or t_start,
-        t_end=_moment(held.label, STOPPED),
+        t_start=_label_time(held.label, STARTED) or t_start,
+        t_end=_label_time(held.label, STOPPED),
         acquisition=acquisition_info(held, frame, measured_ground),
     )
 
 
-def _moment(label: dict[str, str], key: str) -> datetime | None:
+def _spread_mask(
+    mask: np.ndarray, kind: Axis, values: np.ndarray, layout: Layout
+) -> np.ndarray:
+    """Return one mask over the axes of one kind, spread over every value.
+
+    Args:
+        mask: The flags over those axes alone, in the array's own order.
+        kind: What the axes the mask runs along hold.
+        values: The value array it is spread over.
+        layout: What each axis of that array holds.
+
+    Returns:
+        spread: The mask, broadcast to the value array's shape.
+    """
+    shape = tuple(
+        size if holds == kind else 1
+        for size, holds in zip(values.shape, layout.axes, strict=True)
+    )
+    return np.broadcast_to(mask.reshape(shape), values.shape)
+
+
+def _label_time(label: dict[str, str], key: str) -> datetime | None:
     """Return one time the label names, or None where it names none it can read.
 
     Args:
@@ -170,9 +177,9 @@ def _moment(label: dict[str, str], key: str) -> datetime | None:
     Returns:
         moment: The time in UTC, or None where the label holds no readable one.
     """
-    held = label.get(key)
+    text = label.get(key)
     try:
-        return parse_timestamp(held) if held else None
+        return parse_timestamp(text) if text else None
     except ValueError:
         return None
 
