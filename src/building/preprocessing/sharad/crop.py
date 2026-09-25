@@ -7,7 +7,7 @@ from collections.abc import Sequence
 import numpy as np
 
 from building.preprocessing.common import cut
-from building.preprocessing.common.models.samples import Samples
+from building.preprocessing.common.models.position import Position
 from building.preprocessing.sharad.models.observation import (
     LATITUDE_FIELD,
     LONGITUDE_FIELD,
@@ -21,10 +21,10 @@ from building.preprocessing.sharad.models.sample import SharadSample
 from common.models.tile import Tile
 
 
-def trace_samples(geometry: np.recarray) -> Samples:
+def trace_position(geometry: np.recarray) -> Position:
     """Return where every trace of one track's geometry was sounded."""
     # A sounder walks a line, so every trace carries its own geometry's pair.
-    return Samples(geometry[LATITUDE_FIELD], geometry[LONGITUDE_FIELD], False, None)
+    return Position(geometry[LATITUDE_FIELD], geometry[LONGITUDE_FIELD], False)
 
 
 def kept_columns(placing: np.recarray, frames: Sequence[Tile]) -> np.ndarray:
@@ -38,9 +38,9 @@ def kept_columns(placing: np.recarray, frames: Sequence[Tile]) -> np.ndarray:
         columns: The sorted columns any of them keeps, counted from zero.
     """
     # Cut as `crop` cuts, so exactly the columns it goes on to read are kept.
-    samples = trace_samples(placing)
+    position = trace_position(placing)
     traces = radargram_columns(placing)
-    held = [cut.overlap(samples, frame) for frame in frames]
+    held = [cut.overlap(position, frame) for frame in frames]
     return np.unique(
         np.concatenate(
             [traces[one.bounds[0]] for one in held if one is not None]
@@ -59,7 +59,7 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
     Returns:
         sample: The track cut to that tile, or None where it reaches none of it.
     """
-    held = cut.overlap(trace_samples(observation.geometry), frame)
+    held = cut.overlap(trace_position(observation.geometry), frame)
     if held is None:
         return None
     # The traces are the radargram's second axis, and the delay is left whole.

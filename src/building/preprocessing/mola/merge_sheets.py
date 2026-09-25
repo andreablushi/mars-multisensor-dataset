@@ -6,7 +6,7 @@ import math
 
 import numpy as np
 
-from building.preprocessing.common.models.samples import Samples
+from building.preprocessing.common.models.position import Position
 from building.preprocessing.mola import projection
 from building.preprocessing.mola.models.observation import MolaObservation
 from common.maths import geodesy
@@ -17,7 +17,7 @@ from common.pds import images, labels
 
 def merge_sheets(
     observation: MolaObservation, frame: Tile
-) -> tuple[dict[str, str], np.ndarray, Samples]:
+) -> tuple[dict[str, str], np.ndarray, Position]:
     """Return the one grid every sheet a tile stands on writes its part of.
 
     Args:
@@ -27,7 +27,7 @@ def merge_sheets(
     Returns:
         label: What the sheets it was read from say about it, merged.
         height: The height above the areoid in metres over the box, lines by samples.
-        samples: The latitude of every line, falling southward, and the longitude of
+        position: The latitude of every line, falling southward, and the longitude of
             every sample, rising eastward past a turn.
 
     Raises:
@@ -53,10 +53,10 @@ def merge_sheets(
     for _, image in sorted(observation.files.items()):
         label = labels.load(image.with_suffix(".lbl"))
         read.append(label)
-        placed = projection.grid_samples(label)
+        placed = projection.grid_position(label)
         # Where the sheet's own first bin sits on the grid every sheet shares.
-        line = round((90.0 - float(placed.down[0])) * resolution - 0.5)
-        sample = round(float(placed.across[0]) * resolution - 0.5) % whole
+        line = round((90.0 - float(placed.north[0])) * resolution - 0.5)
+        sample = round(float(placed.east[0]) * resolution - 0.5) % whole
         lines, samples = placed.sizes
         top, bottom = max(down.start, line), min(down.stop, line + lines)
         # A box running over the meridian meets a sheet a whole turn along, too.
@@ -82,10 +82,9 @@ def merge_sheets(
     return (
         labels.merge(*read),
         height,
-        Samples(
+        Position(
             90.0 - (np.arange(down.start, down.stop) + 0.5) / resolution,
             (np.arange(across.start, across.stop) + 0.5) / resolution,
             True,
-            None,
         ),
     )

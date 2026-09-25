@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from building.preprocessing.common import cut, geometry
-from building.preprocessing.common.models.samples import Samples
+from building.preprocessing.common.models.position import Position
 from building.preprocessing.crism.models.observation import (
     ACQUISITION_PLANES,
     LATITUDE_PLANE,
@@ -26,10 +26,10 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
     """
     backplanes = observation.geometry
     # A pushbroom swath bends, so every pixel carries its own backplanes' pair.
-    samples = Samples(
-        backplanes[:, :, LATITUDE_PLANE], backplanes[:, :, LONGITUDE_PLANE], False, None
+    position = Position(
+        backplanes[:, :, LATITUDE_PLANE], backplanes[:, :, LONGITUDE_PLANE], False
     )
-    held = cut.overlap(samples, frame)
+    held = cut.overlap(position, frame)
     if held is None:
         return None
     return CrismSample(

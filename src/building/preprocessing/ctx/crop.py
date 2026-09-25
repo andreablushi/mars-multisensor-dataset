@@ -116,7 +116,7 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
             },
         )
         label = labels.merge(read_cube_label(projected), observation.label)
-        held = cut.overlap(projection.grid_samples(label), frame)
+        held = cut.overlap(projection.grid_position(label), frame)
         if held is None:
             return None
         pixels = kept_pixels(image, held.bounds)

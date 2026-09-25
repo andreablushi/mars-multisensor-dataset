@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from building.configs import ctx as configs
-from building.preprocessing.common.models.samples import Samples
+from building.preprocessing.common.models.position import Position
 from common.maths.geodesy import PolarGrid
 
 # The two projections a scan is written in, the second on a polar tile.
@@ -35,14 +35,14 @@ def map_template(grid: PolarGrid | None) -> str:
     )
 
 
-def grid_samples(label: dict[str, str]) -> Samples:
+def grid_position(label: dict[str, str]) -> Position:
     """Return where every line and every sample of one projected scan sits.
 
     Args:
         label: The parsed ISIS label of one scan.
 
     Returns:
-        samples: The latitude or northing of every line, the longitude or easting of
+        position: The latitude or northing of every line, the longitude or easting of
             every sample, and the polar grid they are measured on, if any.
 
     Raises:
@@ -62,7 +62,7 @@ def grid_samples(label: dict[str, str]) -> Samples:
     left = float(label["UpperLeftCornerX"]) + half
     lines, samples = np.arange(int(label["Lines"])), np.arange(int(label["Samples"]))
     if name == POLAR:
-        return Samples(
+        return Position(
             top - lines * resolution,
             left + samples * resolution,
             True,
@@ -74,9 +74,8 @@ def grid_samples(label: dict[str, str]) -> Samples:
         )
     # How many degrees one pixel spans, the same in both directions.
     step = float(np.degrees(resolution / radius))
-    return Samples(
+    return Position(
         np.degrees(top / radius) - lines * step,
         float(label["CenterLongitude"]) + np.degrees(left / radius) + samples * step,
         True,
-        None,
     )

@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator
 
 import numpy as np
 
-from building.preprocessing.common.models.samples import Samples
+from building.preprocessing.common.models.position import Position
 from common.maths import geodesy
 
 # How many samples of a cut are crossed at once, since a grid can run to gigabytes.
@@ -39,7 +39,9 @@ def kept_part(array: np.ndarray, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     return array[np.ix_(*bounds)] if len(bounds) > 1 else array[bounds[0]]
 
 
-def line_blocks(sizes: tuple[int, ...], budget: int = BLOCK) -> Iterator[slice]:
+def line_blocks(
+    sizes: tuple[int, ...], budget: int = BLOCK
+) -> Iterator[tuple[slice, ...]]:
     """Yield the lines of one cut in blocks of about as many samples as fit.
 
     Args:
@@ -47,61 +49,46 @@ def line_blocks(sizes: tuple[int, ...], budget: int = BLOCK) -> Iterator[slice]:
         budget: How many samples to read at once.
 
     Yields:
-        block: Which lines of the cut to read.
+        taken: Which lines of the cut to read, every other ground axis whole.
     """
+    rest = (slice(None),) * (len(sizes) - 1)
     reach = max(1, budget // max(1, int(np.prod(sizes[1:], dtype=int))))
     for start in range(0, sizes[0], reach):
-        yield slice(start, start + reach)
+        yield (slice(start, start + reach), *rest)
 
 
-def block_axes(samples: Samples, block: slice) -> tuple[np.ndarray, np.ndarray]:
-    """Return what places one block of samples, as its own grid measured it.
-
-    Args:
-        samples: The samples, on the grid they were placed on.
-        block: Which lines of them to read.
-
-    Returns:
-        down: Their northings or latitudes, a column where the two are separable.
-        across: Their eastings or longitudes, a row where they are.
-    """
-    if samples.separable:
-        return samples.down[block][:, None], samples.across[None, :]
-    return samples.down[block], samples.across[block]
-
-
-def block_degrees(samples: Samples, block: slice) -> tuple[np.ndarray, np.ndarray]:
+def block_degrees(position: Position, block: tuple) -> tuple[np.ndarray, np.ndarray]:
     """Return the longitude and latitude one block of samples sits at.
 
     Args:
-        samples: The samples, on the grid they were placed on.
+        position: The samples, on the grid they were placed on.
         block: Which lines of them to read.
 
     Returns:
         longitude: Their longitudes in degrees.
         latitude: Their latitudes in degrees.
     """
-    down, across = block_axes(samples, block)
-    if samples.grid is None:
-        return across, down
-    return geodesy.stereographic_inverse(across, down, *samples.grid)
+    north, east = position.crossed_part(block)
+    if position.grid is None:
+        return east, north
+    return geodesy.stereographic_inverse(east, north, *position.grid)
 
 
 def filled_offsets(
-    samples: Samples,
-    offsets: Callable[[slice], tuple[np.ndarray, np.ndarray]],
+    position: Position,
+    offsets: Callable[[tuple], tuple[np.ndarray, np.ndarray]],
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return the two offsets of every sample, one block of lines at a time.
 
     Args:
-        samples: The samples to cross, whose axes settle how much is read at once.
+        position: The samples to cross, whose axes settle how much is read at once.
         offsets: What hands back the northings and the eastings of one block.
 
     Returns:
         north: The northing of every sample, over every ground axis it holds.
         east: The easting of every one of them, holding the same.
     """
-    sizes = samples.sizes
+    sizes = position.sizes
     north = np.empty(sizes, dtype=float)
     east = np.empty(sizes, dtype=float)
     for block in line_blocks(sizes):

@@ -5,9 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from building.preprocessing.common import geometry
-from building.preprocessing.common.models.relative_position import (
-    RelativePosition,
-)
+from building.preprocessing.common.models.position import Position
 from common.maths import geodesy
 from common.models.tile import Tile
 
@@ -22,7 +20,7 @@ STORED = np.float32
 
 
 def position_degrees(
-    position: RelativePosition, frame: Tile, taken: tuple
+    position: Position, frame: Tile, taken: tuple
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return the longitude and latitude the samples of one position sit at.
 
@@ -35,26 +33,22 @@ def position_degrees(
         longitudes: The longitudes in degrees, crossed where the axes are separable.
         latitudes: The latitudes in degrees, holding the same.
     """
-    down, across = position.offsets(taken)
-    if position.separable:
-        down, across = down[:, None], across[None, :]
-    if position.polar is None:
+    north, east = position.crossed_part(taken)
+    if position.grid is None:
         return (
-            geodesy.normalise_longitude(frame.centre_lon + across),
-            frame.centre_lat + down,
+            geodesy.normalise_longitude(frame.centre_lon + east),
+            frame.centre_lat + north,
         )
     # The offsets stand from the tile centre, so where that falls is worked again.
     centre_x, centre_y = geodesy.stereographic_forward(
-        frame.centre_lon, frame.centre_lat, *position.polar
+        frame.centre_lon, frame.centre_lat, *position.grid
     )
     return geodesy.stereographic_inverse(
-        across + centre_x, down + centre_y, *position.polar
+        east + centre_x, north + centre_y, *position.grid
     )
 
 
-def distance_centre_m(
-    position: RelativePosition, frame: Tile
-) -> tuple[np.ndarray, np.ndarray]:
+def distance_centre_m(position: Position, frame: Tile) -> tuple[np.ndarray, np.ndarray]:
     """Return how far north and east of its tile centre every sample sits.
 
     Args:
@@ -65,12 +59,11 @@ def distance_centre_m(
         north: The ground metres north of that centre, one per sample.
         east: The ground metres east of it, in the same frame.
     """
-    sizes = position.ground_sizes
+    sizes = position.sizes
     north = np.empty(sizes, dtype=STORED)
     east = np.empty(sizes, dtype=STORED)
     for block in geometry.line_blocks(sizes, BLOCK):
-        taken = (block, *(slice(None),) * (len(sizes) - 1))
-        lon, lat = position_degrees(position, frame, taken)
+        lon, lat = position_degrees(position, frame, block)
         east[block], north[block] = geodesy.geodesic_forward(
             lon, lat, frame.centre_lon, frame.centre_lat
         )
@@ -91,7 +84,7 @@ def middle_slice(length: int) -> slice:
     return slice(start, start + kept)
 
 
-def sample_spacing_m(position: RelativePosition, frame: Tile) -> tuple[float, ...]:
+def sample_spacing_m(position: Position, frame: Tile) -> tuple[float, ...]:
     """Return how much ground one sample spans, along each of its ground axes.
 
     Args:
@@ -101,7 +94,7 @@ def sample_spacing_m(position: RelativePosition, frame: Tile) -> tuple[float, ..
     Returns:
         spacing: The median geodesic metres between neighbours per ground axis.
     """
-    sizes = position.ground_sizes
+    sizes = position.sizes
     steps: list[float] = []
     for axis in range(len(sizes)):
         # Only one line is crossed, so a projected grid is never held whole here.

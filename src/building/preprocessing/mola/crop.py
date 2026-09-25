@@ -5,9 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from building.preprocessing.common import cut
-from building.preprocessing.common.models.relative_position import (
-    RelativePosition,
-)
+from building.preprocessing.common.models.position import Position
 from building.preprocessing.mola import delay, projection
 from building.preprocessing.mola.merge_sheets import merge_sheets
 from building.preprocessing.mola.models.observation import MolaObservation
@@ -18,7 +16,7 @@ from common.pds import images, labels
 
 def mola_sample(
     observation: MolaObservation,
-    position: RelativePosition,
+    position: Position,
     label: dict[str, str],
     height: np.ndarray,
     inside: np.ndarray | None = None,
@@ -64,7 +62,7 @@ def crop_polar(observation: MolaObservation, frame: Tile) -> MolaSample | None:
     """
     (image,) = observation.files.values()
     label = labels.load(image.with_suffix(".lbl"))
-    held = cut.overlap(projection.grid_samples(label), frame)
+    held = cut.overlap(projection.grid_position(label), frame)
     if held is None:
         return None
     lines, samples = held.bounds

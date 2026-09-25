@@ -1,4 +1,4 @@
-"""Where every sample of one observation sits, relative to its own tile."""
+"""Where every sample of one observation sits, on the grid it is measured on."""
 
 from __future__ import annotations
 
@@ -10,23 +10,23 @@ from common.maths.geodesy import PolarGrid
 
 
 @dataclass(frozen=True, slots=True)
-class RelativePosition:
-    """Where each sample of one observation sits on the tile it was kept for.
+class Position:
+    """Where each sample of one observation sits, absolute or from its tile centre.
 
     Attributes:
-        north: How far north of the tile centre, in degrees or metres.
-        east: How far east of it, in the same unit, wrapped at the meridian.
-        separable: Whether the two hold one axis each.
-        polar: The grid the two are measured on, or None for degrees.
+        north: The latitude or northing of every sample, one per line if separable.
+        east: The longitude or easting, one per column if separable, else per sample.
+        separable: Whether the two hold one ground axis each.
+        grid: The polar grid the two are metres on, or None for degrees.
     """
 
     north: np.ndarray
     east: np.ndarray
     separable: bool
-    polar: PolarGrid | None = None
+    grid: PolarGrid | None = None
 
     @property
-    def ground_sizes(self) -> tuple[int, ...]:
+    def sizes(self) -> tuple[int, ...]:
         """Return how many samples each ground axis holds.
 
         Returns:
@@ -36,20 +36,18 @@ class RelativePosition:
             return (self.north.size, self.east.size)
         return self.north.shape
 
-    def offsets(self, taken: tuple = ()) -> tuple[np.ndarray, np.ndarray]:
-        """Return the northings and the eastings of the samples a cut keeps.
+    def crossed_part(self, taken: tuple) -> tuple[np.ndarray, np.ndarray]:
+        """Return the northings and eastings of the samples a cut takes, broadcastable.
 
         Args:
-            taken: Which of each ground axis to read, outermost first, empty for all.
+            taken: Which of each ground axis to read, outermost first.
 
         Returns:
-            north: The northings, one axis if separable, else one per sample.
-            east: The eastings, holding the same.
+            north: The northings, a column where separable, else one per sample.
+            east: The eastings, a row where separable, else one per sample.
         """
-        if not taken:
-            return self.north, self.east
         if self.separable:
-            return self.north[taken[0]], self.east[taken[1]]
+            return self.north[taken[0]][:, None], self.east[taken[1]][None, :]
         return self.north[taken], self.east[taken]
 
     def dims_along(

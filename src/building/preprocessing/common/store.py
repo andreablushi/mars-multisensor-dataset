@@ -115,7 +115,7 @@ def write_sample(held: Sample, layout: Layout, frame: Tile, root: Path) -> Path:
             along[name] = ground
 
     path = sample_path(frame, layout.instrument, held.identifier, root)
-    grid = position.polar
+    grid = position.grid
     described = {
         "instrument": layout.instrument,
         "identifier": held.identifier,
