@@ -6,7 +6,6 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from building.common.pds import images, labels, tables
 from building.configs import sharad as configs
 from building.preprocessing.common import geometry
 from building.preprocessing.common.models.samples import Samples
@@ -17,6 +16,7 @@ from building.preprocessing.sharad.models.observation import (
 )
 from building.preprocessing.sharad.models.sample import SharadSample
 from common.models.tile import Tile
+from common.pds import images, labels, tables
 
 # The field the geometry names each radargram column in, counted from one.
 COLUMN_FIELD = "RADARGRAM COLUMN"
@@ -70,7 +70,8 @@ def read_observation(identifier: str) -> SharadObservation:
         for kind in configs.Kind
     }
     # The echoes themselves, then the places they were sounded at.
-    power, sounding = images.load_plane(held[configs.Kind.OBSERVATION][".img"])
+    power, sounding = images.load_cube(held[configs.Kind.OBSERVATION][".img"])
+    power = power[:, :, 0]
     geometry, placing = tables.load_table(held[configs.Kind.GEOMETRY][".tab"])
     # The geometry counts columns from one, and the radargram from zero.
     traces = geometry[COLUMN_FIELD].astype("i8") - 1

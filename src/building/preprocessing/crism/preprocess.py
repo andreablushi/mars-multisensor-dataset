@@ -7,7 +7,6 @@ from pathlib import Path
 
 import numpy as np
 
-from building.common.pds import images, labels
 from building.configs import crism as configs
 from building.preprocessing.common import geometry
 from building.preprocessing.common.models.samples import Samples
@@ -27,6 +26,7 @@ from building.preprocessing.crism.models.observation import (
 )
 from building.preprocessing.crism.models.sample import CrismSample
 from common.models.tile import Tile
+from common.pds import images, labels
 
 # What a wavelength file writes where the detector was never calibrated.
 UNCALIBRATED = 65535.0

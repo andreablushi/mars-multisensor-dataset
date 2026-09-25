@@ -16,13 +16,13 @@ from analysis.metadata.loaders.ancillary import load_distortions
 from analysis.models.ancillary import Ancillary, Distortion
 from analysis.models.instrument import InstrumentSet
 from analysis.models.tile_group import TileGroup
-from building.common.pds import labels
 from building.configs.sharad import NAMING
 from building.download.archive import bring, published
 from common import console as printing
 from common.fetch.http import TLS_CONTEXT
 from common.fetch.ode import ODEClient
 from common.maths.tessellate import Tessellate
+from common.pds import labels
 
 SAMPLED_EVERY = 8
 

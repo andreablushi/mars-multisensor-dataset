@@ -6,8 +6,8 @@ from itertools import chain
 from pathlib import Path
 
 from analysis.models.observation import Observation, ObservationSet
-from building.common.pds.times import moment
 from common.disk.files import read_jsonl
+from common.pds.tables import parse_timestamp
 
 
 def load_observations(path: Path) -> ObservationSet:
@@ -44,8 +44,8 @@ def load_observations(path: Path) -> ObservationSet:
                 ihid=item["ihid"],
                 iid=item["iid"],
                 pt=item["pt"],
-                start=moment(start),
-                stop=moment(stop) if stop else None,
+                start=parse_timestamp(start),
+                stop=parse_timestamp(stop) if stop else None,
                 wkt=wkt,
                 map_scale_m=float(scale) if scale else None,
                 north_wkt=north,

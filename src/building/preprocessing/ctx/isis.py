@@ -6,7 +6,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from building.common.pds import labels
+from common.pds import labels
 
 ROOT = "/opt/isis"
 

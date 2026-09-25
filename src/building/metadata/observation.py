@@ -8,12 +8,12 @@ from datetime import datetime
 import numpy as np
 
 from building.common.layout import Axis, Layout
-from building.common.pds import times
 from building.metadata.acquisition_info import AcquisitionInfo, acquisition_info
 from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.sample import Sample
 from common.disk import parquet
 from common.models.tile import Tile
+from common.pds.tables import parse_timestamp
 
 # What a label calls the two ends of the time a product was taken over.
 STARTED = "START_TIME"
@@ -172,7 +172,7 @@ def _moment(label: dict[str, str], key: str) -> datetime | None:
     """
     held = label.get(key)
     try:
-        return times.moment(held) if held else None
+        return parse_timestamp(held) if held else None
     except ValueError:
         return None
 

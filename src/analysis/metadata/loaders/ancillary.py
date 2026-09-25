@@ -10,8 +10,8 @@ import numpy as np
 
 from analysis.models.ancillary import Ancillary, Distortion
 from analysis.models.tile_group import TileGroup
-from building.common.pds import tables
 from common.maths.tessellate import Tessellate
+from common.pds import tables
 
 
 def load_distortions(

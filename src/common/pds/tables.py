@@ -2,14 +2,39 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import numpy as np
 
-from building.common.pds import labels, times
+from common.pds import labels
 
 # What each column type is read as, floats where the label names nothing else.
 _DTYPES = {"ASCII_INTEGER": "i8", "TIME": "M8[ms]"}
+
+# How an archive writes a second it rounded up, which no calendar holds.
+ROLLED = ":60."
+
+
+def parse_timestamp(text: str) -> datetime:
+    """Return one archive timestamp in UTC, a rounded up second read as the next minute.
+
+    Args:
+        text: The timestamp as the archive wrote it.
+
+    Returns:
+        moment: The timestamp, timezone aware.
+
+    Raises:
+        ValueError: When the text is not a timestamp at all.
+    """
+    head, rolled, rest = text.strip().rpartition(ROLLED)
+    held = (
+        datetime.fromisoformat(f"{head}:00.{rest}") + timedelta(minutes=1)
+        if rolled
+        else datetime.fromisoformat(text.strip())
+    )
+    return held if held.tzinfo else held.replace(tzinfo=UTC)
 
 
 def _times(text: np.ndarray) -> np.ndarray:
@@ -25,11 +50,11 @@ def _times(text: np.ndarray) -> np.ndarray:
         ValueError: When a stamp is not one that can be read at all.
     """
     values = text.astype("U")
-    rolled = np.flatnonzero(np.char.find(values, times.ROLLED) > 0)
+    rolled = np.flatnonzero(np.char.find(values, ROLLED) > 0)
     if rolled.size:
         stamps = values.tolist()
         for at in rolled:
-            whole = times.moment(stamps[at]).replace(tzinfo=None)
+            whole = parse_timestamp(stamps[at]).replace(tzinfo=None)
             stamps[at] = whole.isoformat(timespec="milliseconds")
         values = np.array(stamps, dtype=values.dtype)
     return values.astype(_DTYPES["TIME"])

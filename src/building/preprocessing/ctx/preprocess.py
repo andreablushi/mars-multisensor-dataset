@@ -10,7 +10,6 @@ from pathlib import Path
 import numpy as np
 import tifffile
 
-from building.common.pds import labels
 from building.configs import ctx as configs
 from building.preprocessing.common import geometry
 from building.preprocessing.common.models.samples import Samples
@@ -21,6 +20,7 @@ from building.preprocessing.ctx.models.sample import BLANK, CtxSample
 from common.maths import geodesy
 from common.maths.geodesy import TURN
 from common.models.tile import Tile
+from common.pds import labels
 
 # Nothing here reads the export's no-data tag: what a scan left blank is `BLANK`
 logging.getLogger("tifffile").setLevel(logging.ERROR)

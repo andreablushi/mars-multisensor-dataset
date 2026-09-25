@@ -6,10 +6,10 @@ from pathlib import Path
 
 import httpx
 
-from building.common.pds import labels
 from building.configs import crism as configs
 from building.download import archive
 from common.models.tile import Tile
+from common.pds import labels
 
 # What ODE publishes CRISM under.
 ODE = {"ihid": "MRO", "iid": "CRISM"}

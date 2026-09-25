@@ -5,11 +5,11 @@ from __future__ import annotations
 import httpx
 import numpy as np
 
-from building.common.pds import labels, tables
 from building.configs import sharad as configs
 from building.download import archive
 from building.preprocessing.sharad.preprocess import kept_columns
 from common.models.tile import Tile
+from common.pds import labels, tables
 
 # What ODE publishes SHARAD under.
 ODE = {"ihid": "MRO", "iid": "SHARAD"}
@@ -85,7 +85,7 @@ def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -
         **ODE,
     )
     archive.bring({".lbl": radargram[".lbl"]}, offered, client=client)
-    lines, samples, _, _, stored = labels.layout(labels.load(radargram[".lbl"]))
+    lines, samples, _, _, stored = labels.image_layout(labels.load(radargram[".lbl"]))
     # Every other column is left a hole, which `crop` never reads.
     columns = kept_columns(tables.load_table(placing[".tab"])[0], frames)
     itemsize = np.dtype(stored).itemsize

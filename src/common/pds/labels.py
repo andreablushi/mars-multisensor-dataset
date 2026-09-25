@@ -8,7 +8,7 @@ from pathlib import Path
 BIL = "LINE_INTERLEAVED"
 
 # What a label says about its own file, which stored arrays no longer need.
-LAYOUT = frozenset(
+FILE_KEYS = frozenset(
     {
         "BANDS",
         "BAND_STORAGE_TYPE",
@@ -96,7 +96,7 @@ def load(path: Path) -> dict[str, str]:
     return label
 
 
-def layout(label: dict[str, str]) -> tuple[int, int, int, str, str]:
+def image_layout(label: dict[str, str]) -> tuple[int, int, int, str, str]:
     """Read how one image is shaped and written from its label.
 
     Args:
@@ -123,19 +123,6 @@ def layout(label: dict[str, str]) -> tuple[int, int, int, str, str]:
     # The sample type and its width, which together name a numpy dtype.
     dtype = _DTYPES[label["SAMPLE_TYPE"], int(label["SAMPLE_BITS"])]
     return lines, samples, bands, stored, dtype
-
-
-def scaling(label: dict[str, str]) -> tuple[float, float]:
-    """Read what one image's stored values have to be turned into to be read.
-
-    Args:
-        label: The parsed label.
-
-    Returns:
-        factor: What every stored value is multiplied by, one where none is named.
-        offset: What is added after it, zero where the label names none.
-    """
-    return float(label.get("SCALING_FACTOR", 1.0)), float(label.get("OFFSET", 0.0))
 
 
 def columns(path: Path) -> list[dict[str, str]]:
@@ -173,7 +160,9 @@ def merge(*held: dict[str, str]) -> dict[str, str]:
     merged: dict[str, str] = {}
     for one in held:
         for key, value in one.items():
-            kept = key not in merged and not key.startswith("^") and key not in LAYOUT
+            kept = (
+                key not in merged and not key.startswith("^") and key not in FILE_KEYS
+            )
             if kept and value.upper() not in MISSING:
                 merged[key] = value
     return merged

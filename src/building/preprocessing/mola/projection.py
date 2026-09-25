@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from building.common.pds import images, labels
 from building.preprocessing.common import geometry
 from building.preprocessing.common.models.relative_position import PolarGrid
 from building.preprocessing.common.models.samples import Samples
@@ -13,6 +12,7 @@ from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.sample import MolaSample
 from common.maths import physics
 from common.models.tile import Tile
+from common.pds import images, labels
 
 # The two projections the gridded record is written in.
 EQUATORIAL = "SIMPLE CYLINDRICAL"
