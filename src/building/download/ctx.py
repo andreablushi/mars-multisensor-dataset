@@ -1,4 +1,4 @@
-"""Bringing one raw CTX scan down, and placing it with ISIS once it has landed."""
+"""Downloading one raw CTX scan from ODE into the cache, and placing it with ISIS."""
 
 from __future__ import annotations
 
@@ -30,52 +30,52 @@ SPICE_REFUSED = "talking to the server"
 SPICE = Gate()
 
 
-def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
-    """Bring the raw scan and what ODE says of it, leaving it to be placed.
+def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
+    """Download one raw scan and what ODE says of it, leaving it to be placed.
 
     Args:
-        observation_id: The observation to fetch.
-        client: The client whose connections every query is asked over.
-        frames: The tiles it is cut to, which take it whole.
+        identifier: The observation to fetch.
+        client: The client every query and download goes over.
+        frames: Unused, since the observation is fetched whole.
 
     Raises:
         FileNotFoundError: When ODE carries no raw scan of that name.
     """
-    files = configs.CACHE.files(observation_id, observation_id)
-    cube, said = files[configs.CUBE_SUFFIX], files[configs.METADATA_SUFFIX]
+    files = configs.CACHE.files(identifier, identifier)
+    cube, metadata = files[configs.CUBE_SUFFIX], files[configs.METADATA_SUFFIX]
     raw = cube.with_suffix(configs.IMAGE_SUFFIX)
-    if (cube.exists() or raw.exists()) and said.exists():
+    if (cube.exists() or raw.exists()) and metadata.exists():
         return
     entries = archive.query_products(
-        client, productid=observation_id, pt=PRODUCT_TYPE, results=FIELDS, **ODE
+        client, productid=identifier, pt=PRODUCT_TYPE, results=FIELDS, **ODE
     )
     if not entries:
-        raise FileNotFoundError(f"ODE carries no raw scan for {observation_id}.")
+        raise FileNotFoundError(f"ODE carries no raw scan for {identifier}.")
     acquisition = {
         key: str(entries[0][key])
         for key in configs.ODE_ACQUISITION
         if entries[0].get(key)
     }
-    with atomic_path(said) as tmp:
+    with atomic_path(metadata) as tmp:
         tmp.write_text(json.dumps(acquisition))
     offered = archive.file_fields(entries[0])
     archive.download_files(
         {configs.IMAGE_SUFFIX: raw},
-        {configs.IMAGE_SUFFIX: offered.get(f"{observation_id}{configs.IMAGE_SUFFIX}")},
+        {configs.IMAGE_SUFFIX: offered.get(f"{identifier}{configs.IMAGE_SUFFIX}")},
         client=client,
     )
 
 
-def place(observation_id: str) -> None:
+def place(identifier: str) -> None:
     """Import a fetched raw scan into ISIS and place it with the SPICE server.
 
     Args:
-        observation_id: The observation to place, its raw scan already fetched.
+        identifier: The observation to place, its raw scan already fetched.
 
     Raises:
         RuntimeError: When ISIS fails to import it, or is refused past the deadline.
     """
-    cube = configs.CACHE.files(observation_id, observation_id)[configs.CUBE_SUFFIX]
+    cube = configs.CACHE.files(identifier, identifier)[configs.CUBE_SUFFIX]
     if cube.exists():
         return
     raw = cube.with_suffix(configs.IMAGE_SUFFIX)
@@ -93,8 +93,8 @@ def place(observation_id: str) -> None:
                 SPICE.answered()
                 raise
             SPICE.refused()
-            continue
-        SPICE.answered()
-        break
+        else:
+            SPICE.answered()
+            break
     staged.replace(cube)
     raw.unlink()

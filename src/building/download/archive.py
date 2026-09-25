@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 
 import httpx
@@ -13,14 +14,14 @@ TIMEOUT = 60.0
 
 
 def query_products(client: httpx.Client, **params: str) -> list[dict]:
-    """Read the products one ODE query names, one entry each.
+    """Ask ODE for every product a query matches, as a list of product entries.
 
     Args:
-        client: The client whose connections the query is asked over.
-        params: What to ask for, such as instrument host, instrument and type.
+        client: The client the query goes over.
+        params: The ODE query fields, such as ihid, iid, pt or productid.
 
     Returns:
-        entries: One entry per product ODE answers with, empty when it matched none.
+        entries: One entry per matching product, empty when nothing matched.
 
     Raises:
         ODEError: When ODE reports an error of its own.
@@ -37,14 +38,14 @@ def query_products(client: httpx.Client, **params: str) -> list[dict]:
 
 
 def file_fields(entry: dict, field: str = "URL") -> dict[str, str]:
-    """Read one field of every file one ODE product entry offers, its URL by default.
+    """Map each data file of one product entry to one of its fields, its URL by default.
 
     Args:
         entry: One product, as `query_products` returns it.
-        field: The field each file is read for, such as "URL" or "KBytes".
+        field: The field read for each file, such as "URL" or "KBytes".
 
     Returns:
-        fields: That field of each file, keyed by its lowercase filename.
+        fields: That field per file of type "Product", keyed by lowercase filename.
     """
     offered = entry.get("Product_files", {}).get("Product_file", [])
     return {
@@ -57,26 +58,26 @@ def file_fields(entry: dict, field: str = "URL") -> dict[str, str]:
 def product_urls(
     client: httpx.Client, product_id: str, **params: str
 ) -> dict[str, str]:
-    """Read where ODE offers each file of one product.
+    """Ask ODE for the download URL of each file of one product, keyed by suffix.
 
     Args:
-        client: The client whose connections the query is asked over.
+        client: The client the query goes over.
         product_id: The product to ask about.
-        params: What else names it, such as the instrument and its type.
+        params: The other ODE query fields, such as ihid, iid and pt.
 
     Returns:
-        urls: The download URL of each file suffix.
+        urls: For each suffix, the file named after the product, or else the only
+            file with that suffix. A suffix shared by several other files is left out.
     """
     entries = query_products(client, productid=product_id, **params)
-    named: dict[str, str] = {}
-    only: dict[str, str | None] = {}
-    for name, url in file_fields(entries[0] if entries else {}).items():
+    offered = file_fields(entries[0] if entries else {})
+    carriers = Counter(Path(name).suffix for name in offered)
+    urls = {}
+    for name, url in offered.items():
         path = Path(name)
-        if path.stem == product_id.lower():
-            named[path.suffix] = url
-        else:
-            only[path.suffix] = None if path.suffix in only else url
-    return {suffix: url for suffix, url in {**only, **named}.items() if url}
+        if url and (path.stem == product_id.lower() or carriers[path.suffix] == 1):
+            urls[path.suffix] = url
+    return urls
 
 
 def download_product(
@@ -85,16 +86,16 @@ def download_product(
     destination: dict[str, Path],
     **params: str,
 ) -> None:
-    """Download whichever halves of one ODE product are not on disk yet.
+    """Download the files of one ODE product, asking ODE only when one is missing.
 
     Args:
-        client: The client whose connections the query is asked over.
-        product_id: The product to fetch.
-        destination: Where each of its halves belongs, keyed by suffix.
-        params: What names the product to ODE, such as host, instrument and type.
+        client: The client the query and the downloads go over.
+        product_id: The product to download.
+        destination: Where each of its files belongs, keyed by suffix.
+        params: The other ODE query fields, such as ihid, iid and pt.
 
     Raises:
-        FileNotFoundError: When ODE offers no download for a missing half.
+        FileNotFoundError: When ODE offers no URL for a missing file.
     """
     if any(not path.exists() for path in destination.values()):
         download_files(
@@ -111,18 +112,19 @@ def download_files(
     size: int = 0,
     origin: int = 0,
 ) -> None:
-    """Stream whichever halves of one product are not on disk yet.
+    """Download each file from the URL of its suffix, skipping those already on disk.
 
     Args:
-        destination: Where each half belongs, keyed by suffix.
-        urls: Where each half is served from, keyed by the same suffix.
+        destination: Where each file belongs, keyed by suffix.
+        urls: Where each file is served from, keyed by the same suffix.
         client: A client whose connections to reuse, or None to open one each.
-        spans: The first and past-the-last byte of each range a sparse copy keeps.
-        size: How many bytes a sparse copy holds, or zero to stream the half whole.
-        origin: Which byte of the half a sparse copy starts at.
+        spans: The byte ranges to keep when size is set, first and past-the-last.
+        size: The size of a sparse copy that holds only the spans, or zero to
+            download each file whole.
+        origin: The byte of the served file a sparse copy starts at.
 
     Raises:
-        FileNotFoundError: When a missing half is served from nowhere.
+        FileNotFoundError: When a missing file has no URL.
     """
     for suffix, path in destination.items():
         if path.exists():

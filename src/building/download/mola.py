@@ -1,4 +1,4 @@
-"""Bringing down the gridded record one tile's ground is mosaicked from."""
+"""Downloading one MOLA grid from ODE into the cache, and picking a tile's grid."""
 
 from __future__ import annotations
 
@@ -31,18 +31,18 @@ Box = tuple[float, float, float, float]
 # The whole record, under a hundred and unchanging, so it is read once for a run.
 _RECORD: dict[str, tuple[str, Box]] = {}
 
-_FETCHING: dict[str, threading.Lock] = {}
-_GUARD = threading.Lock()
+_PRODUCT_LOCKS: dict[str, threading.Lock] = {}
+_PRODUCT_LOCKS_GUARD = threading.Lock()
 
 
 def record_files(client: httpx.Client) -> dict[str, tuple[str, Box]]:
-    """Read the whole gridded record, once per run.
+    """Read every file of the gridded record, asking ODE only on the first call.
 
     Args:
-        client: The client whose connections the query is asked over.
+        client: The client the query goes over.
 
     Returns:
-        published: Each file's URL and the ground it covers, by lowercase name.
+        files: Each file's URL and the ground it covers, keyed by lowercase name.
     """
     if not _RECORD:
         for entry in archive.query_products(
@@ -59,12 +59,74 @@ def record_files(client: httpx.Client) -> dict[str, tuple[str, Box]]:
     return _RECORD
 
 
+def grid_sheets(resolution: int, client: httpx.Client) -> list[str]:
+    """Read which sheets a sheeted grid of one resolution is published as.
+
+    Args:
+        resolution: How many bins of the grid one degree holds.
+        client: The client the query goes over.
+
+    Returns:
+        sheets: The sorted unique sheet ids.
+    """
+    sheets = set()
+    for name in record_files(client):
+        if not name.endswith(ODE_SUFFIX):
+            continue
+        # Keep only wanted sheets, which drops the polar stereographic ones.
+        parts = configs.NAMING.parts(Path(name).stem)
+        if not parts or not parts["marker"]:
+            continue
+        if configs.RESOLUTIONS[parts["step"]] == resolution:
+            sheets.add(parts["sheet"])
+    return sorted(sheets)
+
+
+def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
+    """Download every product one grid is published as, skipping those on disk.
+
+    Args:
+        identifier: The grid to fetch, as `configs.GRIDS` names it.
+        client: The client every query and download goes over.
+        frames: Unused, since the grid is fetched whole.
+
+    Raises:
+        FileNotFoundError: When ODE offers no download for one of them.
+    """
+    held = configs.GRIDS[identifier]
+    # A cap is a single product, so the grid's own name is the directory it lands in.
+    if held.product:
+        wanted = [(identifier, held.product)]
+    else:
+        wanted = [
+            (sheet, configs.NAMING.product(sheet, configs.Kind.TOPOGRAPHY))
+            for sheet in grid_sheets(held.resolution, client)
+        ]
+    for directory, product in wanted:
+        files = configs.CACHE.files(directory, product, configs.Kind.TOPOGRAPHY)
+        # One product carries many tiles, so only the first to want it fetches.
+        with _PRODUCT_LOCKS_GUARD:
+            lock = _PRODUCT_LOCKS.setdefault(product, threading.Lock())
+        with lock:
+            if all(path.exists() for path in files.values()):
+                continue
+            archive.download_files(
+                files,
+                {
+                    Path(name).suffix: url
+                    for name, (url, _) in record_files(client).items()
+                    if Path(name).stem == product
+                },
+                client=client,
+            )
+
+
 def tile_grids(tile: Tile, client: httpx.Client) -> list[str]:
     """Read which grid one tile's ground is mosaicked from.
 
     Args:
         tile: The frame of the tile the grid has to cover.
-        client: The client whose connections a query would be asked over.
+        client: Unused, required by the dispatcher's `identifiers` signature.
 
     Returns:
         grids: The one grid that covers it, since a merge is never joined across two.
@@ -76,72 +138,3 @@ def tile_grids(tile: Tile, client: httpx.Client) -> list[str]:
         held = tile.max_lat <= -configs.POLAR_FLOOR
         return [configs.SOUTH_POLAR if held else configs.COARSE]
     return [configs.EQUATORIAL]
-
-
-def grid_sheets(grid: str, client: httpx.Client) -> list[str]:
-    """Read which sheets one grid is published as.
-
-    Args:
-        grid: The grid, as `configs.GRIDS` names it.
-        client: The client whose connections the query is asked over.
-
-    Returns:
-        sheets: The sorted unique sheet ids, and none for a whole grid.
-    """
-    held = configs.GRIDS[grid]
-    if held.product:
-        return []
-    found = set()
-    for name in record_files(client):
-        if not name.endswith(ODE_SUFFIX):
-            continue
-        # Keep only wanted sheets, which drops the polar stereographic ones.
-        parts = configs.NAMING.parts(Path(name).stem)
-        if not parts or not parts["marker"]:
-            continue
-        if configs.RESOLUTIONS[parts["step"]] == held.resolution:
-            found.add(parts["sheet"])
-    return sorted(found)
-
-
-def fetch(grid: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
-    """Bring down everything one grid is published as, or leave what is here.
-
-    Args:
-        grid: The grid to fetch, as `configs.GRIDS` names it.
-        client: The client whose connections the query is asked over.
-        frames: The tiles it is cut to, which take it whole.
-
-    Raises:
-        FileNotFoundError: When ODE offers no download for one of them.
-    """
-    held = configs.GRIDS[grid]
-    # A cap is a single product, so the grid's own name is the directory it lands in.
-    wanted = (
-        [(grid, held.product)]
-        if held.product
-        else [
-            (sheet, configs.NAMING.product(sheet, configs.Kind.TOPOGRAPHY))
-            for sheet in grid_sheets(grid, client)
-        ]
-    )
-    for directory, product in wanted:
-        files = configs.CACHE.files(directory, product, configs.Kind.TOPOGRAPHY)
-        if all(path.exists() for path in files.values()):
-            continue
-        # One product carries many tiles, so only the first to want it fetches.
-        with _GUARD:
-            fetching = _FETCHING.setdefault(product, threading.Lock())
-        with fetching:
-            if all(path.exists() for path in files.values()):
-                continue
-            offered = record_files(client)
-            archive.download_files(
-                files,
-                {
-                    Path(name).suffix: url
-                    for name, (url, _) in offered.items()
-                    if Path(name).stem == product
-                },
-                client=client,
-            )

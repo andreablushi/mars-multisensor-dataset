@@ -18,6 +18,13 @@ class Detector(StrEnum):
     VISIBLE = "s"
 
 
+class Kind(StrEnum):
+    """The two products one detector of a scan is published as."""
+
+    OBSERVATION = "observation"
+    GEOMETRY = "geometry"
+
+
 # fmt: off
 DETECTOR_BANDS_NM = {
     Detector.INFRARED: (
@@ -66,19 +73,10 @@ DETECTOR_BANDS_NM = {
 BANDS_NM = tuple(sorted(band for grid in DETECTOR_BANDS_NM.values() for band in grid))
 
 # Where each detector's bands sit along that axis.
-_SLOT = {band: at for at, band in enumerate(BANDS_NM)}
 DETECTOR_SLOTS = {
-    name: tuple(_SLOT[band] for band in grid)
-    for name, grid in DETECTOR_BANDS_NM.items()
+    detector: tuple(BANDS_NM.index(band) for band in bands)
+    for detector, bands in DETECTOR_BANDS_NM.items()
 }
-
-
-class Kind(StrEnum):
-    """The two products one detector of a scan is published as."""
-
-    OBSERVATION = "observation"
-    GEOMETRY = "geometry"
-
 
 # How ODE spells one detector; radiance and reflectance are the one observation
 NAMING = Naming(
@@ -93,12 +91,6 @@ NAMING = Naming(
         Kind.GEOMETRY: {"marker": "de", "level": "ddr1"},
     },
 )
-
-# What a label calls the wavelength file it was calibrated against.
-WAVELENGTH_KEY = "MRO:WAVELENGTH_FILE_NAME"
-
-# Where each product is kept, the geometry in a subdirectory beside its own scan.
-CACHE = ProductCache(paths.CRISM_ROOT, {None: (".lbl", ".img")}, {Kind.GEOMETRY: "ddr"})
 
 # What the arrays of one observation hold, and which of them is stored for.
 LAYOUT = Layout(
@@ -116,6 +108,12 @@ LAYOUT = Layout(
     stored="f2",
     band_centres_nm=BANDS_NM,
 )
+
+# Where each product is kept, the geometry in a subdirectory beside its own scan.
+CACHE = ProductCache(paths.CRISM_ROOT, {None: (".lbl", ".img")}, {Kind.GEOMETRY: "ddr"})
+
+# What a label calls the wavelength file it was calibrated against.
+WAVELENGTH_KEY = "MRO:WAVELENGTH_FILE_NAME"
 
 # The directory every wavelength file is kept in, shared by every observation.
 WAVELENGTH_DIR = "cdr"

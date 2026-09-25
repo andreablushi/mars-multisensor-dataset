@@ -20,12 +20,13 @@ class Layout:
 
     Attributes:
         instrument: The instrument, as ODE names it.
-        dims: What each axis of its arrays is called.
+        dims: The name of each axis of its measurement.
         axes: What each of those axes holds, in the same order.
-        measurement: The array stored for the instrument, as the sample names it.
-        beside: The other arrays of the sample stored, by name, with their axes.
-        stored: The type the measurement is written as, or None to keep its own.
-        band_centres_nm: The shared band centres in nm, or None without wavelength.
+        measurement: The sample attribute holding the main array, and its stored name.
+        beside: The other arrays stored with it, by name, with the dims each spans.
+        stored: The dtype the measurement is written as, or None to keep its own.
+        band_centres_nm: The band centres every sample shares, in nm, or None when
+            the instrument has no wavelength axis.
     """
 
     instrument: str

@@ -46,12 +46,6 @@ LAYOUT = Layout(
     },
 )
 
-DELAY_INTERVAL_S = 0.0375e-6
-
-AREOID_ROW = 1800
-
-DELAY_ROWS = 3600
-
 # Where each product is kept. The geometry and the clutter each in a subdirectory.
 CACHE = ProductCache(
     paths.SHARAD_ROOT,
@@ -62,6 +56,12 @@ CACHE = ProductCache(
     },
     {Kind.GEOMETRY: "geom", Kind.CLUTTER: "sim"},
 )
+
+DELAY_INTERVAL_S = 0.0375e-6
+
+AREOID_ROW = 1800
+
+DELAY_ROWS = 3600
 
 CLUTTER_ARRAY = 2
 

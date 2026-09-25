@@ -57,16 +57,12 @@ class Grid:
     """One grid of the gridded record, and what it is published as.
 
     Attributes:
-        name: The grid's name, which every crop merged from it is stored under.
         resolution: How many bins of it one degree holds.
-        product: The single product it is published as, or None for sheets.
-        north: Whether it is centred on the north pole, or None for equatorial.
+        product: The single product a polar cap is published as, or None for sheets.
     """
 
-    name: str
     resolution: int
     product: str | None = None
-    north: bool | None = None
 
 
 # The grid a tile is merged from, named for the record and how fine it is.
@@ -76,8 +72,8 @@ NORTH_POLAR = "megdr128n"
 SOUTH_POLAR = "megdr128s"
 
 GRIDS = {
-    EQUATORIAL: Grid(EQUATORIAL, 128),
-    COARSE: Grid(COARSE, 64),
-    NORTH_POLAR: Grid(NORTH_POLAR, 128, "megt_n_128_1", north=True),
-    SOUTH_POLAR: Grid(SOUTH_POLAR, 128, "megt_s_128_1", north=False),
+    EQUATORIAL: Grid(128),
+    COARSE: Grid(64),
+    NORTH_POLAR: Grid(128, "megt_n_128_1"),
+    SOUTH_POLAR: Grid(128, "megt_s_128_1"),
 }

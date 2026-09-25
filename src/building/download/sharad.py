@@ -1,4 +1,4 @@
-"""Bringing one SHARAD track down from ODE, only the columns its tiles keep."""
+"""Downloading one SHARAD track from ODE, only the columns its tiles keep."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from common.pds import labels, tables
 ODE = {"ihid": "MRO", "iid": "SHARAD"}
 
 # The ODE product types a radargram, its geometry and its clutter are published under.
-TYPES = {
+PRODUCT_TYPES = {
     configs.Kind.OBSERVATION: "USRDRV2",
     configs.Kind.GEOMETRY: "USGEOMV2",
     configs.Kind.CLUTTER: "SHSIMU",
@@ -23,15 +23,16 @@ TYPES = {
 
 
 def column_spans(
-    columns: np.ndarray, lines: int, samples: int, itemsize: int
+    columns: np.ndarray, lines: int, samples: int, itemsize: int, start: int
 ) -> tuple[tuple[int, int], ...]:
-    """Return the bytes some columns of a line by line image take up.
+    """Return the bytes some columns of a line by line image take up in its file.
 
     Args:
         columns: The sorted columns to keep, counted from zero.
         lines: How many lines the image holds.
         samples: How many columns each line holds.
         itemsize: How many bytes one value takes.
+        start: The byte of the file the image starts at.
 
     Returns:
         spans: The first and past-the-last byte of each run of columns, line by line.
@@ -42,29 +43,27 @@ def column_spans(
     ]
     row = samples * itemsize
     return tuple(
-        (line * row + first * itemsize, line * row + last * itemsize)
+        (start + line * row + first * itemsize, start + line * row + last * itemsize)
         for line in range(lines)
         for first, last in runs
     )
 
 
-def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
-    """Bring one track's geometry down, and what its tiles keep of the rest.
+def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
+    """Download one track's geometry, and only the columns its tiles keep of the rest.
 
     Args:
-        observation_id: The observation to fetch.
-        client: The client whose connections every query is asked over.
-        frames: The tiles it is cut to, which settle the columns brought down.
+        identifier: The observation to fetch.
+        client: The client every query and download goes over.
+        frames: The tiles it is cut to, which settle the columns downloaded.
 
     Raises:
         FileNotFoundError: When ODE offers no download for a product.
         FetchError: When the archive will not serve the byte ranges asked.
     """
-    products = {
-        kind: configs.NAMING.product(observation_id, kind) for kind in configs.Kind
-    }
+    products = {kind: configs.NAMING.product(identifier, kind) for kind in configs.Kind}
     files = {
-        kind: configs.CACHE.files(observation_id, products[kind], kind)
+        kind: configs.CACHE.files(identifier, products[kind], kind)
         for kind in configs.Kind
     }
     if all(path.exists() for held in files.values() for path in held.values()):
@@ -74,14 +73,14 @@ def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -
         client,
         products[configs.Kind.GEOMETRY],
         placing,
-        pt=TYPES[configs.Kind.GEOMETRY],
+        pt=PRODUCT_TYPES[configs.Kind.GEOMETRY],
         **ODE,
     )
     radargram = files[configs.Kind.OBSERVATION]
     offered = archive.product_urls(
         client,
         products[configs.Kind.OBSERVATION],
-        pt=TYPES[configs.Kind.OBSERVATION],
+        pt=PRODUCT_TYPES[configs.Kind.OBSERVATION],
         **ODE,
     )
     archive.download_files({".lbl": radargram[".lbl"]}, offered, client=client)
@@ -93,7 +92,7 @@ def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -
         {".img": radargram[".img"]},
         offered,
         client=client,
-        spans=column_spans(columns, lines, samples, itemsize),
+        spans=column_spans(columns, lines, samples, itemsize, 0),
         size=lines * samples * itemsize,
     )
     # The combined simulation holds several arrays of the radargram's size in turn.
@@ -105,14 +104,11 @@ def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -
         archive.product_urls(
             client,
             products[configs.Kind.CLUTTER],
-            pt=TYPES[configs.Kind.CLUTTER],
+            pt=PRODUCT_TYPES[configs.Kind.CLUTTER],
             **ODE,
         ),
         client=client,
-        spans=tuple(
-            (start + first, start + last)
-            for first, last in column_spans(columns, lines, samples, itemsize)
-        ),
+        spans=column_spans(columns, lines, samples, itemsize, start),
         size=size,
         origin=start,
     )
