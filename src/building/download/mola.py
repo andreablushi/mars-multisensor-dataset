@@ -107,12 +107,13 @@ def sheets(grid: str, client: httpx.Client) -> list[str]:
     return sorted(found)
 
 
-def fetch(grid: str, client: httpx.Client) -> None:
+def fetch(grid: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
     """Bring down everything one grid is published as, or leave what is here.
 
     Args:
         grid: The grid to fetch, as `configs.GRIDS` names it.
         client: The client whose connections the query is asked over.
+        frames: The tiles it is cut to, which take it whole.
 
     Raises:
         FileNotFoundError: When ODE offers no download for one of them.

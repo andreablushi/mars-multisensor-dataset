@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import httpx
 
 from building.common.pds import labels
 from building.configs import crism as configs
 from building.download import archive
+
+if TYPE_CHECKING:
+    from common.models.tile import Tile
 
 # What ODE publishes CRISM under.
 ODE = {"ihid": "MRO", "iid": "CRISM"}
@@ -20,12 +24,13 @@ TYPES = {configs.OBSERVATION: "TRDR", configs.GEOMETRY: "DDR"}
 WAVELENGTH_TYPE = "CDR"
 
 
-def fetch(observation_id: str, client: httpx.Client) -> None:
+def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
     """Bring down whichever detectors of one observation ODE holds, or leave them.
 
     Args:
         observation_id: The observation to fetch.
         client: The client whose connections every query is asked over.
+        frames: The tiles it is cut to, which take it whole.
 
     Raises:
         FileNotFoundError: When ODE publishes neither detector or no geometry.

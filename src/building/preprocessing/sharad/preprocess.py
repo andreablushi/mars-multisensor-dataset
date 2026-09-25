@@ -2,18 +2,51 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 
 from building.common.pds import images, labels, tables
 from building.configs import sharad as configs
 from building.preprocessing.common import geometry
 from building.preprocessing.common.models.samples import Samples
-from building.preprocessing.sharad.models.observation import SharadObservation
+from building.preprocessing.sharad.models.observation import (
+    LATITUDE_FIELD,
+    LONGITUDE_FIELD,
+    SharadObservation,
+)
 from building.preprocessing.sharad.models.sample import SharadSample
 from common.models.tile import Tile
 
 # The field the geometry names each radargram column in, counted from one.
 COLUMN_FIELD = "RADARGRAM COLUMN"
+
+
+def kept_columns(placing: np.recarray, frames: Sequence[Tile]) -> np.ndarray:
+    """Return every radargram column the boxes of one track's tiles keep.
+
+    Args:
+        placing: The track's geometry, one row per placed trace.
+        frames: The local frames of the tiles it is cut to.
+
+    Returns:
+        columns: The sorted columns any of them keeps, counted from zero.
+    """
+    # Cut as `crop` cuts, so exactly the columns it goes on to read are kept.
+    samples = Samples(
+        placing[LATITUDE_FIELD],
+        placing[LONGITUDE_FIELD],
+        SharadObservation.separable,
+        None,
+    )
+    traces = placing[COLUMN_FIELD].astype("i8") - 1
+    held = [geometry.overlap(samples, frame) for frame in frames]
+    return np.unique(
+        np.concatenate(
+            [traces[one.bounds[0]] for one in held if one is not None]
+            + [np.empty(0, "i8")]
+        )
+    )
 
 
 def read_observation(identifier: str) -> SharadObservation:

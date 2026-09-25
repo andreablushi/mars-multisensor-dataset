@@ -6,7 +6,7 @@ from pathlib import Path
 
 import httpx
 
-from common.fetch import http, ode
+from common.fetch import http, ode, ranges
 
 # How long to wait for the larger half of a product.
 TIMEOUT = 60.0
@@ -81,8 +81,6 @@ def collect(
     client: httpx.Client,
     product_id: str,
     destination: dict[str, Path],
-    *,
-    spans: tuple[tuple[int, int], ...] = (),
     **params: str,
 ) -> None:
     """Download whichever halves of one ODE product are not on disk yet.
@@ -91,19 +89,13 @@ def collect(
         client: The client whose connections the query is asked over.
         product_id: The product to fetch.
         destination: Where each of its halves belongs, keyed by suffix.
-        spans: The first and past-the-last byte of each part, or none for whole.
         params: What names the product to ODE, such as host, instrument and type.
 
     Raises:
         FileNotFoundError: When ODE offers no download for a missing half.
     """
     if any(not path.exists() for path in destination.values()):
-        bring(
-            destination,
-            offers(client, product_id, **params),
-            client=client,
-            spans=spans,
-        )
+        bring(destination, offers(client, product_id, **params), client=client)
 
 
 def bring(
@@ -112,6 +104,8 @@ def bring(
     *,
     client: httpx.Client | None = None,
     spans: tuple[tuple[int, int], ...] = (),
+    size: int = 0,
+    origin: int = 0,
 ) -> None:
     """Stream whichever halves of one product are not on disk yet.
 
@@ -119,7 +113,9 @@ def bring(
         destination: Where each half belongs, keyed by suffix.
         urls: Where each half is served from, keyed by the same suffix.
         client: A client whose connections to reuse, or None to open one each.
-        spans: The first and past-the-last byte of each part, or none for whole.
+        spans: The first and past-the-last byte of each range a sparse copy keeps.
+        size: How many bytes a sparse copy holds, or zero to stream the half whole.
+        origin: Which byte of the half a sparse copy starts at.
 
     Raises:
         FileNotFoundError: When a missing half is served from nowhere.
@@ -129,4 +125,9 @@ def bring(
             continue
         if not urls.get(suffix):
             raise FileNotFoundError(f"No {suffix} offered for {path.stem}.")
-        http.streamed(urls[suffix], path, TIMEOUT, client=client, spans=spans)
+        if size:
+            ranges.patched(
+                urls[suffix], path, spans, size, TIMEOUT, client=client, origin=origin
+            )
+        else:
+            http.streamed(urls[suffix], path, TIMEOUT, client=client)

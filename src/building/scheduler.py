@@ -96,7 +96,7 @@ class Scheduler:
         ticket = self._progress.entered(job.label, QUEUED)
         try:
             self._progress.moved(ticket, FETCHING)
-            instrument.fetch(job.identifier, self._ode)
+            instrument.fetch(job.identifier, self._ode, job.frames)
             if instrument.place is None:
                 self._lined_up(job, ticket)
                 return

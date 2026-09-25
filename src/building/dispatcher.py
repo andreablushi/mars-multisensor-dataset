@@ -36,7 +36,7 @@ class Instrument:
 
     Attributes:
         layout: What its arrays hold, and which of them it is stored for.
-        fetch: What brings one product of it down into the cache.
+        fetch: What brings one product down into the cache, as much as its tiles need.
         read_observation: What reads a fetched product off disk.
         crop: What cuts that observation to a tile's box, or None where it misses.
         archive: Which archive its products are downloaded from.
@@ -48,7 +48,7 @@ class Instrument:
     """
 
     layout: Layout
-    fetch: Callable[[str, httpx.Client], None]
+    fetch: Callable[[str, httpx.Client, tuple[Tile, ...]], None]
     read_observation: Callable[[str], Any]
     crop: Callable[..., Any]
     archive: str

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 
 import httpx
 
@@ -11,6 +12,9 @@ from building.download import archive
 from building.preprocessing.ctx.isis import run_isis
 from common.disk.files import atomic_path
 from common.fetch import http
+
+if TYPE_CHECKING:
+    from common.models.tile import Tile
 
 # What ODE publishes CTX under, the raw scan being the only type it carries.
 ODE = {"ihid": "MRO", "iid": "CTX", "pt": "EDR"}
@@ -25,12 +29,13 @@ SPICE_BACKOFF = 5.0
 SPICE_REFUSED = "talking to the server"
 
 
-def fetch(observation_id: str, client: httpx.Client) -> None:
+def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
     """Bring the raw scan and what ODE says of it, leaving it to be placed.
 
     Args:
         observation_id: The observation to fetch.
         client: The client whose connections every query is asked over.
+        frames: The tiles it is cut to, which take it whole.
 
     Raises:
         FileNotFoundError: When ODE carries no raw scan of that name.
