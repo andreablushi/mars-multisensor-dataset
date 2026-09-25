@@ -25,7 +25,7 @@ def merge_sheets(
         frame: The local frame of the tile the sheets are merged for.
 
     Returns:
-        label: What the sheets it was read from say about it, merged.
+        label: What the sheets that write part of the box say about it, merged.
         height: The height above the areoid in metres over the box, lines by samples.
         position: The latitude of every line, falling southward, and the longitude of
             every sample, rising eastward past a turn.
@@ -52,13 +52,13 @@ def merge_sheets(
     read = []
     for _, image in sorted(observation.files.items()):
         label = labels.load(image.with_suffix(".lbl"))
-        read.append(label)
         placed = projection.grid_position(label)
         # Where the sheet's own first bin sits on the grid every sheet shares.
         line = round((90.0 - float(placed.north[0])) * resolution - 0.5)
         sample = round(float(placed.east[0]) * resolution - 0.5) % whole
         lines, samples = placed.sizes
         top, bottom = max(down.start, line), min(down.stop, line + lines)
+        touched = False
         # A box running over the meridian meets a sheet a whole turn along, too.
         for west in (sample, sample + whole):
             left, right = max(across.start, west), min(across.stop, west + samples)
@@ -75,6 +75,9 @@ def merge_sheets(
             ]
             height[at] = part
             written[at] = True
+            touched = True
+        if touched:
+            read.append(label)
     if height is None or not written.all():
         raise ValueError(
             f"{frame.name} reaches ground no sheet of {observation.identifier} holds."
