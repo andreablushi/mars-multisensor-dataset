@@ -178,9 +178,9 @@ def print_summary(
     printing.print_listed([f"{one.job.label}: {one.error}" for one in failed], console)
     lacking: dict[str, set[str]] = defaultdict(set)
     for one in failed:
-        written = {record.tile for record in one.records}
+        covered = {record.tile for record in one.records}
         lacking[one.job.instrument].update(
-            frame.name for frame in one.job.frames if frame.name not in written
+            frame.name for frame in one.job.frames if frame.name not in covered
         )
     incomplete = set().union(*lacking.values())
     console.print(

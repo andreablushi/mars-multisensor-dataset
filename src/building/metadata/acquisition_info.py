@@ -45,19 +45,17 @@ class AcquisitionInfo:
     spacecraft_altitude_km: float | None = None
 
 
-def acquisition_info(
-    held: Sample, frame: Tile, measured: np.ndarray
-) -> AcquisitionInfo:
+def acquisition_info(held: Sample, frame: Tile) -> AcquisitionInfo:
     """Return what one crop was taken under, from its own planes and its label.
 
     Args:
         held: The crop, reduced over its measured samples.
         frame: The local frame of its tile.
-        measured: Which samples are measurements inside the tile's box.
 
     Returns:
         info: One scalar per quantity, unset where the crop carries none.
     """
+    measured = held.measured_ground
     collected = {}
     for one in fields(AcquisitionInfo):
         plane = getattr(held, one.name, None)

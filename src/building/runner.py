@@ -6,7 +6,6 @@ import time
 from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from contextlib import ExitStack
-from functools import partial
 from pathlib import Path
 
 import httpx
@@ -15,16 +14,10 @@ from rich.console import Console
 from analysis.selector.models.selection import Selection
 from building import console as printing
 from building import paths, planner
-from building.dispatcher import INSTRUMENTS
 from building.metadata.index import read_observation_metadata, write_index
-from building.metadata.observation import (
-    ObservationMetadata,
-    observation_metadata,
-)
-from building.models.job import Job, Outcome, Plan
+from building.models.job import Outcome, Plan
 from building.models.progress import Progress
 from building.models.settings import Settings
-from building.preprocessing.common import store
 from building.scheduler import Scheduler
 from common.console import print_failure
 from common.fetch.http import TLS_CONTEXT
@@ -79,10 +72,7 @@ def indexed_crops(root: Path, console: Console, *, force: bool) -> frozenset[str
     Returns:
         named: The relative path of every crop the index names.
     """
-    try:
-        named = frozenset(one.path for one in read_observation_metadata(root))
-    except FileNotFoundError:
-        named = frozenset()
+    named = frozenset(one.path for one in read_observation_metadata(root))
     if force:
         return named
     # A crop the index cannot name is unreadable, so it is built again.
@@ -128,8 +118,7 @@ def build_outcomes(
             archive: pools.enter_context(ThreadPoolExecutor(max_workers=downloads))
             for archive, downloads in settings.downloads.items()
         }
-        build = partial(build_product, root=root)
-        scheduler = Scheduler(ode, fetching, building, build, settings, progress)
+        scheduler = Scheduler(ode, fetching, building, root, settings, progress)
         outcomes = scheduler.outcomes(plan.jobs)
         if checkpoint is not None:
             outcomes = _checkpointed(outcomes, plan, root, checkpoint)
@@ -177,51 +166,3 @@ def _checkpointed(
             # A checkpoint is insurance: a build outlives one it could not write.
             failed += 1
             print_failure("the checkpoint", error, failed)
-
-
-def build_product(job: Job, root: Path) -> Outcome:
-    """Cut one downloaded product to every tile that kept it, and write each.
-
-    Args:
-        job: The product to build, and the tiles to cut it to.
-        root: The dataset's own root directory.
-
-    Returns:
-        outcome: The outcome, its written samples and the first error a cut raised.
-
-    Raises:
-        Exception: Whatever reading the product raised, collected as a failure.
-    """
-    instrument = INSTRUMENTS[job.instrument]
-    written: list[ObservationMetadata] = []
-    missed = 0
-    failed: Exception | None = None
-    try:
-        # Read once however many tiles want it, which is why the product is the unit.
-        observation = instrument.read_observation(job.identifier)
-        for frame in job.frames:
-            try:
-                sample = instrument.crop(observation, frame)
-            except Exception as error:  # noqa: BLE001
-                # A tile failing to cut is kept as the error, and the rest still cut.
-                failed = failed or error
-                continue
-            # Reaching none of a tile is no failure, coverage being a box overlap.
-            if sample is None:
-                missed += 1
-                continue
-            path = store.write_sample(sample, instrument.layout, frame, root)
-            written.append(
-                observation_metadata(
-                    sample,
-                    frame,
-                    instrument.layout,
-                    str(path.relative_to(root)),
-                    t_start=job.t_start,
-                )
-            )
-    finally:
-        # A product goes once every tile that wanted it is cut; it is a cache.
-        if instrument.discard:
-            instrument.discard(job.identifier)
-    return Outcome(job, records=tuple(written), missed=missed, error=failed)

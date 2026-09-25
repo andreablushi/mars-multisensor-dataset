@@ -23,14 +23,12 @@ def read_observation_metadata(root: Path) -> list[ObservationMetadata]:
         root: The directory the index was written in.
 
     Returns:
-        records: One row per tile and observation.
-
-    Raises:
-        FileNotFoundError: When no observations have been written there.
+        records: One row per tile and observation, none where nothing was written.
     """
-    held = pq.read_table(
-        root / paths.OBSERVATION_METADATA_NAME, schema=observation.SCHEMA
-    )
+    path = root / paths.OBSERVATION_METADATA_NAME
+    if not path.exists():
+        return []
+    held = pq.read_table(path, schema=observation.SCHEMA)
     return [parquet.build(ObservationMetadata, row) for row in held.to_pylist()]
 
 
@@ -52,14 +50,10 @@ def write_index(
     written = [held for one in collected for held in one.records]
     rewritten = {one.identity for one in written}
     tiles = {one.identity: one for one in plan.tiles}
-    try:
-        standing = read_observation_metadata(root)
-    except FileNotFoundError:
-        standing = []
     # What an earlier run left, less what this run rewrote or deleted.
     records = [
         one
-        for one in standing
+        for one in read_observation_metadata(root)
         if one.tile in tiles
         and one.identity not in rewritten
         and (not on_disk or (root / one.path).exists())

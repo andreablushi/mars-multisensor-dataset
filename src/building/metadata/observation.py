@@ -93,8 +93,7 @@ def observation_metadata(
     """
     values = getattr(held, layout.measurement)
     # A ground mask reaches every value on it, so it spreads over the instrument's axes.
-    measured_ground = held.measured_ground
-    on_ground = _spread_mask(measured_ground, Axis.GROUND, values, layout)
+    on_ground = _spread_mask(held.measured_ground, Axis.GROUND, values, layout)
     measured = on_ground
     # A band the observation never measured holds nothing, whatever the ground says.
     if held.measured_bands is not None:
@@ -142,7 +141,7 @@ def observation_metadata(
         band_valid_count=band_valid_count,
         t_start=_label_time(held.label, STARTED) or t_start,
         t_end=_label_time(held.label, STOPPED),
-        acquisition=acquisition_info(held, frame, measured_ground),
+        acquisition=acquisition_info(held, frame),
     )
 
 
