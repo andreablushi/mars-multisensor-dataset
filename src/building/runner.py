@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from contextlib import ExitStack, closing
@@ -14,8 +15,7 @@ from analysis.selector.models.selection import Selection
 from building import console as printing
 from building import paths, planner
 from building.dispatcher import INSTRUMENTS
-from building.metadata import read as metadata_read
-from building.metadata import write as metadata
+from building.metadata.index import read_observation_metadata, write_index
 from building.metadata.observation import (
     ObservationMetadata,
     observation_metadata,
@@ -29,6 +29,37 @@ from common.console import print_failure
 from common.fetch.http import TLS_CONTEXT
 
 CHECKPOINT_BYTES = 100 * 1024**3
+
+
+def build_dataset(
+    settings: Settings,
+    picked: Sequence[Selection],
+    force: bool = False,
+    checkpoint: Callable[[], None] | None = None,
+) -> int:
+    """Build one dataset over the tiles it is handed.
+
+    Args:
+        settings: The settled choices for the build, naming the dataset.
+        picked: The tiles to build, each with the observations its window keeps.
+        force: Whether to build every crop again, rather than only the missing ones.
+        checkpoint: What publishes the dataset so far, or None for a local run.
+
+    Returns:
+        code: A process exit code, non zero when any product failed to build.
+    """
+    console = Console()
+    started_at = time.monotonic()
+    outcomes = run_build(
+        settings,
+        picked,
+        console,
+        paths.dataset_root(settings.name),
+        force=force,
+        checkpoint=checkpoint,
+    )
+    printing.print_summary(outcomes, time.monotonic() - started_at, console)
+    return 1 if any(one.error for one in outcomes) else 0
 
 
 def run_build(
@@ -60,7 +91,7 @@ def run_build(
     )
     with httpx.Client(limits=limits, verify=TLS_CONTEXT) as ode:
         try:
-            indexed = metadata_read.read_observation_metadata(root)
+            indexed = read_observation_metadata(root)
             named = frozenset(one.path for one in indexed)
         except FileNotFoundError:
             named = frozenset()
@@ -96,7 +127,7 @@ def run_build(
                 collected = printing.render(
                     outcomes, len(plan.jobs), "building", console
                 )
-    _indexed(plan, collected, root, on_disk=checkpoint is None)
+    write_index(plan, collected, root, on_disk=checkpoint is None)
     return collected
 
 
@@ -135,7 +166,7 @@ def _checkpointed(
         held = 0
         try:
             # An index is written first, so what is published is readable on its own.
-            _indexed(plan, collected, root, on_disk=False)
+            write_index(plan, collected, root, on_disk=False)
             checkpoint()
         except Exception as error:  # noqa: BLE001
             # A checkpoint is insurance: a build outlives one it could not write.
@@ -189,43 +220,3 @@ def build_product(job: Job, root: Path) -> Outcome:
         if steps.discard:
             steps.discard(job.identifier)
     return Outcome(job, records=tuple(written), missed=missed, error=failed)
-
-
-def _indexed(
-    plan: Plan,
-    collected: Sequence[Outcome],
-    root: Path,
-    *,
-    on_disk: bool,
-) -> None:
-    """Write the index over every crop of the tiles covered, not this run's alone.
-
-    Args:
-        plan: What the build set out to do, whose tiles alone the index names.
-        collected: What every job of this run left.
-        root: The dataset's own root directory.
-        on_disk: Whether an earlier record is kept only while its crop is on disk.
-    """
-    written = [held for one in collected for held in one.records]
-    rewritten = {one.identity for one in written}
-    tiles = {one.identity: one for one in plan.tiles}
-    try:
-        standing = metadata_read.read_observation_metadata(root)
-    except FileNotFoundError:
-        standing = []
-    # What an earlier run left, less what this run rewrote or deleted.
-    records = [
-        one
-        for one in standing
-        if one.tile in tiles
-        and one.identity not in rewritten
-        and (not on_disk or (root / one.path).exists())
-    ] + written
-    # What the dataset holds, which is every instrument in it and not a wish.
-    held = tuple(sorted({one.instrument for one in records}))
-    grids = {
-        name: INSTRUMENTS[name].layout.band_centres_nm
-        for name in held
-        if name in INSTRUMENTS and INSTRUMENTS[name].layout.band_centres_nm
-    }
-    metadata.write_metadata(list(tiles.values()), records, held, grids, root)

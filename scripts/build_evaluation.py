@@ -10,8 +10,8 @@ from analysis.ground_truth import artifacts
 from analysis.selector.artifacts import read_selection
 from analysis.selector.models.selection import Selection
 from building import draw, paths
-from building.build import build_dataset
 from building.models.settings import Settings
+from building.runner import build_dataset
 from common.config import evaluation_settings
 
 

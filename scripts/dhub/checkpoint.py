@@ -10,7 +10,7 @@ from pathlib import Path
 from digitalhub_runtime_python import handler
 
 from analysis.selector.models.selection import Selection
-from building import build, paths
+from building import paths, runner
 from building.models.settings import Settings
 from common.console import PLAIN_LOG_ENV
 from dhub import archives
@@ -81,7 +81,7 @@ def build_handler[T: Settings](
             archives.download_files(project, name, root, paths.INDEX_NAMES)
         print(f"building the dataset as {settings.name}", flush=True)
         published = partial(checkpoint, project, root, name, settings.workers)
-        failed = build.build_dataset(settings, selections(settings), force, published)
+        failed = runner.build_dataset(settings, selections(settings), force, published)
         dataset = published()
         if failed:
             raise RuntimeError(
