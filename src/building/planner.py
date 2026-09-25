@@ -57,7 +57,7 @@ def build_plan(
         Job(instrument, identifier, tuple(frames), taken[(instrument, identifier)])
         for (instrument, identifier), frames in wanted.items()
     ]
-    # An instrument the selection cannot name is asked which products hold it.
+    # An instrument the selection cannot name is given the grid each tile falls on.
     for name, named in INSTRUMENTS.items():
         if not named.grid_of:
             continue

@@ -26,7 +26,7 @@ def calibrated_cube(
             f"A cube of {cube.shape[1]} columns by {cube.shape[2]} bands cannot "
             f"be read with a table of {table.shape[0]} by {table.shape[1]}."
         )
-    # What every column and band of this detector is centred on.
+    # What every band of this detector is centred on, averaged over its columns.
     centre = band_centres(table)
     # Read the direction off the file instead of assuming one.
     named = np.flatnonzero(~np.isnan(centre))

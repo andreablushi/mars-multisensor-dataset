@@ -9,7 +9,7 @@ from building.preprocessing.common.models.position import Position
 from common.maths import geodesy
 from common.models.tile import Tile
 
-# How many neighbouring pairs of one axis to measure a ground sample over.
+# How many samples from the middle of one axis to measure a ground sample over.
 SPACING_SAMPLES = 512
 
 # How many samples of a crop become metres at once, since a scan can be huge.
