@@ -1,10 +1,10 @@
-"""Placing one MOLA grid on its own projection."""
+"""The grid one MOLA product is projected onto, as its label writes it."""
 
 from __future__ import annotations
 
 import numpy as np
 
-from building.preprocessing.common.models.relative_position import PolarGrid
+from building.preprocessing.common.models.samples import Samples
 from common.maths import physics
 
 # The two projections the gridded record is written in.
@@ -12,18 +12,15 @@ EQUATORIAL = "SIMPLE CYLINDRICAL"
 POLAR = "POLAR STEREOGRAPHIC"
 
 
-def grid_axes(
-    label: dict[str, str],
-) -> tuple[np.ndarray, np.ndarray, PolarGrid | None]:
-    """Return what places every line and every sample of one grid.
+def grid_samples(label: dict[str, str]) -> Samples:
+    """Return where every line and every sample of one product sits.
 
     Args:
         label: The parsed label of one product.
 
     Returns:
-        down: What every line holds, the latitude of it or its northing.
-        across: What every sample holds, the longitude of it or its easting.
-        polar: The pole the two are measured on, and None for an equatorial grid.
+        samples: The latitude or northing of every line, the longitude or easting of
+            every sample, and the polar grid they are measured on, if any.
 
     Raises:
         ValueError: When the label names a projection this cannot read.
@@ -39,7 +36,8 @@ def grid_axes(
         across = (
             np.radians((np.arange(samples) - samples / 2.0 + 0.5) / resolution) * radius
         )
-        return down, across, (0.0, float(label["CENTER_LATITUDE"]) > 0.0, radius)
+        polar = (0.0, float(label["CENTER_LATITUDE"]) > 0.0, radius)
+        return Samples(down, across, True, polar)
     if named != EQUATORIAL:
         raise ValueError(f"Cannot place a {named} grid.")
     # How many degrees one pixel spans, the same in both directions.
@@ -53,8 +51,6 @@ def grid_axes(
         float(label["CENTER_LONGITUDE"])
         + (1.0 - float(label["SAMPLE_PROJECTION_OFFSET"])) * step
     )
-    return (
-        north - np.arange(lines) * step,
-        west + np.arange(samples) * step,
-        None,
+    return Samples(
+        north - np.arange(lines) * step, west + np.arange(samples) * step, True, None
     )

@@ -1,1 +1,1 @@
-"""Reading one MOLA gridded sheet and the grid its label places it on."""
+"""Reading one MOLA grid and cutting it to the tiles it was kept for."""

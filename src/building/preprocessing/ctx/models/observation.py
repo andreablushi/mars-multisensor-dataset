@@ -1,4 +1,4 @@
-"""One CTX scan calibrated by ISIS, with where its sampled lines fall."""
+"""One CTX scan as it comes off disk, calibrated by ISIS, with where its lines fall."""
 
 from __future__ import annotations
 

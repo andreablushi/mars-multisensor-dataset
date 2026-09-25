@@ -31,24 +31,20 @@ def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: Detector) -> Mask:
         mask: The mask saying where the cube was filled rather than measured.
 
     Raises:
-        KeyError: When no window is configured for that detector.
         ValueError: When the window keeps no band of the cube.
         NoMeasurement: When no cell of the cube is a measurement.
     """
-    centre = bands_calibration.centres(table)
+    centre = bands_calibration.band_centres(table)
     low, high = WINDOWS[detector]
 
     # What the wavelength file refused to name, which is already NaN.
     columns = np.isnan(table).all(axis=1)
-    blank = np.isnan(centre)
     # The sensor edges, where the window says the reading is not trusted.
-    edges = ~blank & ((centre < low) | (centre > high))
-    bands = blank | edges
+    edges = (centre < low) | (centre > high)
+    bands = np.isnan(centre) | edges
 
     # What no value test may look at, held per column and band so it broadcasts.
-    dead = np.zeros(cube.shape[1:], dtype=bool)
-    dead[columns, :] = True
-    dead[:, bands] = True
+    dead = columns[:, None] | bands
     if dead.all():
         raise ValueError(f"The {detector} window keeps no band of this cube.")
 

@@ -23,8 +23,8 @@ class CrismObservation:
     """One observation with its two detectors joined.
 
     Attributes:
-        label: What every product it was published as says about it, merged.
         identifier: The observation id.
+        label: What every product it was published as says about it, merged.
         cube: Lines by columns by the survey's band grid, NaN for unmeasured bands.
         geometry: The backplanes on the same grid, as lines by columns by 14.
         valid: Lines by columns, True where the pixel is a measurement.
@@ -38,34 +38,12 @@ class CrismObservation:
     valid: np.ndarray
     measured_bands: np.ndarray
 
-    # A pushbroom swath bends, so every pixel carries its own backplanes' pair.
-    separable = False
-
-    def plane(self, at: int) -> np.ndarray:
-        """Return one backplane of every pixel.
-
-        Args:
-            at: Which backplane, counted from zero as the DDR writes them.
-
-        Returns:
-            plane: Lines by columns, in the unit the DDR's label names it in.
-        """
-        return self.geometry[:, :, at]
-
     @property
     def latitude(self) -> np.ndarray:
-        """Return the latitude every pixel was measured at.
-
-        Returns:
-            latitude: Lines by columns, in degrees.
-        """
-        return self.plane(LATITUDE_PLANE)
+        """Return the latitude of every pixel, lines by columns in degrees."""
+        return self.geometry[:, :, LATITUDE_PLANE]
 
     @property
     def longitude(self) -> np.ndarray:
-        """Return the longitude every pixel was measured at.
-
-        Returns:
-            longitude: Lines by columns, in degrees.
-        """
-        return self.plane(LONGITUDE_PLANE)
+        """Return the longitude of every pixel, lines by columns in degrees."""
+        return self.geometry[:, :, LONGITUDE_PLANE]

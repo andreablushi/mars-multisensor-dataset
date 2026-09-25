@@ -6,16 +6,25 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from building.preprocessing.common import cut, geometry
+from building.preprocessing.common import cut
 from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.sharad.models.observation import (
     COLUMN_FIELD,
     LATITUDE_FIELD,
     LONGITUDE_FIELD,
+    MARS_RADIUS_FIELD,
+    SOLAR_ZENITH_FIELD,
+    SPACECRAFT_RADIUS_FIELD,
     SharadObservation,
 )
 from building.preprocessing.sharad.models.sample import SharadSample
 from common.models.tile import Tile
+
+
+def trace_samples(geometry: np.recarray) -> Samples:
+    """Return where every trace of one track's geometry was sounded."""
+    # A sounder walks a line, so every trace carries its own geometry's pair.
+    return Samples(geometry[LATITUDE_FIELD], geometry[LONGITUDE_FIELD], False, None)
 
 
 def kept_columns(placing: np.recarray, frames: Sequence[Tile]) -> np.ndarray:
@@ -29,12 +38,7 @@ def kept_columns(placing: np.recarray, frames: Sequence[Tile]) -> np.ndarray:
         columns: The sorted columns any of them keeps, counted from zero.
     """
     # Cut as `crop` cuts, so exactly the columns it goes on to read are kept.
-    samples = Samples(
-        placing[LATITUDE_FIELD],
-        placing[LONGITUDE_FIELD],
-        SharadObservation.separable,
-        None,
-    )
+    samples = trace_samples(placing)
     traces = placing[COLUMN_FIELD].astype("i8") - 1
     held = [cut.overlap(samples, frame) for frame in frames]
     return np.unique(
@@ -55,17 +59,14 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
     Returns:
         sample: The track cut to that tile, or None where it reaches none of it.
     """
-    held = cut.overlap(
-        Samples(
-            observation.latitude, observation.longitude, observation.separable, None
-        ),
-        frame,
-    )
+    held = cut.overlap(trace_samples(observation.geometry), frame)
     if held is None:
         return None
     # The traces are the radargram's second axis, and the delay is left whole.
     (traces,) = held.bounds
     power = observation.power[:, traces]
+    columns = observation.traces[traces]
+    placing = observation.geometry[traces]
     return SharadSample(
         identifier=observation.identifier,
         position=held.position,
@@ -74,10 +75,10 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
         # The archive sounds a trace or fills it whole, so one flag covers its delays.
         valid=np.isfinite(power).all(axis=0),
         power=power,
-        clutter=observation.clutter[:, observation.traces[traces]],
-        traces=observation.traces[traces],
-        incidence_deg=geometry.taken(observation.solar_zenith_deg, held.bounds),
-        spacecraft_altitude_km=geometry.taken(
-            observation.spacecraft_altitude_km, held.bounds
+        clutter=observation.clutter[:, columns],
+        traces=columns,
+        incidence_deg=placing[SOLAR_ZENITH_FIELD],
+        spacecraft_altitude_km=(
+            placing[SPACECRAFT_RADIUS_FIELD] - placing[MARS_RADIUS_FIELD]
         ),
     )

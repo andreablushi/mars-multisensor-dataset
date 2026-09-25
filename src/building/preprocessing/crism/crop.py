@@ -22,12 +22,9 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
     Returns:
         sample: The observation cut to that tile, or None where it misses.
     """
-    held = cut.overlap(
-        Samples(
-            observation.latitude, observation.longitude, observation.separable, None
-        ),
-        frame,
-    )
+    # A pushbroom swath bends, so every pixel carries its own backplanes' pair.
+    samples = Samples(observation.latitude, observation.longitude, False, None)
+    held = cut.overlap(samples, frame)
     if held is None:
         return None
     return CrismSample(
@@ -35,11 +32,11 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         position=held.position,
         label=observation.label,
         inside=held.inside,
-        valid=geometry.marked(geometry.taken(observation.valid, held.bounds)),
+        valid=geometry.partial_mask(geometry.taken(observation.valid, held.bounds)),
         cube=geometry.taken(observation.cube, held.bounds),
         measured_bands=observation.measured_bands,
         **{
-            name: geometry.taken(observation.plane(at), held.bounds)
+            name: geometry.taken(observation.geometry[:, :, at], held.bounds)
             for name, at in ACQUISITION_PLANES.items()
         },
     )

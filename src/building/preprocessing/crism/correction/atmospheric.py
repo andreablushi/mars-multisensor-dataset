@@ -28,10 +28,10 @@ def remove_atmospheric_bands(
     Returns:
         mask: The mask with those bands recorded.
     """
-    centre = bands_calibration.centres(table)
+    centre = bands_calibration.band_centres(table)
     caught = np.zeros(centre.shape, dtype=bool)
     for low, high in ATMOSPHERIC[detector]:
-        caught |= ~np.isnan(centre) & (centre >= low) & (centre <= high)
+        caught |= (centre >= low) & (centre <= high)
 
     # Only what masking still counted as usable is being taken away.
     caught &= ~mask.bands

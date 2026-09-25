@@ -52,7 +52,7 @@ def cut(
         np.arange(int(low), int(high) + 1)
         for low, high in zip(where.min(axis=0), where.max(axis=0), strict=True)
     )
-    return bounds, geometry.marked(geometry.taken(kept, bounds))
+    return bounds, geometry.partial_mask(geometry.taken(kept, bounds))
 
 
 def placed(samples: Samples, frame: Tile) -> RelativePosition:
@@ -71,7 +71,9 @@ def placed(samples: Samples, frame: Tile) -> RelativePosition:
             geodesy.normalise_longitude(samples.across - frame.centre_lon),
             samples.separable,
         )
-    north, east = geometry.filled(samples, partial(block_offsets, samples, frame))
+    north, east = geometry.filled_offsets(
+        samples, partial(block_offsets, samples, frame)
+    )
     return RelativePosition(north, east, False)
 
 
@@ -89,5 +91,5 @@ def block_offsets(
         north: Their degrees north of the centre.
         east: Their degrees east of it.
     """
-    lon, lat = geometry.degrees(samples, block)
+    lon, lat = geometry.block_degrees(samples, block)
     return lat - frame.centre_lat, geodesy.normalise_longitude(lon - frame.centre_lon)

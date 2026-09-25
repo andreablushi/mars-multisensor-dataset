@@ -13,15 +13,8 @@ from common.maths import geodesy
 BLOCK = 4_000_000
 
 
-def marked(held: np.ndarray) -> np.ndarray | None:
-    """Return one mask, or nothing at all where it marks every sample.
-
-    Args:
-        held: The mask over the samples a crop keeps.
-
-    Returns:
-        mask: The mask, or None where every sample is true.
-    """
+def partial_mask(held: np.ndarray) -> np.ndarray | None:
+    """Return one mask, or None where it marks every sample."""
     return None if held.all() else held
 
 
@@ -46,8 +39,8 @@ def taken(array: np.ndarray, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     return array[np.ix_(*bounds)] if len(bounds) > 1 else array[bounds[0]]
 
 
-def blocked(sizes: tuple[int, ...], budget: int = BLOCK) -> Iterator[slice]:
-    """Walk the lines of one cut in blocks of about as many samples as fit.
+def line_blocks(sizes: tuple[int, ...], budget: int = BLOCK) -> Iterator[slice]:
+    """Yield the lines of one cut in blocks of about as many samples as fit.
 
     Args:
         sizes: How many samples each ground axis holds.
@@ -61,7 +54,7 @@ def blocked(sizes: tuple[int, ...], budget: int = BLOCK) -> Iterator[slice]:
         yield slice(start, start + reach)
 
 
-def axes(samples: Samples, block: slice) -> tuple[np.ndarray, np.ndarray]:
+def block_axes(samples: Samples, block: slice) -> tuple[np.ndarray, np.ndarray]:
     """Return what places one block of samples, as its own grid measured it.
 
     Args:
@@ -77,7 +70,7 @@ def axes(samples: Samples, block: slice) -> tuple[np.ndarray, np.ndarray]:
     return samples.down[block], samples.across[block]
 
 
-def degrees(samples: Samples, block: slice) -> tuple[np.ndarray, np.ndarray]:
+def block_degrees(samples: Samples, block: slice) -> tuple[np.ndarray, np.ndarray]:
     """Return the longitude and latitude one block of samples sits at.
 
     Args:
@@ -88,13 +81,13 @@ def degrees(samples: Samples, block: slice) -> tuple[np.ndarray, np.ndarray]:
         longitude: Their longitudes in degrees.
         latitude: Their latitudes in degrees.
     """
-    down, across = axes(samples, block)
+    down, across = block_axes(samples, block)
     if samples.grid is None:
         return across, down
     return geodesy.stereographic_inverse(across, down, *samples.grid)
 
 
-def filled(
+def filled_offsets(
     samples: Samples,
     offsets: Callable[[slice], tuple[np.ndarray, np.ndarray]],
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -111,6 +104,6 @@ def filled(
     sizes = samples.sizes
     north = np.empty(sizes, dtype=float)
     east = np.empty(sizes, dtype=float)
-    for block in blocked(sizes):
+    for block in line_blocks(sizes):
         north[block], east[block] = offsets(block)
     return north, east

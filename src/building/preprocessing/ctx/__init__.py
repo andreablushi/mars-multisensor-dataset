@@ -1,1 +1,1 @@
-"""Calibrating one raw CTX scan with ISIS and projecting it onto its tiles."""
+"""Reading one CTX scan through ISIS and cutting it to the tiles it was kept for."""

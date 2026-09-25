@@ -27,42 +27,29 @@ def merge_detectors(
     Returns:
         observation: The joined observation on the survey's whole band grid.
     """
-    halves = tuple(name for name in configs.Detector if name in detectors)
-
     # Every half is read out from the first frame, so the shortest ends the strip.
-    lines = min(geometry.shape[0], *(detectors[name].cube.shape[0] for name in halves))
+    lines = min(geometry.shape[0], *(held.cube.shape[0] for held in detectors.values()))
     # Only the samples no half refused.
-    columns = ~np.logical_or.reduce([detectors[name].mask.columns for name in halves])
+    columns = ~np.logical_or.reduce([held.mask.columns for held in detectors.values()])
 
     joined = np.full(
         (lines, int(columns.sum()), len(configs.BANDS_NM)), np.nan, dtype="f4"
     )
     measured = np.zeros(len(configs.BANDS_NM), dtype=bool)
-    for name in halves:
+    for name, held in detectors.items():
         grid = np.asarray(configs.DETECTOR_BANDS_NM[name])
-        slots = np.asarray(configs.DETECTOR_SLOTS[name])
-        held = detectors[name]
-        live = resample.measured_bands(held.mask, held.wavelengths[columns], grid)
-        chosen = slots[live]
+        table = held.wavelengths[columns]
+        live = resample.measured_bands(held.mask, table, grid)
+        chosen = np.asarray(configs.DETECTOR_SLOTS[name])[live]
         measured[chosen] = True
         resample.resample_bands(
-            held.cube[:lines, columns],
-            held.mask,
-            held.wavelengths[columns],
-            grid[live],
-            joined,
-            chosen,
+            held.cube[:lines, columns], held.mask, table, grid[live], joined, chosen
         )
 
     # A pixel any half could not read is no measurement of the observation.
     valid = ~np.logical_or.reduce(
-        [detectors[name].mask.pixels[:lines] for name in halves]
+        [held.mask.pixels[:lines] for held in detectors.values()]
     )[:, columns]
     return CrismObservation(
-        identifier,
-        label,
-        joined,
-        geometry[:lines, columns],
-        valid,
-        measured,
+        identifier, label, joined, geometry[:lines, columns], valid, measured
     )

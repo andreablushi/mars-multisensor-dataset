@@ -1,4 +1,4 @@
-"""Reading which sheets of one MOLA grid landed, before any of their bins."""
+"""Reading one MOLA grid off disk, which of its sheets landed but none of their bins."""
 
 from __future__ import annotations
 
@@ -6,31 +6,32 @@ from building.configs import mola as configs
 from building.preprocessing.mola.models.observation import MolaObservation
 
 
-def read_observation(grid: str) -> MolaObservation:
+def read_observation(identifier: str) -> MolaObservation:
     """Read which sheets of one grid a tile could be merged from.
 
     Args:
-        grid: The grid as `configs.GRIDS` names it, its sheets already cached.
+        identifier: The grid as `configs.GRIDS` names it, its sheets already cached.
 
     Returns:
-        grid: The sheets of it that landed, only their labels read yet.
+        observation: The sheets of it that landed, only their paths known yet.
     """
-    held = configs.GRIDS[grid]
+    grid = configs.GRIDS[identifier]
+    topography = configs.Kind.TOPOGRAPHY
     files = {}
-    if held.product:
-        image = configs.CACHE.files(grid, held.product, configs.Kind.TOPOGRAPHY)[".img"]
+    if grid.product:
+        image = configs.CACHE.files(identifier, grid.product, topography)[".img"]
         if image.exists():
-            files[held.product] = image
+            files[grid.product] = image
     else:
         for directory in sorted(configs.CACHE.root.iterdir()):
             parts = configs.NAMING.parts(directory.name) if directory.is_dir() else None
-            if not parts or configs.RESOLUTIONS[parts["step"]] != held.resolution:
+            if not parts or configs.RESOLUTIONS[parts["step"]] != grid.resolution:
                 continue
             image = configs.CACHE.files(
                 directory.name,
-                configs.NAMING.product(directory.name, configs.Kind.TOPOGRAPHY),
-                configs.Kind.TOPOGRAPHY,
+                configs.NAMING.product(directory.name, topography),
+                topography,
             )[".img"]
             if image.exists():
                 files[directory.name] = image
-    return MolaObservation(grid, held.resolution, files, held.north is not None)
+    return MolaObservation(identifier, grid.resolution, files, grid.product is not None)

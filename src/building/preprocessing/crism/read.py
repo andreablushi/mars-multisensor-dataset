@@ -22,16 +22,7 @@ GROUND_SOFTWARE = ("MRO:IKF_", "MRO:RSC_", "MRO:REFZ_", "MRO:FRAM_STAT_")
 def product_files(
     identifier: str, detector: configs.Detector, kind: configs.Kind
 ) -> dict[str, Path]:
-    """Return where each half of one detector's product of an observation belongs.
-
-    Args:
-        identifier: The observation the product is a part of.
-        detector: Which detector's half of it.
-        kind: Which product of that half, the observation or the geometry.
-
-    Returns:
-        files: The path for each suffix it is published as, keyed by suffix.
-    """
+    """Return where each file of one detector's product of an observation belongs."""
     return configs.CACHE.files(
         identifier, configs.NAMING.product(identifier, kind, detector=detector), kind
     )
@@ -134,19 +125,7 @@ def read_label(identifier: str, found: tuple[configs.Detector, ...]) -> dict[str
 
 
 def read_geometry(identifier: str, placing: configs.Detector) -> np.ndarray:
-    """Read the backplanes that place every pixel of one observation.
-
-    Args:
-        identifier: The observation, its files already in the download cache.
-        placing: The detector whose geometry places the observation.
-
-    Returns:
-        backplanes: That detector's backplanes, lines by samples by 14.
-
-    Raises:
-        FileNotFoundError: When the geometry or its label is missing.
-        KeyError: When the label names a sample type this cannot read.
-    """
+    """Read the backplanes that place every pixel of one observation."""
     return images.load_cube(
         product_files(identifier, placing, configs.Kind.GEOMETRY)[".img"]
     )[0]

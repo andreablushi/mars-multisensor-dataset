@@ -1,1 +1,1 @@
-"""What one grid is once it has landed, and what a tile keeps of it."""
+"""What one MOLA grid is off disk, and what a tile keeps of it."""

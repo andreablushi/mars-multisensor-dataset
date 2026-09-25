@@ -65,12 +65,7 @@ def native(values: np.ndarray) -> np.ndarray:
     return held.astype(held.dtype.newbyteorder("="), copy=False)
 
 
-def write_sample(
-    held: Sample,
-    layout: Layout,
-    frame: Tile,
-    root: Path,
-) -> Path:
+def write_sample(held: Sample, layout: Layout, frame: Tile, root: Path) -> Path:
     """Write one sample down, its arrays and what describes them in one file.
 
     Args:
@@ -85,13 +80,14 @@ def write_sample(
     Raises:
         ValueError: When the layout declares an array the crop does not carry.
     """
+    position = held.position
     ground = tuple(
         name
         for name, holds in zip(layout.dims, layout.axes, strict=True)
         if holds == Axis.GROUND
     )
     # A separable position holds one ground axis each, any other a value per sample.
-    north, east = held.position.dims_along(ground)
+    north, east = position.dims_along(ground)
     along = {
         layout.measurement: layout.dims,
         NORTH: north,
@@ -109,13 +105,9 @@ def write_sample(
     arrays[layout.measurement] = values.astype(
         layout.stored or values.dtype, copy=False
     )
-    arrays[NORTH] = native(held.position.north).astype(
-        relative_positioning.STORED, copy=False
-    )
-    arrays[EAST] = native(held.position.east).astype(
-        relative_positioning.STORED, copy=False
-    )
-    arrays[MEASURED] = native(held.measured_ground)
+    arrays[NORTH] = np.asarray(position.north, dtype=relative_positioning.STORED)
+    arrays[EAST] = np.asarray(position.east, dtype=relative_positioning.STORED)
+    arrays[MEASURED] = held.measured_ground
     for name, mask in ((INSIDE, held.inside), (VALID, held.valid)):
         # The two the rooted mask is made of, kept for whoever wants them apart.
         if mask is not None:
@@ -123,7 +115,7 @@ def write_sample(
             along[name] = ground
 
     path = sample_path(frame, layout.instrument, held.identifier, root)
-    grid = held.position.polar
+    grid = position.polar
     described = {
         "instrument": layout.instrument,
         "identifier": held.identifier,
@@ -131,7 +123,7 @@ def write_sample(
         "band": frame.band,
         "column": frame.column,
         "measurement": layout.measurement,
-        "separable": held.position.separable,
+        "separable": position.separable,
         "centre_lon": frame.centre_lon,
         "centre_lat": frame.centre_lat,
         "box": {

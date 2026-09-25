@@ -1,4 +1,4 @@
-"""Projecting one calibrated CTX scan with ISIS onto the tiles it serves."""
+"""Cutting one CTX scan to the tiles it was kept for, projected by ISIS onto each."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ import tifffile
 
 from building.configs import ctx as configs
 from building.preprocessing.common import cut, geometry
-from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.ctx import projection
 from building.preprocessing.ctx.isis import read_cube_label, run_isis
 from building.preprocessing.ctx.models.observation import CtxObservation
@@ -24,7 +23,7 @@ from common.pds import labels
 logging.getLogger("tifffile").setLevel(logging.ERROR)
 
 
-def windowed(image: Path, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
+def kept_pixels(image: Path, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     """Return the pixels one cut keeps, reading no more of the scan than holds them.
 
     Args:
@@ -75,16 +74,7 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
     trimmed, template, projected, image = (
         work.with_suffix(suffix) for suffix in (".cut.cub", ".map", ".map.cub", ".tif")
     )
-    grid = frame.grid
-    template.write_text(
-        configs.MAP.format(name=projection.EQUATORIAL, latitude=0.0, longitude=180.0)
-        if grid is None
-        else configs.MAP.format(
-            name=projection.POLAR,
-            latitude=90.0 if grid[1] else -90.0,
-            longitude=grid[0],
-        )
-    )
+    template.write_text(projection.map_template(frame.grid))
     low, high = configs.REFLECTANCE_RANGE
     try:
         run_isis(
@@ -126,11 +116,10 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
             },
         )
         label = labels.merge(read_cube_label(projected), observation.label)
-        down, across, polar = projection.grid_axes(label)
-        held = cut.overlap(Samples(down, across, True, polar), frame)
+        held = cut.overlap(projection.grid_samples(label), frame)
         if held is None:
             return None
-        pixels = windowed(image, held.bounds)
+        pixels = kept_pixels(image, held.bounds)
     finally:
         for path in work.parent.glob(f"{work.name}.*"):
             path.unlink()
@@ -139,6 +128,6 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         position=held.position,
         label=label,
         inside=held.inside,
-        valid=geometry.marked(pixels != BLANK),
+        valid=geometry.partial_mask(pixels != BLANK),
         image=pixels,
     )

@@ -6,6 +6,7 @@ import math
 
 import numpy as np
 
+from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.mola import projection
 from building.preprocessing.mola.models.observation import MolaObservation
 from common.maths import geodesy
@@ -15,26 +16,26 @@ from common.pds import images, labels
 
 
 def merge_sheets(
-    grid: MolaObservation, frame: Tile
-) -> tuple[dict[str, str], np.ndarray, np.ndarray, np.ndarray]:
+    observation: MolaObservation, frame: Tile
+) -> tuple[dict[str, str], np.ndarray, Samples]:
     """Return the one grid every sheet a tile stands on writes its part of.
 
     Args:
-        grid: The sheets of the grid that landed, and how fine it is.
+        observation: The sheets of the grid that landed, and how fine it is.
         frame: The local frame of the tile the sheets are merged for.
 
     Returns:
         label: What the sheets it was read from say about it, merged.
         height: The height above the areoid in metres over the box, lines by samples.
-        down: The latitude of every line in degrees, falling southward.
-        across: The longitude of every sample, rising eastward past a turn.
+        samples: The latitude of every line, falling southward, and the longitude of
+            every sample, rising eastward past a turn.
 
     Raises:
         FileNotFoundError: When a sheet's label is missing.
         KeyError: When a label names a sample type this cannot read.
         ValueError: When the projection is unreadable or the box is not covered.
     """
-    resolution = grid.resolution
+    resolution = observation.resolution
     whole = round(TURN) * resolution
     # Which bins the box covers: lines south from the pole, samples east of it
     span = geodesy.longitude_span(frame.west_lon, frame.east_lon)
@@ -49,40 +50,42 @@ def merge_sheets(
     height: np.ndarray | None = None
     written = np.zeros((len(down), len(across)), dtype=bool)
     read = []
-    for sheet, image in sorted(grid.files.items()):
+    for _, image in sorted(observation.files.items()):
         label = labels.load(image.with_suffix(".lbl"))
         read.append(label)
-        latitude, longitude, _ = projection.grid_axes(label)
+        placed = projection.grid_samples(label)
         # Where the sheet's own first bin sits on the grid every sheet shares.
-        line = round((90.0 - float(latitude[0])) * resolution - 0.5)
-        sample = round(float(longitude[0]) * resolution - 0.5) % whole
-        lines, samples = int(label["LINES"]), int(label["LINE_SAMPLES"])
+        line = round((90.0 - float(placed.down[0])) * resolution - 0.5)
+        sample = round(float(placed.across[0]) * resolution - 0.5) % whole
+        lines, samples = placed.sizes
+        top, bottom = max(down.start, line), min(down.stop, line + lines)
         # A box running over the meridian meets a sheet a whole turn along, too.
-        for shift in (0, whole):
-            first, last = max(down.start, line), min(down.stop, line + lines)
-            starts = max(across.start, sample + shift)
-            stops = min(across.stop, sample + shift + samples)
-            if first >= last or starts >= stops:
+        for west in (sample, sample + whole):
+            left, right = max(across.start, west), min(across.stop, west + samples)
+            if top >= bottom or left >= right:
                 continue
             part = images.load_window(
-                image,
-                label,
-                (first - line, last - line),
-                (starts - sample - shift, stops - sample - shift),
+                image, label, (top - line, bottom - line), (left - west, right - west)
             )
             if height is None:
                 height = np.zeros((len(down), len(across)), dtype=part.dtype)
             at = np.s_[
-                first - down.start : last - down.start,
-                starts - across.start : stops - across.start,
+                top - down.start : bottom - down.start,
+                left - across.start : right - across.start,
             ]
             height[at] = part
             written[at] = True
     if height is None or not written.all():
-        raise ValueError(f"{frame.name} reaches ground no sheet of {grid.name} holds.")
+        raise ValueError(
+            f"{frame.name} reaches ground no sheet of {observation.identifier} holds."
+        )
     return (
         labels.merge(*read),
         height,
-        90.0 - (np.arange(down.start, down.stop) + 0.5) / resolution,
-        (np.arange(across.start, across.stop) + 0.5) / resolution,
+        Samples(
+            90.0 - (np.arange(down.start, down.stop) + 0.5) / resolution,
+            (np.arange(across.start, across.stop) + 0.5) / resolution,
+            True,
+            None,
+        ),
     )

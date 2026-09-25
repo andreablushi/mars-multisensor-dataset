@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from building.preprocessing.common import equatorial, geometry, polar
 from building.preprocessing.common.models.overlap import Overlap
 from building.preprocessing.common.models.relative_position import (
@@ -22,10 +24,9 @@ def placed(samples: Samples, frame: Tile) -> RelativePosition:
     Returns:
         position: The offsets from that centre, in polar metres or degrees.
     """
-    place = frame.grid
-    if place is None:
+    if frame.grid is None:
         return equatorial.placed(samples, frame)
-    return polar.placed(samples, frame, place)
+    return polar.placed(samples, frame)
 
 
 def overlap(samples: Samples, frame: Tile) -> Overlap | None:
@@ -49,12 +50,9 @@ def overlap(samples: Samples, frame: Tile) -> Overlap | None:
         return None
     bounds, inside = held
     if samples.separable:
-        kept = samples.down[bounds[0]], samples.across[bounds[1]]
+        down, across = samples.down[bounds[0]], samples.across[bounds[1]]
     else:
-        kept = (
-            geometry.taken(samples.down, bounds),
-            geometry.taken(samples.across, bounds),
-        )
-    return Overlap(
-        bounds, inside, placed(Samples(*kept, samples.separable, samples.grid), frame)
-    )
+        down = geometry.taken(samples.down, bounds)
+        across = geometry.taken(samples.across, bounds)
+    kept = replace(samples, down=down, across=across)
+    return Overlap(bounds, inside, placed(kept, frame))

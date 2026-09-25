@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from building.configs.crism import Detector
 from building.preprocessing.crism.models.mask import Mask
 
 
@@ -15,13 +14,11 @@ class DetectorCube:
     """One detector's half of an observation, and what its cube holds.
 
     Attributes:
-        name: Which detector, `l` for infrared or `s` for visible.
         cube: The values as lines by samples by bands, bands ascending.
         wavelengths: The centre wavelength in nm per column and band.
         mask: Where the cleaning filled the cube rather than kept a measurement.
     """
 
-    name: Detector
     cube: np.ndarray
     wavelengths: np.ndarray
     mask: Mask

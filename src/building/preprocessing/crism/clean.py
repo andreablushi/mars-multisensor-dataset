@@ -36,13 +36,15 @@ def clean_detector(
     mask = masking.bad_pixels(cube, table, name)
     mask = atmospheric.remove_atmospheric_bands(cube, mask, table, name)
     destripe.remove_spike_columns(cube, mask, table, name)
-    mask = ratio.ratio_colmed(cube, mask)
+    mask = ratio.ratio_by_column_median(cube, mask)
     # Despike only the bands in play, so filled ones cannot pull the median about.
     kept = ~mask.bands
     block = np.ascontiguousarray(cube[:, :, kept])
-    despike.remove_spikes(block, bands_calibration.centres(table)[kept], mask.pixels)
+    despike.remove_spikes(
+        block, bands_calibration.band_centres(table)[kept], mask.pixels
+    )
     cube[:, :, kept] = block
-    return DetectorCube(name, cube, table, mask)
+    return DetectorCube(cube, table, mask)
 
 
 def clean_detectors(
