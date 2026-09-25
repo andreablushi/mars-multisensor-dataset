@@ -68,8 +68,8 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
     reached = observation.line[inside]
     if not reached.size:
         return None
-    first = max(1, int(reached.min()) - configs.LINE_STEP)
-    last = min(observation.lines, int(reached.max()) + configs.LINE_STEP)
+    first = max(1, int(reached.min()) - configs.CROP_MARGIN_LINES)
+    last = min(observation.lines, int(reached.max()) + configs.CROP_MARGIN_LINES)
     work = observation.cube.parent / frame.name
     trimmed, template, projected, image = (
         work.with_suffix(suffix) for suffix in (".cut.cub", ".map", ".map.cub", ".tif")

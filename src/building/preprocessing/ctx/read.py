@@ -38,7 +38,9 @@ def read_observation(identifier: str) -> CtxObservation:
         run_isis("ctxevenodd", {"from": calibrated, "to": cube})
         calibrated.unlink()
     lines, samples = int(label["Lines"]), int(label["Samples"])
-    sampled = np.unique(np.append(np.arange(1, lines + 1, configs.LINE_STEP), lines))
+    sampled = np.unique(
+        np.append(np.arange(1, lines + 1, configs.SAMPLED_LINE_STEP), lines)
+    )
     across = np.linspace(1, samples, configs.SAMPLES_ACROSS).round().astype(int)
     points.write_text("".join(f"{s},{at}\n" for at in sampled for s in across))
     run_isis(
