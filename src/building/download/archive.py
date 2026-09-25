@@ -7,7 +7,7 @@ from pathlib import Path
 
 import httpx
 
-from common.fetch import http, ode, ranges
+from common.fetch import http, ode
 
 # How long to wait for the larger half of a product.
 TIMEOUT = 60.0
@@ -109,8 +109,6 @@ def download_files(
     *,
     client: httpx.Client | None = None,
     spans: tuple[tuple[int, int], ...] = (),
-    size: int = 0,
-    origin: int = 0,
 ) -> None:
     """Download each file from the URL of its suffix, skipping those already on disk.
 
@@ -118,10 +116,7 @@ def download_files(
         destination: Where each file belongs, keyed by suffix.
         urls: Where each file is served from, keyed by the same suffix.
         client: A client whose connections to reuse, or None to open one each.
-        spans: The byte ranges to keep when size is set, first and past-the-last.
-        size: The size of a sparse copy that holds only the spans, or zero to
-            download each file whole.
-        origin: The byte of the served file a sparse copy starts at.
+        spans: The first and past-the-last byte of each part to keep, or none for all.
 
     Raises:
         FileNotFoundError: When a missing file has no URL.
@@ -131,9 +126,4 @@ def download_files(
             continue
         if not urls.get(suffix):
             raise FileNotFoundError(f"No {suffix} offered for {path.stem}.")
-        if size:
-            ranges.patched(
-                urls[suffix], path, spans, size, TIMEOUT, client=client, origin=origin
-            )
-        else:
-            http.streamed(urls[suffix], path, TIMEOUT, client=client)
+        http.streamed(urls[suffix], path, TIMEOUT, client=client, spans=spans)
