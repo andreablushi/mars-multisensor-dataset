@@ -37,14 +37,14 @@ resources:
     profile: cpu
     shared: true
     isis: true
-    cpu: 10
-    memory: 40Gi
+    cpu: 16
+    memory: 56Gi
     disk: 150Gi
   build_evaluation:
     profile: cpu
     shared: false
     isis: true
-    cpu: 10
-    memory: 40Gi
+    cpu: 16
+    memory: 56Gi
     disk: 120Gi
 
