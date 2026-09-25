@@ -1,4 +1,4 @@
-"""Reading the ASCII table a PDS label describes, column by column."""
+"""Reading the fixed width ASCII table a PDS label describes."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ ROLLED = ":60."
 
 
 def parse_timestamp(text: str) -> datetime:
-    """Return one archive timestamp in UTC, a rounded up second read as the next minute.
+    """Parse a PDS timestamp as UTC, a rounded up `:60.` second read as the next minute.
 
     Args:
         text: The timestamp as the archive wrote it.
@@ -28,48 +28,46 @@ def parse_timestamp(text: str) -> datetime:
     Raises:
         ValueError: When the text is not a timestamp at all.
     """
-    head, rolled, rest = text.strip().rpartition(ROLLED)
-    held = (
-        datetime.fromisoformat(f"{head}:00.{rest}") + timedelta(minutes=1)
-        if rolled
-        else datetime.fromisoformat(text.strip())
-    )
-    return held if held.tzinfo else held.replace(tzinfo=UTC)
+    text = text.strip()
+    head, rolled, rest = text.rpartition(ROLLED)
+    if rolled:
+        moment = datetime.fromisoformat(f"{head}:00.{rest}") + timedelta(minutes=1)
+    else:
+        moment = datetime.fromisoformat(text)
+    return moment if moment.tzinfo else moment.replace(tzinfo=UTC)
 
 
-def _times(text: np.ndarray) -> np.ndarray:
-    """Read a time column, rolling a rounded up second into the minute after it.
+def _time_column(text: np.ndarray) -> np.ndarray:
+    """Parse a TIME column, rewriting each rounded up `:60.` second first.
 
     Args:
         text: The column's values, one fixed width byte string per row.
 
     Returns:
-        times: The times, as datetimes.
+        times: The times, as naive millisecond datetimes.
 
     Raises:
         ValueError: When a stamp is not one that can be read at all.
     """
     values = text.astype("U")
-    rolled = np.flatnonzero(np.char.find(values, ROLLED) > 0)
-    if rolled.size:
-        stamps = values.tolist()
-        for at in rolled:
-            whole = parse_timestamp(stamps[at]).replace(tzinfo=None)
-            stamps[at] = whole.isoformat(timespec="milliseconds")
-        values = np.array(stamps, dtype=values.dtype)
+    for at in np.flatnonzero(np.char.find(values, ROLLED) > 0):
+        moment = parse_timestamp(values[at]).replace(tzinfo=None)
+        values[at] = moment.isoformat(timespec="milliseconds")
     return values.astype(_DTYPES["TIME"])
 
 
-def build_table(table: Path, label: dict[str, str], fields: list[dict[str, str]]):
-    """Read one fixed width ASCII table into a row per record.
+def build_table(
+    table: Path, label: dict[str, str], fields: list[dict[str, str]]
+) -> np.recarray:
+    """Read a `.tab` table's ROWS records, slicing each COLUMN at its START_BYTE.
 
     Args:
         table: The `.tab` file holding the records.
-        label: The parsed label describing it.
-        fields: The COLUMN objects, as `labels.columns` returns them.
+        label: The parsed label giving ROWS and ROW_BYTES.
+        fields: The COLUMN objects to read, as `labels.columns` returns them.
 
     Returns:
-        table: One row per record, its fields named and typed as the label says.
+        table: One row per record, each column named and typed as its label says.
     """
     rows, width = int(label["ROWS"]), int(label["ROW_BYTES"])
     raw = np.fromfile(table, dtype="S1", count=rows * width)
@@ -81,27 +79,27 @@ def build_table(table: Path, label: dict[str, str], fields: list[dict[str, str]]
         start = int(field["START_BYTE"]) - 1
         cut = records[:, start : start + int(field["BYTES"])]
         text = np.char.strip(cut.view(f"S{cut.shape[1]}").reshape(rows))
-        built[field["NAME"]] = (
-            _times(text)
-            if field["DATA_TYPE"] == "TIME"
-            else text.astype(_DTYPES.get(field["DATA_TYPE"], "f8"))
-        )
+        if field["DATA_TYPE"] == "TIME":
+            built[field["NAME"]] = _time_column(text)
+        else:
+            built[field["NAME"]] = text.astype(_DTYPES.get(field["DATA_TYPE"], "f8"))
     return np.rec.fromarrays(list(built.values()), names=list(built))
 
 
 def load_table(table: Path) -> tuple[np.recarray, dict[str, str]]:
-    """Read one table and the label beside it that describes it.
+    """Read a whole `.tab` table and the `.lbl` label beside it.
 
     Args:
-        table: The `.tab` file holding the records, whose `.lbl` sits beside it.
+        table: The `.tab` file, whose `.lbl` sits beside it.
 
     Returns:
-        table: One row per record, its fields named as the label names its columns.
-        label: The parsed label describing them.
+        table: One row per record, each column named as the label names it.
+        label: The parsed label.
 
     Raises:
         FileNotFoundError: When the table or its label is missing.
     """
     path = table.with_suffix(".lbl")
-    label = labels.load(path)
-    return build_table(table, label, labels.columns(path)), label
+    return build_table(table, labels.load(path), labels.columns(path)), labels.load(
+        path
+    )

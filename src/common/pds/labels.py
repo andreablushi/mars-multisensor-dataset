@@ -1,7 +1,8 @@
-"""Reading a PDS or ISIS label, and whatever it says about what sits beside it."""
+"""Reading a PDS or ISIS label, the `KEY = VALUE` text describing the file beside it."""
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 
 # The order a TRDR writes its bands in, against a DDR's band sequential.
@@ -51,8 +52,8 @@ _DTYPES = {
 }
 
 
-def _value(text: str) -> str:
-    """Return one label value, its unit suffix and then its quotes stripped.
+def _bare_value(text: str) -> str:
+    """Return a label value without its `<UNIT>` suffix and its quotes.
 
     Args:
         text: What the label writes after the equals sign.
@@ -67,37 +68,48 @@ def _value(text: str) -> str:
     return held.strip('"')
 
 
+def _entries(path: Path) -> Iterator[tuple[str, str]]:
+    """Yield every `KEY = VALUE` line of a label, skipping comments and `{...}` lists.
+
+    Args:
+        path: The `.lbl` or `.hdr` file to read.
+
+    Yields:
+        key: The key, stripped.
+        value: Its value, without unit or quotes.
+    """
+    in_list = False
+    for line in path.read_text(errors="replace").splitlines():
+        if in_list:
+            in_list = "}" not in line
+            continue
+        # A comment is a comment, however much it looks like a key.
+        if "=" not in line or line.lstrip().startswith("/*"):
+            continue
+        key, _, value = (part.strip() for part in line.partition("="))
+        if value.startswith("{") and "}" not in value:
+            in_list = True
+        elif key:
+            yield key, _bare_value(value)
+
+
 def load(path: Path) -> dict[str, str]:
-    """Read a label into its keys and values.
+    """Read a label into a map of its keys, the first of a repeated key winning.
 
     Args:
         path: The `.lbl` or `.hdr` file to read.
 
     Returns:
-        label: The label as written, quotes and units stripped, first key winning.
+        label: Each key and its value, without unit or quotes.
     """
     label: dict[str, str] = {}
-    skipping = False
-    for line in path.read_text(errors="replace").splitlines():
-        if skipping:
-            skipping = "}" not in line
-            continue
-        # A comment is a comment, however much it looks like a key.
-        if "=" not in line or line.lstrip().startswith("/*"):
-            continue
-        key, _, value = line.partition("=")
-        value = value.strip()
-        if value.startswith("{") and "}" not in value:
-            skipping = True
-            continue
-        key = key.strip()
-        if key and key not in label:
-            label[key] = _value(value)
+    for key, value in _entries(path):
+        label.setdefault(key, value)
     return label
 
 
 def image_layout(label: dict[str, str]) -> tuple[int, int, int, str, str]:
-    """Read how one image is shaped and written from its label.
+    """Read the shape, band order and sample dtype of the image a label describes.
 
     Args:
         label: The parsed label.
@@ -119,50 +131,47 @@ def image_layout(label: dict[str, str]) -> tuple[int, int, int, str, str]:
     # How many channels each pixel holds, which a single band image omits.
     bands = int(label.get("BANDS", 1))
     # The order bands are written in, BIL for a TRDR and BSQ for a DDR.
-    stored = label.get("BAND_STORAGE_TYPE", BIL)
+    order = label.get("BAND_STORAGE_TYPE", BIL)
     # The sample type and its width, which together name a numpy dtype.
     dtype = _DTYPES[label["SAMPLE_TYPE"], int(label["SAMPLE_BITS"])]
-    return lines, samples, bands, stored, dtype
+    return lines, samples, bands, order, dtype
 
 
 def columns(path: Path) -> list[dict[str, str]]:
-    """Read the COLUMN objects one table label names, in the order written.
+    """Read each `OBJECT = COLUMN` block of a table label into a map of its keys.
 
     Args:
         path: The `.lbl` file describing the table.
 
     Returns:
-        columns: One dictionary per column, quotes and units stripped.
+        columns: One map per column, in the order written.
     """
     found: list[dict[str, str]] = []
-    inside: dict[str, str] | None = None
-    for line in path.read_text(errors="replace").splitlines():
-        key, _, value = (part.strip() for part in line.partition("="))
-        if key == "OBJECT" and value == "COLUMN":
-            inside = {}
-        elif key == "END_OBJECT" and value == "COLUMN" and inside is not None:
-            found.append(inside)
-            inside = None
-        elif inside is not None and key:
-            inside[key] = _value(value)
+    column: dict[str, str] | None = None
+    for key, value in _entries(path):
+        if (key, value) == ("OBJECT", "COLUMN"):
+            column = {}
+        elif (key, value) == ("END_OBJECT", "COLUMN") and column is not None:
+            found.append(column)
+            column = None
+        elif column is not None:
+            column[key] = value
     return found
 
 
 def merge(*held: dict[str, str]) -> dict[str, str]:
-    """Return one label for an observation published as several products.
+    """Merge the labels of one observation's products, dropping file and unset keys.
 
     Args:
-        held: The label of each product, in the order they are preferred.
+        held: The label of each product, the preferred first.
 
     Returns:
-        label: Their keys in one map, without file-only or unset keys.
+        label: The first value of every key that describes the observation itself.
     """
     merged: dict[str, str] = {}
     for one in held:
         for key, value in one.items():
-            kept = (
-                key not in merged and not key.startswith("^") and key not in FILE_KEYS
-            )
-            if kept and value.upper() not in MISSING:
-                merged[key] = value
+            if key.startswith("^") or key in FILE_KEYS or value.upper() in MISSING:
+                continue
+            merged.setdefault(key, value)
     return merged
