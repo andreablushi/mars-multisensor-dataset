@@ -35,7 +35,7 @@ _FETCHING: dict[str, threading.Lock] = {}
 _GUARD = threading.Lock()
 
 
-def record(client: httpx.Client) -> dict[str, tuple[str, Box]]:
+def record_files(client: httpx.Client) -> dict[str, tuple[str, Box]]:
     """Read the whole gridded record, once per run.
 
     Args:
@@ -45,7 +45,7 @@ def record(client: httpx.Client) -> dict[str, tuple[str, Box]]:
         published: Each file's URL and the ground it covers, by lowercase name.
     """
     if not _RECORD:
-        for entry in archive.query(
+        for entry in archive.query_products(
             client, pt=PRODUCT_TYPE, limit=str(PAGE), results=FIELDS, **ODE
         ):
             covers = (
@@ -54,12 +54,12 @@ def record(client: httpx.Client) -> dict[str, tuple[str, Box]]:
                 float(entry["Westernmost_longitude"]),
                 float(entry["Easternmost_longitude"]),
             )
-            for name, url in archive.published(entry).items():
+            for name, url in archive.file_fields(entry).items():
                 _RECORD[name] = (url, covers)
     return _RECORD
 
 
-def grids(tile: Tile, client: httpx.Client) -> list[str]:
+def tile_grids(tile: Tile, client: httpx.Client) -> list[str]:
     """Read which grid one tile's ground is mosaicked from.
 
     Args:
@@ -78,7 +78,7 @@ def grids(tile: Tile, client: httpx.Client) -> list[str]:
     return [configs.EQUATORIAL]
 
 
-def sheets(grid: str, client: httpx.Client) -> list[str]:
+def grid_sheets(grid: str, client: httpx.Client) -> list[str]:
     """Read which sheets one grid is published as.
 
     Args:
@@ -92,7 +92,7 @@ def sheets(grid: str, client: httpx.Client) -> list[str]:
     if held.product:
         return []
     found = set()
-    for name in record(client):
+    for name in record_files(client):
         if not name.endswith(ODE_SUFFIX):
             continue
         # Keep only wanted sheets, which drops the polar stereographic ones.
@@ -122,7 +122,7 @@ def fetch(grid: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
         if held.product
         else [
             (sheet, configs.NAMING.product(sheet, configs.Kind.TOPOGRAPHY))
-            for sheet in sheets(grid, client)
+            for sheet in grid_sheets(grid, client)
         ]
     )
     for directory, product in wanted:
@@ -135,8 +135,8 @@ def fetch(grid: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
         with fetching:
             if all(path.exists() for path in files.values()):
                 continue
-            offered = record(client)
-            archive.bring(
+            offered = record_files(client)
+            archive.download_files(
                 files,
                 {
                     Path(name).suffix: url

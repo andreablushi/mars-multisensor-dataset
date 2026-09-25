@@ -12,7 +12,7 @@ from common.fetch import http, ode, ranges
 TIMEOUT = 60.0
 
 
-def query(client: httpx.Client, **params: str) -> list[dict]:
+def query_products(client: httpx.Client, **params: str) -> list[dict]:
     """Read the products one ODE query names, one entry each.
 
     Args:
@@ -36,11 +36,11 @@ def query(client: httpx.Client, **params: str) -> list[dict]:
     return entries if isinstance(entries, list) else [entries]
 
 
-def published(entry: dict, field: str = "URL") -> dict[str, str]:
+def file_fields(entry: dict, field: str = "URL") -> dict[str, str]:
     """Read one field of every file one ODE product entry offers, its URL by default.
 
     Args:
-        entry: One product, as `query` returns it.
+        entry: One product, as `query_products` returns it.
         field: The field each file is read for, such as "URL" or "KBytes".
 
     Returns:
@@ -54,7 +54,9 @@ def published(entry: dict, field: str = "URL") -> dict[str, str]:
     }
 
 
-def offers(client: httpx.Client, product_id: str, **params: str) -> dict[str, str]:
+def product_urls(
+    client: httpx.Client, product_id: str, **params: str
+) -> dict[str, str]:
     """Read where ODE offers each file of one product.
 
     Args:
@@ -65,10 +67,10 @@ def offers(client: httpx.Client, product_id: str, **params: str) -> dict[str, st
     Returns:
         urls: The download URL of each file suffix.
     """
-    entries = query(client, productid=product_id, **params)
+    entries = query_products(client, productid=product_id, **params)
     named: dict[str, str] = {}
     only: dict[str, str | None] = {}
-    for name, url in published(entries[0] if entries else {}).items():
+    for name, url in file_fields(entries[0] if entries else {}).items():
         path = Path(name)
         if path.stem == product_id.lower():
             named[path.suffix] = url
@@ -77,7 +79,7 @@ def offers(client: httpx.Client, product_id: str, **params: str) -> dict[str, st
     return {suffix: url for suffix, url in {**only, **named}.items() if url}
 
 
-def collect(
+def download_product(
     client: httpx.Client,
     product_id: str,
     destination: dict[str, Path],
@@ -95,10 +97,12 @@ def collect(
         FileNotFoundError: When ODE offers no download for a missing half.
     """
     if any(not path.exists() for path in destination.values()):
-        bring(destination, offers(client, product_id, **params), client=client)
+        download_files(
+            destination, product_urls(client, product_id, **params), client=client
+        )
 
 
-def bring(
+def download_files(
     destination: dict[str, Path],
     urls: dict[str, str],
     *,

@@ -70,7 +70,7 @@ def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -
     if all(path.exists() for held in files.values() for path in held.values()):
         return
     placing = files[configs.Kind.GEOMETRY]
-    archive.collect(
+    archive.download_product(
         client,
         products[configs.Kind.GEOMETRY],
         placing,
@@ -78,18 +78,18 @@ def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -
         **ODE,
     )
     radargram = files[configs.Kind.OBSERVATION]
-    offered = archive.offers(
+    offered = archive.product_urls(
         client,
         products[configs.Kind.OBSERVATION],
         pt=TYPES[configs.Kind.OBSERVATION],
         **ODE,
     )
-    archive.bring({".lbl": radargram[".lbl"]}, offered, client=client)
+    archive.download_files({".lbl": radargram[".lbl"]}, offered, client=client)
     lines, samples, _, _, stored = labels.image_layout(labels.load(radargram[".lbl"]))
     # Every other column is left a hole, which `crop` never reads.
     columns = kept_columns(tables.load_table(placing[".tab"])[0], frames)
     itemsize = np.dtype(stored).itemsize
-    archive.bring(
+    archive.download_files(
         {".img": radargram[".img"]},
         offered,
         client=client,
@@ -100,9 +100,9 @@ def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -
     itemsize = np.dtype(configs.CLUTTER_TYPE).itemsize
     size = lines * samples * itemsize
     start = configs.CLUTTER_ARRAY * size
-    archive.bring(
+    archive.download_files(
         files[configs.Kind.CLUTTER],
-        archive.offers(
+        archive.product_urls(
             client,
             products[configs.Kind.CLUTTER],
             pt=TYPES[configs.Kind.CLUTTER],

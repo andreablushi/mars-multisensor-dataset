@@ -21,6 +21,39 @@ TYPES = {configs.Kind.OBSERVATION: "TRDR", configs.Kind.GEOMETRY: "DDR"}
 WAVELENGTH_TYPE = "CDR"
 
 
+def detector_published(
+    observation_id: str, detector: configs.Detector, client: httpx.Client
+) -> bool:
+    """Bring one detector of an observation down, where it was archived.
+
+    Args:
+        observation_id: The observation to fetch.
+        detector: Which detector to ask ODE for.
+        client: The client whose connections every query is asked over.
+
+    Returns:
+        published: True when it landed, False when ODE publishes none.
+
+    Raises:
+        FileNotFoundError: When its placing geometry is not published.
+    """
+    for kind, product_type in TYPES.items():
+        product_id = configs.NAMING.product(observation_id, kind, detector=detector)
+        try:
+            archive.download_product(
+                client,
+                product_id,
+                configs.CACHE.files(observation_id, product_id, kind),
+                pt=product_type,
+                **ODE,
+            )
+        except FileNotFoundError:
+            if kind != configs.Kind.OBSERVATION:
+                raise
+            return False
+    return True
+
+
 def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
     """Bring down whichever detectors of one observation ODE holds, or leave them.
 
@@ -33,37 +66,12 @@ def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -
         FileNotFoundError: When ODE publishes neither detector or no geometry.
         KeyError: When a label names no wavelength file.
     """
-
-    def brought(detector: str) -> bool:
-        """Bring one detector of the observation down, where it was archived.
-
-        Args:
-            detector: Which detector to ask ODE for.
-
-        Returns:
-            brought: True when it landed, False when ODE publishes none.
-
-        Raises:
-            FileNotFoundError: When its placing geometry is not published.
-        """
-        for kind, product_type in TYPES.items():
-            product_id = configs.NAMING.product(observation_id, kind, detector=detector)
-            try:
-                archive.collect(
-                    client,
-                    product_id,
-                    configs.CACHE.files(observation_id, product_id, kind),
-                    pt=product_type,
-                    **ODE,
-                )
-            except FileNotFoundError:
-                if kind != configs.Kind.OBSERVATION:
-                    raise
-                return False
-        return True
-
     # A small share of the survey was archived as one half alone
-    found = [name for name in configs.Detector if brought(name)]
+    found = [
+        name
+        for name in configs.Detector
+        if detector_published(observation_id, name, client)
+    ]
     if not found:
         raise FileNotFoundError(f"ODE publishes no detector of {observation_id}.")
     # Only now do the labels exist to be asked which file calibrated them.
@@ -73,7 +81,7 @@ def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -
         )
         label = configs.CACHE.files(observation_id, scan)[".lbl"]
         name = Path(labels.load(label)[configs.WAVELENGTH_KEY]).stem
-        archive.collect(
+        archive.download_product(
             client,
             name,
             configs.CACHE.files(configs.WAVELENGTH_DIR, name.lower()),

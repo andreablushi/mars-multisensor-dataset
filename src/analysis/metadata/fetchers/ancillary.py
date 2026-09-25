@@ -17,7 +17,7 @@ from analysis.models.ancillary import Ancillary, Distortion
 from analysis.models.instrument import InstrumentSet
 from analysis.models.tile_group import TileGroup
 from building.configs.sharad import NAMING
-from building.download.archive import bring, published
+from building.download.archive import download_files, file_fields
 from common import console as printing
 from common.fetch.http import TLS_CONTEXT
 from common.fetch.ode import ODEClient
@@ -56,8 +56,8 @@ def fetch_distortions(
     with ODEClient() as ode_client:
         params = product_params(instrument_set, ancillary.pt)
         for item in every_product(ode_client, params, "pf"):
-            kbytes = published(item, "KBytes")
-            for name, url in published(item).items():
+            kbytes = file_fields(item, "KBytes")
+            for name, url in file_fields(item).items():
                 if name.endswith(".tab"):
                     size = int(float(kbytes[name] or 0))
                     tables[NAMING.parse(item["pdsid"])] = (url, size)
@@ -72,7 +72,7 @@ def fetch_distortions(
     ):
         scratch = Path(scratch_dir)
         layout = scratch / "layout.lbl"
-        bring({".lbl": layout}, {".lbl": label_url}, client=client)
+        download_files({".lbl": layout}, {".lbl": label_url}, client=client)
         asked = {
             ancillary.latitude,
             ancillary.longitude,
@@ -148,7 +148,7 @@ def sample_distortions(
     sampled: list[bytes] = []
     for chunk in chunks or [range(0)]:
         spans = tuple((at, at + row_bytes) for at in chunk)
-        bring({".tab": table}, {".tab": url}, client=client, spans=spans)
+        download_files({".tab": table}, {".tab": url}, client=client, spans=spans)
         body = table.read_bytes()
         table.unlink()
         rows = [body[at.end() : at.end() + row_bytes] for at in PART.finditer(body)]

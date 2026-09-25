@@ -14,8 +14,11 @@ from common.disk.files import atomic_path
 from common.fetch.gate import Gate
 from common.models.tile import Tile
 
-# What ODE publishes CTX under, the raw scan being the only type it carries.
-ODE = {"ihid": "MRO", "iid": "CTX", "pt": "EDR"}
+# What ODE publishes CTX under.
+ODE = {"ihid": "MRO", "iid": "CTX"}
+
+# The ODE product type the raw scan is published under, the only one fetched.
+PRODUCT_TYPE = "EDR"
 
 # The scan's files and metadata, which carries the geometry it was taken at.
 FIELDS = "fopm"
@@ -43,7 +46,9 @@ def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -
     raw = cube.with_suffix(configs.IMAGE_SUFFIX)
     if (cube.exists() or raw.exists()) and said.exists():
         return
-    entries = archive.query(client, productid=observation_id, results=FIELDS, **ODE)
+    entries = archive.query_products(
+        client, productid=observation_id, pt=PRODUCT_TYPE, results=FIELDS, **ODE
+    )
     if not entries:
         raise FileNotFoundError(f"ODE carries no raw scan for {observation_id}.")
     acquisition = {
@@ -53,8 +58,8 @@ def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -
     }
     with atomic_path(said) as tmp:
         tmp.write_text(json.dumps(acquisition))
-    offered = archive.published(entries[0])
-    archive.bring(
+    offered = archive.file_fields(entries[0])
+    archive.download_files(
         {configs.IMAGE_SUFFIX: raw},
         {configs.IMAGE_SUFFIX: offered.get(f"{observation_id}{configs.IMAGE_SUFFIX}")},
         client=client,
