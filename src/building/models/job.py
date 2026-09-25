@@ -23,16 +23,12 @@ class Job:
 
     instrument: str
     identifier: str
-    frames: tuple[Tile, ...] = ()
-    t_start: datetime | None = None
+    frames: tuple[Tile, ...]
+    t_start: datetime | None
 
     @property
     def label(self) -> str:
-        """Return a short human readable name for this job.
-
-        Returns:
-            label: What was asked for, and the instrument it was asked of.
-        """
+        """Return what was asked for, and the instrument it was asked of."""
         return f"{self.identifier} [{self.instrument}]"
 
 
@@ -60,11 +56,11 @@ class Plan:
     Attributes:
         jobs: The products that still need building.
         tiles: What the dataset holds about every tile the build covers.
-        skipped_existing: Products whose every crop is already written.
+        skipped_existing: Crops already written, which were left out of the jobs.
         unread: Kept observations no instrument here could read, never planned.
     """
 
     jobs: tuple[Job, ...]
-    tiles: tuple[TileMetadata, ...] = ()
-    skipped_existing: int = 0
-    unread: int = 0
+    tiles: tuple[TileMetadata, ...]
+    skipped_existing: int
+    unread: int

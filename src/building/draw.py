@@ -16,7 +16,7 @@ def draw_training(
     picked: Sequence[Selection],
     settings: TrainingSettings,
     labels: Sequence[Label],
-    refused: Collection[str] = (),
+    refused: Collection[str],
 ) -> list[Selection]:
     """Keep the share of the kept tiles the training build covers, drawn at random.
 

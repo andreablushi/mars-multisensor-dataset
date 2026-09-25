@@ -37,12 +37,11 @@ class Progress:
     _held: dict[object, tuple[str, Stage, float]] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
-    def entered(self, label: str, stage: Stage) -> object:
-        """Record that one product has reached the first stage of the build.
+    def entered(self, label: str) -> object:
+        """Record that one product has started fetching, the first stage of the build.
 
         Args:
             label: What the product is called, which is what a stall names.
-            stage: The stage it has reached.
 
         Returns:
             ticket: What the product is tracked by, since archive jobs share names.
@@ -50,7 +49,7 @@ class Progress:
         ticket = object()
         with self._lock:
             self.moved_at = time.monotonic()
-            self._held[ticket] = (label, stage, self.moved_at)
+            self._held[ticket] = (label, Stage.FETCHING, self.moved_at)
         return ticket
 
     def moved(self, ticket: object, onto: Stage) -> None:
@@ -62,7 +61,7 @@ class Progress:
         """
         with self._lock:
             self.moved_at = time.monotonic()
-            label, _, _ = self._held[ticket]
+            label = self._held[ticket][0]
             self._held[ticket] = (label, onto, self.moved_at)
 
     def finish(self, ticket: object) -> None:

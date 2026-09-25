@@ -18,6 +18,7 @@ from building.download import crism as crism_download
 from building.download import ctx as ctx_download
 from building.download import mola as mola_download
 from building.download import sharad as sharad_download
+from building.preprocessing.common.models.sample import Sample
 from building.preprocessing.crism import crop as crism_crop
 from building.preprocessing.crism import read as crism_read
 from building.preprocessing.ctx import crop as ctx_crop
@@ -47,23 +48,23 @@ class Instrument:
         read_observation: What reads a fetched product off disk.
         crop: What cuts that observation to a tile's box, or None where it misses.
         archive: Which archive its products are downloaded from.
+        worker_bytes: What one build holds of its largest product at once.
         discard: What deletes the built product, or None for a small archive.
         place: What readies a fetched product on the SPICE server, or None.
         observation_id: What reads a kept product's observation, or None.
         identifiers: What asks an archive what covers a tile, or None.
-        worker_bytes: What one build holds of its largest product at once.
     """
 
     layout: Layout
     fetch: Callable[[str, httpx.Client, tuple[Tile, ...]], None]
     read_observation: Callable[[str], Any]
-    crop: Callable[..., Any]
+    crop: Callable[[Any, Tile], Sample | None]
     archive: Archive
+    worker_bytes: int
     discard: Callable[[str], None] | None = None
     place: Callable[[str], None] | None = None
     observation_id: Callable[[str], str | None] | None = None
     identifiers: Callable[[Tile, httpx.Client], list[str]] | None = None
-    worker_bytes: int = 512 * 1024**2
 
 
 INSTRUMENTS = {

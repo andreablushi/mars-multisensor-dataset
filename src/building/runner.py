@@ -5,7 +5,8 @@ from __future__ import annotations
 import time
 from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
-from contextlib import ExitStack, closing
+from contextlib import ExitStack
+from functools import partial
 from pathlib import Path
 
 import httpx
@@ -50,85 +51,89 @@ def build_dataset(
     """
     console = Console()
     started_at = time.monotonic()
-    outcomes = run_build(
-        settings,
-        picked,
-        console,
-        paths.dataset_root(settings.name),
-        force=force,
-        checkpoint=checkpoint,
-    )
-    printing.print_summary(outcomes, time.monotonic() - started_at, console)
-    return 1 if any(one.error for one in outcomes) else 0
-
-
-def run_build(
-    settings: Settings,
-    picked: Sequence[Selection],
-    console: Console,
-    root: Path,
-    *,
-    force: bool = False,
-    checkpoint: Callable[[], None] | None = None,
-) -> list[Outcome]:
-    """Fetch every product a build needs and cut each to the tiles that kept it.
-
-    Args:
-        settings: The settled choices for the build.
-        picked: The tiles to build, each with the observations its window keeps.
-        console: The console to render on.
-        root: The directory this build of the dataset is written in.
-        force: Whether to rebuild crops that are already written.
-        checkpoint: What publishes the dataset as it stands, or None.
-
-    Returns:
-        collected: Every finished outcome, in completion order.
-    """
+    root = paths.dataset_root(settings.name)
+    named = indexed_crops(root, console, force=force)
+    published = named if checkpoint else frozenset()
     # Reused, so a run pays for a connection once a host rather than once a file
     connections = sum(settings.downloads.values()) * 2
     limits = httpx.Limits(
         max_connections=connections, max_keepalive_connections=connections
     )
     with httpx.Client(limits=limits, verify=TLS_CONTEXT) as ode:
-        try:
-            indexed = read_observation_metadata(root)
-            named = frozenset(one.path for one in indexed)
-        except FileNotFoundError:
-            named = frozenset()
-        # A crop the index cannot name is unreadable, so it is built again.
-        if not force:
-            dropped = 0
-            for path in paths.crop_paths(root):
-                if str(path.relative_to(root)) not in named:
-                    path.unlink()
-                    dropped += 1
-            if dropped:
-                console.print(f"dropping {dropped:,} crops the index does not name")
-        published = named if checkpoint else frozenset()
         plan = planner.build_plan(picked, root, ode, force=force, published=published)
-        printing.describe(plan, settings, console)
-        progress = Progress(len(plan.jobs))
-        # A download waits on the network and a build on the cores, so the pools differ.
-        with (
-            ProcessPoolExecutor(max_workers=settings.workers) as building,
-            ExitStack() as pools,
-            printing.watch(progress),
-        ):
-            fetching = {
-                archive: pools.enter_context(ThreadPoolExecutor(max_workers=downloads))
-                for archive, downloads in settings.downloads.items()
-            }
-            held = Scheduler(
-                ode, fetching, building, build_product, root, settings, progress
-            ).outcomes(plan.jobs)
-            with closing(held) as outcomes:
-                if checkpoint is not None:
-                    outcomes = _checkpointed(outcomes, plan, root, checkpoint)
-                collected = printing.render(
-                    outcomes, len(plan.jobs), "building", console
-                )
-    write_index(plan, collected, root, on_disk=checkpoint is None)
-    return collected
+        printing.print_plan(plan, settings, console)
+        outcomes = build_outcomes(plan, settings, root, ode, console, checkpoint)
+    write_index(plan, outcomes, root, on_disk=checkpoint is None)
+    printing.print_summary(outcomes, time.monotonic() - started_at, console)
+    return 1 if any(one.error for one in outcomes) else 0
+
+
+def indexed_crops(root: Path, console: Console, *, force: bool) -> frozenset[str]:
+    """Return the crops the index names, deleting every other one unless forced.
+
+    Args:
+        root: The directory this build of the dataset is written in.
+        console: The console to report the deleted crops on.
+        force: Whether every crop is built again, so none is deleted.
+
+    Returns:
+        named: The relative path of every crop the index names.
+    """
+    try:
+        named = frozenset(one.path for one in read_observation_metadata(root))
+    except FileNotFoundError:
+        named = frozenset()
+    if force:
+        return named
+    # A crop the index cannot name is unreadable, so it is built again.
+    dropped = 0
+    for path in paths.crop_paths(root):
+        if str(path.relative_to(root)) not in named:
+            path.unlink()
+            dropped += 1
+    if dropped:
+        console.print(f"dropping {dropped:,} crops the index does not name")
+    return named
+
+
+def build_outcomes(
+    plan: Plan,
+    settings: Settings,
+    root: Path,
+    ode: httpx.Client,
+    console: Console,
+    checkpoint: Callable[[], None] | None,
+) -> list[Outcome]:
+    """Fetch every product a plan needs and cut each to the tiles that kept it.
+
+    Args:
+        plan: What the build has to do.
+        settings: The settled choices for the build, which size its pools.
+        root: The directory this build of the dataset is written in.
+        ode: The client every download is asked through.
+        console: The console to render on.
+        checkpoint: What publishes the dataset as it stands, or None.
+
+    Returns:
+        collected: Every finished outcome, in completion order.
+    """
+    progress = Progress(len(plan.jobs))
+    # A download waits on the network and a build on the cores, so the pools differ.
+    with (
+        ProcessPoolExecutor(max_workers=settings.workers) as building,
+        ExitStack() as pools,
+        printing.watch(progress),
+    ):
+        fetching = {
+            archive: pools.enter_context(ThreadPoolExecutor(max_workers=downloads))
+            for archive, downloads in settings.downloads.items()
+        }
+        build = partial(build_product, root=root)
+        scheduler = Scheduler(ode, fetching, building, build, settings, progress)
+        outcomes = scheduler.outcomes(plan.jobs)
+        if checkpoint is not None:
+            outcomes = _checkpointed(outcomes, plan, root, checkpoint)
+        return printing.collect_outcomes(outcomes, len(plan.jobs), console)
 
 
 def _checkpointed(
@@ -187,36 +192,36 @@ def build_product(job: Job, root: Path) -> Outcome:
     Raises:
         Exception: Whatever reading the product raised, collected as a failure.
     """
-    steps = INSTRUMENTS[job.instrument]
+    instrument = INSTRUMENTS[job.instrument]
     written: list[ObservationMetadata] = []
     missed = 0
     failed: Exception | None = None
     try:
         # Read once however many tiles want it, which is why the product is the unit.
-        observation = steps.read_observation(job.identifier)
+        observation = instrument.read_observation(job.identifier)
         for frame in job.frames:
             try:
-                held = steps.crop(observation, frame)
+                sample = instrument.crop(observation, frame)
             except Exception as error:  # noqa: BLE001
                 # A tile failing to cut is kept as the error, and the rest still cut.
                 failed = failed or error
                 continue
             # Reaching none of a tile is no failure, coverage being a box overlap.
-            if held is None:
+            if sample is None:
                 missed += 1
                 continue
-            path = store.write_sample(held, steps.layout, frame, root)
+            path = store.write_sample(sample, instrument.layout, frame, root)
             written.append(
                 observation_metadata(
-                    held,
+                    sample,
                     frame,
-                    steps.layout,
+                    instrument.layout,
                     str(path.relative_to(root)),
                     t_start=job.t_start,
                 )
             )
     finally:
         # A product goes once every tile that wanted it is cut; it is a cache.
-        if steps.discard:
-            steps.discard(job.identifier)
+        if instrument.discard:
+            instrument.discard(job.identifier)
     return Outcome(job, records=tuple(written), missed=missed, error=failed)

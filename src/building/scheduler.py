@@ -9,7 +9,6 @@ import threading
 from collections.abc import Callable, Iterator
 from concurrent.futures import Future, ProcessPoolExecutor, ThreadPoolExecutor
 from functools import partial
-from pathlib import Path
 
 import httpx
 
@@ -27,8 +26,7 @@ class Scheduler:
         ode: httpx.Client,
         fetching: dict[str, ThreadPoolExecutor],
         building: ProcessPoolExecutor,
-        build: Callable[[Job, Path], Outcome],
-        root: Path,
+        build: Callable[[Job], Outcome],
         settings: Settings,
         progress: Progress,
     ) -> None:
@@ -39,7 +37,6 @@ class Scheduler:
             fetching: The threads the downloads run on, by the archive they wait on.
             building: The processes the builds run on.
             build: What builds one downloaded product in a process.
-            root: The dataset's own root directory.
             settings: The settled choices, bounding how many products run at once.
             progress: What every product still in the build is doing.
         """
@@ -47,7 +44,6 @@ class Scheduler:
         self._fetching = fetching
         self._building = building
         self._build = build
-        self._root = root
         self._progress = progress
         self._finished: queue.Queue[Outcome] = queue.Queue()
         # Places per archive, so one waiting on the cores never stalls another
@@ -86,7 +82,7 @@ class Scheduler:
         instrument = INSTRUMENTS[job.instrument]
         # The place is taken before the download, so the room is never given elsewhere.
         self._places[instrument.archive].acquire()
-        ticket = self._progress.entered(job.label, Stage.FETCHING)
+        ticket = self._progress.entered(job.label)
         try:
             instrument.fetch(job.identifier, self._ode, job.frames)
             if instrument.place is None:
@@ -136,34 +132,25 @@ class Scheduler:
                 _, _, job, ticket = heapq.heappop(self._ready)
             self._progress.moved(ticket, Stage.BUILDING)
             try:
-                started = self._building.submit(self._build, job, self._root)
+                started = self._building.submit(self._build, job)
             except Exception as error:  # noqa: BLE001
                 # The pool is closing, so this builds nowhere.
-                self._built(ticket, Outcome(job, error=error))
-                continue
-            started.add_done_callback(partial(self._done, job, ticket))
+                started = Future()
+                started.set_exception(error)
+            started.add_done_callback(partial(self._built, job, ticket))
 
-    def _done(self, job: Job, ticket: object, done: Future[Outcome]) -> None:
-        """Record what one build left, a worker the pool lost included.
+    def _built(self, job: Job, ticket: object, done: Future[Outcome]) -> None:
+        """Record what one build left, give its core back, and start the next.
 
         Args:
             job: The job that was built.
             ticket: What the job was tracked by while it was still in the build.
-            done: What the build pool left.
+            done: What the build pool left, a worker it lost included.
         """
         try:
             outcome = done.result()
         except Exception as error:  # noqa: BLE001
             outcome = Outcome(job, error=error)
-        self._built(ticket, outcome)
-
-    def _built(self, ticket: object, outcome: Outcome) -> None:
-        """Give back the core one build held, and start the next.
-
-        Args:
-            ticket: What the job was tracked by while it was still in the build.
-            outcome: What the build left, whether it was built or failed.
-        """
         with self._lock:
             self._cores += 1
         self._finish(outcome, ticket)
