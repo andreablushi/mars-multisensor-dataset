@@ -161,6 +161,8 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
                 "map": template,
                 "pixres": "mpp",
                 "resolution": configs.PIXEL_RESOLUTION_M,
+                "warpalgorithm": configs.WARP_ALGORITHM,
+                "patchsize": configs.PATCH_SIZE,
                 "defaultrange": "map",
                 "minlat": frame.min_lat,
                 "maxlat": frame.max_lat,
