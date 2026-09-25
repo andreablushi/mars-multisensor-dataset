@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from building.configs import crism as configs
-from building.preprocessing.common import geometry
+from building.preprocessing.common import cut, geometry
 from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.crism.correction import (
     atmospheric,
@@ -263,7 +263,7 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
     Returns:
         sample: The observation cut to that tile, or None where it misses.
     """
-    held = geometry.overlap(
+    held = cut.overlap(
         Samples(
             observation.latitude, observation.longitude, observation.separable, None
         ),

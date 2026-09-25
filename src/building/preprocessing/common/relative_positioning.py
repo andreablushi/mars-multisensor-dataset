@@ -79,6 +79,20 @@ def distance_centre_m(
     return north, east
 
 
+def middle_slice(length: int) -> slice:
+    """Return at most MEASURED samples from the middle of one axis.
+
+    Args:
+        length: How many samples the axis holds.
+
+    Returns:
+        middle: The slice of it to measure over.
+    """
+    kept = min(length, MEASURED)
+    start = (length - kept) // 2
+    return slice(start, start + kept)
+
+
 def sample_spacing_m(position: RelativePosition, frame: Tile) -> tuple[float, ...]:
     """Return how much ground one sample spans, along each of its ground axes.
 
@@ -89,20 +103,6 @@ def sample_spacing_m(position: RelativePosition, frame: Tile) -> tuple[float, ..
     Returns:
         spacing: The median geodesic metres between neighbours per ground axis.
     """
-
-    def middle(length: int) -> slice:
-        """Return at most MEASURED samples from the middle of one axis.
-
-        Args:
-            length: How many samples the axis holds.
-
-        Returns:
-            middle: The slice of it to measure over.
-        """
-        kept = min(length, MEASURED)
-        start = (length - kept) // 2
-        return slice(start, start + kept)
-
     plain = position.separable and position.polar is None
     sizes = position.ground_sizes
     held = degrees(position, frame) if plain else None
@@ -112,15 +112,15 @@ def sample_spacing_m(position: RelativePosition, frame: Tile) -> tuple[float, ..
             # One axis holds latitude, the other longitude, walked at the middle.
             lon, lat = held
             if axis == 0:
-                walked = lat[middle(lat.size)]
+                walked = lat[middle_slice(lat.size)]
                 line = (np.full(walked.size, lon[lon.size // 2]), walked)
             else:
-                walked = lon[middle(lon.size)]
+                walked = lon[middle_slice(lon.size)]
                 line = (walked, np.full(walked.size, lat[lat.size // 2]))
         else:
             # Only one line is crossed, so a projected grid is never held whole here.
             taken = tuple(
-                middle(size) if held == axis else slice(size // 2, size // 2 + 1)
+                middle_slice(size) if held == axis else slice(size // 2, size // 2 + 1)
                 for held, size in enumerate(sizes)
             )
             lon, lat = degrees(position, frame, taken)

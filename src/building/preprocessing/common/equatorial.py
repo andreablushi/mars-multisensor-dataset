@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from functools import partial
+
 import numpy as np
 
 from building.preprocessing.common import geometry
-from building.preprocessing.common.models.cut import Cut
 from building.preprocessing.common.models.relative_position import (
     RelativePosition,
 )
@@ -15,7 +16,9 @@ from common.maths.geodesy import TURN
 from common.models.tile import Tile
 
 
-def cut(samples: Samples, frame: Tile, span: float) -> Cut | None:
+def cut(
+    samples: Samples, frame: Tile, span: float
+) -> tuple[tuple[np.ndarray, ...], np.ndarray | None] | None:
     """Return which samples of one observation placed in degrees the box keeps.
 
     Args:
@@ -24,7 +27,9 @@ def cut(samples: Samples, frame: Tile, span: float) -> Cut | None:
         span: How many degrees of longitude that box covers.
 
     Returns:
-        held: What the box keeps, or None where the observation reaches none of it.
+        bounds: The samples to keep of each ground axis, outermost first.
+        inside: Which kept samples truly fall in the box, or None for all.
+        None: Where the observation reaches none of the box.
     """
     # How far north and east of the box's own edges every sample lies.
     upward = (samples.down >= frame.min_lat) & (samples.down <= frame.max_lat)
@@ -38,7 +43,7 @@ def cut(samples: Samples, frame: Tile, span: float) -> Cut | None:
         ordered = held[np.argsort(eastward[held], kind="stable")]
         if not lines.size or not ordered.size:
             return None
-        return Cut((lines, ordered), None, True)
+        return (lines, ordered), None
     kept = upward & (eastward <= span)
     if not kept.any():
         return None
@@ -47,7 +52,7 @@ def cut(samples: Samples, frame: Tile, span: float) -> Cut | None:
         np.arange(int(low), int(high) + 1)
         for low, high in zip(where.min(axis=0), where.max(axis=0), strict=True)
     )
-    return Cut(bounds, geometry.marked(geometry.taken(kept, bounds)), False)
+    return bounds, geometry.marked(geometry.taken(kept, bounds))
 
 
 def placed(samples: Samples, frame: Tile) -> RelativePosition:
@@ -66,21 +71,23 @@ def placed(samples: Samples, frame: Tile) -> RelativePosition:
             geodesy.normalise_longitude(samples.across - frame.centre_lon),
             samples.separable,
         )
-
-    def offsets(block: slice) -> tuple[np.ndarray, np.ndarray]:
-        """Return the degrees one block of samples stands from that centre.
-
-        Args:
-            block: Which lines of the cut to read.
-
-        Returns:
-            north: Their degrees north of the centre.
-            east: Their degrees east of it.
-        """
-        lon, lat = geometry.degrees(samples, block)
-        return lat - frame.centre_lat, geodesy.normalise_longitude(
-            lon - frame.centre_lon
-        )
-
-    north, east = geometry.filled(samples, offsets)
+    north, east = geometry.filled(samples, partial(block_offsets, samples, frame))
     return RelativePosition(north, east, False)
+
+
+def block_offsets(
+    samples: Samples, frame: Tile, block: slice
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return the degrees one block of samples stands from the tile centre.
+
+    Args:
+        samples: The samples the cut keeps, on the grid they were placed on.
+        frame: The tile's local frame, whose centre the offsets stand from.
+        block: Which lines of the cut to read.
+
+    Returns:
+        north: Their degrees north of the centre.
+        east: Their degrees east of it.
+    """
+    lon, lat = geometry.degrees(samples, block)
+    return lat - frame.centre_lat, geodesy.normalise_longitude(lon - frame.centre_lon)

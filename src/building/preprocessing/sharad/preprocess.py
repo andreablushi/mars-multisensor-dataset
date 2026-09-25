@@ -7,7 +7,7 @@ from collections.abc import Sequence
 import numpy as np
 
 from building.configs import sharad as configs
-from building.preprocessing.common import geometry
+from building.preprocessing.common import cut, geometry
 from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.sharad.models.observation import (
     LATITUDE_FIELD,
@@ -40,7 +40,7 @@ def kept_columns(placing: np.recarray, frames: Sequence[Tile]) -> np.ndarray:
         None,
     )
     traces = placing[COLUMN_FIELD].astype("i8") - 1
-    held = [geometry.overlap(samples, frame) for frame in frames]
+    held = [cut.overlap(samples, frame) for frame in frames]
     return np.unique(
         np.concatenate(
             [traces[one.bounds[0]] for one in held if one is not None]
@@ -98,7 +98,7 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
     Returns:
         sample: The track cut to that tile, or None where it reaches none of it.
     """
-    held = geometry.overlap(
+    held = cut.overlap(
         Samples(
             observation.latitude, observation.longitude, observation.separable, None
         ),

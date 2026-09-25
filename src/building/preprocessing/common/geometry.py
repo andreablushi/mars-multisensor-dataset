@@ -1,4 +1,4 @@
-"""The ground of one cut: what a box keeps, how it is crossed, and where it sits."""
+"""The ground of one cut: how its samples are taken, crossed and turned to degrees."""
 
 from __future__ import annotations
 
@@ -6,14 +6,8 @@ from collections.abc import Callable, Iterator
 
 import numpy as np
 
-from building.preprocessing.common import equatorial, polar
-from building.preprocessing.common.models.overlap import Overlap
-from building.preprocessing.common.models.relative_position import (
-    RelativePosition,
-)
 from building.preprocessing.common.models.samples import Samples
 from common.maths import geodesy
-from common.models.tile import Tile
 
 # How many samples of a cut are crossed at once, since a grid can run to gigabytes.
 BLOCK = 4_000_000
@@ -120,49 +114,3 @@ def filled(
     for block in blocked(sizes):
         north[block], east[block] = offsets(block)
     return north, east
-
-
-def placed(samples: Samples, frame: Tile) -> RelativePosition:
-    """Return where the samples one cut keeps sit, on the grid their tile is read on.
-
-    Args:
-        samples: The samples the cut keeps, on the grid they were placed on.
-        frame: The tile's local frame, whose centre the offsets stand from.
-
-    Returns:
-        position: The offsets from that centre, in polar metres or degrees.
-    """
-    place = frame.grid
-    if place is None:
-        return equatorial.placed(samples, frame)
-    return polar.placed(samples, frame, place)
-
-
-def overlap(samples: Samples, frame: Tile) -> Overlap | None:
-    """Return what one tile's box keeps of one observation, on the tile's own grid.
-
-    Args:
-        samples: The samples of the observation, on the grid it was placed on.
-        frame: The tile's local frame, carrying the box the catalogue gives it.
-
-    Returns:
-        held: What the box keeps, or None where the observation reaches none of it.
-    """
-    span = geodesy.longitude_span(frame.west_lon, frame.east_lon)
-    # A cut is made where the samples sit; a placement is made where the tile is.
-    held = (
-        polar.cut(samples, frame, span)
-        if samples.grid is not None
-        else equatorial.cut(samples, frame, span)
-    )
-    if held is None:
-        return None
-    if held.separable:
-        kept = samples.down[held.bounds[0]], samples.across[held.bounds[1]]
-    else:
-        kept = taken(samples.down, held.bounds), taken(samples.across, held.bounds)
-    return Overlap(
-        held.bounds,
-        held.inside,
-        placed(Samples(*kept, held.separable, samples.grid), frame),
-    )

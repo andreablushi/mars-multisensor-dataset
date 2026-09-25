@@ -11,7 +11,7 @@ import numpy as np
 import tifffile
 
 from building.configs import ctx as configs
-from building.preprocessing.common import geometry
+from building.preprocessing.common import cut, geometry
 from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.ctx import projection
 from building.preprocessing.ctx.isis import read_cube_label, run_isis
@@ -129,7 +129,7 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
     first = max(1, int(reached.min()) - configs.LINE_STEP)
     last = min(observation.lines, int(reached.max()) + configs.LINE_STEP)
     work = observation.cube.parent / frame.name
-    cut, template, projected, image = (
+    trimmed, template, projected, image = (
         work.with_suffix(suffix) for suffix in (".cut.cub", ".map", ".map.cub", ".tif")
     )
     grid = frame.grid
@@ -148,7 +148,7 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
             "crop",
             {
                 "from": observation.cube,
-                "to": cut,
+                "to": trimmed,
                 "line": first,
                 "nlines": last - first + 1,
             },
@@ -156,7 +156,7 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         run_isis(
             "cam2map",
             {
-                "from": cut,
+                "from": trimmed,
                 "to": projected,
                 "map": template,
                 "pixres": "mpp",
@@ -184,7 +184,7 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         )
         label = labels.merge(read_cube_label(projected), observation.label)
         down, across, polar = projection.grid_axes(label)
-        held = geometry.overlap(Samples(down, across, True, polar), frame)
+        held = cut.overlap(Samples(down, across, True, polar), frame)
         if held is None:
             return None
         pixels = windowed(image, held.bounds)
