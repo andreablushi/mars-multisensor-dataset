@@ -5,9 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from analysis.models.instrument import InstrumentSet
-from common.paths import CONFIGS_ROOT, DATA_ROOT
-
-CONFIG_PATH = CONFIGS_ROOT / "analysis.yaml"
+from common.paths import DATA_ROOT
 
 ANALYSIS_ROOT = DATA_ROOT / "analysis"
 METADATA_ROOT = ANALYSIS_ROOT / "metadata"
@@ -17,64 +15,32 @@ STATS_ROOT = ANALYSIS_ROOT / "stats"
 EVALUATION_STATS_ROOT = STATS_ROOT / "evaluation"
 SELECTION_ROOT = ANALYSIS_ROOT / "selection"
 LABELS_ROOT = ANALYSIS_ROOT / "labels"
+
 FEATURES_PATH = LABELS_ROOT / "features.jsonl"
+VERDICTS_PATH = ANALYSIS_ROOT / "verdicts.json"
+COVERAGE_SUMMARY_PATH = COVERAGE_ROOT / "summary.parquet"
+DISTORTIONS_PATH = METADATA_ROOT / "summary.parquet"
+SELECTED_TILES_PATH = SELECTION_ROOT / "tiles.parquet"
+SELECTED_OBSERVATIONS_PATH = SELECTION_ROOT / "observations.parquet"
 
 STATS_NAME = "stats.json"
-SELECTED_TILES_NAME = "tiles.parquet"
-SELECTED_OBSERVATIONS_NAME = "observations.parquet"
-SUMMARY_NAME = "summary.parquet"
 LABELS_NAME = "labels.parquet"
 EVENTS_SUFFIX = ".events.parquet"
 SET_SUMMARY_SUFFIX = ".summary.parquet"
 
 
-def metadata_file(root: Path, group: str, instrument_set: InstrumentSet) -> Path:
-    """Return the JSONL path for one group and instrument set.
-
-    Args:
-        root: The metadata root directory.
-        group: The name of the group being stored.
-        instrument_set: The instrument set being stored.
-
-    Returns:
-        path: The path to the JSONL output file.
-    """
-    return root / group / f"{instrument_set.slug}.jsonl"
+def metadata_path(group: str, instrument_set: InstrumentSet) -> Path:
+    """Return the JSONL one group's download of one instrument set is stored in."""
+    return METADATA_ROOT / group / f"{instrument_set.slug}.jsonl"
 
 
-def events_path(root: Path, source: Path) -> Path:
-    """Return the per-observation events file for one instrument set.
-
-    Args:
-        root: The per-group coverage root directory.
-        source: The instrument set's metadata JSONL file.
-
-    Returns:
-        path: The path to the events parquet file.
-    """
-    return root / source.parent.name / f"{source.stem}{EVENTS_SUFFIX}"
+def metadata_files() -> list[Path]:
+    """Return every non-empty metadata file, one per group and set, sorted."""
+    return sorted(
+        path for path in METADATA_ROOT.glob("*/*.jsonl") if path.stat().st_size
+    )
 
 
-def set_summary_path(root: Path, source: Path) -> Path:
-    """Return the summary file for one instrument set.
-
-    Args:
-        root: The per-group coverage root directory.
-        source: The instrument set's metadata JSONL file.
-
-    Returns:
-        path: The path to the summary parquet file.
-    """
-    return root / source.parent.name / f"{source.stem}{SET_SUMMARY_SUFFIX}"
-
-
-def catalog_summary_path(root: Path = COVERAGE_ROOT) -> Path:
-    """Return the file holding every tile's summary rows together.
-
-    Args:
-        root: The coverage root directory.
-
-    Returns:
-        path: The path to the grid-wide summary parquet file.
-    """
-    return root / SUMMARY_NAME
+def coverage_path(source: Path, suffix: str) -> Path:
+    """Return the coverage file one metadata file is measured into, by its suffix."""
+    return GROUPS_ROOT / source.parent.name / f"{source.stem}{suffix}"

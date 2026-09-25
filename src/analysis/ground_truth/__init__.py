@@ -1,1 +1,1 @@
-"""Labelling the kept tiles by geology, and drawing the set held out of training."""
+"""The evaluation labels: each kept tile's geology, and the set held out of training."""

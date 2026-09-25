@@ -40,11 +40,7 @@ class TileMetadata:
 
     @property
     def identity(self) -> str:
-        """Return what tells this tile from every other.
-
-        Returns:
-            identity: Its name.
-        """
+        """Return the tile's name, which tells it from every other."""
         return self.frame.name
 
 

@@ -5,7 +5,9 @@ from __future__ import annotations
 import numpy as np
 
 
-def calibrate(cube: np.ndarray, table: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def calibrated_cube(
+    cube: np.ndarray, table: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     """Order one cube by wavelength and fill what was never calibrated.
 
     Args:
@@ -24,8 +26,8 @@ def calibrate(cube: np.ndarray, table: np.ndarray) -> tuple[np.ndarray, np.ndarr
             f"A cube of {cube.shape[1]} columns by {cube.shape[2]} bands cannot "
             f"be read with a table of {table.shape[0]} by {table.shape[1]}."
         )
-    # What every column and band of this detector is centred on.
-    centre = centres(table)
+    # What every band of this detector is centred on, averaged over its columns.
+    centre = band_centres(table)
     # Read the direction off the file instead of assuming one.
     named = np.flatnonzero(~np.isnan(centre))
     if not named.size:
@@ -42,7 +44,7 @@ def calibrate(cube: np.ndarray, table: np.ndarray) -> tuple[np.ndarray, np.ndarr
     return ordered, table
 
 
-def centres(table: np.ndarray) -> np.ndarray:
+def band_centres(table: np.ndarray) -> np.ndarray:
     """Return the centre wavelength of every band, averaged over its columns.
 
     Args:
@@ -57,20 +59,3 @@ def centres(table: np.ndarray) -> np.ndarray:
     out = np.full(table.shape[1], np.nan)
     out[named] = np.nanmean(table[:, named], axis=0)
     return out
-
-
-def window(centre: np.ndarray, width: float) -> int:
-    """Return how many bands a window of a given width covers.
-
-    Args:
-        centre: The centre wavelength of every kept band, in order.
-        width: How far the window should reach, in nm.
-
-    Returns:
-        width: An odd band count whose span fits inside the width, never below three.
-    """
-    if centre.size < 2:
-        return 3
-    step = np.abs(np.diff(centre)).mean()
-    size = int(width // step) + 1
-    return max(size - 1 + size % 2, 3)

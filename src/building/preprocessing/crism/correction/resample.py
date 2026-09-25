@@ -23,7 +23,8 @@ def measured_bands(mask: Mask, table: np.ndarray, grid: np.ndarray) -> np.ndarra
     borders = np.concatenate(
         ([grid[0] - steps[0] / 2], grid[:-1] + steps / 2, [grid[-1] + steps[-1] / 2])
     )
-    return np.histogram(bands_calibration.centres(table)[~mask.bands], borders)[0] > 0
+    kept = bands_calibration.band_centres(table)[~mask.bands]
+    return np.histogram(kept, borders)[0] > 0
 
 
 def resample_bands(

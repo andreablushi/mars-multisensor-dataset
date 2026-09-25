@@ -1,14 +1,9 @@
-"""The stretch of time the search picked, and the search it came out of."""
+"""The stretch of time the search picked for one tile."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
-
-from analysis.coverage.models.coverage import SetCoverage
-from analysis.selector.models import track as timeline
-from analysis.selector.models.filter import Filter
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,68 +11,18 @@ class Survey:
     """The stretch of time one tile is best studied over.
 
     Attributes:
-        area_km2: How much ground the tile covers.
         start: When the earliest observation inside it was taken.
         end: When the latest one was taken.
         days: How long it lasts.
         geo_mean: The insisted shares rooted together, as a share of the tile.
-        kept: The observations it holds, as their places on the timeline, oldest first.
-        standing: The timeless observations kept whenever they came, oldest first.
+        taken: Every observation the tile keeps, as its place on the timeline,
+            oldest first.
+        standing: The timeless observations among them, kept whenever they came.
     """
 
-    area_km2: float
     start: datetime
     end: datetime
     days: float
     geo_mean: float
-    kept: tuple[int, ...]
-    standing: tuple[int, ...]
-
-    @property
-    def taken(self) -> tuple[int, ...]:
-        """Name every observation the tile keeps, in time order.
-
-        Returns:
-            taken: The window's observations and the timeless ones, oldest first.
-        """
-        return tuple(sorted(self.kept + self.standing))
-
-
-@dataclass(frozen=True, slots=True)
-class Study:
-    """What the search found over one tile.
-
-    Attributes:
-        tile: The tile's name, such as "b123_c0456".
-        criteria: What the tile was asked for.
-        track: Its admissible observations on one time axis, or None.
-        survey: The window it earned, or None where it earned none.
-    """
-
-    tile: str
-    criteria: Filter
-    track: timeline.Track | None
-    survey: Survey | None
-
-    @classmethod
-    def over(cls, coverage: Sequence[SetCoverage], criteria: Filter) -> Study:
-        """Search one tile under the filter.
-
-        Args:
-            coverage: The tile's instrument sets, in any order.
-            criteria: Which instruments a window has to hold, and how much ground each.
-
-        Returns:
-            study: What the search found, its timeline and the window it earned.
-        """
-        # Imported here, since the algorithm hands back the survey defined above
-        from analysis.selector import algorithm
-
-        summary = coverage[0].summary
-        settled, track = timeline.over(coverage, criteria)
-        return cls(
-            tile=summary.tile,
-            criteria=settled,
-            track=track,
-            survey=algorithm.search(track, settled) if track else None,
-        )
+    taken: tuple[int, ...]
+    standing: frozenset[int]

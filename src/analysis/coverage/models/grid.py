@@ -29,11 +29,7 @@ class Grid:
 
     @cached_property
     def cell_area_m2(self) -> float:
-        """Return how much ground one cell of the grid covers.
-
-        Returns:
-            area: The area of one cell in square metres.
-        """
+        """Return how much ground one cell of the grid covers, in square metres."""
         return (self.east - self.west) * (self.north - self.south) / self.side**2
 
     @cached_property

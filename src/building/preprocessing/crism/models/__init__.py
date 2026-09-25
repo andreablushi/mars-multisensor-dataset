@@ -1,1 +1,1 @@
-"""What a loaded observation carries, and what each cleaning step leaves."""
+"""What one CRISM observation is off disk and cleaned, and what a tile keeps of it."""

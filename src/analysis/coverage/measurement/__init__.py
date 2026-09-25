@@ -1,1 +1,1 @@
-"""Measuring ground: what one instrument set covers of one tile."""
+"""The measurement of what one instrument set covers of one tile."""

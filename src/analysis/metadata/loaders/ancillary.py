@@ -1,4 +1,4 @@
-"""Loading the signal phase distortion one ancillary table holds over each tile."""
+"""The signal phase distortion one ancillary table holds over each tile."""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ import numpy as np
 
 from analysis.models.ancillary import Ancillary, Distortion
 from analysis.models.tile_group import TileGroup
-from building.common.pds import tables
 from common.maths.tessellate import Tessellate
+from common.pds import tables
 
 
 def load_distortions(
@@ -48,12 +48,12 @@ def load_distortions(
     night = (read[ancillary.solar_zenith] > ancillary.night_above)[order]
     overall = np.minimum.reduceat(distortion, starts).tolist()
     nightly = np.minimum.reduceat(np.where(night, distortion, np.inf), starts)
-    dark = [None if math.isinf(one) else one for one in nightly.tolist()]
+    dark = [None if math.isinf(value) else value for value in nightly.tolist()]
     least = dict(zip(tiles.tolist(), zip(dark, overall)))
     distortions: list[Distortion] = []
     for name, group in groups.items():
         for tile in group.tiles:
-            held = least.get(int(grid.flat_tile_indices(tile.band, tile.column)))
-            if held is not None:
-                distortions.append(Distortion(name, tile.name, pdsid, *held))
+            pair = least.get(int(grid.flat_tile_indices(tile.band, tile.column)))
+            if pair is not None:
+                distortions.append(Distortion(name, tile.name, pdsid, *pair))
     return distortions

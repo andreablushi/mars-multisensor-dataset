@@ -1,1 +1,1 @@
-"""The statistics read off what the pipeline published, one tile and all of them."""
+"""The statistics of one tile and of the whole dataset, read off the artifacts."""

@@ -6,9 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from building.preprocessing.common.models.relative_position import (
-    RelativePosition,
-)
+from building.preprocessing.common.models.position import Position
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -16,7 +14,6 @@ class Sample:
     """One observation cut to its tile, in the shape its instrument publishes.
 
     Attributes:
-        identifier: What the instrument was asked for, its observation or sheet.
         position: Where the remaining samples sit, in degrees or projected metres.
         label: What every product of the observation says about it, merged.
         inside: Which of them truly falls in the tile's box, or None for all.
@@ -29,8 +26,7 @@ class Sample:
         spacecraft_altitude_km: The spacecraft's height per sample, or None.
     """
 
-    identifier: str
-    position: RelativePosition
+    position: Position
     label: dict[str, str]
     inside: np.ndarray | None = None
     valid: np.ndarray | None = None
@@ -48,7 +44,7 @@ class Sample:
         Returns:
             measured_ground: One flag per sample over the ground axes, both masks.
         """
-        held = np.ones(self.position.ground_sizes, dtype=bool)
+        held = np.ones(self.position.sizes, dtype=bool)
         for mask in (self.inside, self.valid):
             if mask is not None:
                 held = held & mask

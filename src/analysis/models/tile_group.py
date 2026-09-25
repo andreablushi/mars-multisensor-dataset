@@ -29,9 +29,5 @@ class TileGroup:
 
     @property
     def circles_a_pole(self) -> bool:
-        """Return whether the group runs through every longitude.
-
-        Returns:
-            circles: True when the west and east longitudes are the same.
-        """
+        """Return whether the group runs through every longitude."""
         return self.west_lon == self.east_lon

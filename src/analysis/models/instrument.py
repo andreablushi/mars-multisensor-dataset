@@ -1,4 +1,4 @@
-"""Instrument set model."""
+"""The ODE instrument set a download is asked for."""
 
 from __future__ import annotations
 
@@ -61,9 +61,5 @@ class InstrumentSet:
 
     @property
     def slug(self) -> str:
-        """Return a filesystem safe name for this instrument set.
-
-        Returns:
-            slug: The canonical identifier as a slug.
-        """
+        """Return the canonical identifier as a filesystem safe name."""
         return slugify(self.key)

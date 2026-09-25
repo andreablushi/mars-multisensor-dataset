@@ -1,29 +1,23 @@
-"""The sheets one tile stands on, laid onto the single equatorial grid they share."""
+"""One MOLA grid as it comes off disk, its sheets found but none of their bins read."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
-import numpy as np
+from building.configs.mola import Grid
 
 
 @dataclass(frozen=True, slots=True)
 class MolaObservation:
-    """The height over one box, on the sheets' own grid of latitude and longitude.
+    """One grid, before any of its bins are read.
 
     Attributes:
-        label: What the products it was read from say about it, merged.
-        identifier: The grid it was read from, which its crops are stored under.
-        topography: The height above the areoid in metres, lines by samples.
-        down: The latitude of every line in degrees, falling southward.
-        across: The longitude of every sample, rising eastward past a turn.
+        identifier: The grid as `configs.GRIDS` names it.
+        grid: How fine it is, and whether it is projected onto a pole.
+        files: The image and label of every product that landed, by sheet.
     """
 
     identifier: str
-    label: dict[str, str]
-    topography: np.ndarray
-    down: np.ndarray
-    across: np.ndarray
-
-    # Either projection is regular on both axes, so one axis places each side.
-    separable = True
+    grid: Grid
+    files: dict[str, Path]

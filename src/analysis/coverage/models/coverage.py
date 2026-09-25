@@ -20,11 +20,8 @@ class Event:
         pt: The product type.
         pdsid: The PDS product identifier.
         t_start: When the observation started.
-        t_stop: When the observation finished, or None when none was published.
         own_km2: Ground this footprint covers inside the tile.
-        new_km2: Ground its instrument set had not covered before.
-        cum_km2: Ground its instrument set has covered including this one.
-        cum_frac: The same as a share of the tile.
+        cum_frac: The share of the tile its instrument set has covered so far.
         width_km: The swath width used, or None when the footprint had area.
         pixels: How many of the instrument's pixels landed inside the tile.
         mask: The tile's cells this footprint fills, packed as a bitmap or a list.
@@ -36,10 +33,7 @@ class Event:
     pt: str
     pdsid: str
     t_start: datetime
-    t_stop: datetime | None
     own_km2: float
-    new_km2: float
-    cum_km2: float
     cum_frac: float
     width_km: float | None
     pixels: float
@@ -53,38 +47,22 @@ class SetCoverage:
     Attributes:
         events: The set's observations in chronological order.
         summary: The single row describing the set as a whole.
-        pending: Whether the set has records downloaded but never measured.
     """
 
     events: list[Event]
     summary: Summary
-    pending: bool = False
 
     @property
     def label(self) -> str:
-        """Return the short readable name for the instrument set.
-
-        Returns:
-            label: The instrument and product type, such as "CTX EDR", with any pattern.
-        """
+        """Return the set's instrument and product type, such as "CTX EDR"."""
         return InstrumentSet.from_key(self.summary.set_key).label
 
     @property
     def observed(self) -> bool:
-        """Report whether the set holds any observation of this tile.
-
-        Returns:
-            observed: True when the set has at least one observation.
-        """
+        """Report whether the set holds any observation of this tile."""
         return bool(self.events)
 
     @property
     def reason(self) -> str:
-        """Return why the set holds nothing to draw.
-
-        Returns:
-            reason: What is missing, or an empty string when the set was observed.
-        """
-        if self.observed:
-            return ""
-        return "downloaded, not yet measured" if self.pending else "no observations"
+        """Return why the set holds nothing to draw, or nothing when it was observed."""
+        return "" if self.observed else "no observations"

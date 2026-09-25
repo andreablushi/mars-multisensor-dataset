@@ -1,1 +1,1 @@
-"""What one track is, once its geometry has placed the traces it keeps."""
+"""What one SHARAD track is off disk, and what a tile keeps of it."""

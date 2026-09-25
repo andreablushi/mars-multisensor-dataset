@@ -4,15 +4,19 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from enum import StrEnum
 
 from building import paths
-from building.common.layout import GROUND, Layout
+from building.common.layout import Axis, Layout
 from building.common.naming import Naming
 from building.common.product_cache import ProductCache
 
-# The one plane of a sheet that is read, the height of its ground.
-TOPOGRAPHY = "topography"
-KINDS = (TOPOGRAPHY,)
+
+class Kind(StrEnum):
+    """The one plane of a sheet that is read, the height of its ground."""
+
+    TOPOGRAPHY = "topography"
+
 
 # How a plane is spelled, named for its corner and step. Its kind drops polar sheets.
 NAMING = Naming(
@@ -22,21 +26,21 @@ NAMING = Naming(
     identity="{sheet}",
     marks=("marker",),
     template="meg{marker}{sheet}",
-    fields={TOPOGRAPHY: {"marker": "t"}},
+    fields={Kind.TOPOGRAPHY: {"marker": "t"}},
 )
 
 # What the arrays of one sheet hold, and which of them is stored for.
 LAYOUT = Layout(
     instrument="MOLA",
     dims=("line", "sample"),
-    axes=(GROUND, GROUND),
+    axes=(Axis.GROUND, Axis.GROUND),
     measurement="elevation",
     beside={"delay": ("line", "sample"), "delay_inside": ("line", "sample")},
     stored="int16",
 )
 
 # Where a sheet is kept, in the one directory of the sheet.
-CACHE = ProductCache(paths.MOLA_ROOT, {None: (".lbl", ".img")})
+CACHE = ProductCache(paths.MOLA_ROOT, NAMING, {None: (".lbl", ".img")})
 
 # How fine a grid each resolution letter stands for, in pixels per degree.
 RESOLUTIONS = {"c": 4, "e": 16, "f": 32, "g": 64, "h": 128}
@@ -53,16 +57,17 @@ class Grid:
     """One grid of the gridded record, and what it is published as.
 
     Attributes:
-        name: The grid's name, which every crop merged from it is stored under.
         resolution: How many bins of it one degree holds.
-        product: The single product it is published as, or None for sheets.
-        north: Whether it is centred on the north pole, or None for equatorial.
+        product: The single product a polar cap is published as, or None for sheets.
     """
 
-    name: str
     resolution: int
     product: str | None = None
-    north: bool | None = None
+
+    @property
+    def polar(self) -> bool:
+        """Return whether it is projected onto a pole rather than split into sheets."""
+        return self.product is not None
 
 
 # The grid a tile is merged from, named for the record and how fine it is.
@@ -72,8 +77,21 @@ NORTH_POLAR = "megdr128n"
 SOUTH_POLAR = "megdr128s"
 
 GRIDS = {
-    EQUATORIAL: Grid(EQUATORIAL, 128),
-    COARSE: Grid(COARSE, 64),
-    NORTH_POLAR: Grid(NORTH_POLAR, 128, "megt_n_128_1", north=True),
-    SOUTH_POLAR: Grid(SOUTH_POLAR, 128, "megt_s_128_1", north=False),
+    EQUATORIAL: Grid(128),
+    COARSE: Grid(64),
+    NORTH_POLAR: Grid(128, "megt_n_128_1"),
+    SOUTH_POLAR: Grid(128, "megt_s_128_1"),
 }
+
+
+def sheet_resolution(name: str) -> int | None:
+    """Return how many bins to the degree the sheet one name spells holds.
+
+    Args:
+        name: A sheet or product id, or any other name a directory or file has.
+
+    Returns:
+        resolution: The sheet's bins per degree, or None when the name is no sheet.
+    """
+    parts = NAMING.parts(name)
+    return RESOLUTIONS[parts["step"]] if parts else None

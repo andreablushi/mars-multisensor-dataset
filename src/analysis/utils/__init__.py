@@ -1,1 +1,1 @@
-"""What the survey and the notebooks share: numbers, records, and settings."""
+"""The helpers several analysis packages share: footprint masks and tile groups."""

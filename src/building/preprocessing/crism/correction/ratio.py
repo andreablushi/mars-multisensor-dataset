@@ -12,23 +12,23 @@ from building.preprocessing.crism.models.mask import Mask
 FILL = 0.0
 
 
-def ratio_colmed(pixspec: np.ndarray, mask: Mask) -> Mask:
+def ratio_by_column_median(cube: np.ndarray, mask: Mask) -> Mask:
     """Use the median of a column for ratioing, as crism_ml's ColMed does.
 
     Args:
-        pixspec: The values as lines by samples by bands, divided in place.
+        cube: The values as lines by samples by bands, divided in place.
         mask: What the cleaning refused, kept out of the median.
 
     Returns:
         mask: The same mask, in the units the ratio leaves the cube in.
     """
-    rem = mask.pixels
-    for at in range(pixspec.shape[1]):
-        live = ~rem[:, at]
+    refused = mask.pixels
+    for at in range(cube.shape[1]):
+        live = ~refused[:, at]
         # A column with no measurement has nothing to ratio, and is refused anyway.
         if live.any():
-            column = pixspec[:, at, :]
+            column = cube[:, at, :]
             held = column[live]
             column[live] = held / np.median(held, axis=0)
-    pixspec[rem] = FILL
+    cube[refused] = FILL
     return replace(mask, fill=FILL)

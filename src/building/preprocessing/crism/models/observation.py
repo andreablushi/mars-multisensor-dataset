@@ -24,48 +24,14 @@ class CrismObservation:
 
     Attributes:
         label: What every product it was published as says about it, merged.
-        identifier: The observation id.
         cube: Lines by columns by the survey's band grid, NaN for unmeasured bands.
         geometry: The backplanes on the same grid, as lines by columns by 14.
         valid: Lines by columns, True where the pixel is a measurement.
         measured_bands: One flag per band of that grid this observation measured.
     """
 
-    identifier: str
     label: dict[str, str]
     cube: np.ndarray
     geometry: np.ndarray
     valid: np.ndarray
     measured_bands: np.ndarray
-
-    # A pushbroom swath bends, so every pixel carries its own backplanes' pair.
-    separable = False
-
-    def plane(self, at: int) -> np.ndarray:
-        """Return one backplane of every pixel.
-
-        Args:
-            at: Which backplane, counted from zero as the DDR writes them.
-
-        Returns:
-            plane: Lines by columns, in the unit the DDR's label names it in.
-        """
-        return self.geometry[:, :, at]
-
-    @property
-    def latitude(self) -> np.ndarray:
-        """Return the latitude every pixel was measured at.
-
-        Returns:
-            latitude: Lines by columns, in degrees.
-        """
-        return self.plane(LATITUDE_PLANE)
-
-    @property
-    def longitude(self) -> np.ndarray:
-        """Return the longitude every pixel was measured at.
-
-        Returns:
-            longitude: Lines by columns, in degrees.
-        """
-        return self.plane(LONGITUDE_PLANE)

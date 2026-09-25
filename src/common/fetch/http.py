@@ -23,7 +23,7 @@ BACKOFF_BASE = 0.5
 BACKOFF_MAX = 30.0
 RETRYABLE_STATUS = frozenset({403, 429, 500, 502, 503, 504})
 # Which of those mean the caller is asking too often, and so hold the host back
-CROWDED_STATUS = frozenset({403, 429})
+CROWDED_STATUS = frozenset({403, 429, 503})
 # Fewer tries for a transfer than a query, one running for minutes not seconds
 STREAM_RETRIES = 5
 
@@ -32,10 +32,10 @@ CONNECT_TIMEOUT = 30.0
 CONNECT_ERRORS = (httpx.ConnectError, httpx.ConnectTimeout)
 
 # How long one query may be asked for in all, an attempt count bounding nothing
-QUERY_DEADLINE = 900.0
+QUERY_DEADLINE = 300.0
 
 # How long one transfer may run in all, so a trickling server is given up on
-STREAM_DEADLINE = 10800.0
+STREAM_DEADLINE = 1800.0
 
 TLS_CONTEXT = httpx.create_ssl_context()
 TLS_CONTEXT.verify_flags &= ~ssl.VERIFY_X509_STRICT

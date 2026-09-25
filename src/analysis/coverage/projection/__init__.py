@@ -1,1 +1,1 @@
-"""Putting an instrument set's footprints on the ground of every tile."""
+"""The footprints of an instrument set, projected onto the ground of every tile."""

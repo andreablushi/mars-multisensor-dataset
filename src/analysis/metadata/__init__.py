@@ -1,1 +1,1 @@
-"""Fetching Mars ODE observation metadata, and reading what is already down."""
+"""The ODE observation metadata: its download, its ancillary summary, its readers."""

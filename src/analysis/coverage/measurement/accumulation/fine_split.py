@@ -1,4 +1,4 @@
-"""Splitting a tile into the fine cells its coverage is published on, for detail."""
+"""The fine cells a tile's coverage is published on, and those a shape fills."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from shapely.geometry.base import BaseGeometry
 
 from analysis.coverage.models.grid import Grid
 from analysis.coverage.models.region import TileRegion
+from common.maths import physics
 
 _NONE = np.empty(0, dtype=np.int64)
 
@@ -30,18 +31,13 @@ def grid_over(region: TileRegion, grid_cells: int) -> Grid:
     Returns:
         grid: The grid the tile is measured on.
     """
-    west, south, east, north = region.shape.bounds
-    span_km = math.sqrt((east - west) * (north - south)) / 1000.0
+    span_km = region.span_m / physics.METRES_PER_KM
     return Grid(
-        west=west,
-        south=south,
-        east=east,
-        north=north,
-        side=max(1, math.ceil(span_km / GRID_KM)) * grid_cells,
+        *region.shape.bounds, side=max(1, math.ceil(span_km / GRID_KM)) * grid_cells
     )
 
 
-def filled(grid: Grid, shape: BaseGeometry) -> np.ndarray:
+def filled_cells(grid: Grid, shape: BaseGeometry) -> np.ndarray:
     """Find the cells of the grid whose centre a shape covers.
 
     Args:
@@ -62,8 +58,8 @@ def filled(grid: Grid, shape: BaseGeometry) -> np.ndarray:
         prepare(shape)
         inside = contains_xy(shape, across, down)
         if inside.any():
-            line, crosswise = np.nonzero(inside)
-            return rows[line] * grid.side + columns[crosswise]
+            hit_rows, hit_columns = np.nonzero(inside)
+            return rows[hit_rows] * grid.side + columns[hit_columns]
     # A footprint holding no cell centre is given the one cell it sits in
     if shape.area >= grid.cell_area_m2 * MIN_CELL_SHARE:
         point = shape.representative_point()

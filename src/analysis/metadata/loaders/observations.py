@@ -1,13 +1,13 @@
-"""Loading one instrument set's downloaded observations off disk."""
+"""One instrument set's downloaded observations, read off disk."""
 
 from __future__ import annotations
 
 from itertools import chain
 from pathlib import Path
 
-import analysis.metadata.provenance as provenance
 from analysis.models.observation import Observation, ObservationSet
 from common.disk.files import read_jsonl
+from common.pds.tables import parse_timestamp
 
 
 def load_observations(path: Path) -> ObservationSet:
@@ -21,7 +21,7 @@ def load_observations(path: Path) -> ObservationSet:
     """
     stored = read_jsonl(path)
     first = next(stored)
-    set_key = provenance.set_key_of(first)
+    set_key = first["instrument_set"]
     observations: list[Observation] = []
     discarded = 0
     for item in chain([first], stored):
@@ -32,8 +32,8 @@ def load_observations(path: Path) -> ObservationSet:
             continue
         stop, scale = item.get("UTC_stop_time"), item.get("Map_scale")
         north, south = (
-            None if not held or held.endswith("EMPTY") else held
-            for held in (
+            None if not polar or polar.endswith("EMPTY") else polar
+            for polar in (
                 item.get("Footprint_NP_geometry"),
                 item.get("Footprint_SP_geometry"),
             )
@@ -44,8 +44,8 @@ def load_observations(path: Path) -> ObservationSet:
                 ihid=item["ihid"],
                 iid=item["iid"],
                 pt=item["pt"],
-                start=provenance.as_utc(start),
-                stop=provenance.as_utc(stop) if stop else None,
+                start=parse_timestamp(start),
+                stop=parse_timestamp(stop) if stop else None,
                 wkt=wkt,
                 map_scale_m=float(scale) if scale else None,
                 north_wkt=north,

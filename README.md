@@ -9,7 +9,7 @@ uv sync                                     # environment
 uv run ruff check . && uv run ruff format . # lint, over the whole repo
 ```
 
-CTX is calibrated and projected by [USGS ISIS](https://github.com/DOI-USGS/ISIS3), which a local build needs beside the environment, with `ISISROOT` and `ISISDATA` set. `scripts/dhub/isis.py` holds the version and the data it downloads, and runs the same install on DigitalHub.
+CTX is calibrated and projected by [USGS ISIS](https://github.com/DOI-USGS/ISIS3), which a local build needs beside the environment, with `ISISROOT` and `ISISDATA` set. `src/building/preprocessing/ctx/isis.py` holds the version and the data it downloads, and runs the same install on DigitalHub.
 
 ## Running it
 
