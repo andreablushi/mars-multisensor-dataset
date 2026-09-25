@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import TYPE_CHECKING
 
 import httpx
@@ -11,7 +12,7 @@ from building.configs import ctx as configs
 from building.download import archive
 from building.preprocessing.ctx.isis import run_isis
 from common.disk.files import atomic_path
-from common.fetch import http
+from common.fetch.gate import Gate
 
 if TYPE_CHECKING:
     from common.models.tile import Tile
@@ -22,11 +23,11 @@ ODE = {"ihid": "MRO", "iid": "CTX", "pt": "EDR"}
 # The scan's files and metadata, which carries the geometry it was taken at.
 FIELDS = "fopm"
 
-SPICE_RETRIES = 5
-
-SPICE_BACKOFF = 5.0
+SPICE_DEADLINE = 1800.0
 
 SPICE_REFUSED = "talking to the server"
+
+SPICE = Gate()
 
 
 def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
@@ -70,7 +71,7 @@ def place(observation_id: str) -> None:
         observation_id: The observation to place, its raw scan already fetched.
 
     Raises:
-        RuntimeError: When ISIS fails to import it, or to place it after every retry.
+        RuntimeError: When ISIS fails to import it, or is refused past the deadline.
     """
     cube = configs.CACHE.files(observation_id, observation_id)[configs.CUBE_SUFFIX]
     if cube.exists():
@@ -78,14 +79,20 @@ def place(observation_id: str) -> None:
     raw = cube.with_suffix(configs.IMAGE_SUFFIX)
     staged = cube.with_suffix(f".staged{configs.CUBE_SUFFIX}")
     run_isis("mroctx2isis", {"from": raw, "to": staged})
-    for attempt in range(SPICE_RETRIES + 1):
-        if attempt:
-            http.slept(attempt, SPICE_BACKOFF)
+    # While the server refuses, one lane probes it and the rest wait to be woken
+    give_up_at = time.monotonic() + SPICE_DEADLINE
+    while True:
+        if not SPICE.wait(give_up_at):
+            raise RuntimeError("spiceinit: the SPICE server refused past the deadline")
         try:
             run_isis("spiceinit", {"from": staged, "web": "yes"})
-            break
         except RuntimeError as error:
-            if SPICE_REFUSED not in str(error) or attempt == SPICE_RETRIES:
+            if SPICE_REFUSED not in str(error):
+                SPICE.answered()
                 raise
+            SPICE.refused()
+            continue
+        SPICE.answered()
+        break
     staged.replace(cube)
     raw.unlink()
