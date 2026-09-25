@@ -18,10 +18,14 @@ from building.download import crism as crism_download
 from building.download import ctx as ctx_download
 from building.download import mola as mola_download
 from building.download import sharad as sharad_download
-from building.preprocessing.crism import preprocess as crism
-from building.preprocessing.ctx import preprocess as ctx
-from building.preprocessing.mola import preprocess as mola
-from building.preprocessing.sharad import preprocess as sharad
+from building.preprocessing.crism import crop as crism_crop
+from building.preprocessing.crism import read as crism_read
+from building.preprocessing.ctx import crop as ctx_crop
+from building.preprocessing.ctx import read as ctx_read
+from building.preprocessing.mola import crop as mola_crop
+from building.preprocessing.mola import read as mola_read
+from building.preprocessing.sharad import crop as sharad_crop
+from building.preprocessing.sharad import read as sharad_read
 from common.models.tile import Tile
 
 
@@ -66,8 +70,8 @@ INSTRUMENTS = {
     crism_configs.LAYOUT.instrument: Instrument(
         crism_configs.LAYOUT,
         crism_download.fetch,
-        crism.read_observation,
-        crism.crop,
+        crism_read.read_observation,
+        crism_crop.crop,
         Archive.WUSTL,
         discard=crism_configs.CACHE.discard,
         observation_id=crism_configs.NAMING.parse,
@@ -77,8 +81,8 @@ INSTRUMENTS = {
     ctx_configs.LAYOUT.instrument: Instrument(
         ctx_configs.LAYOUT,
         ctx_download.fetch,
-        ctx.read_observation,
-        ctx.crop,
+        ctx_read.read_observation,
+        ctx_crop.crop,
         Archive.JPL,
         discard=ctx_configs.CACHE.discard,
         place=ctx_download.place,
@@ -89,8 +93,8 @@ INSTRUMENTS = {
     mola_configs.LAYOUT.instrument: Instrument(
         mola_configs.LAYOUT,
         mola_download.fetch,
-        mola.read_observation,
-        mola.crop,
+        mola_read.read_observation,
+        mola_crop.crop,
         Archive.WUSTL,
         identifiers=mola_download.tile_grids,
         # The whole gridded record is 2 GB, so a sheet is held for the run.
@@ -99,8 +103,8 @@ INSTRUMENTS = {
     sharad_configs.LAYOUT.instrument: Instrument(
         sharad_configs.LAYOUT,
         sharad_download.fetch,
-        sharad.read_observation,
-        sharad.crop,
+        sharad_read.read_observation,
+        sharad_crop.crop,
         Archive.WUSTL,
         discard=sharad_configs.CACHE.discard,
         observation_id=sharad_configs.NAMING.parse,

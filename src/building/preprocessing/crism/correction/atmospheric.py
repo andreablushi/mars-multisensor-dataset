@@ -36,4 +36,4 @@ def remove_atmospheric_bands(
     # Only what masking still counted as usable is being taken away.
     caught &= ~mask.bands
     cube[:, :, caught] = mask.fill
-    return replace(mask, bands=mask.bands | caught, atmospheric=caught)
+    return replace(mask, bands=mask.bands | caught)

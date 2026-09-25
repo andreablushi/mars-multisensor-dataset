@@ -69,4 +69,4 @@ def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: Detector) -> Mask:
         raise NoMeasurement(f"No cell of this {detector} cube is a measurement.")
     fill = float(np.mean(cube, where=~refused))
     np.copyto(cube, fill, where=refused)
-    return Mask(columns, bands, edges, int(scattered.sum()), pixels, fill)
+    return Mask(columns, bands, pixels, fill)

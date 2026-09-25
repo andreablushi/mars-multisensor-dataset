@@ -1,18 +1,11 @@
-"""Placing one MOLA grid on its own projection, and cutting a polar one to a tile."""
+"""Placing one MOLA grid on its own projection."""
 
 from __future__ import annotations
 
 import numpy as np
 
-from building.preprocessing.common import cut
 from building.preprocessing.common.models.relative_position import PolarGrid
-from building.preprocessing.common.models.samples import Samples
-from building.preprocessing.mola import delay
-from building.preprocessing.mola.models.grid import MolaGrid
-from building.preprocessing.mola.models.sample import MolaSample
 from common.maths import physics
-from common.models.tile import Tile
-from common.pds import images, labels
 
 # The two projections the gridded record is written in.
 EQUATORIAL = "SIMPLE CYLINDRICAL"
@@ -64,44 +57,4 @@ def grid_axes(
         north - np.arange(lines) * step,
         west + np.arange(samples) * step,
         None,
-    )
-
-
-def crop_polar(grid: MolaGrid, frame: Tile) -> MolaSample | None:
-    """Return the bins of one polar grid its tile's box keeps.
-
-    Args:
-        grid: The polar grid that landed, holding the one product it is published as.
-        frame: The local frame of the tile it is read for.
-
-    Returns:
-        sample: The height over that tile, or None where the grid reaches none of it.
-
-    Raises:
-        FileNotFoundError: When the grid or its label is missing.
-        KeyError: When the label names a sample type this cannot read.
-        ValueError: When it names a projection this cannot read.
-    """
-    (image,) = grid.files.values()
-    label = labels.load(image.with_suffix(".lbl"))
-    down, across, polar = grid_axes(label)
-    held = cut.overlap(Samples(down, across, True, polar), frame)
-    if held is None:
-        return None
-    lines, samples = held.bounds
-    height = images.load_window(
-        image,
-        label,
-        (int(lines[0]), int(lines[-1]) + 1),
-        (int(samples[0]), int(samples[-1]) + 1),
-    )
-    rows, inside = delay.radargram_rows(height)
-    return MolaSample(
-        identifier=grid.name,
-        position=held.position,
-        label=labels.merge(label),
-        inside=held.inside,
-        elevation=height,
-        delay=rows,
-        delay_inside=inside,
     )

@@ -1,1 +1,1 @@
-"""What one sheet is, once its planes have been read onto the grid they share."""
+"""What one grid is once it has landed, and what a tile keeps of it."""

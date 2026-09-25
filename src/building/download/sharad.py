@@ -7,7 +7,7 @@ import numpy as np
 
 from building.configs import sharad as configs
 from building.download import archive
-from building.preprocessing.sharad.preprocess import kept_columns
+from building.preprocessing.sharad.crop import kept_columns
 from common.models.tile import Tile
 from common.pds import labels, tables
 

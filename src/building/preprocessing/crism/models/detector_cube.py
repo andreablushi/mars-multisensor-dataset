@@ -18,10 +18,10 @@ class DetectorCube:
         name: Which detector, `l` for infrared or `s` for visible.
         cube: The values as lines by samples by bands, bands ascending.
         wavelengths: The centre wavelength in nm per column and band.
-        mask: Where the cube was filled once cleaned, or None before.
+        mask: Where the cleaning filled the cube rather than kept a measurement.
     """
 
     name: Detector
     cube: np.ndarray
     wavelengths: np.ndarray
-    mask: Mask | None = None
+    mask: Mask

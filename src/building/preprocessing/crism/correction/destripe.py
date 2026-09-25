@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
-
 import numpy as np
 
 from building.configs.crism import Detector
@@ -19,7 +17,7 @@ STRIPE_SIGMA = {Detector.INFRARED: 5.0, Detector.VISIBLE: 3.0}
 
 def remove_spike_columns(
     cube: np.ndarray, mask: Mask, table: np.ndarray, detector: Detector
-) -> Mask:
+) -> None:
     """Replace every band of a column that spikes away from its neighbours.
 
     Args:
@@ -27,9 +25,6 @@ def remove_spike_columns(
         mask: What that masking refused.
         table: The centre wavelength of every column and band.
         detector: Which detector, `l` or `s`, which picks the threshold.
-
-    Returns:
-        mask: The mask with each levelled column and band recorded.
 
     Raises:
         ValueError: When the threshold is beyond what a column's bands can reach.
@@ -69,10 +64,6 @@ def remove_spike_columns(
         cube[:, live_columns[at_column], live_bands[at_band]] = smoothed[
             :, np.searchsorted(live, at_column), at_band
         ]
-
-    everywhere = np.zeros(cube.shape[1:], dtype=bool)
-    everywhere[np.ix_(columns, bands)] = caught
-    return replace(mask, stripes=everywhere)
 
 
 def medfilt1(array: np.ndarray, size: int, out: np.ndarray | None = None) -> np.ndarray:

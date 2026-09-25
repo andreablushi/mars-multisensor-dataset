@@ -1,1 +1,1 @@
-"""What a loaded observation carries, and what each cleaning step leaves."""
+"""What a read observation carries, what cleaning leaves, and what a tile keeps."""

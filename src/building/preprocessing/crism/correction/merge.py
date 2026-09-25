@@ -26,15 +26,8 @@ def merge_detectors(
 
     Returns:
         observation: The joined observation on the survey's whole band grid.
-
-    Raises:
-        ValueError: When no half was delivered, or one has not been cleaned.
     """
     halves = tuple(name for name in configs.Detector if name in detectors)
-    if not halves:
-        raise ValueError(f"{identifier} was delivered as no detector.")
-    if any(detectors[name].mask is None for name in halves):
-        raise ValueError(f"{identifier} has not been cleaned.")
 
     # Every half is read out from the first frame, so the shortest ends the strip.
     lines = min(geometry.shape[0], *(detectors[name].cube.shape[0] for name in halves))

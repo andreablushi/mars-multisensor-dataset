@@ -6,6 +6,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
+# The field the geometry names each radargram column in, counted from one.
+COLUMN_FIELD = "RADARGRAM COLUMN"
+
 # Which geometry field places a trace.
 LATITUDE_FIELD = "LATITUDE"
 LONGITUDE_FIELD = "LONGITUDE"

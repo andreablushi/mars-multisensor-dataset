@@ -7,7 +7,6 @@ import math
 import numpy as np
 
 from building.preprocessing.mola import projection
-from building.preprocessing.mola.models.grid import MolaGrid
 from building.preprocessing.mola.models.observation import MolaObservation
 from common.maths import geodesy
 from common.maths.geodesy import TURN
@@ -15,7 +14,9 @@ from common.models.tile import Tile
 from common.pds import images, labels
 
 
-def merge_sheets(grid: MolaGrid, frame: Tile) -> MolaObservation:
+def merge_sheets(
+    grid: MolaObservation, frame: Tile
+) -> tuple[dict[str, str], np.ndarray, np.ndarray, np.ndarray]:
     """Return the one grid every sheet a tile stands on writes its part of.
 
     Args:
@@ -23,7 +24,10 @@ def merge_sheets(grid: MolaGrid, frame: Tile) -> MolaObservation:
         frame: The local frame of the tile the sheets are merged for.
 
     Returns:
-        observation: The observation holding only that tile's box.
+        label: What the sheets it was read from say about it, merged.
+        height: The height above the areoid in metres over the box, lines by samples.
+        down: The latitude of every line in degrees, falling southward.
+        across: The longitude of every sample, rising eastward past a turn.
 
     Raises:
         FileNotFoundError: When a sheet's label is missing.
@@ -76,8 +80,7 @@ def merge_sheets(grid: MolaGrid, frame: Tile) -> MolaObservation:
             written[at] = True
     if height is None or not written.all():
         raise ValueError(f"{frame.name} reaches ground no sheet of {grid.name} holds.")
-    return MolaObservation(
-        grid.name,
+    return (
         labels.merge(*read),
         height,
         90.0 - (np.arange(down.start, down.stop) + 0.5) / resolution,
