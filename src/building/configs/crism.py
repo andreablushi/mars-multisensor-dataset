@@ -3,18 +3,24 @@
 from __future__ import annotations
 
 import re
+from enum import StrEnum
 
 from building import paths
-from building.common.layout import GROUND, WAVELENGTH, Layout
+from building.common.layout import Axis, Layout
 from building.common.naming import Naming
 from building.common.product_cache import ProductCache
 
-# The two detectors of one scan, infrared and visible.
-DETECTORS = ("l", "s")
+
+class Detector(StrEnum):
+    """The two detectors of one scan, in the order a lone half places itself."""
+
+    INFRARED = "l"
+    VISIBLE = "s"
+
 
 # fmt: off
 DETECTOR_BANDS_NM = {
-    "l": (
+    Detector.INFRARED: (
         1023.588, 1049.797, 1082.565, 1154.685, 1213.722, 1253.094, 1259.658,
         1266.221, 1279.350, 1331.876, 1371.284, 1377.853, 1384.423, 1390.993,
         1397.563, 1404.134, 1410.704, 1417.276, 1423.847, 1430.419, 1436.991,
@@ -36,7 +42,7 @@ DETECTOR_BANDS_NM = {
         2519.227, 2525.825, 2532.423, 2539.022, 2545.622, 2552.221, 2558.821,
         2585.225, 2605.032, 2624.842, 2631.447, 2644.656,
     ),
-    "s": (
+    Detector.VISIBLE: (
         402.231, 408.715, 415.200, 421.684, 428.170, 434.656, 441.142,
         447.629, 454.116, 460.604, 467.092, 473.581, 480.070, 486.559,
         493.049, 499.540, 506.031, 512.523, 519.014, 525.507, 532.000,
@@ -59,10 +65,6 @@ DETECTOR_BANDS_NM = {
 # The one band axis every observation is laid out on, both detectors in order.
 BANDS_NM = tuple(sorted(band for grid in DETECTOR_BANDS_NM.values() for band in grid))
 
-# Two detectors sharing a centre would share a slot, and one would overwrite the other.
-if len(set(BANDS_NM)) != len(BANDS_NM):
-    raise ValueError("Two detectors declare the same band centre.")
-
 # Where each detector's bands sit along that axis.
 _SLOT = {band: at for at, band in enumerate(BANDS_NM)}
 DETECTOR_SLOTS = {
@@ -70,10 +72,13 @@ DETECTOR_SLOTS = {
     for name, grid in DETECTOR_BANDS_NM.items()
 }
 
-# The two products one detector of a scan is published as.
-OBSERVATION = "observation"
-GEOMETRY = "geometry"
-KINDS = (OBSERVATION, GEOMETRY)
+
+class Kind(StrEnum):
+    """The two products one detector of a scan is published as."""
+
+    OBSERVATION = "observation"
+    GEOMETRY = "geometry"
+
 
 # How ODE spells one detector; radiance and reflectance are the one observation
 NAMING = Naming(
@@ -84,8 +89,8 @@ NAMING = Naming(
     marks=("detector",),
     template="{stem}_{marker}{code}{detector}_{level}",
     fields={
-        OBSERVATION: {"marker": "if"},
-        GEOMETRY: {"marker": "de", "level": "ddr1"},
+        Kind.OBSERVATION: {"marker": "if"},
+        Kind.GEOMETRY: {"marker": "de", "level": "ddr1"},
     },
 )
 
@@ -93,17 +98,13 @@ NAMING = Naming(
 WAVELENGTH_KEY = "MRO:WAVELENGTH_FILE_NAME"
 
 # Where each product is kept, the geometry in a subdirectory beside its own scan.
-CACHE = ProductCache(paths.CRISM_ROOT, {None: (".lbl", ".img")}, {GEOMETRY: "ddr"})
+CACHE = ProductCache(paths.CRISM_ROOT, {None: (".lbl", ".img")}, {Kind.GEOMETRY: "ddr"})
 
 # What the arrays of one observation hold, and which of them is stored for.
 LAYOUT = Layout(
     instrument="CRISM",
     dims=("line", "sample", "band"),
-    axes=(
-        GROUND,
-        GROUND,
-        WAVELENGTH,
-    ),
+    axes=(Axis.GROUND, Axis.GROUND, Axis.WAVELENGTH),
     measurement="cube",
     beside={
         "measured_bands": ("band",),

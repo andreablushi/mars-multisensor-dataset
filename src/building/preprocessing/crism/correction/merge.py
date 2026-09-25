@@ -6,18 +6,13 @@ import numpy as np
 
 from building.configs import crism as configs
 from building.preprocessing.crism.correction import resample
-from building.preprocessing.crism.models.detector import Detector
+from building.preprocessing.crism.models.detector_cube import DetectorCube
 from building.preprocessing.crism.models.observation import CrismObservation
-
-# Which detector carries which half.
-VISIBLE = "s"
-INFRARED = "l"
-HALVES = (VISIBLE, INFRARED)
 
 
 def merge_detectors(
     identifier: str,
-    detectors: dict[str, Detector],
+    detectors: dict[configs.Detector, DetectorCube],
     geometry: np.ndarray,
     label: dict[str, str],
 ) -> CrismObservation:
@@ -35,7 +30,7 @@ def merge_detectors(
     Raises:
         ValueError: When no half was delivered, or one has not been cleaned.
     """
-    halves = tuple(name for name in HALVES if name in detectors)
+    halves = tuple(name for name in configs.Detector if name in detectors)
     if not halves:
         raise ValueError(f"{identifier} was delivered as no detector.")
     if any(detectors[name].mask is None for name in halves):

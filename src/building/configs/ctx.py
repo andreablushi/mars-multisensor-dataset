@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from building import paths
-from building.common.layout import GROUND, Layout
+from building.common.layout import Axis, Layout
 from building.common.naming import Naming
 from building.common.product_cache import ProductCache
 
@@ -59,7 +59,7 @@ NAMING = Naming(
 LAYOUT = Layout(
     instrument="CTX",
     dims=("line", "sample"),
-    axes=(GROUND, GROUND),
+    axes=(Axis.GROUND, Axis.GROUND),
     measurement="image",
 )
 

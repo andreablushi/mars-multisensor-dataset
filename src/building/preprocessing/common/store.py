@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from building import paths
-from building.common.layout import GROUND, Layout
+from building.common.layout import Axis, Layout
 from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.sample import Sample
 from common.disk.files import atomic_path
@@ -88,7 +88,7 @@ def write_sample(
     ground = tuple(
         name
         for name, holds in zip(layout.dims, layout.axes, strict=True)
-        if holds == GROUND
+        if holds == Axis.GROUND
     )
     # A separable position holds one ground axis each, any other a value per sample.
     north, east = held.position.dims_along(ground)

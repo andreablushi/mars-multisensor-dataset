@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import time
-from typing import TYPE_CHECKING
 
 import httpx
 
@@ -13,9 +12,7 @@ from building.download import archive
 from building.preprocessing.ctx.isis import run_isis
 from common.disk.files import atomic_path
 from common.fetch.gate import Gate
-
-if TYPE_CHECKING:
-    from common.models.tile import Tile
+from common.models.tile import Tile
 
 # What ODE publishes CTX under, the raw scan being the only type it carries.
 ODE = {"ihid": "MRO", "iid": "CTX", "pt": "EDR"}

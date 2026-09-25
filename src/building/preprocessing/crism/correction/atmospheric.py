@@ -6,15 +6,16 @@ from dataclasses import replace
 
 import numpy as np
 
+from building.configs.crism import Detector
 from building.preprocessing.crism.correction import bands_calibration
 from building.preprocessing.crism.models.mask import Mask
 
 # Where the atmosphere absorbs, in nm. Only the 2.0 um CO2 band is worth dropping.
-ATMOSPHERIC = {"l": ((1940.0, 2090.0),), "s": ()}
+ATMOSPHERIC = {Detector.INFRARED: ((1940.0, 2090.0),), Detector.VISIBLE: ()}
 
 
 def remove_atmospheric_bands(
-    cube: np.ndarray, mask: Mask, table: np.ndarray, detector: str
+    cube: np.ndarray, mask: Mask, table: np.ndarray, detector: Detector
 ) -> Mask:
     """Drop the bands whose depth the atmosphere sets rather than the ground.
 

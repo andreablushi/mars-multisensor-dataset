@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import httpx
 import numpy as np
 
@@ -11,18 +9,16 @@ from building.common.pds import labels, tables
 from building.configs import sharad as configs
 from building.download import archive
 from building.preprocessing.sharad.preprocess import kept_columns
-
-if TYPE_CHECKING:
-    from common.models.tile import Tile
+from common.models.tile import Tile
 
 # What ODE publishes SHARAD under.
 ODE = {"ihid": "MRO", "iid": "SHARAD"}
 
 # The ODE product types a radargram, its geometry and its clutter are published under.
 TYPES = {
-    configs.OBSERVATION: "USRDRV2",
-    configs.GEOMETRY: "USGEOMV2",
-    configs.CLUTTER: "SHSIMU",
+    configs.Kind.OBSERVATION: "USRDRV2",
+    configs.Kind.GEOMETRY: "USGEOMV2",
+    configs.Kind.CLUTTER: "SHSIMU",
 }
 
 
@@ -65,21 +61,28 @@ def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -
         FetchError: When the archive will not serve the byte ranges asked.
     """
     products = {
-        kind: configs.NAMING.product(observation_id, kind) for kind in configs.KINDS
+        kind: configs.NAMING.product(observation_id, kind) for kind in configs.Kind
     }
     files = {
         kind: configs.CACHE.files(observation_id, products[kind], kind)
-        for kind in configs.KINDS
+        for kind in configs.Kind
     }
     if all(path.exists() for held in files.values() for path in held.values()):
         return
-    placing = files[configs.GEOMETRY]
+    placing = files[configs.Kind.GEOMETRY]
     archive.collect(
-        client, products[configs.GEOMETRY], placing, pt=TYPES[configs.GEOMETRY], **ODE
+        client,
+        products[configs.Kind.GEOMETRY],
+        placing,
+        pt=TYPES[configs.Kind.GEOMETRY],
+        **ODE,
     )
-    radargram = files[configs.OBSERVATION]
+    radargram = files[configs.Kind.OBSERVATION]
     offered = archive.offers(
-        client, products[configs.OBSERVATION], pt=TYPES[configs.OBSERVATION], **ODE
+        client,
+        products[configs.Kind.OBSERVATION],
+        pt=TYPES[configs.Kind.OBSERVATION],
+        **ODE,
     )
     archive.bring({".lbl": radargram[".lbl"]}, offered, client=client)
     lines, samples, _, _, stored = labels.layout(labels.load(radargram[".lbl"]))
@@ -98,9 +101,12 @@ def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -
     size = lines * samples * itemsize
     start = configs.CLUTTER_ARRAY * size
     archive.bring(
-        files[configs.CLUTTER],
+        files[configs.Kind.CLUTTER],
         archive.offers(
-            client, products[configs.CLUTTER], pt=TYPES[configs.CLUTTER], **ODE
+            client,
+            products[configs.Kind.CLUTTER],
+            pt=TYPES[configs.Kind.CLUTTER],
+            **ODE,
         ),
         client=client,
         spans=tuple(

@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import numpy as np
 
+from building.configs.crism import Detector
 from building.preprocessing.crism.correction import bands_calibration
 from building.preprocessing.crism.models.mask import Mask
 
 # The nm window each detector is trusted over, outside which the reading is noise.
-WINDOWS = {"l": (1020.0, 2650.0), "s": (400.0, 1060.0)}
+WINDOWS = {Detector.INFRARED: (1020.0, 2650.0), Detector.VISIBLE: (400.0, 1060.0)}
 
 # The range a brightness can take, its floor below zero so noise there survives.
 BRIGHTNESS = (-0.05, 1.0)
@@ -18,7 +19,7 @@ class NoMeasurement(ValueError):
     """Raised when every cell of one detector's cube is refused."""
 
 
-def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: str) -> Mask:
+def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: Detector) -> Mask:
     """Fill everything one cube holds that is not a measurement.
 
     Args:

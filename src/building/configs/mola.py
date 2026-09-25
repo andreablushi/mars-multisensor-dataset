@@ -4,15 +4,19 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from enum import StrEnum
 
 from building import paths
-from building.common.layout import GROUND, Layout
+from building.common.layout import Axis, Layout
 from building.common.naming import Naming
 from building.common.product_cache import ProductCache
 
-# The one plane of a sheet that is read, the height of its ground.
-TOPOGRAPHY = "topography"
-KINDS = (TOPOGRAPHY,)
+
+class Kind(StrEnum):
+    """The one plane of a sheet that is read, the height of its ground."""
+
+    TOPOGRAPHY = "topography"
+
 
 # How a plane is spelled, named for its corner and step. Its kind drops polar sheets.
 NAMING = Naming(
@@ -22,14 +26,14 @@ NAMING = Naming(
     identity="{sheet}",
     marks=("marker",),
     template="meg{marker}{sheet}",
-    fields={TOPOGRAPHY: {"marker": "t"}},
+    fields={Kind.TOPOGRAPHY: {"marker": "t"}},
 )
 
 # What the arrays of one sheet hold, and which of them is stored for.
 LAYOUT = Layout(
     instrument="MOLA",
     dims=("line", "sample"),
-    axes=(GROUND, GROUND),
+    axes=(Axis.GROUND, Axis.GROUND),
     measurement="elevation",
     beside={"delay": ("line", "sample"), "delay_inside": ("line", "sample")},
     stored="int16",

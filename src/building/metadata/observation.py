@@ -7,7 +7,7 @@ from datetime import datetime
 
 import numpy as np
 
-from building.common.layout import GROUND, WAVELENGTH, Layout
+from building.common.layout import Axis, Layout
 from building.common.pds import times
 from building.metadata.acquisition_info import AcquisitionInfo, acquisition_info
 from building.preprocessing.common import relative_positioning
@@ -98,7 +98,7 @@ def observation_metadata(
     values = getattr(held, layout.measurement)
     # A ground mask reaches every value on it, so it spreads over the instrument's axes.
     ground = tuple(
-        size if holds == GROUND else 1
+        size if holds == Axis.GROUND else 1
         for size, holds in zip(values.shape, layout.axes, strict=True)
     )
     measured_ground = held.measured_ground
@@ -107,7 +107,7 @@ def observation_metadata(
     # A band the observation never measured holds nothing, whatever the ground says.
     if held.measured_bands is not None:
         bands = tuple(
-            size if holds == WAVELENGTH else 1
+            size if holds == Axis.WAVELENGTH else 1
             for size, holds in zip(values.shape, layout.axes, strict=True)
         )
         measured = on_ground & held.measured_bands.reshape(bands)
@@ -130,9 +130,9 @@ def observation_metadata(
         else (None, None, None, None)
     )
     # A band is the one axis a reader normalises against, so it survives the reduction.
-    over = tuple(axis for axis, holds in enumerate(layout.axes) if holds == GROUND)
+    over = tuple(axis for axis, holds in enumerate(layout.axes) if holds == Axis.GROUND)
     band_mean, band_std, band_valid_count = None, None, None
-    if counted and WAVELENGTH in layout.axes:
+    if counted and Axis.WAVELENGTH in layout.axes:
         pooled = measured.sum(axis=over)
         band_mean = tuple(np.mean(values, axis=over, where=on_ground).tolist())
         band_std = tuple(np.std(values, axis=over, where=on_ground).tolist())

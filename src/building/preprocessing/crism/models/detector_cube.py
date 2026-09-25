@@ -6,11 +6,12 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from building.configs.crism import Detector
 from building.preprocessing.crism.models.mask import Mask
 
 
 @dataclass(frozen=True, slots=True)
-class Detector:
+class DetectorCube:
     """One detector's half of an observation, and what its cube holds.
 
     Attributes:
@@ -20,7 +21,7 @@ class Detector:
         mask: Where the cube was filled once cleaned, or None before.
     """
 
-    name: str
+    name: Detector
     cube: np.ndarray
     wavelengths: np.ndarray
     mask: Mask | None = None

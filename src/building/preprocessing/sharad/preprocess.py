@@ -67,14 +67,14 @@ def read_observation(identifier: str) -> SharadObservation:
         kind: configs.CACHE.files(
             identifier, configs.NAMING.product(identifier, kind), kind
         )
-        for kind in configs.KINDS
+        for kind in configs.Kind
     }
     # The echoes themselves, then the places they were sounded at.
-    power, sounding = images.load_plane(held[configs.OBSERVATION][".img"])
-    geometry, placing = tables.load_table(held[configs.GEOMETRY][".tab"])
+    power, sounding = images.load_plane(held[configs.Kind.OBSERVATION][".img"])
+    geometry, placing = tables.load_table(held[configs.Kind.GEOMETRY][".tab"])
     # The geometry counts columns from one, and the radargram from zero.
     traces = geometry[COLUMN_FIELD].astype("i8") - 1
-    simulated = held[configs.CLUTTER][".img"]
+    simulated = held[configs.Kind.CLUTTER][".img"]
     if simulated.stat().st_size != power.size * np.dtype(configs.CLUTTER_TYPE).itemsize:
         raise ValueError(f"{simulated.name} is not one array the radargram's size.")
     return SharadObservation(

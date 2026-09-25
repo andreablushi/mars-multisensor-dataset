@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import httpx
 
 from building.configs import mola as configs
 from building.download import archive
-
-if TYPE_CHECKING:
-    from common.models.tile import Tile
+from common.models.tile import Tile
 
 # What ODE publishes MOLA under.
 ODE = {"ihid": "MGS", "iid": "MOLA"}
@@ -124,12 +121,12 @@ def fetch(grid: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
         [(grid, held.product)]
         if held.product
         else [
-            (sheet, configs.NAMING.product(sheet, configs.TOPOGRAPHY))
+            (sheet, configs.NAMING.product(sheet, configs.Kind.TOPOGRAPHY))
             for sheet in sheets(grid, client)
         ]
     )
     for directory, product in wanted:
-        files = configs.CACHE.files(directory, product, configs.TOPOGRAPHY)
+        files = configs.CACHE.files(directory, product, configs.Kind.TOPOGRAPHY)
         if all(path.exists() for path in files.values()):
             continue
         # One product carries many tiles, so only the first to want it fetches.

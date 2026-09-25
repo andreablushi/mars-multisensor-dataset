@@ -3,22 +3,19 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import httpx
 
 from building.common.pds import labels
 from building.configs import crism as configs
 from building.download import archive
-
-if TYPE_CHECKING:
-    from common.models.tile import Tile
+from common.models.tile import Tile
 
 # What ODE publishes CRISM under.
 ODE = {"ihid": "MRO", "iid": "CRISM"}
 
 # The ODE product types an observation and its geometry are published under.
-TYPES = {configs.OBSERVATION: "TRDR", configs.GEOMETRY: "DDR"}
+TYPES = {configs.Kind.OBSERVATION: "TRDR", configs.Kind.GEOMETRY: "DDR"}
 
 # The ODE product type a wavelength file is published under.
 WAVELENGTH_TYPE = "CDR"
@@ -60,19 +57,19 @@ def fetch(observation_id: str, client: httpx.Client, frames: tuple[Tile, ...]) -
                     **ODE,
                 )
             except FileNotFoundError:
-                if kind != configs.OBSERVATION:
+                if kind != configs.Kind.OBSERVATION:
                     raise
                 return False
         return True
 
     # A small share of the survey was archived as one half alone
-    found = [name for name in configs.DETECTORS if brought(name)]
+    found = [name for name in configs.Detector if brought(name)]
     if not found:
         raise FileNotFoundError(f"ODE publishes no detector of {observation_id}.")
     # Only now do the labels exist to be asked which file calibrated them.
     for detector in found:
         scan = configs.NAMING.product(
-            observation_id, configs.OBSERVATION, detector=detector
+            observation_id, configs.Kind.OBSERVATION, detector=detector
         )
         label = configs.CACHE.files(observation_id, scan)[".lbl"]
         name = Path(labels.load(label)[configs.WAVELENGTH_KEY]).stem

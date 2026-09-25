@@ -20,7 +20,7 @@ from building.preprocessing.crism.correction import (
     merge,
     ratio,
 )
-from building.preprocessing.crism.models.detector import Detector
+from building.preprocessing.crism.models.detector_cube import DetectorCube
 from building.preprocessing.crism.models.observation import (
     ACQUISITION_PLANES,
     CrismObservation,
@@ -34,11 +34,10 @@ UNCALIBRATED = 65535.0
 # What a label says about the calibration software, the same in every product.
 GROUND_SOFTWARE = ("MRO:IKF_", "MRO:RSC_", "MRO:REFZ_", "MRO:FRAM_STAT_")
 
-# Which detector places a merged observation, in order so a lone half places itself
-PLACING_ORDER = ("l", "s")
 
-
-def product_files(identifier: str, detector: str, kind: str) -> dict[str, Path]:
+def product_files(
+    identifier: str, detector: configs.Detector, kind: configs.Kind
+) -> dict[str, Path]:
     """Return where each half of one detector's product of an observation belongs.
 
     Args:
@@ -54,7 +53,7 @@ def product_files(identifier: str, detector: str, kind: str) -> dict[str, Path]:
     )
 
 
-def cached_detectors(identifier: str) -> tuple[str, ...]:
+def cached_detectors(identifier: str) -> tuple[configs.Detector, ...]:
     """Read which detectors of one observation were downloaded whole.
 
     Args:
@@ -68,10 +67,10 @@ def cached_detectors(identifier: str) -> tuple[str, ...]:
     """
     found = tuple(
         name
-        for name in configs.DETECTORS
+        for name in configs.Detector
         if all(
             path.exists()
-            for kind in configs.KINDS
+            for kind in configs.Kind
             for path in product_files(identifier, name, kind).values()
         )
     )
@@ -80,7 +79,7 @@ def cached_detectors(identifier: str) -> tuple[str, ...]:
     return found
 
 
-def placing_detector(identifier: str) -> str:
+def placing_detector(identifier: str) -> configs.Detector:
     """Read which detector's geometry places one observation.
 
     Args:
@@ -92,8 +91,7 @@ def placing_detector(identifier: str) -> str:
     Raises:
         FileNotFoundError: When neither detector landed whole.
     """
-    found = cached_detectors(identifier)
-    return next(name for name in PLACING_ORDER if name in found)
+    return cached_detectors(identifier)[0]
 
 
 def read_wavelengths(record: Path) -> np.ndarray:
@@ -109,7 +107,7 @@ def read_wavelengths(record: Path) -> np.ndarray:
     return np.where(written >= UNCALIBRATED, np.nan, written.astype("f8"))
 
 
-def read_detectors(identifier: str) -> dict[str, Detector]:
+def read_detectors(identifier: str) -> dict[configs.Detector, DetectorCube]:
     """Read every image one observation was downloaded as, keyed by detector.
 
     Args:
@@ -125,14 +123,14 @@ def read_detectors(identifier: str) -> dict[str, Detector]:
     detectors = {}
     for name in cached_detectors(identifier):
         cube, label = images.load_cube(
-            product_files(identifier, name, configs.OBSERVATION)[".img"]
+            product_files(identifier, name, configs.Kind.OBSERVATION)[".img"]
         )
         # The wavelength file this half was calibrated against, and no other.
         wavelength = Path(label[configs.WAVELENGTH_KEY]).stem.lower()
         record = configs.CACHE.files(configs.WAVELENGTH_DIR, wavelength)[".img"]
         # Order the bands by wavelength and mark what was never calibrated.
         cube, table = bands_calibration.calibrate(cube, read_wavelengths(record))
-        detectors[name] = Detector(name, cube, table)
+        detectors[name] = DetectorCube(name, cube, table)
     return detectors
 
 
@@ -149,12 +147,12 @@ def read_label(identifier: str) -> dict[str, str]:
         FileNotFoundError: When neither detector landed, or a label is missing.
     """
     held = [
-        labels.load(product_files(identifier, name, configs.OBSERVATION)[".lbl"])
+        labels.load(product_files(identifier, name, configs.Kind.OBSERVATION)[".lbl"])
         for name in cached_detectors(identifier)
     ]
     placing = placing_detector(identifier)
     held.append(
-        labels.load(product_files(identifier, placing, configs.GEOMETRY)[".lbl"])
+        labels.load(product_files(identifier, placing, configs.Kind.GEOMETRY)[".lbl"])
     )
     merged = labels.merge(*held)
     return {
@@ -179,11 +177,11 @@ def read_geometry(identifier: str) -> np.ndarray:
     """
     placing = placing_detector(identifier)
     return images.load_cube(
-        product_files(identifier, placing, configs.GEOMETRY)[".img"]
+        product_files(identifier, placing, configs.Kind.GEOMETRY)[".img"]
     )[0]
 
 
-def clean_detectors(identifier: str) -> dict[str, Detector]:
+def clean_detectors(identifier: str) -> dict[configs.Detector, DetectorCube]:
     """Read one observation and refuse everything in it that is not measured.
 
     Args:
@@ -197,7 +195,7 @@ def clean_detectors(identifier: str) -> dict[str, Detector]:
         ValueError: When a window keeps no band of a cube, or no detector measured.
     """
 
-    def cleaned(detector: Detector) -> Detector:
+    def cleaned(detector: DetectorCube) -> DetectorCube:
         """Refuse everything one detector holds that is not measured.
 
         Args:

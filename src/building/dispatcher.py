@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from enum import StrEnum
+from typing import Any
 
 import httpx
 
@@ -21,13 +22,15 @@ from building.preprocessing.crism import preprocess as crism
 from building.preprocessing.ctx import preprocess as ctx
 from building.preprocessing.mola import preprocess as mola
 from building.preprocessing.sharad import preprocess as sharad
+from common.models.tile import Tile
 
-if TYPE_CHECKING:
-    from common.models.tile import Tile
 
-JPL = "jpl"
-WUSTL = "wustl"
-SPICE = "spice"
+class Archive(StrEnum):
+    """The lanes downloads wait on: one per archive, and the SPICE server."""
+
+    JPL = "jpl"
+    WUSTL = "wustl"
+    SPICE = "spice"
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,7 +54,7 @@ class Instrument:
     fetch: Callable[[str, httpx.Client, tuple[Tile, ...]], None]
     read_observation: Callable[[str], Any]
     crop: Callable[..., Any]
-    archive: str
+    archive: Archive
     discard: Callable[[str], None] | None = None
     place: Callable[[str], None] | None = None
     observation_id: Callable[[str], str | None] | None = None
@@ -65,7 +68,7 @@ INSTRUMENTS = {
         crism_download.fetch,
         crism.read_observation,
         crism.crop,
-        WUSTL,
+        Archive.WUSTL,
         discard=crism_configs.CACHE.discard,
         observation_id=crism_configs.NAMING.parse,
         # A hyperspectral observation takes 601 MB against 325 MB, so it goes first.
@@ -76,7 +79,7 @@ INSTRUMENTS = {
         ctx_download.fetch,
         ctx.read_observation,
         ctx.crop,
-        JPL,
+        Archive.JPL,
         discard=ctx_configs.CACHE.discard,
         place=ctx_download.place,
         observation_id=ctx_configs.NAMING.parse,
@@ -88,7 +91,7 @@ INSTRUMENTS = {
         mola_download.fetch,
         mola.read_observation,
         mola.crop,
-        WUSTL,
+        Archive.WUSTL,
         identifiers=mola_download.grids,
         # The whole gridded record is 2 GB, so a sheet is held for the run.
         worker_bytes=256 * 1024**2,
@@ -98,7 +101,7 @@ INSTRUMENTS = {
         sharad_download.fetch,
         sharad.read_observation,
         sharad.crop,
-        WUSTL,
+        Archive.WUSTL,
         discard=sharad_configs.CACHE.discard,
         observation_id=sharad_configs.NAMING.parse,
         # A radargram, its geometry and its clutter measured 222 MB at peak.

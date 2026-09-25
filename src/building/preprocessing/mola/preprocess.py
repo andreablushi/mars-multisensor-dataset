@@ -24,7 +24,7 @@ def read_observation(grid: str) -> MolaGrid:
     held = configs.GRIDS[grid]
     files = {}
     if held.product:
-        image = configs.CACHE.files(grid, held.product, configs.TOPOGRAPHY)[".img"]
+        image = configs.CACHE.files(grid, held.product, configs.Kind.TOPOGRAPHY)[".img"]
         if image.exists():
             files[held.product] = image
     else:
@@ -34,8 +34,8 @@ def read_observation(grid: str) -> MolaGrid:
                 continue
             image = configs.CACHE.files(
                 directory.name,
-                configs.NAMING.product(directory.name, configs.TOPOGRAPHY),
-                configs.TOPOGRAPHY,
+                configs.NAMING.product(directory.name, configs.Kind.TOPOGRAPHY),
+                configs.Kind.TOPOGRAPHY,
             )[".img"]
             if image.exists():
                 files[directory.name] = image

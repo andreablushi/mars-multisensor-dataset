@@ -13,16 +13,9 @@ from pathlib import Path
 
 import httpx
 
-from building.dispatcher import INSTRUMENTS, SPICE
+from building.dispatcher import INSTRUMENTS, Archive
 from building.models.job import Job, Outcome
-from building.models.progress import (
-    BUILDING,
-    FETCHING,
-    PLACING,
-    QUEUED,
-    WAITING,
-    Progress,
-)
+from building.models.progress import Progress, Stage
 from building.models.settings import Settings
 
 
@@ -93,16 +86,15 @@ class Scheduler:
         instrument = INSTRUMENTS[job.instrument]
         # The place is taken before the download, so the room is never given elsewhere.
         self._places[instrument.archive].acquire()
-        ticket = self._progress.entered(job.label, QUEUED)
+        ticket = self._progress.entered(job.label, Stage.FETCHING)
         try:
-            self._progress.moved(ticket, FETCHING)
             instrument.fetch(job.identifier, self._ode, job.frames)
             if instrument.place is None:
                 self._lined_up(job, ticket)
                 return
             # Placing waits on the SPICE server, so it never holds an archive's thread
-            self._progress.moved(ticket, PLACING)
-            self._fetching[SPICE].submit(self._placed, job, ticket)
+            self._progress.moved(ticket, Stage.PLACING)
+            self._fetching[Archive.SPICE].submit(self._placed, job, ticket)
         except Exception as error:  # noqa: BLE001
             self._finish(Outcome(job, error=error), ticket)
 
@@ -127,7 +119,7 @@ class Scheduler:
             job: The product to build.
             ticket: What the job is tracked by while it is still in the build.
         """
-        self._progress.moved(ticket, WAITING)
+        self._progress.moved(ticket, Stage.WAITING)
         # The lightest build goes first, so a quick one never queues behind a CTX scan
         weight = INSTRUMENTS[job.instrument].worker_bytes
         with self._lock:
@@ -142,7 +134,7 @@ class Scheduler:
                     return
                 self._cores -= 1
                 _, _, job, ticket = heapq.heappop(self._ready)
-            self._progress.moved(ticket, BUILDING)
+            self._progress.moved(ticket, Stage.BUILDING)
             try:
                 started = self._building.submit(self._build, job, self._root)
             except Exception as error:  # noqa: BLE001
@@ -184,6 +176,6 @@ class Scheduler:
             outcome: What the job left, whether it was built or failed.
             ticket: What the job was tracked by while it was still in the build.
         """
-        self._progress.left(ticket, finished=True)
+        self._progress.finish(ticket)
         self._finished.put(outcome)
         self._places[INSTRUMENTS[outcome.job.instrument].archive].release()

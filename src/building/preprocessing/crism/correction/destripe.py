@@ -6,6 +6,7 @@ from dataclasses import replace
 
 import numpy as np
 
+from building.configs.crism import Detector
 from building.preprocessing.crism.correction import bands_calibration
 from building.preprocessing.crism.models.mask import Mask
 
@@ -13,11 +14,11 @@ from building.preprocessing.crism.models.mask import Mask
 STRIPE_WIDTH = 80.0
 
 # How far above its column's mean a band reads as a spike, set per detector.
-STRIPE_SIGMA = {"l": 5.0, "s": 3.0}
+STRIPE_SIGMA = {Detector.INFRARED: 5.0, Detector.VISIBLE: 3.0}
 
 
 def remove_spike_columns(
-    cube: np.ndarray, mask: Mask, table: np.ndarray, detector: str
+    cube: np.ndarray, mask: Mask, table: np.ndarray, detector: Detector
 ) -> Mask:
     """Replace every band of a column that spikes away from its neighbours.
 

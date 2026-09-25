@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import StrEnum
 
-# What an axis holds. A ground axis is placed; the others are the instrument's own.
-GROUND = "ground"
-WAVELENGTH = "wavelength"
-DELAY = "delay"
+
+class Axis(StrEnum):
+    """What an axis holds: ground is placed, the others are the instrument's own."""
+
+    GROUND = "ground"
+    WAVELENGTH = "wavelength"
+    DELAY = "delay"
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,7 +30,7 @@ class Layout:
 
     instrument: str
     dims: tuple[str, ...]
-    axes: tuple[str, ...]
+    axes: tuple[Axis, ...]
     measurement: str
     beside: dict[str, tuple[str, ...]] = field(default_factory=dict)
     stored: str | None = None
