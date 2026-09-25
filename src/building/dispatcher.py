@@ -52,7 +52,7 @@ class Instrument:
         discard: What deletes the built product, or None for a small archive.
         place: What readies a fetched product on the SPICE server, or None.
         observation_id: What reads a kept product's observation, or None.
-        identifiers: What asks an archive what covers a tile, or None.
+        grid_of: What names the one product that covers a tile, or None.
     """
 
     layout: Layout
@@ -64,7 +64,7 @@ class Instrument:
     discard: Callable[[str], None] | None = None
     place: Callable[[str], None] | None = None
     observation_id: Callable[[str], str | None] | None = None
-    identifiers: Callable[[Tile, httpx.Client], list[str]] | None = None
+    grid_of: Callable[[Tile], str] | None = None
 
 
 INSTRUMENTS = {
@@ -97,7 +97,7 @@ INSTRUMENTS = {
         mola_read.read_observation,
         mola_crop.crop,
         Archive.WUSTL,
-        identifiers=mola_download.tile_grids,
+        grid_of=mola_download.tile_grid,
         # The whole gridded record is 2 GB, so a sheet is held for the run.
         worker_bytes=256 * 1024**2,
     ),

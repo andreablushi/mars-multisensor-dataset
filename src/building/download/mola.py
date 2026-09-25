@@ -121,20 +121,19 @@ def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> No
             )
 
 
-def tile_grids(tile: Tile, client: httpx.Client) -> list[str]:
+def tile_grid(tile: Tile) -> str:
     """Read which grid one tile's ground is mosaicked from.
 
     Args:
         tile: The frame of the tile the grid has to cover.
-        client: Unused, required by the dispatcher's `identifiers` signature.
 
     Returns:
-        grids: The one grid that covers it, since a merge is never joined across two.
+        grid: The one grid that covers it, since a merge is never joined across two.
     """
     if tile.max_lat > configs.SHEETED_REACH:
         held = tile.min_lat >= configs.POLAR_FLOOR
-        return [configs.NORTH_POLAR if held else configs.COARSE]
+        return configs.NORTH_POLAR if held else configs.COARSE
     if tile.min_lat < -configs.SHEETED_REACH:
         held = tile.max_lat <= -configs.POLAR_FLOOR
-        return [configs.SOUTH_POLAR if held else configs.COARSE]
-    return [configs.EQUATORIAL]
+        return configs.SOUTH_POLAR if held else configs.COARSE
+    return configs.EQUATORIAL

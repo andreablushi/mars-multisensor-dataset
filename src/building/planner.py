@@ -8,8 +8,6 @@ from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
-import httpx
-
 from analysis.selector.models.selection import Selection
 from building.dispatcher import INSTRUMENTS
 from building.metadata.tile import tile_metadata
@@ -21,7 +19,6 @@ from common.models.tile import Tile
 def build_plan(
     picked: Sequence[Selection],
     root: Path,
-    ode: httpx.Client | None = None,
     *,
     force: bool = False,
     published: frozenset[str] = frozenset(),
@@ -31,7 +28,6 @@ def build_plan(
     Args:
         picked: The tiles to build, each with the observations its window keeps.
         root: The directory this build of the dataset is written in.
-        ode: The client for instruments searched by ground, or None to skip them.
         force: When True, plan products every crop of which is already written.
         published: The crops counted as written though off disk, by relative path.
 
@@ -61,15 +57,13 @@ def build_plan(
         Job(instrument, identifier, tuple(frames), taken[(instrument, identifier)])
         for (instrument, identifier), frames in wanted.items()
     ]
-    if ode is not None:
-        # An instrument the selection cannot name is asked which products hold it.
-        for name, named in INSTRUMENTS.items():
-            if not named.identifiers:
-                continue
-            for tile in tiles:
-                # What it names is mosaicked to one box, so it is asked for alone.
-                for identifier in named.identifiers(tile.frame, ode):
-                    asked.append(Job(name, identifier, (tile.frame,), t_start=None))
+    # An instrument the selection cannot name is asked which products hold it.
+    for name, named in INSTRUMENTS.items():
+        if not named.grid_of:
+            continue
+        for tile in tiles:
+            # What it names is mosaicked to one box, so it is asked for alone.
+            asked.append(Job(name, named.grid_of(tile.frame), (tile.frame,), None))
 
     jobs, skipped = [], 0
     for job in asked:

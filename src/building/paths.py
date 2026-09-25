@@ -23,17 +23,9 @@ SAMPLE_SUFFIX = ".npz"
 INDEX_NAMES = (TILE_METADATA_NAME, OBSERVATION_METADATA_NAME, DATASET_MANIFEST_NAME)
 
 
-def dataset_root(name: str, root: Path = DATASETS_ROOT) -> Path:
-    """Return where one named build of the dataset is written.
-
-    Args:
-        name: What the build is called, as its config names it.
-        root: The directory every build of the dataset is written under.
-
-    Returns:
-        path: The directory that build owns, which need not exist.
-    """
-    return root / slugify(name)
+def dataset_root(name: str) -> Path:
+    """Return where one named build of the dataset is written, which need not exist."""
+    return DATASETS_ROOT / slugify(name)
 
 
 def crop_paths(root: Path) -> list[Path]:

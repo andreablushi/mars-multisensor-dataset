@@ -100,6 +100,5 @@ def load_table(table: Path) -> tuple[np.recarray, dict[str, str]]:
         FileNotFoundError: When the table or its label is missing.
     """
     path = table.with_suffix(".lbl")
-    return build_table(table, labels.load(path), labels.columns(path)), labels.load(
-        path
-    )
+    label = labels.load(path)
+    return build_table(table, label, labels.columns(path)), label

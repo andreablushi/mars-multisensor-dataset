@@ -54,7 +54,7 @@ class Scheduler:
             archive: threading.Semaphore(settings.workers + downloads)
             for archive, downloads in settings.downloads.items()
         }
-        self._ready: list[tuple[int, int, Job, object]] = []
+        self._ready: list[tuple[int, int, Job]] = []
         self._arrived = itertools.count()
         self._cores = settings.workers
         self._lock = threading.Lock()
@@ -85,44 +85,42 @@ class Scheduler:
         instrument = INSTRUMENTS[job.instrument]
         # The place is taken before the download, so the room is never given elsewhere.
         self._places[instrument.archive].acquire()
-        ticket = self._progress.entered(job.label)
+        self._progress.moved(job, Stage.FETCHING)
         try:
             instrument.fetch(job.identifier, self._ode, job.frames)
             if instrument.place is None:
-                self._lined_up(job, ticket)
+                self._lined_up(job)
                 return
             # Placing waits on the SPICE server, so it never holds an archive's thread
-            self._progress.moved(ticket, Stage.PLACING)
-            self._fetching[Archive.SPICE].submit(self._placed, job, ticket)
+            self._progress.moved(job, Stage.PLACING)
+            self._fetching[Archive.SPICE].submit(self._placed, job)
         except Exception as error:  # noqa: BLE001
-            self._finish(Outcome(job, error=error), ticket)
+            self._finish(Outcome(job, error=error))
 
-    def _placed(self, job: Job, ticket: object) -> None:
+    def _placed(self, job: Job) -> None:
         """Place one fetched product and hand it on to be built.
 
         Args:
             job: The product to place.
-            ticket: What the job is tracked by while it is still in the build.
         """
         try:
             INSTRUMENTS[job.instrument].place(job.identifier)
         except Exception as error:  # noqa: BLE001
-            self._finish(Outcome(job, error=error), ticket)
+            self._finish(Outcome(job, error=error))
             return
-        self._lined_up(job, ticket)
+        self._lined_up(job)
 
-    def _lined_up(self, job: Job, ticket: object) -> None:
+    def _lined_up(self, job: Job) -> None:
         """Line one ready product up for a core, and start it if one is free.
 
         Args:
             job: The product to build.
-            ticket: What the job is tracked by while it is still in the build.
         """
-        self._progress.moved(ticket, Stage.WAITING)
+        self._progress.moved(job, Stage.WAITING)
         # The lightest build goes first, so a quick one never queues behind a CTX scan
         weight = INSTRUMENTS[job.instrument].worker_bytes
         with self._lock:
-            heapq.heappush(self._ready, (weight, next(self._arrived), job, ticket))
+            heapq.heappush(self._ready, (weight, next(self._arrived), job))
         self._dispatch()
 
     def _dispatch(self) -> None:
@@ -132,22 +130,21 @@ class Scheduler:
                 if not self._cores or not self._ready:
                     return
                 self._cores -= 1
-                _, _, job, ticket = heapq.heappop(self._ready)
-            self._progress.moved(ticket, Stage.BUILDING)
+                _, _, job = heapq.heappop(self._ready)
+            self._progress.moved(job, Stage.BUILDING)
             try:
                 started = self._building.submit(build_product, job, self._root)
             except Exception as error:  # noqa: BLE001
                 # The pool is closing, so this builds nowhere.
                 started = Future()
                 started.set_exception(error)
-            started.add_done_callback(partial(self._built, job, ticket))
+            started.add_done_callback(partial(self._built, job))
 
-    def _built(self, job: Job, ticket: object, done: Future[Outcome]) -> None:
+    def _built(self, job: Job, done: Future[Outcome]) -> None:
         """Record what one build left, give its core back, and start the next.
 
         Args:
             job: The job that was built.
-            ticket: What the job was tracked by while it was still in the build.
             done: What the build pool left, a worker it lost included.
         """
         try:
@@ -156,17 +153,16 @@ class Scheduler:
             outcome = Outcome(job, error=error)
         with self._lock:
             self._cores += 1
-        self._finish(outcome, ticket)
+        self._finish(outcome)
         self._dispatch()
 
-    def _finish(self, outcome: Outcome, ticket: object) -> None:
+    def _finish(self, outcome: Outcome) -> None:
         """Record what one job left and give back its archive's place.
 
         Args:
             outcome: What the job left, whether it was built or failed.
-            ticket: What the job was tracked by while it was still in the build.
         """
-        self._progress.finish(ticket)
+        self._progress.finish(outcome.job)
         self._finished.put(outcome)
         self._places[INSTRUMENTS[outcome.job.instrument].archive].release()
 

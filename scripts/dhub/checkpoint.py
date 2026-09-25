@@ -75,7 +75,7 @@ def build_handler[T: Settings](
             archives.download_artifact(project, one)
         settings = settled(workers)
         name = f"{Artifact.DATASET.published}-{settings.name}"
-        root = paths.dataset_root(settings.name, Artifact.DATASET.path)
+        root = paths.dataset_root(settings.name)
         # A job starts on an empty disk, so only the index of what is built comes down
         if not force:
             archives.download_files(project, name, root, paths.INDEX_NAMES)

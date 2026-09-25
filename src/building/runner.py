@@ -53,7 +53,7 @@ def build_dataset(
         max_connections=connections, max_keepalive_connections=connections
     )
     with httpx.Client(limits=limits, verify=TLS_CONTEXT) as ode:
-        plan = planner.build_plan(picked, root, ode, force=force, published=published)
+        plan = planner.build_plan(picked, root, force=force, published=published)
         printing.print_plan(plan, settings, console)
         outcomes = build_outcomes(plan, settings, root, ode, console, checkpoint)
     write_index(plan, outcomes, root, on_disk=checkpoint is None)
