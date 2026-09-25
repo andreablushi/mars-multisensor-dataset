@@ -73,6 +73,8 @@ def run_isis(app: str, parameters: dict[str, object]) -> None:
         capture_output=True,
         text=True,
         cwd=Path(str(parameters["from"])).parent,
+        # An image's LC_ALL=C outranks LANG, and Qt warns on every run without UTF-8
+        env={**os.environ, "LC_ALL": "C.UTF-8"},
     )
     if done.returncode:
         raise RuntimeError(f"{app}: {(done.stderr or done.stdout).strip()}")
