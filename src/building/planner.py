@@ -69,7 +69,7 @@ def build_plan(
     for job in asked:
         left = []
         for frame in job.frames:
-            crop = sample_path(frame, job.instrument, job.identifier, Path())
+            crop = sample_path(frame, job.instrument, job.identifier)
             if not force and (str(crop) in published or (root / crop).exists()):
                 skipped += 1
             else:

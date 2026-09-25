@@ -76,6 +76,7 @@ def observation_metadata(
     held: Sample,
     frame: Tile,
     layout: Layout,
+    identifier: str,
     path: str,
     t_start: datetime | None,
 ) -> ObservationMetadata:
@@ -85,6 +86,7 @@ def observation_metadata(
         held: The sample that was written.
         frame: The local frame of the tile it was kept for.
         layout: What its instrument's arrays hold.
+        identifier: What that instrument was asked for, its observation or sheet.
         path: Where its arrays were written, relative to the dataset's own root.
         t_start: When it started, for an archive whose label publishes no time.
 
@@ -93,11 +95,13 @@ def observation_metadata(
     """
     values = getattr(held, layout.measurement)
     # A ground mask reaches every value on it, so it spreads over the instrument's axes.
-    on_ground = _spread_mask(held.measured_ground, Axis.GROUND, values, layout)
+    ground = layout.axis_indices(Axis.GROUND)
+    on_ground = _spread_mask(held.measured_ground, ground, values)
     measured = on_ground
     # A band the observation never measured holds nothing, whatever the ground says.
     if held.measured_bands is not None:
-        bands = _spread_mask(held.measured_bands, Axis.WAVELENGTH, values, layout)
+        wavelength = layout.axis_indices(Axis.WAVELENGTH)
+        bands = _spread_mask(held.measured_bands, wavelength, values)
         measured = on_ground & bands
     # An integer holds no infinite identity, so the reduction starts at its type's edge.
     limits = (
@@ -116,16 +120,13 @@ def observation_metadata(
     band_mean = band_std = band_valid_count = None
     # A band is the one axis a reader normalises against, so it survives the reduction.
     if counted and Axis.WAVELENGTH in layout.axes:
-        over = tuple(
-            axis for axis, holds in enumerate(layout.axes) if holds == Axis.GROUND
-        )
-        band_mean = tuple(np.mean(values, axis=over, where=on_ground).tolist())
-        band_std = tuple(np.std(values, axis=over, where=on_ground).tolist())
-        band_valid_count = tuple(measured.sum(axis=over).tolist())
+        band_mean = tuple(np.mean(values, axis=ground, where=on_ground).tolist())
+        band_std = tuple(np.std(values, axis=ground, where=on_ground).tolist())
+        band_valid_count = tuple(measured.sum(axis=ground).tolist())
     return ObservationMetadata(
         tile=frame.name,
         instrument=layout.instrument,
-        identifier=held.identifier,
+        identifier=identifier,
         path=path,
         axes=layout.axes,
         shape=tuple(values.shape),
@@ -146,23 +147,19 @@ def observation_metadata(
 
 
 def _spread_mask(
-    mask: np.ndarray, kind: Axis, values: np.ndarray, layout: Layout
+    mask: np.ndarray, axes: tuple[int, ...], values: np.ndarray
 ) -> np.ndarray:
-    """Return one mask over the axes of one kind, spread over every value.
+    """Return one mask over some axes of the value array, spread over every value.
 
     Args:
         mask: The flags over those axes alone, in the array's own order.
-        kind: What the axes the mask runs along hold.
+        axes: Where the axes the mask runs along sit in the value array.
         values: The value array it is spread over.
-        layout: What each axis of that array holds.
 
     Returns:
         spread: The mask, broadcast to the value array's shape.
     """
-    shape = tuple(
-        size if holds == kind else 1
-        for size, holds in zip(values.shape, layout.axes, strict=True)
-    )
+    shape = tuple(size if at in axes else 1 for at, size in enumerate(values.shape))
     return np.broadcast_to(mask.reshape(shape), values.shape)
 
 

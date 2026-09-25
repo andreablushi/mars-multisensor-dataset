@@ -68,7 +68,6 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
     columns = observation.traces[traces]
     placing = observation.geometry[traces]
     return SharadSample(
-        identifier=observation.identifier,
         position=held.position,
         label=observation.label,
         inside=held.inside,

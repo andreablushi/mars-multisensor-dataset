@@ -38,7 +38,6 @@ def read_observation(identifier: str) -> SharadObservation:
     if simulated.stat().st_size != power.size * np.dtype(configs.CLUTTER_TYPE).itemsize:
         raise ValueError(f"{simulated.name} is not one array the radargram's size.")
     return SharadObservation(
-        identifier,
         labels.merge(sounding, placing),
         power[:, traces],
         np.memmap(simulated, dtype=configs.CLUTTER_TYPE, mode="r", shape=power.shape),

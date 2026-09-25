@@ -6,7 +6,7 @@ from dataclasses import replace
 
 import numpy as np
 
-from building.configs.crism import ATMOSPHERIC, Detector
+from building.configs.crism import ATMOSPHERIC_BANDS_NM, Detector
 from building.preprocessing.crism.models.mask import Mask
 
 
@@ -25,7 +25,7 @@ def remove_atmospheric_bands(
         mask: The mask with those bands recorded.
     """
     caught = np.zeros(centre.shape, dtype=bool)
-    for low, high in ATMOSPHERIC[detector]:
+    for low, high in ATMOSPHERIC_BANDS_NM[detector]:
         caught |= (centre >= low) & (centre <= high)
 
     # Only what masking still counted as usable is being taken away.

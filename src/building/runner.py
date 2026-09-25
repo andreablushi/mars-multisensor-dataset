@@ -47,14 +47,14 @@ def build_dataset(
     root = paths.dataset_root(settings.name)
     named = indexed_crops(root, console, force=force)
     published = named if checkpoint else frozenset()
+    plan = planner.build_plan(picked, root, force=force, published=published)
+    printing.print_plan(plan, settings, console)
     # Reused, so a run pays for a connection once a host rather than once a file
     connections = sum(settings.downloads.values()) * 2
     limits = httpx.Limits(
         max_connections=connections, max_keepalive_connections=connections
     )
     with httpx.Client(limits=limits, verify=TLS_CONTEXT) as ode:
-        plan = planner.build_plan(picked, root, force=force, published=published)
-        printing.print_plan(plan, settings, console)
         outcomes = build_outcomes(plan, settings, root, ode, console, checkpoint)
     write_index(plan, outcomes, root, on_disk=checkpoint is None)
     printing.print_summary(outcomes, time.monotonic() - started_at, console)

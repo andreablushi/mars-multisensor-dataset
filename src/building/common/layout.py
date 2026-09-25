@@ -36,3 +36,7 @@ class Layout:
     beside: dict[str, tuple[str, ...]] = field(default_factory=dict)
     stored: str | None = None
     band_centres_nm: tuple[float, ...] | None = None
+
+    def axis_indices(self, kind: Axis) -> tuple[int, ...]:
+        """Return where every axis holding one kind sits in the measurement."""
+        return tuple(at for at, holds in enumerate(self.axes) if holds == kind)

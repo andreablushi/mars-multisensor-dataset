@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from building.configs.crism import WINDOWS, Detector
+from building.configs.crism import DETECTOR_WINDOWS_NM, Detector
 from building.preprocessing.crism.models.mask import Mask
 
 # The range a brightness can take, its floor below zero so noise there survives.
@@ -33,7 +33,7 @@ def refused_mask(
         ValueError: When the window keeps no band of the cube.
         NoMeasurement: When no cell of the cube is a measurement.
     """
-    low, high = WINDOWS[detector]
+    low, high = DETECTOR_WINDOWS_NM[detector]
 
     # What the wavelength file refused to name, which is already NaN.
     columns = np.isnan(table).all(axis=1)

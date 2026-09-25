@@ -69,17 +69,17 @@ def grid_sheets(resolution: int, client: httpx.Client) -> list[str]:
     Returns:
         sheets: The sorted unique sheet ids.
     """
-    sheets = set()
-    for name in record_files(client):
-        if not name.endswith(ODE_SUFFIX):
-            continue
-        # Keep only wanted sheets, which drops the polar stereographic ones.
-        parts = configs.NAMING.parts(Path(name).stem)
-        if not parts or not parts["marker"]:
-            continue
-        if configs.RESOLUTIONS[parts["step"]] == resolution:
-            sheets.add(parts["sheet"])
-    return sorted(sheets)
+    # Keep only wanted sheets, which drops the polar stereographic ones.
+    sheets = {
+        configs.NAMING.observation_id(Path(name).stem)
+        for name in record_files(client)
+        if name.endswith(ODE_SUFFIX)
+    }
+    return sorted(
+        sheet
+        for sheet in sheets
+        if sheet and configs.sheet_resolution(sheet) == resolution
+    )
 
 
 def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:

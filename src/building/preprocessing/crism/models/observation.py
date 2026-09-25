@@ -23,7 +23,6 @@ class CrismObservation:
     """One observation with its two detectors joined.
 
     Attributes:
-        identifier: The observation id.
         label: What every product it was published as says about it, merged.
         cube: Lines by columns by the survey's band grid, NaN for unmeasured bands.
         geometry: The backplanes on the same grid, as lines by columns by 14.
@@ -31,7 +30,6 @@ class CrismObservation:
         measured_bands: One flag per band of that grid this observation measured.
     """
 
-    identifier: str
     label: dict[str, str]
     cube: np.ndarray
     geometry: np.ndarray

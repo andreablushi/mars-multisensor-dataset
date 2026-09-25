@@ -11,7 +11,6 @@ from building.preprocessing.crism.models.observation import CrismObservation
 
 
 def merge_detectors(
-    identifier: str,
     detectors: dict[configs.Detector, DetectorCube],
     geometry: np.ndarray,
     label: dict[str, str],
@@ -19,7 +18,6 @@ def merge_detectors(
     """Join the detectors of a cleaned observation onto the survey's own grid.
 
     Args:
-        identifier: The observation the detectors are halves of.
         detectors: The halves that landed, cleaned, each with its own mask.
         geometry: The backplanes that place every pixel, on the same grid.
         label: What every product the observation was published as says of it.
@@ -50,6 +48,4 @@ def merge_detectors(
     valid = ~np.logical_or.reduce(
         [held.mask.pixels[:lines] for held in detectors.values()]
     )[:, columns]
-    return CrismObservation(
-        identifier, label, joined, geometry[:lines, columns], valid, measured
-    )
+    return CrismObservation(label, joined, geometry[:lines, columns], valid, measured)

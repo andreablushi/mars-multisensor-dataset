@@ -5,19 +5,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from building.configs.mola import Grid
+
 
 @dataclass(frozen=True, slots=True)
 class MolaObservation:
     """One grid, before any of its bins are read.
 
     Attributes:
-        identifier: The grid as `configs.GRIDS` names it, which crops are stored under.
-        resolution: How many bins of the grid one degree holds.
+        identifier: The grid as `configs.GRIDS` names it.
+        grid: How fine it is, and whether it is projected onto a pole.
         files: The image and label of every product that landed, by sheet.
-        polar: Whether it is projected onto a pole rather than split into sheets.
     """
 
     identifier: str
-    resolution: int
+    grid: Grid
     files: dict[str, Path]
-    polar: bool

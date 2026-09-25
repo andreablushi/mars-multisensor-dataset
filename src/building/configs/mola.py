@@ -64,6 +64,11 @@ class Grid:
     resolution: int
     product: str | None = None
 
+    @property
+    def polar(self) -> bool:
+        """Return whether it is projected onto a pole rather than split into sheets."""
+        return self.product is not None
+
 
 # The grid a tile is merged from, named for the record and how fine it is.
 EQUATORIAL = "megdr128"
@@ -77,3 +82,16 @@ GRIDS = {
     NORTH_POLAR: Grid(128, "megt_n_128_1"),
     SOUTH_POLAR: Grid(128, "megt_s_128_1"),
 }
+
+
+def sheet_resolution(name: str) -> int | None:
+    """Return how many bins to the degree the sheet one name spells holds.
+
+    Args:
+        name: A sheet or product id, or any other name a directory or file has.
+
+    Returns:
+        resolution: The sheet's bins per degree, or None when the name is no sheet.
+    """
+    parts = NAMING.parts(name)
+    return RESOLUTIONS[parts["step"]] if parts else None

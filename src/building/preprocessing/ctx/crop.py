@@ -124,7 +124,6 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         for path in work.parent.glob(f"{work.name}.*"):
             path.unlink()
     return CtxSample(
-        identifier=observation.identifier,
         position=held.position,
         label=label,
         inside=held.inside,

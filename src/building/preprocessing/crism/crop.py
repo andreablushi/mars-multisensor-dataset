@@ -33,7 +33,6 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
     if held is None:
         return None
     return CrismSample(
-        identifier=observation.identifier,
         position=held.position,
         label=observation.label,
         inside=held.inside,

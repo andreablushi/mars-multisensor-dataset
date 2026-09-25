@@ -79,10 +79,13 @@ DETECTOR_SLOTS = {
 }
 
 # The nm window each detector is trusted over, outside which the reading is noise.
-WINDOWS = {Detector.INFRARED: (1020.0, 2650.0), Detector.VISIBLE: (400.0, 1060.0)}
+DETECTOR_WINDOWS_NM = {
+    Detector.INFRARED: (1020.0, 2650.0),
+    Detector.VISIBLE: (400.0, 1060.0),
+}
 
 # Where the atmosphere absorbs, in nm. Only the 2.0 um CO2 band is worth dropping.
-ATMOSPHERIC = {Detector.INFRARED: ((1940.0, 2090.0),), Detector.VISIBLE: ()}
+ATMOSPHERIC_BANDS_NM = {Detector.INFRARED: ((1940.0, 2090.0),), Detector.VISIBLE: ()}
 
 # How far above its column's mean a band reads as a spike, set per detector.
 STRIPE_SIGMA = {Detector.INFRARED: 5.0, Detector.VISIBLE: 3.0}

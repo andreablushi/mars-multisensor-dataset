@@ -150,7 +150,6 @@ def read_observation(identifier: str) -> CrismObservation:
     found = cached_detectors(identifier)
     detectors, held = read_detectors(identifier, found)
     return merge.merge_detectors(
-        identifier,
         clean.clean_detectors(identifier, detectors),
         read_geometry(identifier, found[0]),
         read_label(identifier, found[0], held),

@@ -13,7 +13,6 @@ class CtxObservation:
     """One calibrated scan, still in camera geometry.
 
     Attributes:
-        identifier: The observation id.
         label: What ODE says about it, the geometry it was taken at.
         cube: The calibrated ISIS cube, projected one tile at a time.
         lines: How many lines the scan holds.
@@ -22,7 +21,6 @@ class CtxObservation:
         longitude: The positive east longitude of every sampled point, 0 to 360.
     """
 
-    identifier: str
     label: dict[str, str]
     cube: Path
     lines: int

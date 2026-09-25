@@ -14,7 +14,6 @@ class Sample:
     """One observation cut to its tile, in the shape its instrument publishes.
 
     Attributes:
-        identifier: What the instrument was asked for, its observation or sheet.
         position: Where the remaining samples sit, in degrees or projected metres.
         label: What every product of the observation says about it, merged.
         inside: Which of them truly falls in the tile's box, or None for all.
@@ -27,7 +26,6 @@ class Sample:
         spacecraft_altitude_km: The spacecraft's height per sample, or None.
     """
 
-    identifier: str
     position: Position
     label: dict[str, str]
     inside: np.ndarray | None = None

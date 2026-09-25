@@ -24,7 +24,6 @@ class SharadObservation:
     """One track holding only the traces its geometry places.
 
     Attributes:
-        identifier: The observation id.
         label: What every product it was published as says about it, merged.
         power: Delay samples by traces, holding only the placed traces.
         clutter: The simulated clutter power per column, zero without echo.
@@ -32,7 +31,6 @@ class SharadObservation:
         traces: Which original radargram columns these traces are, from zero.
     """
 
-    identifier: str
     label: dict[str, str]
     power: np.ndarray
     clutter: np.ndarray

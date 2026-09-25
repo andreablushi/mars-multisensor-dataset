@@ -198,13 +198,16 @@ def build_product(job: Job, root: Path) -> Outcome:
             if sample is None:
                 missed += 1
                 continue
-            path = store.write_sample(sample, instrument.layout, frame, root)
+            path = store.write_sample(
+                sample, instrument.layout, frame, job.identifier, root
+            )
             written.append(
                 observation_metadata(
                     sample,
                     frame,
                     instrument.layout,
-                    str(path.relative_to(root)),
+                    job.identifier,
+                    str(path),
                     t_start=job.t_start,
                 )
             )

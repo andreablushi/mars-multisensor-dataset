@@ -35,7 +35,7 @@ def merge_sheets(
         KeyError: When a label names a sample type this cannot read.
         ValueError: When the projection is unreadable or the box is not covered.
     """
-    resolution = observation.resolution
+    resolution = observation.grid.resolution
     whole = round(TURN) * resolution
     # Which bins the box covers: lines south from the pole, samples east of it
     span = geodesy.longitude_span(frame.west_lon, frame.east_lon)

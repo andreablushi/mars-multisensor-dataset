@@ -31,21 +31,19 @@ METRES = "metres"
 META = "meta"
 
 
-def sample_path(frame: Tile, instrument: str, identifier: str, root: Path) -> Path:
+def sample_path(frame: Tile, instrument: str, identifier: str) -> Path:
     """Return where one cropped observation's arrays belong.
 
     Args:
         frame: The tile it was cut to.
         instrument: The instrument that took it, as ODE names it.
         identifier: What that instrument was asked for.
-        root: The dataset's own root directory.
 
     Returns:
-        path: The file it is written as, which need not exist.
+        path: The file it is written as under the dataset's root, which need not exist.
     """
     return (
-        root
-        / frame.band_name
+        Path(frame.band_name)
         / frame.column_name
         / slugify(instrument)
         / f"{slugify(identifier)}{paths.SAMPLE_SUFFIX}"
@@ -65,27 +63,26 @@ def native(values: np.ndarray) -> np.ndarray:
     return held.astype(held.dtype.newbyteorder("="), copy=False)
 
 
-def write_sample(held: Sample, layout: Layout, frame: Tile, root: Path) -> Path:
+def write_sample(
+    held: Sample, layout: Layout, frame: Tile, identifier: str, root: Path
+) -> Path:
     """Write one sample down, its arrays and what describes them in one file.
 
     Args:
         held: The sample, whose position and masks are written beside the values.
         layout: How that instrument's arrays are laid out.
         frame: The tile it was cut to.
+        identifier: What that instrument was asked for, its observation or sheet.
         root: The dataset's own root directory.
 
     Returns:
-        path: The file it was written as.
+        path: The file it was written as, relative to the dataset's root.
 
     Raises:
         ValueError: When the layout declares an array the crop does not carry.
     """
     position = held.position
-    ground = tuple(
-        name
-        for name, holds in zip(layout.dims, layout.axes, strict=True)
-        if holds == Axis.GROUND
-    )
+    ground = tuple(layout.dims[at] for at in layout.axis_indices(Axis.GROUND))
     # A separable position holds one ground axis each, any other a value per sample.
     north, east = position.dims_along(ground)
     along = {
@@ -114,11 +111,11 @@ def write_sample(held: Sample, layout: Layout, frame: Tile, root: Path) -> Path:
             arrays[name] = native(mask)
             along[name] = ground
 
-    path = sample_path(frame, layout.instrument, held.identifier, root)
+    path = sample_path(frame, layout.instrument, identifier)
     grid = position.grid
     described = {
         "instrument": layout.instrument,
-        "identifier": held.identifier,
+        "identifier": identifier,
         "tile": frame.name,
         "band": frame.band,
         "column": frame.column,
@@ -141,6 +138,6 @@ def write_sample(held: Sample, layout: Layout, frame: Tile, root: Path) -> Path:
         "label": held.label,
     }
     # Compressed, and written whole then moved, so a crop a reader finds was finished.
-    with atomic_path(path) as tmp, tmp.open("wb") as handle:
+    with atomic_path(root / path) as tmp, tmp.open("wb") as handle:
         np.savez_compressed(handle, **arrays, **{META: np.array(json.dumps(described))})
     return path

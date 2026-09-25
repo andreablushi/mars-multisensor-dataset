@@ -57,7 +57,6 @@ def read_observation(identifier: str) -> CtxObservation:
         rows = [row for row in csv.DictReader(held) if row["PlanetocentricLatitude"]]
     said = files[configs.METADATA_SUFFIX]
     return CtxObservation(
-        identifier,
         json.loads(said.read_text()) if said.exists() else {},
         cube,
         lines,

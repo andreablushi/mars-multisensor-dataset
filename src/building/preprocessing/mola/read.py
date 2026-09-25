@@ -24,10 +24,11 @@ def read_observation(identifier: str) -> MolaObservation:
             files[grid.product] = image
     else:
         for directory in sorted(configs.CACHE.root.iterdir()):
-            parts = configs.NAMING.parts(directory.name) if directory.is_dir() else None
-            if not parts or configs.RESOLUTIONS[parts["step"]] != grid.resolution:
+            if not directory.is_dir():
+                continue
+            if configs.sheet_resolution(directory.name) != grid.resolution:
                 continue
             image = configs.CACHE.product_files(directory.name, topography)[".img"]
             if image.exists():
                 files[directory.name] = image
-    return MolaObservation(identifier, grid.resolution, files, grid.product is not None)
+    return MolaObservation(identifier, grid, files)

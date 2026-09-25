@@ -15,7 +15,6 @@ from common.pds import images, labels
 
 
 def mola_sample(
-    observation: MolaObservation,
     position: Position,
     label: dict[str, str],
     height: np.ndarray,
@@ -24,7 +23,6 @@ def mola_sample(
     """Return the height one grid holds over a tile, with the delay rows it sets.
 
     Args:
-        observation: The grid the height was read from, its crop stored under it.
         position: Where every bin sits relative to the tile centre.
         label: What the products it was read from say about it, merged.
         height: The height above the areoid in metres, lines by samples.
@@ -35,7 +33,6 @@ def mola_sample(
     """
     rows, reached = delay.radargram_rows(height)
     return MolaSample(
-        identifier=observation.identifier,
         position=position,
         label=label,
         inside=inside,
@@ -72,9 +69,7 @@ def crop_polar(observation: MolaObservation, frame: Tile) -> MolaSample | None:
         (int(lines[0]), int(lines[-1]) + 1),
         (int(samples[0]), int(samples[-1]) + 1),
     )
-    return mola_sample(
-        observation, held.position, labels.merge(label), height, held.inside
-    )
+    return mola_sample(held.position, labels.merge(label), height, held.inside)
 
 
 def crop(observation: MolaObservation, frame: Tile) -> MolaSample | None:
@@ -90,7 +85,7 @@ def crop(observation: MolaObservation, frame: Tile) -> MolaSample | None:
     Raises:
         ValueError: When the sheets that landed leave part of its box unwritten.
     """
-    if observation.polar:
+    if observation.grid.polar:
         return crop_polar(observation, frame)
     label, height, samples = merge_sheets(observation, frame)
-    return mola_sample(observation, cut.placed(samples, frame), label, height)
+    return mola_sample(cut.placed(samples, frame), label, height)
