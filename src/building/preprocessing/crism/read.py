@@ -63,7 +63,7 @@ def read_wavelengths(record: Path) -> np.ndarray:
 
 def read_detectors(
     identifier: str, found: tuple[configs.Detector, ...]
-) -> dict[configs.Detector, tuple[np.ndarray, np.ndarray]]:
+) -> tuple[dict[configs.Detector, tuple[np.ndarray, np.ndarray]], list[dict[str, str]]]:
     """Read every image one observation was downloaded as, keyed by detector.
 
     Args:
@@ -72,18 +72,21 @@ def read_detectors(
 
     Returns:
         detectors: Each detector's cube and wavelengths, bands ascending.
+        held: Each detector's observation label, in the order found.
 
     Raises:
         FileNotFoundError: When a wavelength file is missing.
         ValueError: When the band order or wavelength file cannot be read.
     """
     detectors = {}
+    held = []
     for name in found:
         cube, label = images.load_cube(
             configs.CACHE.product_files(
                 identifier, configs.Kind.OBSERVATION, detector=name
             )[".img"]
         )
+        held.append(label)
         # The wavelength file this half was calibrated against, and no other.
         wavelength = Path(label[configs.WAVELENGTH_KEY]).stem.lower()
         record = configs.CACHE.files(configs.WAVELENGTH_DIR, wavelength)[".img"]
@@ -91,40 +94,33 @@ def read_detectors(
         detectors[name] = bands_calibration.calibrated_cube(
             cube, read_wavelengths(record)
         )
-    return detectors
+    return detectors, held
 
 
-def read_label(identifier: str, found: tuple[configs.Detector, ...]) -> dict[str, str]:
+def read_label(
+    identifier: str, placing: configs.Detector, held: list[dict[str, str]]
+) -> dict[str, str]:
     """Read what every product one observation is published as says about it.
 
     Args:
         identifier: The observation, its files already in the download cache.
-        found: The detectors that landed whole, the first of them placing it.
+        placing: The detector that places it, whose geometry label is read.
+        held: Each detector's observation label, the placing one first.
 
     Returns:
         label: Their labels merged, without the calibration software's tuning.
 
     Raises:
-        FileNotFoundError: When a label is missing.
+        FileNotFoundError: When the geometry label is missing.
     """
-    held = [
-        labels.load(
-            configs.CACHE.product_files(
-                identifier, configs.Kind.OBSERVATION, detector=name
-            )[".lbl"]
-        )
-        for name in found
-    ]
-    held.append(
-        labels.load(
-            configs.CACHE.product_files(
-                identifier, configs.Kind.GEOMETRY, detector=found[0]
-            )[".lbl"]
-        )
+    geometry = labels.load(
+        configs.CACHE.product_files(
+            identifier, configs.Kind.GEOMETRY, detector=placing
+        )[".lbl"]
     )
     return {
         key: value
-        for key, value in labels.merge(*held).items()
+        for key, value in labels.merge(*held, geometry).items()
         if not key.startswith(GROUND_SOFTWARE)
     }
 
@@ -152,9 +148,10 @@ def read_observation(identifier: str) -> CrismObservation:
         ValueError: When a window keeps no band of a cube, or no detector measured.
     """
     found = cached_detectors(identifier)
+    detectors, held = read_detectors(identifier, found)
     return merge.merge_detectors(
         identifier,
-        clean.clean_detectors(identifier, read_detectors(identifier, found)),
+        clean.clean_detectors(identifier, detectors),
         read_geometry(identifier, found[0]),
-        read_label(identifier, found),
+        read_label(identifier, found[0], held),
     )

@@ -4,12 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from building.configs.crism import Detector
-from building.preprocessing.crism.correction import bands_calibration
+from building.configs.crism import WINDOWS, Detector
 from building.preprocessing.crism.models.mask import Mask
-
-# The nm window each detector is trusted over, outside which the reading is noise.
-WINDOWS = {Detector.INFRARED: (1020.0, 2650.0), Detector.VISIBLE: (400.0, 1060.0)}
 
 # The range a brightness can take, its floor below zero so noise there survives.
 BRIGHTNESS = (-0.05, 1.0)
@@ -19,12 +15,15 @@ class NoMeasurement(ValueError):
     """Raised when every cell of one detector's cube is refused."""
 
 
-def refused_mask(cube: np.ndarray, table: np.ndarray, detector: Detector) -> Mask:
+def refused_mask(
+    cube: np.ndarray, table: np.ndarray, centre: np.ndarray, detector: Detector
+) -> Mask:
     """Fill everything one cube holds that is not a measurement.
 
     Args:
         cube: The values as lines by samples by bands, filled in place.
         table: The centre wavelength of every column and band, in that order.
+        centre: The centre wavelength of every band, averaged over its columns.
         detector: Which detector, `l` for infrared or `s` for visible.
 
     Returns:
@@ -34,7 +33,6 @@ def refused_mask(cube: np.ndarray, table: np.ndarray, detector: Detector) -> Mas
         ValueError: When the window keeps no band of the cube.
         NoMeasurement: When no cell of the cube is a measurement.
     """
-    centre = bands_calibration.band_centres(table)
     low, high = WINDOWS[detector]
 
     # What the wavelength file refused to name, which is already NaN.

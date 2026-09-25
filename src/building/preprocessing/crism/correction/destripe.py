@@ -4,26 +4,23 @@ from __future__ import annotations
 
 import numpy as np
 
-from building.configs.crism import Detector
-from building.preprocessing.crism.correction import bands_calibration, moving_median
+from building.configs.crism import STRIPE_SIGMA, Detector
+from building.preprocessing.crism.correction import moving_median
 from building.preprocessing.crism.models.mask import Mask
 
 # How wide the moving median reaches, in nm so every configuration means the same.
 STRIPE_WIDTH = 80.0
 
-# How far above its column's mean a band reads as a spike, set per detector.
-STRIPE_SIGMA = {Detector.INFRARED: 5.0, Detector.VISIBLE: 3.0}
-
 
 def remove_spike_columns(
-    cube: np.ndarray, mask: Mask, table: np.ndarray, detector: Detector
+    cube: np.ndarray, mask: Mask, centre: np.ndarray, detector: Detector
 ) -> None:
     """Replace every band of a column that spikes away from its neighbours.
 
     Args:
         cube: The masked values as lines by samples by bands, levelled in place.
         mask: What that masking refused.
-        table: The centre wavelength of every column and band.
+        centre: The centre wavelength of every band.
         detector: Which detector, `l` or `s`, which picks the threshold.
 
     Raises:
@@ -37,9 +34,7 @@ def remove_spike_columns(
     # Average each column down the scan, so the ground averages away.
     averaged = block.mean(axis=0)
     # How far each band sits from the median of its wavelength neighbours.
-    size = moving_median.window_size(
-        bands_calibration.band_centres(table)[live_bands], STRIPE_WIDTH
-    )
+    size = moving_median.window_size(centre[live_bands], STRIPE_WIDTH)
     apart = np.abs(averaged - moving_median.moving_median(averaged, size))
     # crism_ml judges each column against the spread of its own bands.
     sigma = STRIPE_SIGMA[detector]
