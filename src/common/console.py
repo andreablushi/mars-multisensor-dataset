@@ -26,7 +26,9 @@ def plain_log() -> bool:
     return bool(os.environ.get(PLAIN_LOG_ENV))
 
 
-def reached(description: str, completed: int, total: int, label: str = "") -> None:
+def print_progress_line(
+    description: str, completed: int, total: int, label: str = ""
+) -> None:
     """Print how far a stage has got, in the plain form a platform log takes.
 
     Args:
@@ -41,15 +43,20 @@ def reached(description: str, completed: int, total: int, label: str = "") -> No
     )
 
 
-def named_failure(label: str, error: BaseException, counted: int) -> None:
-    """Name one failure as a run hits it, until too many have been named.
+def print_failure(
+    label: str, error: BaseException, counted: int, console: Console | None = None
+) -> None:
+    """Name one failure as a run hits it, a plain log naming only the first few.
 
     Args:
         label: What failed.
         error: What it raised.
         counted: How many have failed so far, this one counted.
+        console: The console a bar is drawn on, printed on in red off a plain log.
     """
-    if counted <= LOGGED_ERRORS:
+    if console is not None and not plain_log():
+        console.print(f"[red]error[/red] {label}: {error}")
+    elif counted <= LOGGED_ERRORS:
         print(f"error {label}: {error}", flush=True)
     elif counted == LOGGED_ERRORS + 1:
         print("the summary counts the failures from here", flush=True)

@@ -7,6 +7,8 @@ name: evaluation
 workers: 8
 
 # Downloads at once from each archive, which wait on it and not on the cores.
+# JPL answers 503 past about ten connections from one address, so it stays under that.
 downloads:
-  jpl: 4
-  wustl: 4
+  jpl: 8
+  wustl: 12
+  spice: 4

@@ -1,13 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Every name is read from the file the runs are settled from, so nothing drifts
+# The project is read from the file the runs are settled from, so it never drifts
 config="$(dirname "$0")/../configs/digitalhub.yaml"
 project="$(sed -n 's/^project: *//p' "$config")"
-
-published() {
-    sed -n "/^publishes:/,/^[^ #]/{s/^  $1: *//p;}" "$config"
-}
 
 download_one() {
     local name="$1"
@@ -59,6 +55,7 @@ With no name, every one of them comes down.
   stats        what the filter left of it     -> data/analysis/stats
   summary      one row per tile and set        -> data/analysis/coverage
   labels       the evaluation labels           -> data/analysis/labels
+  verdicts     the review of the drawn tiles   -> data/analysis
 EOF
 }
 
@@ -69,17 +66,18 @@ fi
 
 names=("$@")
 if [[ ${#names[@]} -eq 0 ]]; then
-    names=(coverage metadata selection stats summary labels)
+    names=(coverage metadata selection stats summary labels verdicts)
 fi
 
 for name in "${names[@]}"; do
     case "$name" in
-        coverage) download_one "$(published coverage)" data/analysis/coverage ;;
-        metadata) download_one "$(published metadata)" data/analysis/metadata ;;
-        selection) download_one "$(published selection)" data/analysis/selection ;;
-        stats) download_one "$(published stats)" data/analysis/stats ;;
-        summary) download_one "$(published summary)" data/analysis/coverage shares ;;
-        labels) download_one "$(published labels)" data/analysis/labels ;;
+        coverage) download_one coverage data/analysis/coverage ;;
+        metadata) download_one metadata data/analysis/metadata ;;
+        selection) download_one selection data/analysis/selection ;;
+        stats) download_one stats data/analysis/stats ;;
+        summary) download_one summary data/analysis/coverage shares ;;
+        labels) download_one labels data/analysis/labels ;;
+        verdicts) download_one verdicts data/analysis shares ;;
         *)
             echo "nothing is published under \`$name\`" >&2
             usage >&2

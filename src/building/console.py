@@ -5,14 +5,13 @@ from __future__ import annotations
 import threading
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
+from pathlib import Path
 
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn
 from rich.progress import Progress as Bar
 
-from building.models import budget as memory
-from building.models.budget import Budget
 from building.models.job import Outcome, Plan
 from building.models.progress import Progress
 from building.models.settings import Settings
@@ -24,17 +23,21 @@ LOGGED_LINES = 100
 # How often a run says what it is doing, so a stalled build does not look slow
 WATCHED_SECONDS = 300.0
 
-# What one gibibyte is, which the memory a run holds is said in
-GIB = 1024**3
+DESCRIPTION = "building"
+
+# Where a container writes the most memory it has held, by cgroup version.
+CGROUP_PEAKS = (
+    Path("/sys/fs/cgroup/memory.peak"),
+    Path("/sys/fs/cgroup/memory/memory.max_usage_in_bytes"),
+)
 
 
-def describe(plan: Plan, settings: Settings, budget: Budget, console: Console) -> None:
+def print_plan(plan: Plan, settings: Settings, console: Console) -> None:
     """Print what a build has to do before it starts.
 
     Args:
         plan: What the planner worked out.
         settings: The settled choices for the build, which size it.
-        budget: The memory those builds share, settling how many run at once.
         console: The console to print on.
     """
     crops = sum(len(job.frames) for job in plan.jobs)
@@ -48,8 +51,7 @@ def describe(plan: Plan, settings: Settings, budget: Budget, console: Console) -
         f"built as {settings.name}; "
         f"build pool {settings.workers}, download pools "
         f"{', '.join(f'{name} {n}' for name, n in settings.downloads.items())}, "
-        f"{settings.in_flight} products may wait, "
-        f"{budget.total / GIB:.0f} GiB between them"
+        f"each archive holding {settings.workers} more that wait on a core"
     )
 
 
@@ -65,13 +67,9 @@ def watch(progress: Progress) -> Iterator[None]:
         yield
         return
     done = threading.Event()
-
-    def said() -> None:
-        """Print what the build is doing until it is over."""
-        while not done.wait(WATCHED_SECONDS):
-            print(progress.standing, flush=True)
-
-    watcher = threading.Thread(target=said, daemon=True)
+    watcher = threading.Thread(
+        target=_print_standing, args=(progress, done), daemon=True
+    )
     watcher.start()
     try:
         yield
@@ -80,58 +78,75 @@ def watch(progress: Progress) -> Iterator[None]:
         watcher.join()
 
 
-def _high_water() -> str:
+def _print_standing(progress: Progress, done: threading.Event) -> None:
+    """Print what the build is doing every so often until it is over.
+
+    Args:
+        progress: What every product still in the build is doing.
+        done: What is set once the build is over.
+    """
+    while not done.wait(WATCHED_SECONDS):
+        print(progress.standing, flush=True)
+
+
+def _memory_peak() -> str:
     """Return the most memory the box has held, to read against what it was given.
 
     Returns:
-        held: The high water mark to print, or empty where nothing counts one.
+        peak: The high water mark to print, or empty where nothing counts one.
     """
-    peak = memory.peak_bytes()
-    return f", peak {peak / 1024**3:.1f} GiB" if peak else ""
+    counted = list(CGROUP_PEAKS)
+    with suppress(OSError):
+        # A container reads its own cgroup as the root, and a host process does not
+        for line in Path("/proc/self/cgroup").read_text().splitlines():
+            if line.startswith("0::"):
+                own = line.removeprefix("0::").strip().lstrip("/")
+                counted.append(Path("/sys/fs/cgroup") / own / "memory.peak")
+    for path in counted:
+        try:
+            return f", peak {int(path.read_text().split()[0]) / 1024**3:.1f} GiB"
+        except (OSError, ValueError):
+            continue
+    return ""
 
 
-def render(
-    outcomes: Iterable[Outcome], total: int, description: str, console: Console
+def collect_outcomes(
+    outcomes: Iterable[Outcome], total: int, console: Console
 ) -> list[Outcome]:
-    """Draw a live progress bar while collecting what each job left.
+    """Collect what each job left, drawing how far the build has got.
 
     Args:
         outcomes: The outcomes as the runner finishes them.
         total: How many jobs there are.
-        description: The label for the progress task.
         console: The console to render on.
 
     Returns:
         collected: Every outcome collected, in completion order.
     """
     collected: list[Outcome] = []
+    failed = 0
     # A platform log takes plain flushed lines, since no cursor can be moved there
-    if printing.plain_log():
-        step = max(1, total // LOGGED_LINES)
-        failed = 0
+    plain = printing.plain_log()
+    step = max(1, total // LOGGED_LINES)
+    columns = (BarColumn(bar_width=None), MofNCompleteColumn())
+    with Bar(*columns, console=console, disable=plain) as progress:
+        task = progress.add_task(DESCRIPTION, total=total)
         for outcome in outcomes:
             collected.append(outcome)
             if outcome.error:
                 failed += 1
-                printing.named_failure(outcome.job.label, outcome.error, failed)
-            if len(collected) % step == 0 or len(collected) == total:
+                printing.print_failure(
+                    outcome.job.label, outcome.error, failed, console
+                )
+            progress.update(task, completed=len(collected))
+            if plain and (len(collected) % step == 0 or len(collected) == total):
                 # The one named is the one just finished, never the one under way
-                printing.reached(
-                    description,
+                printing.print_progress_line(
+                    DESCRIPTION,
                     len(collected),
                     total,
-                    f"{outcome.job.label} done{_high_water()}",
+                    f"{outcome.job.label} done{_memory_peak()}",
                 )
-        return collected
-    with Bar(
-        BarColumn(bar_width=None), MofNCompleteColumn(), console=console
-    ) as progress:
-        task = progress.add_task(description, total=total)
-        for outcome in outcomes:
-            collected.append(outcome)
-            if outcome.error:
-                console.print(f"[red]error[/red] {outcome.job.label}: {outcome.error}")
-            progress.update(task, completed=len(collected))
     return collected
 
 
@@ -163,9 +178,9 @@ def print_summary(
     printing.print_listed([f"{one.job.label}: {one.error}" for one in failed], console)
     lacking: dict[str, set[str]] = defaultdict(set)
     for one in failed:
-        written = {record.tile for record in one.records}
+        covered = {record.tile for record in one.records}
         lacking[one.job.instrument].update(
-            frame.name for frame in one.job.frames if frame.name not in written
+            frame.name for frame in one.job.frames if frame.name not in covered
         )
     incomplete = set().union(*lacking.values())
     console.print(

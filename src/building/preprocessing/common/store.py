@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from building import paths
-from building.common.layout import GROUND, Layout
+from building.common.layout import Axis, Layout
 from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.sample import Sample
 from common.disk.files import atomic_path
@@ -31,21 +31,19 @@ METRES = "metres"
 META = "meta"
 
 
-def sample_path(frame: Tile, instrument: str, identifier: str, root: Path) -> Path:
+def sample_path(frame: Tile, instrument: str, identifier: str) -> Path:
     """Return where one cropped observation's arrays belong.
 
     Args:
         frame: The tile it was cut to.
         instrument: The instrument that took it, as ODE names it.
         identifier: What that instrument was asked for.
-        root: The dataset's own root directory.
 
     Returns:
-        path: The file it is written as, which need not exist.
+        path: The file it is written as under the dataset's root, which need not exist.
     """
     return (
-        root
-        / frame.band_name
+        Path(frame.band_name)
         / frame.column_name
         / slugify(instrument)
         / f"{slugify(identifier)}{paths.SAMPLE_SUFFIX}"
@@ -66,10 +64,7 @@ def native(values: np.ndarray) -> np.ndarray:
 
 
 def write_sample(
-    held: Sample,
-    layout: Layout,
-    frame: Tile,
-    root: Path,
+    held: Sample, layout: Layout, frame: Tile, identifier: str, root: Path
 ) -> Path:
     """Write one sample down, its arrays and what describes them in one file.
 
@@ -77,21 +72,19 @@ def write_sample(
         held: The sample, whose position and masks are written beside the values.
         layout: How that instrument's arrays are laid out.
         frame: The tile it was cut to.
+        identifier: What that instrument was asked for, its observation or sheet.
         root: The dataset's own root directory.
 
     Returns:
-        path: The file it was written as.
+        path: The file it was written as, relative to the dataset's root.
 
     Raises:
         ValueError: When the layout declares an array the crop does not carry.
     """
-    ground = tuple(
-        name
-        for name, holds in zip(layout.dims, layout.axes, strict=True)
-        if holds == GROUND
-    )
+    position = held.position
+    ground = tuple(layout.dims[at] for at in layout.axis_indices(Axis.GROUND))
     # A separable position holds one ground axis each, any other a value per sample.
-    north, east = held.position.dims_along(ground)
+    north, east = position.dims_along(ground)
     along = {
         layout.measurement: layout.dims,
         NORTH: north,
@@ -109,29 +102,25 @@ def write_sample(
     arrays[layout.measurement] = values.astype(
         layout.stored or values.dtype, copy=False
     )
-    arrays[NORTH] = native(held.position.north).astype(
-        relative_positioning.STORED, copy=False
-    )
-    arrays[EAST] = native(held.position.east).astype(
-        relative_positioning.STORED, copy=False
-    )
-    arrays[MEASURED] = native(held.measured_ground)
+    arrays[NORTH] = np.asarray(position.north, dtype=relative_positioning.STORED)
+    arrays[EAST] = np.asarray(position.east, dtype=relative_positioning.STORED)
+    arrays[MEASURED] = held.measured_ground
     for name, mask in ((INSIDE, held.inside), (VALID, held.valid)):
         # The two the rooted mask is made of, kept for whoever wants them apart.
         if mask is not None:
             arrays[name] = native(mask)
             along[name] = ground
 
-    path = sample_path(frame, layout.instrument, held.identifier, root)
-    grid = held.position.polar
+    path = sample_path(frame, layout.instrument, identifier)
+    grid = position.grid
     described = {
         "instrument": layout.instrument,
-        "identifier": held.identifier,
+        "identifier": identifier,
         "tile": frame.name,
         "band": frame.band,
         "column": frame.column,
         "measurement": layout.measurement,
-        "separable": held.position.separable,
+        "separable": position.separable,
         "centre_lon": frame.centre_lon,
         "centre_lat": frame.centre_lat,
         "box": {
@@ -149,6 +138,6 @@ def write_sample(
         "label": held.label,
     }
     # Compressed, and written whole then moved, so a crop a reader finds was finished.
-    with atomic_path(path) as tmp, tmp.open("wb") as handle:
+    with atomic_path(root / path) as tmp, tmp.open("wb") as handle:
         np.savez_compressed(handle, **arrays, **{META: np.array(json.dumps(described))})
     return path

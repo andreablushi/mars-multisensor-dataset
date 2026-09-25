@@ -1,1 +1,1 @@
-"""What one sheet is, once its planes have been read onto the grid they share."""
+"""What one MOLA grid is off disk, and what a tile keeps of it."""

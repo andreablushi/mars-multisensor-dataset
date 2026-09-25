@@ -1,1 +1,1 @@
-"""Data models shared by both pipelines."""
+"""The models every analysis package shares."""

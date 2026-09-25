@@ -6,16 +6,21 @@ import threading
 import time
 from collections import Counter
 from dataclasses import dataclass, field
+from enum import StrEnum
 
-# What a product is doing between being planned and being finished, in order.
-QUEUED = "queued"
-FETCHING = "fetching"
-HOLDING = "holding"
-BUILDING = "building"
-STAGES = (QUEUED, FETCHING, HOLDING, BUILDING)
+from building.models.job import Job
 
 # How many of the products a build is waiting on it names, the longest held first.
 NAMED = 3
+
+
+class Stage(StrEnum):
+    """What a product is doing between being planned and being finished, in order."""
+
+    FETCHING = "fetching"
+    PLACING = "placing"
+    WAITING = "waiting"
+    BUILDING = "building"
 
 
 @dataclass(slots=True)
@@ -31,51 +36,29 @@ class Progress:
     total: int
     finished: int = 0
     moved_at: float = field(default_factory=time.monotonic)
-    _held: dict[object, tuple[str, str, float]] = field(default_factory=dict)
+    _held: dict[Job, tuple[Stage, float]] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
-    def entered(self, label: str, stage: str) -> object:
-        """Record that one product has reached the first stage of the build.
+    def moved(self, job: Job, onto: Stage) -> None:
+        """Record that one product has reached a stage, fetching being its first.
 
         Args:
-            label: What the product is called, which is what a stall names.
-            stage: The stage it has reached.
-
-        Returns:
-            ticket: What the product is tracked by, since archive jobs share names.
-        """
-        ticket = object()
-        with self._lock:
-            self.moved_at = time.monotonic()
-            self._held[ticket] = (label, stage, self.moved_at)
-        return ticket
-
-    def moved(self, ticket: object, onto: str) -> object:
-        """Record that one product has moved on to the next stage.
-
-        Args:
-            ticket: What the product is tracked by, as `entered` handed it back.
+            job: The product that moved.
             onto: The stage it has reached.
-
-        Returns:
-            ticket: That same ticket, so a caller holds one thing throughout.
         """
         with self._lock:
             self.moved_at = time.monotonic()
-            label, _, _ = self._held[ticket]
-            self._held[ticket] = (label, onto, self.moved_at)
-        return ticket
+            self._held[job] = (onto, self.moved_at)
 
-    def left(self, ticket: object, *, finished: bool = False) -> None:
-        """Record that one product has left the stage it was at.
+    def finish(self, job: Job) -> None:
+        """Record that one product has left the build, built or failed.
 
         Args:
-            ticket: What the product is tracked by, as `entered` handed it back.
-            finished: Whether it left the build altogether rather than moving on.
+            job: The product that left.
         """
         with self._lock:
-            self._held.pop(ticket, None)
-            self.finished += finished
+            self._held.pop(job, None)
+            self.finished += 1
             self.moved_at = time.monotonic()
 
     @property
@@ -87,10 +70,10 @@ class Progress:
         """
         with self._lock:
             now = time.monotonic()
-            held = list(self._held.values())
+            held = [(job.label, *at) for job, at in self._held.items()]
             done, still = self.finished, now - self.moved_at
         at = Counter(stage for _, stage, _ in held)
-        counted = ", ".join(f"{at[stage]} {stage}" for stage in STAGES)
+        counted = ", ".join(f"{at[stage]} {stage}" for stage in Stage)
         line = f"{done}/{self.total} done; {counted}; last moved {still:.0f}s ago"
         if not held:
             return line

@@ -6,9 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from building.preprocessing.common.models.relative_position import (
-    RelativePosition,
-)
+from building.preprocessing.common.models.position import Position
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,4 +21,4 @@ class Overlap:
 
     bounds: tuple[np.ndarray, ...]
     inside: np.ndarray | None
-    position: RelativePosition
+    position: Position

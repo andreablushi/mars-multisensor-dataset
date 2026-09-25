@@ -2,38 +2,37 @@
 
 from __future__ import annotations
 
-import math
+from functools import partial
 
 import numpy as np
 
 from building.preprocessing.common import geometry
-from building.preprocessing.common.models.cut import Cut
-from building.preprocessing.common.models.relative_position import (
-    PolarGrid,
-    RelativePosition,
-)
-from building.preprocessing.common.models.samples import Samples
+from building.preprocessing.common.models.position import Position
 from common.maths import geodesy
-from common.maths.geodesy import TURN
+from common.maths.geodesy import TURN, PolarGrid
 from common.models.tile import Tile
 
 # The longest segment the box is walked in, a chord leaving its arc by under a pixel.
 STEP = 0.1
 
 
-def cut(samples: Samples, frame: Tile, span: float) -> Cut | None:
+def cut(
+    position: Position, frame: Tile, span: float
+) -> tuple[tuple[np.ndarray, ...], np.ndarray | None] | None:
     """Return which bins of one grid projected onto a pole the box keeps.
 
     Args:
-        samples: The samples, placed in the metres of the grid they sit on.
+        position: The samples, placed in the metres of the grid they sit on.
         frame: The tile's local frame, carrying the box the catalogue gives it.
         span: How many degrees of longitude that box covers.
 
     Returns:
-        held: What the box keeps, or None where the grid reaches none of it.
+        bounds: The bins to keep of each ground axis, outermost first.
+        inside: Which kept bins truly fall in the box, or None for all.
+        None: Where the grid reaches none of the box.
     """
-    grid = samples.grid
-    ring = geodesy.stereographic_forward(
+    grid = position.grid
+    ring_x, ring_y = geodesy.stereographic_forward(
         *geodesy.bbox_ring(
             frame.min_lat, frame.max_lat, frame.west_lon, frame.east_lon, STEP
         ),
@@ -41,10 +40,10 @@ def cut(samples: Samples, frame: Tile, span: float) -> Cut | None:
     )
     # The box projects to a sector, and the ring its edge traces bounds it.
     lines = np.flatnonzero(
-        (samples.down >= ring[1].min()) & (samples.down <= ring[1].max())
+        (position.north >= ring_y.min()) & (position.north <= ring_y.max())
     )
     across = np.flatnonzero(
-        (samples.across >= ring[0].min()) & (samples.across <= ring[0].max())
+        (position.east >= ring_x.min()) & (position.east <= ring_x.max())
     )
     if not lines.size or not across.size:
         return None
@@ -55,12 +54,12 @@ def cut(samples: Samples, frame: Tile, span: float) -> Cut | None:
     )
     # A south grid runs its eastings the other way round, so its turn does too.
     sign = -1.0 if grid[1] else 1.0
-    held = Samples(samples.down[lines], samples.across[across], True, grid)
+    held = Position(position.north[lines], position.east[across], True, grid)
     inside = np.empty(held.sizes, dtype=bool)
-    for block in geometry.blocked(held.sizes):
-        down, east = geometry.axes(held, block)
-        radius = np.hypot(down, east)
-        turned = np.degrees(np.arctan2(east, sign * down)) + grid[0]
+    for block in geometry.line_blocks(held.sizes):
+        north, east = held.crossed_part(block)
+        radius = np.hypot(north, east)
+        turned = np.degrees(np.arctan2(east, sign * north)) + grid[0]
         inside[block] = (
             (radius >= band[0])
             & (radius <= band[1])
@@ -68,69 +67,54 @@ def cut(samples: Samples, frame: Tile, span: float) -> Cut | None:
         )
     if not inside.any():
         return None
-    return Cut((lines, across), geometry.marked(inside), True)
+    return (lines, across), geometry.partial_mask(inside)
 
 
-def placed(samples: Samples, frame: Tile, place: PolarGrid) -> RelativePosition:
+def placed(position: Position, frame: Tile) -> Position:
     """Return where the samples one cut keeps sit, in the metres of the tile's pole.
 
     Args:
-        samples: The samples the cut keeps, on the grid they were placed on.
-        frame: The tile's local frame, whose centre the offsets stand from.
-        place: The grid the tile is read on, which every instrument shares.
+        position: The samples the cut keeps, on the grid they were placed on.
+        frame: The tile's local frame at a pole, whose centre the offsets stand from.
 
     Returns:
         position: The metres north and east of that centre.
     """
-    centre_x, centre_y = geodesy.stereographic_forward(
-        frame.centre_lon, frame.centre_lat, *place
+    place = frame.grid
+    centre_x, centre_y = map(
+        float, geodesy.stereographic_forward(frame.centre_lon, frame.centre_lat, *place)
     )
-    grid = samples.grid
-    # A grid of the tile's own pole reaches it by a turn and a scale.
-    if grid is not None and grid[1] == place[1]:
+    grid = position.grid
+    # A grid of the tile's own pole and centre longitude reaches it by a scale.
+    if grid is not None and grid[:2] == place[:2]:
         scale = place[2] / grid[2]
-        turned = math.radians(grid[0] - place[0])
-        if not turned:
-            return RelativePosition(
-                samples.down * scale - float(centre_y),
-                samples.across * scale - float(centre_x),
-                samples.separable,
-                place,
-            )
+        return Position(
+            position.north * scale - centre_y,
+            position.east * scale - centre_x,
+            position.separable,
+            place,
+        )
+    north, east = geometry.filled_offsets(
+        position, partial(projected_offsets, position, place, (centre_x, centre_y))
+    )
+    return Position(north, east, False, place)
 
-        def offsets(block: slice) -> tuple[np.ndarray, np.ndarray]:
-            """Return the metres one block of samples stands from that centre.
 
-            Args:
-                block: Which lines of the cut to read.
+def projected_offsets(
+    position: Position, place: PolarGrid, centre: tuple[float, float], block: tuple
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return the metres one block of samples stands off, projected onto the pole.
 
-            Returns:
-                north: Their metres north of the centre.
-                east: Their metres east of it.
-            """
-            down, across = geometry.axes(samples, block)
-            # A pole's eastings run the other way round, so its turn does too.
-            sign = 1.0 if place[1] else -1.0
-            cosine, sine = math.cos(turned), math.sin(turned)
-            return (
-                scale * (down * cosine + sign * across * sine) - float(centre_y),
-                scale * (across * cosine - sign * down * sine) - float(centre_x),
-            )
-    else:
+    Args:
+        position: The samples the cut keeps, on the grid they were placed on.
+        place: The grid the tile is read on.
+        centre: The tile centre's easting and northing on that grid.
+        block: Which lines of the cut to read.
 
-        def offsets(block: slice) -> tuple[np.ndarray, np.ndarray]:
-            """Return the metres one block of samples stands from that centre.
-
-            Args:
-                block: Which lines of the cut to read.
-
-            Returns:
-                north: Their metres north of the centre.
-                east: Their metres east of it.
-            """
-            lon, lat = geometry.degrees(samples, block)
-            x, y = geodesy.stereographic_forward(lon, lat, *place)
-            return y - float(centre_y), x - float(centre_x)
-
-    north, east = geometry.filled(samples, offsets)
-    return RelativePosition(north, east, False, place)
+    Returns:
+        north: Their metres north of the centre.
+        east: Their metres east of it.
+    """
+    lon, lat = geometry.block_degrees(position, block)
+    x, y = geodesy.stereographic_forward(lon, lat, *place)
+    return y - centre[1], x - centre[0]

@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from building.preprocessing.crism.correction import bands_calibration
+from building.configs.crism import DETECTOR_WINDOWS_NM, Detector
 from building.preprocessing.crism.models.mask import Mask
-
-# The nm window each detector is trusted over, outside which the reading is noise.
-WINDOWS = {"l": (1020.0, 2650.0), "s": (400.0, 1060.0)}
 
 # The range a brightness can take, its floor below zero so noise there survives.
 BRIGHTNESS = (-0.05, 1.0)
@@ -18,36 +15,34 @@ class NoMeasurement(ValueError):
     """Raised when every cell of one detector's cube is refused."""
 
 
-def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: str) -> Mask:
+def refused_mask(
+    cube: np.ndarray, table: np.ndarray, centre: np.ndarray, detector: Detector
+) -> Mask:
     """Fill everything one cube holds that is not a measurement.
 
     Args:
         cube: The values as lines by samples by bands, filled in place.
         table: The centre wavelength of every column and band, in that order.
+        centre: The centre wavelength of every band, averaged over its columns.
         detector: Which detector, `l` for infrared or `s` for visible.
 
     Returns:
         mask: The mask saying where the cube was filled rather than measured.
 
     Raises:
-        KeyError: When no window is configured for that detector.
         ValueError: When the window keeps no band of the cube.
         NoMeasurement: When no cell of the cube is a measurement.
     """
-    centre = bands_calibration.centres(table)
-    low, high = WINDOWS[detector]
+    low, high = DETECTOR_WINDOWS_NM[detector]
 
     # What the wavelength file refused to name, which is already NaN.
     columns = np.isnan(table).all(axis=1)
-    blank = np.isnan(centre)
     # The sensor edges, where the window says the reading is not trusted.
-    edges = ~blank & ((centre < low) | (centre > high))
-    bands = blank | edges
+    edges = (centre < low) | (centre > high)
+    bands = np.isnan(centre) | edges
 
     # What no value test may look at, held per column and band so it broadcasts.
-    dead = np.zeros(cube.shape[1:], dtype=bool)
-    dead[columns, :] = True
-    dead[:, bands] = True
+    dead = columns[:, None] | bands
     if dead.all():
         raise ValueError(f"The {detector} window keeps no band of this cube.")
 
@@ -68,4 +63,4 @@ def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: str) -> Mask:
         raise NoMeasurement(f"No cell of this {detector} cube is a measurement.")
     fill = float(np.mean(cube, where=~refused))
     np.copyto(cube, fill, where=refused)
-    return Mask(columns, bands, edges, int(scattered.sum()), pixels, fill)
+    return Mask(columns, bands, pixels, fill)

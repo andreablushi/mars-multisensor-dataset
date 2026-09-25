@@ -1,1 +1,1 @@
-"""What one scan is, once it has been read off disk and placed on its grid."""
+"""What one CTX scan is off disk, and what a tile keeps of it."""

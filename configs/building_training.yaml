@@ -7,9 +7,11 @@ name: training-test
 workers: 8
 
 # Downloads at once from each archive, which wait on it and not on the cores.
+# JPL answers 503 past about ten connections from one address, so it stays under that.
 downloads:
   jpl: 8
-  wustl: 8
+  wustl: 12
+  spice: 4
 
 # What share of the tiles the selection kept to build, above zero and up to one.
 share: 1

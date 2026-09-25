@@ -3,29 +3,16 @@
 
 from __future__ import annotations
 
-import argparse
-import os
+from dhub import args, checkpoint, submit
+from dhub.paths import Artifact, Function
 
-from dhub import archives, build, submit
-from dhub import configs as platform
-from digitalhub_runtime_python import handler
-
-from analysis import paths as analysis_paths
 from analysis.ground_truth import artifacts
+from analysis.selector.artifacts import read_selection
 from analysis.selector.models.selection import Selection
-from analysis.utils import dataset_list
 from building import draw, paths
-from building.build import build_dataset
 from building.models.settings import Settings
-from common.config import load_config
-from common.console import PLAIN_LOG_ENV, print_interrupted
-
-BUILD_HANDLER = "scripts.build_evaluation:run_build"
-
-_PUBLISHED = platform.load().publishes
-_DATASET = _PUBLISHED["dataset"]
-_SELECTION = _PUBLISHED["selection"]
-_LABELS = _PUBLISHED["labels"]
+from building.runner import build_dataset
+from common.config import evaluation_settings
 
 
 def evaluation_selections(settings: Settings) -> list[Selection]:
@@ -43,30 +30,14 @@ def evaluation_selections(settings: Settings) -> list[Selection]:
     labels = artifacts.read_labels()
     root = paths.dataset_root(settings.name)
     artifacts.write_labels([one for one in labels if one.drawn], root)
-    return draw.draw_evaluation(dataset_list.read_dataset_list(), labels)
+    return draw.draw_evaluation(read_selection(), labels)
 
 
-@handler(outputs=[_DATASET])
-def run_build(project, force: bool = False, workers: int | None = None):
-    """Build the evaluation dataset on DigitalHub and publish what it left on disk.
-
-    Args:
-        project: The DigitalHub project the dataset is logged into.
-        force: Whether to build the dataset again from nothing.
-        workers: How many products to build at once, as the job was sized.
-
-    Returns:
-        dataset: The published dataset, one object per crop.
-    """
-    os.environ[PLAIN_LOG_ENV] = "1"
-    # The platform clones the repo alone, so both come off their archives
-    print("fetching the selection and the labels", flush=True)
-    archives.unpack_archive(project, _SELECTION, analysis_paths.SELECTION_ROOT)
-    archives.unpack_archive(project, _LABELS, analysis_paths.LABELS_ROOT)
-    settings = load_config(paths.EVALUATION_CONFIG_PATH, Settings, workers=workers)
-    return build.published_dataset(
-        project, settings, evaluation_selections(settings), force
-    )
+run_build = checkpoint.build_handler(
+    evaluation_settings,
+    evaluation_selections,
+    (Artifact.SELECTION, Artifact.LABELS),
+)
 
 
 def main() -> int:
@@ -75,30 +46,15 @@ def main() -> int:
     Returns:
         code: A process exit code, non zero when a product or an image build failed.
     """
-    parsed = argparse.ArgumentParser(description=__doc__)
-    parsed.add_argument(
-        "--dh", action="store_true", help="submit to DigitalHub instead of running here"
-    )
-    parsed.add_argument(
-        "--force",
-        action="store_true",
-        help="build the dataset again from nothing, rather than filling in what "
-        "the last build left missing",
-    )
-    parsed.add_argument("--ref", default="main", help="branch, tag, or commit to run")
-    arguments = parsed.parse_args()
+    arguments = args.script_parser(__doc__).parse_args()
 
     if arguments.dh:
         return submit.submitted(
-            "build_evaluation", BUILD_HANDLER, arguments.ref, force=arguments.force
+            Function.BUILD_EVALUATION, arguments.ref, force=arguments.force
         )
-    settings = load_config(paths.EVALUATION_CONFIG_PATH, Settings)
+    settings = evaluation_settings()
     return build_dataset(settings, evaluation_selections(settings), arguments.force)
 
 
 if __name__ == "__main__":
-    try:
-        raise SystemExit(main())
-    except KeyboardInterrupt:
-        print_interrupted("written crops")
-        raise SystemExit(130) from None
+    args.run_script(main, "written crops")

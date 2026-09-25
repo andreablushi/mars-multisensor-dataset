@@ -1,4 +1,4 @@
-"""Reading a config file through Hydra into the model it settles, checked against it."""
+"""Every config file, read through Hydra into the model it settles."""
 
 from __future__ import annotations
 
@@ -8,6 +8,9 @@ from pathlib import Path
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
+from analysis.models.settings import Settings as AnalysisSettings
+from building.models.settings import Settings as BuildSettings
+from building.models.settings import TrainingSettings
 from common.paths import CONFIGS_ROOT
 
 
@@ -29,4 +32,25 @@ def load_config[T](path: Path, model: type[T], **overrides: object) -> T:
     given = {key: value for key, value in overrides.items() if value is not None}
     return OmegaConf.to_object(
         OmegaConf.merge(OmegaConf.structured(model), read, given)
+    )
+
+
+def analysis_settings(workers: int | None = None) -> AnalysisSettings:
+    """Read `analysis.yaml`, its workers overridden unless None."""
+    return load_config(
+        CONFIGS_ROOT / "analysis.yaml", AnalysisSettings, workers=workers
+    )
+
+
+def training_settings(workers: int | None = None) -> TrainingSettings:
+    """Read `building_training.yaml`, its workers overridden unless None."""
+    return load_config(
+        CONFIGS_ROOT / "building_training.yaml", TrainingSettings, workers=workers
+    )
+
+
+def evaluation_settings(workers: int | None = None) -> BuildSettings:
+    """Read `building_evaluation.yaml`, its workers overridden unless None."""
+    return load_config(
+        CONFIGS_ROOT / "building_evaluation.yaml", BuildSettings, workers=workers
     )

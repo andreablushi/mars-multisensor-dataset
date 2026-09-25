@@ -1,4 +1,4 @@
-"""One MOLA sheet cut to the tile it was kept for."""
+"""One MOLA grid cut to the tile it was kept for."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from building.preprocessing.common.models.sample import Sample
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class MolaSample(Sample):
-    """The height one sheet holds over one tile.
+    """The height one grid holds over one tile.
 
     Attributes:
         elevation: The height above the areoid in whole metres, lines by samples.

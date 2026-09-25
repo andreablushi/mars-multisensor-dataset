@@ -1,4 +1,4 @@
-"""Fetching the ODE feature catalogue, the one source every label is read from."""
+"""The ODE feature catalogue every label is read from, fetched once and cached."""
 
 from __future__ import annotations
 
@@ -44,5 +44,5 @@ def read_features(
             for item in results["Features"]["Feature"]
         )
     )
-    write_jsonl(path, [asdict(one) for one in features])
+    write_jsonl(path, [asdict(feature) for feature in features])
     return features

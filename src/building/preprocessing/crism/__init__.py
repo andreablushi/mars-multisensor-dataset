@@ -1,1 +1,1 @@
-"""Cleaning one CRISM survey observation, ported from crism_ml."""
+"""Cleaning one CRISM observation and cutting it to the tiles it was kept for."""

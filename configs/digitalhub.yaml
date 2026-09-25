@@ -13,50 +13,38 @@ image_extras:
   - digitalhub>=0.15.11,<0.16
   - pandas
 
-# Whether every stage queues on the shared pool, which marks each profile with -shared.
-shared: true
-
 # What each stage is scheduled on, its profile settling the limit it is killed at.
+# A stage marked shared queues on the shared pool, the rest on the reserved one.
+# A stage marked isis has ISIS installed in its image, which only the CTX builds need.
 resources:
   image:
     profile: cpu
+    shared: true
   pipeline:
     profile: cpu
+    shared: true
     cpu: 8
     memory: 32Gi
     disk: 64Gi
   selection:
     profile: cpu
+    shared: true
     cpu: 8
     memory: 32Gi
     disk: 64Gi
-  # A build's disk holds 100 GB of crops before they go up, beside the products still being cut
+  # A build's disk holds 100 GiB of crops before they go up, beside the products still being cut
   build_training:
     profile: cpu
-    cpu: 8
-    memory: 40Gi
-    budget: 32Gi
+    shared: true
+    isis: true
+    cpu: 16
+    memory: 56Gi
     disk: 150Gi
   build_evaluation:
     profile: cpu
-    cpu: 8
-    memory: 40Gi
-    budget: 32Gi
+    shared: false
+    isis: true
+    cpu: 16
+    memory: 56Gi
     disk: 120Gi
 
-# The function each run is registered as, the project scoping it so it needs no prefix
-functions:
-  pipeline: analysis-pipeline
-  selection: select-features
-  build_training: build-dataset
-  build_evaluation: build-evaluation
-
-# What each stage publishes, which is what dh_download.sh brings back down.
-publishes:
-  coverage: coverage
-  metadata: metadata
-  selection: selection
-  stats: stats
-  summary: summary
-  dataset: dataset
-  labels: labels

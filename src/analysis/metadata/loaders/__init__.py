@@ -1,1 +1,1 @@
-"""Loading the ODE records the pipeline and the notebooks read."""
+"""The readers of downloaded product records and sampled ancillary tables."""
