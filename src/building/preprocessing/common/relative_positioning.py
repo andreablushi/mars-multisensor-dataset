@@ -12,7 +12,7 @@ from common.maths import geodesy
 from common.models.tile import Tile
 
 # How many neighbouring pairs of one axis to measure a ground sample over.
-MEASURED = 512
+SPACING_SAMPLES = 512
 
 # How many samples of a crop become metres at once, since a scan can be huge.
 BLOCK = 1_000_000
@@ -78,7 +78,7 @@ def distance_centre_m(
 
 
 def middle_slice(length: int) -> slice:
-    """Return at most MEASURED samples from the middle of one axis.
+    """Return at most SPACING_SAMPLES samples from the middle of one axis.
 
     Args:
         length: How many samples the axis holds.
@@ -86,7 +86,7 @@ def middle_slice(length: int) -> slice:
     Returns:
         middle: The slice of it to measure over.
     """
-    kept = min(length, MEASURED)
+    kept = min(length, SPACING_SAMPLES)
     start = (length - kept) // 2
     return slice(start, start + kept)
 

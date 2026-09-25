@@ -32,7 +32,7 @@ LAYOUT = Layout(
     measurement="image",
 )
 
-CACHE = ProductCache(paths.CTX_ROOT, {None: (CUBE_SUFFIX, METADATA_SUFFIX)})
+CACHE = ProductCache(paths.CTX_ROOT, NAMING, {None: (CUBE_SUFFIX, METADATA_SUFFIX)})
 
 # What ODE says of a scan that its projected label does not, the geometry it was at
 ODE_ACQUISITION = (

@@ -1,1 +1,1 @@
-"""What a read observation carries, what cleaning leaves, and what a tile keeps."""
+"""What one CRISM observation is off disk and cleaned, and what a tile keeps of it."""

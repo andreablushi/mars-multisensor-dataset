@@ -60,7 +60,7 @@ def fetch_distortions(
             for name, url in file_fields(item).items():
                 if name.endswith(".tab"):
                     size = int(float(kbytes[name] or 0))
-                    tables[NAMING.parse(item["pdsid"])] = (url, size)
+                    tables[NAMING.observation_id(item["pdsid"])] = (url, size)
                 elif name.endswith(".lbl"):
                     label_url = url
     distortions: list[Distortion] = []
@@ -138,7 +138,7 @@ def sample_distortions(
     """
     table = scratch / f"{pdsid}.tab"
     row_bytes = int(label["ROW_BYTES"])
-    url, kbytes = tables.get(NAMING.parse(pdsid), ("", 0))
+    url, kbytes = tables.get(NAMING.observation_id(pdsid), ("", 0))
     end = (kbytes - 1) * 1024 - row_bytes + 1
     starts = range(0, max(end, 0), row_bytes * SAMPLED_EVERY)
     chunks = [

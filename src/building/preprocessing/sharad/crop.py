@@ -9,13 +9,13 @@ import numpy as np
 from building.preprocessing.common import cut
 from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.sharad.models.observation import (
-    COLUMN_FIELD,
     LATITUDE_FIELD,
     LONGITUDE_FIELD,
     MARS_RADIUS_FIELD,
     SOLAR_ZENITH_FIELD,
     SPACECRAFT_RADIUS_FIELD,
     SharadObservation,
+    radargram_columns,
 )
 from building.preprocessing.sharad.models.sample import SharadSample
 from common.models.tile import Tile
@@ -39,7 +39,7 @@ def kept_columns(placing: np.recarray, frames: Sequence[Tile]) -> np.ndarray:
     """
     # Cut as `crop` cuts, so exactly the columns it goes on to read are kept.
     samples = trace_samples(placing)
-    traces = placing[COLUMN_FIELD].astype("i8") - 1
+    traces = radargram_columns(placing)
     held = [cut.overlap(samples, frame) for frame in frames]
     return np.unique(
         np.concatenate(

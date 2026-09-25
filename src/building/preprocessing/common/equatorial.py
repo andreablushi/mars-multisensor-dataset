@@ -52,7 +52,7 @@ def cut(
         np.arange(int(low), int(high) + 1)
         for low, high in zip(where.min(axis=0), where.max(axis=0), strict=True)
     )
-    return bounds, geometry.partial_mask(geometry.taken(kept, bounds))
+    return bounds, geometry.partial_mask(geometry.kept_part(kept, bounds))
 
 
 def placed(samples: Samples, frame: Tile) -> RelativePosition:

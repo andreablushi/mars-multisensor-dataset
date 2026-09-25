@@ -38,3 +38,9 @@ class SharadObservation:
     clutter: np.ndarray
     geometry: np.recarray
     traces: np.ndarray
+
+
+def radargram_columns(geometry: np.recarray) -> np.ndarray:
+    """Return the radargram column each row of a track's geometry places."""
+    # The geometry counts columns from one, and the radargram from zero.
+    return geometry[COLUMN_FIELD].astype("i8") - 1

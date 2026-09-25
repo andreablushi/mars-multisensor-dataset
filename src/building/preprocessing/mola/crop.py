@@ -48,14 +48,14 @@ def mola_sample(
 
 
 def crop_polar(observation: MolaObservation, frame: Tile) -> MolaSample | None:
-    """Return the bins of one polar grid its tile's box keeps.
+    """Return one polar grid holding only the bins its tile's box keeps.
 
     Args:
         observation: The polar grid that landed, holding the one product it is.
-        frame: The local frame of the tile it is read for.
+        frame: The local frame of the tile it was kept for.
 
     Returns:
-        sample: The height over that tile, or None where the grid reaches none of it.
+        sample: The grid cut to that tile, or None where it reaches none of it.
 
     Raises:
         FileNotFoundError: When the grid or its label is missing.
@@ -80,14 +80,14 @@ def crop_polar(observation: MolaObservation, frame: Tile) -> MolaSample | None:
 
 
 def crop(observation: MolaObservation, frame: Tile) -> MolaSample | None:
-    """Return the bins of one grid its tile's box keeps, its sheets merged into one.
+    """Return one grid holding only the bins its tile's box keeps, its sheets merged.
 
     Args:
         observation: The sheets of the grid that landed.
         frame: The local frame of the tile it was kept for.
 
     Returns:
-        sample: The height over that tile, or None where a polar grid misses it.
+        sample: The grid cut to that tile, or None where a polar one reaches none of it.
 
     Raises:
         ValueError: When the sheets that landed leave part of its box unwritten.

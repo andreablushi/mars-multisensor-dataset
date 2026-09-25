@@ -19,7 +19,7 @@ class NoMeasurement(ValueError):
     """Raised when every cell of one detector's cube is refused."""
 
 
-def bad_pixels(cube: np.ndarray, table: np.ndarray, detector: Detector) -> Mask:
+def refused_mask(cube: np.ndarray, table: np.ndarray, detector: Detector) -> Mask:
     """Fill everything one cube holds that is not a measurement.
 
     Args:

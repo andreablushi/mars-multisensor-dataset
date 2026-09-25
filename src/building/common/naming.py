@@ -38,7 +38,7 @@ class Naming:
             return None
         return {part: found or "" for part, found in match.groupdict().items()}
 
-    def parse(self, product_id: str) -> str | None:
+    def observation_id(self, product_id: str) -> str | None:
         """Return the identifier of the observation one product id belongs to.
 
         Args:
@@ -57,7 +57,7 @@ class Naming:
         """Return the id the archive publishes one product of an observation under.
 
         Args:
-            identifier: The observation, as `parse` returns it.
+            identifier: The observation, as `observation_id` returns it.
             kind: Which product of it.
             written: Parts the identifier lacks, such as the CRISM detector.
 

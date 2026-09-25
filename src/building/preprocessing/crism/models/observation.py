@@ -37,13 +37,3 @@ class CrismObservation:
     geometry: np.ndarray
     valid: np.ndarray
     measured_bands: np.ndarray
-
-    @property
-    def latitude(self) -> np.ndarray:
-        """Return the latitude of every pixel, lines by columns in degrees."""
-        return self.geometry[:, :, LATITUDE_PLANE]
-
-    @property
-    def longitude(self) -> np.ndarray:
-        """Return the longitude of every pixel, lines by columns in degrees."""
-        return self.geometry[:, :, LONGITUDE_PLANE]

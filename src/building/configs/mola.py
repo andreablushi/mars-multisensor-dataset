@@ -40,7 +40,7 @@ LAYOUT = Layout(
 )
 
 # Where a sheet is kept, in the one directory of the sheet.
-CACHE = ProductCache(paths.MOLA_ROOT, {None: (".lbl", ".img")})
+CACHE = ProductCache(paths.MOLA_ROOT, NAMING, {None: (".lbl", ".img")})
 
 # How fine a grid each resolution letter stands for, in pixels per degree.
 RESOLUTIONS = {"c": 4, "e": 16, "f": 32, "g": 64, "h": 128}

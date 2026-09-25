@@ -43,11 +43,11 @@ def kept_pixels(image: Path, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
             slice(left, int(samples.max()) + 1),
         ),
     )
-    return geometry.taken(window, (lines - top, samples - left))
+    return geometry.kept_part(window, (lines - top, samples - left))
 
 
 def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
-    """Return one scan projected by ISIS onto its tile, holding only what the box keeps.
+    """Return one scan holding only the pixels its tile's box keeps, projected by ISIS.
 
     Args:
         observation: The calibrated scan.

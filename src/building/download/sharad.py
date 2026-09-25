@@ -63,8 +63,7 @@ def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> No
     """
     products = {kind: configs.NAMING.product(identifier, kind) for kind in configs.Kind}
     files = {
-        kind: configs.CACHE.files(identifier, products[kind], kind)
-        for kind in configs.Kind
+        kind: configs.CACHE.product_files(identifier, kind) for kind in configs.Kind
     }
     if all(path.exists() for held in files.values() for path in held.values()):
         return
@@ -84,10 +83,10 @@ def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> No
         **ODE,
     )
     archive.download_files({".lbl": radargram[".lbl"]}, offered, client=client)
-    lines, samples, _, _, stored = labels.image_layout(labels.load(radargram[".lbl"]))
+    lines, samples, _, _, dtype = labels.image_layout(labels.load(radargram[".lbl"]))
     # Every other column is left a hole, which `crop` never reads.
     columns = kept_columns(tables.load_table(placing[".tab"])[0], frames)
-    itemsize = np.dtype(stored).itemsize
+    itemsize = np.dtype(dtype).itemsize
     archive.download_files(
         {".img": radargram[".img"]},
         offered,

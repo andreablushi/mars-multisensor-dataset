@@ -6,6 +6,8 @@ from building.preprocessing.common import cut, geometry
 from building.preprocessing.common.models.samples import Samples
 from building.preprocessing.crism.models.observation import (
     ACQUISITION_PLANES,
+    LATITUDE_PLANE,
+    LONGITUDE_PLANE,
     CrismObservation,
 )
 from building.preprocessing.crism.models.sample import CrismSample
@@ -20,10 +22,13 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         frame: The local frame of the tile it was kept for.
 
     Returns:
-        sample: The observation cut to that tile, or None where it misses.
+        sample: The observation cut to that tile, or None where it reaches none of it.
     """
+    backplanes = observation.geometry
     # A pushbroom swath bends, so every pixel carries its own backplanes' pair.
-    samples = Samples(observation.latitude, observation.longitude, False, None)
+    samples = Samples(
+        backplanes[:, :, LATITUDE_PLANE], backplanes[:, :, LONGITUDE_PLANE], False, None
+    )
     held = cut.overlap(samples, frame)
     if held is None:
         return None
@@ -32,11 +37,11 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         position=held.position,
         label=observation.label,
         inside=held.inside,
-        valid=geometry.partial_mask(geometry.taken(observation.valid, held.bounds)),
-        cube=geometry.taken(observation.cube, held.bounds),
+        valid=geometry.partial_mask(geometry.kept_part(observation.valid, held.bounds)),
+        cube=geometry.kept_part(observation.cube, held.bounds),
         measured_bands=observation.measured_bands,
         **{
-            name: geometry.taken(observation.geometry[:, :, at], held.bounds)
+            name: geometry.kept_part(backplanes[:, :, at], held.bounds)
             for name, at in ACQUISITION_PLANES.items()
         },
     )

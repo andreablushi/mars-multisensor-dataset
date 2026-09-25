@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from building.preprocessing.common.models.relative_position import PolarGrid
+from common.maths.geodesy import PolarGrid
 
 
 @dataclass(frozen=True, slots=True)

@@ -33,7 +33,7 @@ def clean_detector(
         ValueError: When a window keeps no band of the cube.
         NoMeasurement: When no cell of the cube is a measurement.
     """
-    mask = masking.bad_pixels(cube, table, name)
+    mask = masking.refused_mask(cube, table, name)
     mask = atmospheric.remove_atmospheric_bands(cube, mask, table, name)
     destripe.remove_spike_columns(cube, mask, table, name)
     mask = ratio.ratio_by_column_median(cube, mask)

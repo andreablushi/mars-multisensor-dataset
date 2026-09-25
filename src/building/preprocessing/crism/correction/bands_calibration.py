@@ -5,7 +5,9 @@ from __future__ import annotations
 import numpy as np
 
 
-def calibrate(cube: np.ndarray, table: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def calibrated_cube(
+    cube: np.ndarray, table: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     """Order one cube by wavelength and fill what was never calibrated.
 
     Args:

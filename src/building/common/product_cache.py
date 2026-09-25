@@ -6,6 +6,8 @@ import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from building.common.naming import Naming
+
 
 @dataclass(frozen=True, slots=True)
 class ProductCache:
@@ -13,11 +15,13 @@ class ProductCache:
 
     Attributes:
         root: The directory the instrument downloads under.
+        naming: How the instrument spells an observation and its products.
         suffixes: The suffixes each kind is downloaded as, None serving every other.
         subdirectories: The subdirectory each kind kept apart from its observation uses.
     """
 
     root: Path
+    naming: Naming
     suffixes: dict[str | None, tuple[str, ...]]
     subdirectories: dict[str, str] = field(default_factory=dict)
 
@@ -40,6 +44,22 @@ class ProductCache:
         place = self.root / directory / self.subdirectories.get(kind, "")
         wanted = self.suffixes[kind if kind in self.suffixes else None]
         return {suffix: place / f"{stem}{suffix}" for suffix in wanted}
+
+    def product_files(
+        self, identifier: str, kind: str, **written: str
+    ) -> dict[str, Path]:
+        """Return where each file of one product of an observation belongs.
+
+        Args:
+            identifier: The observation, which is also its directory.
+            kind: Which product of it.
+            written: Parts the identifier lacks, such as the CRISM detector.
+
+        Returns:
+            files: The path of each file, keyed by its suffix.
+        """
+        product = self.naming.product(identifier, kind, **written)
+        return self.files(identifier, product, kind)
 
     def discard(self, directory: str) -> None:
         """Delete everything one product was downloaded as.

@@ -52,7 +52,7 @@ def overlap(samples: Samples, frame: Tile) -> Overlap | None:
     if samples.separable:
         down, across = samples.down[bounds[0]], samples.across[bounds[1]]
     else:
-        down = geometry.taken(samples.down, bounds)
-        across = geometry.taken(samples.across, bounds)
+        down = geometry.kept_part(samples.down, bounds)
+        across = geometry.kept_part(samples.across, bounds)
     kept = replace(samples, down=down, across=across)
     return Overlap(bounds, inside, placed(kept, frame))

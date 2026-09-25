@@ -110,7 +110,9 @@ LAYOUT = Layout(
 )
 
 # Where each product is kept, the geometry in a subdirectory beside its own scan.
-CACHE = ProductCache(paths.CRISM_ROOT, {None: (".lbl", ".img")}, {Kind.GEOMETRY: "ddr"})
+CACHE = ProductCache(
+    paths.CRISM_ROOT, NAMING, {None: (".lbl", ".img")}, {Kind.GEOMETRY: "ddr"}
+)
 
 # What a label calls the wavelength file it was calibrated against.
 WAVELENGTH_KEY = "MRO:WAVELENGTH_FILE_NAME"

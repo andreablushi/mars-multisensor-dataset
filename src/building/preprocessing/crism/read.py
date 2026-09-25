@@ -19,15 +19,6 @@ UNCALIBRATED = 65535.0
 GROUND_SOFTWARE = ("MRO:IKF_", "MRO:RSC_", "MRO:REFZ_", "MRO:FRAM_STAT_")
 
 
-def product_files(
-    identifier: str, detector: configs.Detector, kind: configs.Kind
-) -> dict[str, Path]:
-    """Return where each file of one detector's product of an observation belongs."""
-    return configs.CACHE.files(
-        identifier, configs.NAMING.product(identifier, kind, detector=detector), kind
-    )
-
-
 def cached_detectors(identifier: str) -> tuple[configs.Detector, ...]:
     """Read which detectors of one observation were downloaded whole.
 
@@ -47,7 +38,9 @@ def cached_detectors(identifier: str) -> tuple[configs.Detector, ...]:
         if all(
             path.exists()
             for kind in configs.Kind
-            for path in product_files(identifier, name, kind).values()
+            for path in configs.CACHE.product_files(
+                identifier, kind, detector=name
+            ).values()
         )
     )
     if not found:
@@ -87,13 +80,17 @@ def read_detectors(
     detectors = {}
     for name in found:
         cube, label = images.load_cube(
-            product_files(identifier, name, configs.Kind.OBSERVATION)[".img"]
+            configs.CACHE.product_files(
+                identifier, configs.Kind.OBSERVATION, detector=name
+            )[".img"]
         )
         # The wavelength file this half was calibrated against, and no other.
         wavelength = Path(label[configs.WAVELENGTH_KEY]).stem.lower()
         record = configs.CACHE.files(configs.WAVELENGTH_DIR, wavelength)[".img"]
         # Order the bands by wavelength and mark what was never calibrated.
-        detectors[name] = bands_calibration.calibrate(cube, read_wavelengths(record))
+        detectors[name] = bands_calibration.calibrated_cube(
+            cube, read_wavelengths(record)
+        )
     return detectors
 
 
@@ -111,11 +108,19 @@ def read_label(identifier: str, found: tuple[configs.Detector, ...]) -> dict[str
         FileNotFoundError: When a label is missing.
     """
     held = [
-        labels.load(product_files(identifier, name, configs.Kind.OBSERVATION)[".lbl"])
+        labels.load(
+            configs.CACHE.product_files(
+                identifier, configs.Kind.OBSERVATION, detector=name
+            )[".lbl"]
+        )
         for name in found
     ]
     held.append(
-        labels.load(product_files(identifier, found[0], configs.Kind.GEOMETRY)[".lbl"])
+        labels.load(
+            configs.CACHE.product_files(
+                identifier, configs.Kind.GEOMETRY, detector=found[0]
+            )[".lbl"]
+        )
     )
     return {
         key: value
@@ -127,7 +132,9 @@ def read_label(identifier: str, found: tuple[configs.Detector, ...]) -> dict[str
 def read_geometry(identifier: str, placing: configs.Detector) -> np.ndarray:
     """Read the backplanes that place every pixel of one observation."""
     return images.load_cube(
-        product_files(identifier, placing, configs.Kind.GEOMETRY)[".img"]
+        configs.CACHE.product_files(
+            identifier, configs.Kind.GEOMETRY, detector=placing
+        )[".img"]
     )[0]
 
 

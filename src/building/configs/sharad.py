@@ -49,6 +49,7 @@ LAYOUT = Layout(
 # Where each product is kept. The geometry and the clutter each in a subdirectory.
 CACHE = ProductCache(
     paths.SHARAD_ROOT,
+    NAMING,
     {
         Kind.OBSERVATION: (".lbl", ".img"),
         Kind.GEOMETRY: (".lbl", ".tab"),

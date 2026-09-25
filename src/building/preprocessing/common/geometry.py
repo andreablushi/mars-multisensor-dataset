@@ -1,4 +1,4 @@
-"""The ground of one cut: how its samples are taken, crossed and turned to degrees."""
+"""The ground of one cut: how its samples are kept, crossed and turned to degrees."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ def partial_mask(held: np.ndarray) -> np.ndarray | None:
     return None if held.all() else held
 
 
-def taken(array: np.ndarray, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
+def kept_part(array: np.ndarray, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     """Return the part of one array a cut's bounds keep of its leading axes.
 
     Args:

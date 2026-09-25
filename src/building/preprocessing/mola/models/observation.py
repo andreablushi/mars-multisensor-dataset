@@ -8,7 +8,7 @@ from pathlib import Path
 
 @dataclass(frozen=True, slots=True)
 class MolaObservation:
-    """What one grid holds, before any of its bins are read.
+    """One grid, before any of its bins are read.
 
     Attributes:
         identifier: The grid as `configs.GRIDS` names it, which crops are stored under.

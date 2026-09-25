@@ -77,10 +77,9 @@ def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> No
         raise FileNotFoundError(f"ODE publishes no detector of {identifier}.")
     # Only now do the labels exist to be asked which file calibrated them.
     for detector in found:
-        scan = configs.NAMING.product(
+        label = configs.CACHE.product_files(
             identifier, configs.Kind.OBSERVATION, detector=detector
-        )
-        label = configs.CACHE.files(identifier, scan)[".lbl"]
+        )[".lbl"]
         name = Path(labels.load(label)[configs.WAVELENGTH_KEY]).stem
         archive.download_product(
             client,
