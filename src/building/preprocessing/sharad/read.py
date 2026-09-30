@@ -9,6 +9,7 @@ from building.preprocessing.sharad.models.observation import (
     SharadObservation,
     radargram_columns,
 )
+from building.preprocessing.sharad.normalize import normalized_power
 from common.pds import images, labels, tables
 
 
@@ -19,7 +20,8 @@ def read_observation(identifier: str) -> SharadObservation:
         identifier: The observation, its files already in the download cache.
 
     Returns:
-        observation: The placed traces in order, with their clutter simulation.
+        observation: The placed traces in order, normalized, with their clutter
+            simulation.
 
     Raises:
         FileNotFoundError: When any product or a label is missing.
@@ -37,10 +39,13 @@ def read_observation(identifier: str) -> SharadObservation:
     simulated = held[configs.Kind.CLUTTER][".img"]
     if simulated.stat().st_size != power.size * np.dtype(configs.CLUTTER_TYPE).itemsize:
         raise ValueError(f"{simulated.name} is not one array the radargram's size.")
+    clutter = np.memmap(
+        simulated, dtype=configs.CLUTTER_TYPE, mode="r", shape=power.shape
+    )
     return SharadObservation(
         labels.merge(sounding, placing),
-        power[:, traces],
-        np.memmap(simulated, dtype=configs.CLUTTER_TYPE, mode="r", shape=power.shape),
+        normalized_power(power[:, traces], clutter[:, traces]),
+        clutter,
         geometry,
         traces,
     )
