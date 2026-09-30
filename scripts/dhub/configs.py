@@ -37,15 +37,13 @@ class Platform:
 
     Attributes:
         project: The project every run and every published archive belongs to.
-        repository: The repository the platform clones when a job starts.
-        source_root: Where that clone lands on the job.
+        source_root: Where the submitted code lands on the job.
         python_version: The interpreter a job runs on.
         base_image: The platform's own base image a job runs on.
         resources: The profile, cores, memory and disk of each stage.
     """
 
     project: str
-    repository: str
     source_root: str
     python_version: str
     base_image: str

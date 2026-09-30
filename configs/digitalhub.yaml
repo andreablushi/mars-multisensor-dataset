@@ -3,8 +3,7 @@
 # The project every run and every published archive belongs to.
 project: mars-multisensor-features
 
-# The repository the platform clones, and where that clone lands on the job.
-repository: https://github.com/andreablushi/mars-multisensor-dataset
+# Where the submitted code lands on the job.
 source_root: /shared
 
 # The interpreter and the platform's own base image a job runs on, which installs
