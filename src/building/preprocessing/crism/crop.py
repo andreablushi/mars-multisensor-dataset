@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import numpy as np
-
 from building.preprocessing.common import cut, geometry
 from building.preprocessing.common.models.position import Position
-from building.preprocessing.crism.correction import ratio
 from building.preprocessing.crism.models.observation import (
     ACQUISITION_PLANES,
     LATITUDE_PLANE,
@@ -39,15 +36,12 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         name: geometry.kept_part(backplanes[:, :, at], held.bounds)
         for name, at in ACQUISITION_PLANES.items()
     }
-    valid = geometry.kept_part(observation.valid, held.bounds)
-    cube = np.array(geometry.kept_part(observation.cube, held.bounds))
-    ratio.divide_by_column_median(cube, valid)
     return CrismSample(
         position=held.position,
         label=observation.label,
         inside=held.inside,
-        valid=geometry.partial_mask(valid),
-        cube=cube,
+        valid=geometry.partial_mask(geometry.kept_part(observation.valid, held.bounds)),
+        cube=geometry.kept_part(observation.cube, held.bounds),
         measured_bands=observation.measured_bands,
         **planes,
     )
