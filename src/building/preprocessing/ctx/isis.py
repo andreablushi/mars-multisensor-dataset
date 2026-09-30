@@ -82,8 +82,7 @@ def install_isis() -> None:
         RuntimeError: When a step fails or stalls on every attempt.
     """
     for instruction, seconds in INSTRUCTIONS:
-        for attempt in range(1, ATTEMPTS + 1):
-            print(f"installing ISIS, try {attempt}: {instruction[:100]}", flush=True)
+        for _ in range(ATTEMPTS):
             # A session of its own, so a stalled step is killed with its children
             with subprocess.Popen(
                 instruction, shell=True, start_new_session=True
