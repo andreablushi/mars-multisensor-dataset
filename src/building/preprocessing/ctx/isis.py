@@ -54,15 +54,14 @@ INSTRUCTIONS = [
         "tls=ssl.create_default_context(); tls.verify_flags&=~ssl.VERIFY_X509_STRICT; "
         "tarfile.open(fileobj=io.BytesIO("
         f"urllib.request.urlopen('{MAMBA}',context=tls,timeout=60).read()),"
-        f"mode='r:bz2').extract('bin/micromamba','{PREFIX}')\"",
+        f"mode='r:bz2').extract('bin/micromamba','{PREFIX}',filter='data')\"",
         300,
     ),
     (
         f"rm -rf {ROOT} && export MAMBA_ROOT_PREFIX={PREFIX} MAMBA_DOWNLOAD_THREADS=2 "
         "MAMBA_REMOTE_MAX_RETRIES=10 MAMBA_REMOTE_BACKOFF_FACTOR=5 && "
         f"{PREFIX}/bin/micromamba create -y -q -p {ROOT} -c conda-forge "
-        f"-c usgs-astrogeology isis={VERSION} "
-        f"&& {PREFIX}/bin/micromamba clean -a -y -q",
+        f"-c usgs-astrogeology isis={VERSION}",
         2400,
     ),
     *(
