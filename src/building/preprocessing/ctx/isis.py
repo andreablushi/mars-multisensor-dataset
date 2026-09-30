@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import signal
 import subprocess
 from pathlib import Path
 
@@ -23,7 +24,7 @@ ENVS = [
     {"name": "LANG", "value": "C.UTF-8"},
 ]
 
-MAMBA = "https://micro.mamba.pm/api/micromamba/linux-64/latest"
+MAMBA = "https://conda.anaconda.org/conda-forge/linux-64/micromamba-2.9.0-0.tar.bz2"
 
 HELD = {
     "mro": (
@@ -43,18 +44,30 @@ HELD = {
     ),
 }
 
+ATTEMPTS = 3
+
+# Each step with the seconds one attempt may take, since a stalled download never ends
 INSTRUCTIONS = [
-    'python3 -c "import io,ssl,tarfile,urllib.request; '
-    "tls=ssl.create_default_context(); tls.verify_flags&=~ssl.VERIFY_X509_STRICT; "
-    "tarfile.open(fileobj=io.BytesIO("
-    f"urllib.request.urlopen('{MAMBA}',context=tls,timeout=300).read()),mode='r:bz2')"
-    f".extract('bin/micromamba','{PREFIX}')\"",
-    f"export MAMBA_ROOT_PREFIX={PREFIX} && {PREFIX}/bin/micromamba create -y "
-    f"-p {ROOT} -c conda-forge -c usgs-astrogeology isis={VERSION} "
-    f"&& {PREFIX}/bin/micromamba clean -a -y",
+    (
+        'python3 -c "import io,ssl,tarfile,urllib.request; '
+        "tls=ssl.create_default_context(); tls.verify_flags&=~ssl.VERIFY_X509_STRICT; "
+        "tarfile.open(fileobj=io.BytesIO("
+        f"urllib.request.urlopen('{MAMBA}',context=tls,timeout=60).read()),"
+        f"mode='r:bz2').extract('bin/micromamba','{PREFIX}')\"",
+        300,
+    ),
+    (
+        f"rm -rf {ROOT} && export MAMBA_ROOT_PREFIX={PREFIX} && "
+        f"{PREFIX}/bin/micromamba create -y -p {ROOT} -c conda-forge "
+        f"-c usgs-astrogeology isis={VERSION} && {PREFIX}/bin/micromamba clean -a -y",
+        2400,
+    ),
     *(
-        f"PATH={ROOT}/bin:$PATH ISISROOT={ROOT} downloadIsisData {mission} {DATA} "
-        f'--include="{{{",".join(held)}}}"'
+        (
+            f"PATH={ROOT}/bin:$PATH ISISROOT={ROOT} downloadIsisData {mission} {DATA} "
+            f'--include="{{{",".join(held)}}}"',
+            1800,
+        )
         for mission, held in HELD.items()
     ),
 ]
@@ -64,12 +77,23 @@ def install_isis() -> None:
     """Install ISIS and the data CTX needs onto the job's own disk.
 
     Raises:
-        CalledProcessError: When a step of the install fails.
+        RuntimeError: When a step fails or stalls on every attempt.
     """
-    for instruction in INSTRUCTIONS:
-        # Each step waits on the network, so the log says which one is running
-        print(f"installing ISIS: {instruction[:120]}", flush=True)
-        subprocess.run(instruction, shell=True, check=True)
+    for instruction, seconds in INSTRUCTIONS:
+        for attempt in range(1, ATTEMPTS + 1):
+            print(f"installing ISIS, try {attempt}: {instruction[:100]}", flush=True)
+            # A session of its own, so a stalled step is killed with its children
+            with subprocess.Popen(
+                instruction, shell=True, start_new_session=True
+            ) as step:
+                try:
+                    if step.wait(timeout=seconds) == 0:
+                        break
+                except subprocess.TimeoutExpired:
+                    os.killpg(step.pid, signal.SIGKILL)
+                    step.wait()
+        else:
+            raise RuntimeError(f"ISIS failed {ATTEMPTS} times at: {instruction}")
 
 
 def run_isis(app: str, parameters: dict[str, object]) -> None:
