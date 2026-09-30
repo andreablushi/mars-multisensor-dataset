@@ -47,9 +47,9 @@ INSTRUCTIONS = [
     'python3 -c "import io,ssl,tarfile,urllib.request; '
     "tls=ssl.create_default_context(); tls.verify_flags&=~ssl.VERIFY_X509_STRICT; "
     "tarfile.open(fileobj=io.BytesIO("
-    f"urllib.request.urlopen('{MAMBA}',context=tls).read()),mode='r:bz2')"
+    f"urllib.request.urlopen('{MAMBA}',context=tls,timeout=300).read()),mode='r:bz2')"
     f".extract('bin/micromamba','{PREFIX}')\"",
-    f"export MAMBA_ROOT_PREFIX={PREFIX} && {PREFIX}/bin/micromamba create -y -q "
+    f"export MAMBA_ROOT_PREFIX={PREFIX} && {PREFIX}/bin/micromamba create -y "
     f"-p {ROOT} -c conda-forge -c usgs-astrogeology isis={VERSION} "
     f"&& {PREFIX}/bin/micromamba clean -a -y",
     *(
@@ -67,6 +67,8 @@ def install_isis() -> None:
         CalledProcessError: When a step of the install fails.
     """
     for instruction in INSTRUCTIONS:
+        # Each step waits on the network, so the log says which one is running
+        print(f"installing ISIS: {instruction[:120]}", flush=True)
         subprocess.run(instruction, shell=True, check=True)
 
 
