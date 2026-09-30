@@ -76,7 +76,7 @@ def fetch_distortions(
         asked = {
             ancillary.latitude,
             ancillary.longitude,
-            ancillary.solar_zenith,
+            ancillary.solar_zenith_column,
             ancillary.distortion,
         }
         columns = [

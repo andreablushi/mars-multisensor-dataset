@@ -88,8 +88,6 @@ ATMOSPHERIC_BANDS_NM = {Detector.INFRARED: ((1940.0, 2090.0),), Detector.VISIBLE
 # How far above its column's mean a band reads as a spike, set per detector.
 STRIPE_SIGMA = {Detector.INFRARED: 5.0, Detector.VISIBLE: 3.0}
 
-MAX_INCIDENCE_DEG = 85.0
-
 # How ODE spells one detector; radiance and reflectance are the one observation
 NAMING = Naming(
     re.compile(

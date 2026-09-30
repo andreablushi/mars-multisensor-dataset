@@ -13,16 +13,16 @@ class Ancillary:
         pt: The ODE product type the ancillary is published under.
         latitude: The column placing each row, in planetocentric degrees.
         longitude: The column placing each row, in degrees east.
-        solar_zenith: The column holding each row's solar zenith angle, in degrees.
-        night_above: The solar zenith angle past which a row is on the night side.
+        solar_zenith_column: The column holding each row's solar zenith angle.
+        solar_zenith: The solar zenith angle past which a row is on the night side.
         distortion: The column holding each row's signal phase distortion.
     """
 
     pt: str
     latitude: str
     longitude: str
-    solar_zenith: str
-    night_above: float
+    solar_zenith_column: str
+    solar_zenith: float
     distortion: str
 
 

@@ -21,6 +21,7 @@ RETAINED_FIELDS = (
     "iid",
     "pt",
     "Map_scale",
+    "Incidence_angle",
     "UTC_start_time",
     "UTC_stop_time",
     "Minimum_latitude",

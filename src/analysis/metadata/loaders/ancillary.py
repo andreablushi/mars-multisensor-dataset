@@ -45,7 +45,7 @@ def load_distortions(
     order = np.argsort(flat, kind="stable")
     tiles, starts = np.unique(flat[order], return_index=True)
     distortion = read[ancillary.distortion][order]
-    night = (read[ancillary.solar_zenith] > ancillary.night_above)[order]
+    night = (read[ancillary.solar_zenith_column] > ancillary.solar_zenith)[order]
     overall = np.minimum.reduceat(distortion, starts).tolist()
     nightly = np.minimum.reduceat(np.where(night, distortion, np.inf), starts)
     dark = [None if math.isinf(value) else value for value in nightly.tolist()]

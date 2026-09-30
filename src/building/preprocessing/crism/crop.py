@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from building.configs import crism as configs
 from building.preprocessing.common import cut, geometry
 from building.preprocessing.common.models.position import Position
 from building.preprocessing.crism.correction import ratio
@@ -26,7 +25,7 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         frame: The local frame of the tile it was kept for.
 
     Returns:
-        sample: The observation cut to that tile, or None where no valid pixel is left.
+        sample: The observation cut to that tile, or None where it reaches none of it.
     """
     backplanes = observation.geometry
     # A pushbroom swath bends, so every pixel carries its own backplanes' pair.
@@ -40,10 +39,7 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         name: geometry.kept_part(backplanes[:, :, at], held.bounds)
         for name, at in ACQUISITION_PLANES.items()
     }
-    lit = planes["incidence_deg"] < configs.MAX_INCIDENCE_DEG
-    valid = geometry.kept_part(observation.valid, held.bounds) & lit
-    if not valid.any():
-        return None
+    valid = geometry.kept_part(observation.valid, held.bounds)
     cube = np.array(geometry.kept_part(observation.cube, held.bounds))
     ratio.divide_by_column_median(cube, valid)
     return CrismSample(

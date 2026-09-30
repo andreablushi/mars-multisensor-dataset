@@ -39,7 +39,9 @@ def merge_track(coverage: Sequence[SetCoverage], criteria: Filter) -> Track | No
     )
     # The one place the filter is read, which everything below takes it from
     min_pixels, windowed, standing = tile_floors(criteria, coverage, grid)
-    admitted, refused = admitted_observations(coverage, grid, min_pixels)
+    admitted, refused = admitted_observations(
+        coverage, grid, min_pixels, criteria.solar_zenith
+    )
     if not admitted:
         return None
     admitted.sort(key=lambda offered: offered[0].t_start)

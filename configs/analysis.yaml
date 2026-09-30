@@ -24,8 +24,8 @@ ancillary:
     pt: USGEOMV2
     latitude: LATITUDE
     longitude: LONGITUDE
-    solar_zenith: SZA
-    night_above: 90.0
+    solar_zenith_column: SZA
+    solar_zenith: 100.0
     distortion: PHASE/1.0E16
 
 # Which products a box returns: b box overlap, f footprint overlap, o inside, i containing.
@@ -41,6 +41,9 @@ window:
 
   # The pixels an instrument has to land on a tile to count, powers of two preferred
   admits: {CTX: 2097152, CRISM: 4096, SHARAD: 64}
+
+  # The solar zenith angle past which an instrument's look is taken at night and refused, in degrees
+  solar_zenith: {CTX: 90.0, CRISM: 90.0}
 
   # How far Mars may turn inside a window, in degrees of Ls; 90 is one season
   span_ls: 90.0

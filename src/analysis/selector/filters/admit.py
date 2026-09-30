@@ -1,24 +1,30 @@
-"""Which observations are a look at the tile rather than a clip of its edge."""
+"""Which observations are a lit look at the tile rather than a clip of its edge."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from analysis.coverage.models.coverage import Event, SetCoverage
+from analysis.metadata.loaders.observations import read_incidences
 from analysis.selector.models.search_grid import SearchGrid
 from analysis.selector.models.track import Offered
 from analysis.utils import mask as packing
+from analysis.utils.tile_group import group_of, tile_grid
 
 
 def admitted_observations(
-    coverage: Sequence[SetCoverage], grid: SearchGrid, min_pixels: Sequence[float]
+    coverage: Sequence[SetCoverage],
+    grid: SearchGrid,
+    min_pixels: Sequence[float],
+    solar_zenith: Mapping[str, float],
 ) -> tuple[Offered, Offered]:
-    """Keep every observation big enough for the tile, and turn the rest away.
+    """Keep every lit observation big enough for the tile, and turn the rest away.
 
     Args:
         coverage: The tile's instrument sets, in any order.
         grid: The grid the tile is searched over.
         min_pixels: The pixels each set has to land on the tile, by set.
+        solar_zenith: The solar zenith angle past which a look is refused, by iid.
 
     Returns:
         admitted: What the tile keeps, with each set and the cells it fills.
@@ -26,7 +32,10 @@ def admitted_observations(
     """
     admitted: Offered = []
     refused: Offered = []
+    group = group_of(tile_grid().tile_named(coverage[0].summary.tile))
+    incidences = read_incidences(group)
     for owner, instrument in enumerate(coverage):
+        limit = solar_zenith.get(instrument.summary.iid, float("inf"))
         for observation in instrument.events:
             cells = [
                 cell
@@ -36,7 +45,8 @@ def admitted_observations(
             if not cells:
                 continue
             landed = landed_pixels(observation, len(cells), grid.cell_km2)
-            verdict = admitted if landed >= min_pixels[owner] else refused
+            lit = incidences.get(observation.pdsid, 0.0) <= limit
+            verdict = admitted if lit and landed >= min_pixels[owner] else refused
             verdict.append((observation, owner, cells))
     return admitted, refused
 
