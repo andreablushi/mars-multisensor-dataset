@@ -22,10 +22,25 @@ def submitted(stage: Function, ref: str, **parameters) -> int:
 
     Returns:
         code: A process exit code, zero once the job is started.
+
+    Raises:
+        RuntimeError: When an earlier run of the stage still holds a running pod.
     """
     platform = configs.load()
     asked = platform.resources[stage.name.lower()]
     project = dh.get_or_create_project(platform.project)
+    # A stopped run can keep its pod alive, so only a deleted one is surely gone
+    alive = [
+        run.id
+        for run in dh.list_runs(project=platform.project)
+        if f"/{stage.registered}:" in str(run.spec.function)
+        and any(
+            pod.get("status", {}).get("phase") == "Running"
+            for pod in run.status.to_dict().get("k8s", {}).get("pods", [])
+        )
+    ]
+    if alive:
+        raise RuntimeError(f"{stage.registered} still runs as {alive}; delete them.")
     # The code goes up zipped to the store, so the job clones nothing through the proxy
     with tempfile.TemporaryDirectory() as tree:
         subprocess.run(f"git archive {ref} | tar -x -C {tree}", shell=True, check=True)
@@ -39,7 +54,7 @@ def submitted(stage: Function, ref: str, **parameters) -> int:
             handler=stage.value,
         )
 
-    # Start the job, told where the clone lands and what the box holds
+    # Start the job, told where the code lands and what the box holds
     root = platform.source_root
     run = function.run(
         action="job",
