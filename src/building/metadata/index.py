@@ -49,7 +49,8 @@ def write_index(
     """
     written = [held for one in collected for held in one.records]
     rewritten = {one.identity for one in written}
-    tiles = {one.identity: one for one in plan.tiles}
+    emptied = {name for one in collected for name in one.emptied}
+    tiles = {one.identity: one for one in plan.tiles if one.identity not in emptied}
     # What an earlier run left, less what this run rewrote or deleted.
     records = [
         one

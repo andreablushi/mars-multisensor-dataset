@@ -39,13 +39,13 @@ class Outcome:
     Attributes:
         job: The job that was run.
         records: What each crop it wrote is, for the index to be built from.
-        missed: How many tiles it reached or measured none of, which is not a failure.
+        emptied: The tiles its crop reached or measured none of, dropped whole.
         error: The error raised, or None on success.
     """
 
     job: Job
     records: tuple[ObservationMetadata, ...] = ()
-    missed: int = 0
+    emptied: tuple[str, ...] = ()
     error: Exception | None = None
 
 

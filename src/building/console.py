@@ -151,27 +151,29 @@ def collect_outcomes(
 
 
 def print_summary(
-    outcomes: Sequence[Outcome], elapsed: float, console: Console
+    plan: Plan, outcomes: Sequence[Outcome], elapsed: float, console: Console
 ) -> None:
     """Print the totals for a finished build.
 
     Args:
+        plan: What the build set out to do, whose tiles the index covers.
         outcomes: What every job left.
         elapsed: How long the build took, in seconds.
         console: The console to print on.
     """
     written = sum(len(one.records) for one in outcomes)
-    missed = sum(one.missed for one in outcomes)
     failed = [one for one in outcomes if one.error]
+    emptied = {name for one in outcomes for name in one.emptied}
     console.print(
         f"built {len(outcomes) - len(failed)} products into {written:,} crops, "
         f"{len(failed)} failed, in {elapsed:.1f}s"
     )
-    if missed:
+    if emptied:
         console.print(
-            f"[yellow]{missed:,} crops came out empty, the product reaching or "
-            f"measuring none of the tile it was kept for[/yellow]"
+            f"[yellow]{len(emptied):,} tiles dropped for an empty crop[/yellow]"
         )
+    built = sum(1 for one in plan.tiles if one.identity not in emptied)
+    console.print(f"{built:,} tiles built")
     if not failed:
         return
     console.print(f"[yellow]{len(failed)} products failed:[/yellow]")

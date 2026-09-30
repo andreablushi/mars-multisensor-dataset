@@ -87,6 +87,7 @@ def build_handler[T: Settings](
         published = partial(checkpoint, project, root, name, settings.workers)
         failed = runner.build_dataset(settings, selections(settings), force, published)
         dataset = published()
+        archives.published_artifact(project, Artifact.SELECTION)
         if failed:
             raise RuntimeError(
                 "the build had failures; what was published holds what finished"

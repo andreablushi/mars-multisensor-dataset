@@ -182,7 +182,7 @@ def build_product(job: Job, root: Path) -> Outcome:
     """
     instrument = INSTRUMENTS[job.instrument]
     written: list[ObservationMetadata] = []
-    missed = 0
+    emptied: list[str] = []
     failed: Exception | None = None
     try:
         # Read once however many tiles want it, which is why the product is the unit.
@@ -194,9 +194,8 @@ def build_product(job: Job, root: Path) -> Outcome:
                 # A tile failing to cut is kept as the error, and the rest still cut.
                 failed = failed or error
                 continue
-            # Reaching or measuring none of a tile is no failure.
             if sample is None or not sample.measured:
-                missed += 1
+                emptied.append(frame.name)
                 continue
             path = store.write_sample(
                 sample, instrument.layout, frame, job.identifier, root
@@ -215,4 +214,4 @@ def build_product(job: Job, root: Path) -> Outcome:
         # A product goes once every tile that wanted it is cut; it is a cache.
         if instrument.discard:
             instrument.discard(job.identifier)
-    return Outcome(job, records=tuple(written), missed=missed, error=failed)
+    return Outcome(job, records=tuple(written), emptied=tuple(emptied), error=failed)

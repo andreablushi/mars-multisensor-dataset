@@ -15,9 +15,10 @@ from analysis.selector.models.selection import Selection
 from building import console as printing
 from building import paths, planner
 from building.metadata.index import read_observation_metadata, write_index
+from building.metadata.selection import exclude_tiles
 from building.models.job import Outcome, Plan
 from building.models.progress import Progress
-from building.models.settings import Settings
+from building.models.settings import Settings, TrainingSettings
 from building.scheduler import Scheduler
 from common.console import print_failure
 from common.fetch.http import TLS_CONTEXT
@@ -57,7 +58,14 @@ def build_dataset(
     with httpx.Client(limits=limits, verify=TLS_CONTEXT) as ode:
         outcomes = build_outcomes(plan, settings, root, ode, console, checkpoint)
     write_index(plan, outcomes, root, on_disk=checkpoint is None)
-    printing.print_summary(outcomes, time.monotonic() - started_at, console)
+    printing.print_summary(plan, outcomes, time.monotonic() - started_at, console)
+    dropped = {name for one in outcomes for name in one.emptied}
+    if dropped:
+        exclude_tiles(dropped)
+    # A drawn tile is labelled, so the evaluation cannot do without one
+    if dropped and not isinstance(settings, TrainingSettings):
+        console.print(f"[red]error: drawn tiles dropped {sorted(dropped)}[/red]")
+        return 1
     return 1 if any(one.error for one in outcomes) else 0
 
 
