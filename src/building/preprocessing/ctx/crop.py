@@ -11,9 +11,10 @@ import tifffile
 from building.configs import ctx as configs
 from building.preprocessing.common import cut, geometry
 from building.preprocessing.ctx import projection
-from building.preprocessing.ctx.isis import read_cube_label, run_isis
+from building.preprocessing.ctx.isis import export_image, read_cube_label, run_isis
 from building.preprocessing.ctx.models.observation import CtxObservation
 from building.preprocessing.ctx.models.sample import BLANK, CtxSample
+from building.preprocessing.ctx.normalize import normalized_pixels
 from common.maths import geodesy
 from common.maths.geodesy import TURN
 from common.models.tile import Tile
@@ -75,7 +76,6 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         work.with_suffix(suffix) for suffix in (".cut.cub", ".map", ".map.cub", ".tif")
     )
     template.write_text(projection.map_template(frame.grid))
-    low, high = configs.REFLECTANCE_RANGE
     try:
         run_isis(
             "crop",
@@ -103,18 +103,7 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
                 "maxlon": frame.west_lon + span,
             },
         )
-        run_isis(
-            "isis2std",
-            {
-                "from": projected,
-                "to": image,
-                "format": "tiff",
-                "bittype": "u16bit",
-                "stretch": "manual",
-                "minimum": low,
-                "maximum": high,
-            },
-        )
+        export_image(projected, image)
         label = labels.merge(read_cube_label(projected), observation.label)
         held = cut.overlap(projection.grid_position(label), frame)
         if held is None:
@@ -123,10 +112,11 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
     finally:
         for path in work.parent.glob(f"{work.name}.*"):
             path.unlink()
+    measured = pixels != BLANK
     return CtxSample(
         position=held.position,
         label=label,
         inside=held.inside,
-        valid=geometry.partial_mask(pixels != BLANK),
-        image=pixels,
+        valid=geometry.partial_mask(measured),
+        image=normalized_pixels(pixels, measured, observation.statistics),
     )

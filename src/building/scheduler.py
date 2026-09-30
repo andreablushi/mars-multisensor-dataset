@@ -10,6 +10,7 @@ from collections.abc import Iterator
 from concurrent.futures import Future, ProcessPoolExecutor, ThreadPoolExecutor
 from functools import partial
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -40,13 +41,15 @@ class Scheduler:
             fetching: The threads the downloads run on, by the archive they wait on.
             building: The processes the builds run on.
             root: The dataset's own root directory, which every build writes in.
-            settings: The settled choices, bounding how many products run at once.
+            settings: The settled choices, bounding how many products run at once
+                and handing each reader its own.
             progress: What every product still in the build is doing.
         """
         self._ode = ode
         self._fetching = fetching
         self._building = building
         self._root = root
+        self._preprocessing = settings.preprocessing
         self._progress = progress
         self._finished: queue.Queue[Outcome] = queue.Queue()
         # Places per archive, so one waiting on the cores never stalls another
@@ -133,7 +136,9 @@ class Scheduler:
                 _, _, job = heapq.heappop(self._ready)
             self._progress.moved(job, Stage.BUILDING)
             try:
-                started = self._building.submit(build_product, job, self._root)
+                started = self._building.submit(
+                    build_product, job, self._root, self._preprocessing
+                )
             except Exception as error:  # noqa: BLE001
                 # The pool is closing, so this builds nowhere.
                 started = Future()
@@ -167,12 +172,15 @@ class Scheduler:
         self._places[INSTRUMENTS[outcome.job.instrument].archive].release()
 
 
-def build_product(job: Job, root: Path) -> Outcome:
+def build_product(
+    job: Job, root: Path, preprocessing: dict[str, dict[str, Any]]
+) -> Outcome:
     """Cut one downloaded product to every tile that kept it, and write each.
 
     Args:
         job: The product to build, and the tiles to cut it to.
         root: The dataset's own root directory.
+        preprocessing: What each instrument's reader is handed, by its name.
 
     Returns:
         outcome: The outcome, its written samples and the first error a cut raised.
@@ -186,7 +194,9 @@ def build_product(job: Job, root: Path) -> Outcome:
     failed: Exception | None = None
     try:
         # Read once however many tiles want it, which is why the product is the unit.
-        observation = instrument.read_observation(job.identifier)
+        observation = instrument.read_observation(
+            job.identifier, **preprocessing.get(job.instrument, {})
+        )
         for frame in job.frames:
             try:
                 sample = instrument.crop(observation, frame)

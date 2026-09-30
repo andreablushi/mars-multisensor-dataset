@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(slots=True)
@@ -13,11 +14,13 @@ class Settings:
         name: The build's name, its directory and what it is published under.
         workers: How many products are built at once, one per core.
         downloads: How many downloads run at once from each archive, by its name.
+        preprocessing: What each instrument's reader is handed, by its name.
     """
 
     name: str
     workers: int
     downloads: dict[str, int]
+    preprocessing: dict[str, dict[str, Any]]
 
 
 @dataclass(slots=True)

@@ -12,3 +12,11 @@ downloads:
   jpl: 8
   wustl: 12
   spice: 4
+
+# What each instrument's reader is handed, the same in every build so they match.
+preprocessing:
+  # The percentiles a CTX scan is clipped at, and how many lines and samples apart
+  # the counts its statistics are measured on sit.
+  CTX:
+    clip: [1, 99]
+    stride: 8

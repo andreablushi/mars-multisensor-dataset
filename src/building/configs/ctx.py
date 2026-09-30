@@ -30,6 +30,7 @@ LAYOUT = Layout(
     dims=("line", "sample"),
     axes=(Axis.GROUND, Axis.GROUND),
     measurement="image",
+    stored="f2",
 )
 
 CACHE = ProductCache(paths.CTX_ROOT, NAMING, {None: (CUBE_SUFFIX, METADATA_SUFFIX)})

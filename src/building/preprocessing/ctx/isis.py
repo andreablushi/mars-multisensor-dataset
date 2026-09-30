@@ -6,6 +6,7 @@ import os
 import subprocess
 from pathlib import Path
 
+from building.configs import ctx as configs
 from common.pds import labels
 
 ROOT = "/shared/isis"
@@ -93,6 +94,31 @@ def run_isis(app: str, parameters: dict[str, object]) -> None:
     )
     if done.returncode:
         raise RuntimeError(f"{app}: {(done.stderr or done.stdout).strip()}")
+
+
+def export_image(cube: Path, image: Path) -> None:
+    """Write one cube as a TIFF of 16-bit counts over the reflectance range.
+
+    Args:
+        cube: The ISIS cube to export.
+        image: Where the TIFF is written.
+
+    Raises:
+        RuntimeError: When isis2std fails.
+    """
+    low, high = configs.REFLECTANCE_RANGE
+    run_isis(
+        "isis2std",
+        {
+            "from": cube,
+            "to": image,
+            "format": "tiff",
+            "bittype": "u16bit",
+            "stretch": "manual",
+            "minimum": low,
+            "maximum": high,
+        },
+    )
 
 
 def read_cube_label(cube: Path) -> dict[str, str]:
