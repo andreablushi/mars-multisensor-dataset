@@ -88,21 +88,16 @@ def measure_tile(tile_track: TileTrack) -> TileStats:
     cells_by_iid: dict[str, set[int]] = {}
     observations_by_iid: dict[str, int] = {}
     iids_by_cell: dict[int, set[str]] = {}
-    pixels_by_iid: dict[str, float | None] = {}
+    pixels_by_iid: dict[str, float] = {}
     for index in tile_track.taken:
         iid = track.iids[track.owners[index]]
         cells_by_iid.setdefault(iid, set()).update(track.cells[index])
         observations_by_iid[iid] = observations_by_iid.get(iid, 0) + 1
         for cell in track.cells[index].tolist():
             iids_by_cell.setdefault(cell, set()).add(iid)
-        observation = track.observations[index]
-        landed = pixels_by_iid.get(iid, 0.0)
-        if landed is None or observation.pixels is None or not observation.own_km2:
-            pixels_by_iid[iid] = None
-        else:
-            pixels_by_iid[iid] = landed + landed_pixels(
-                observation, len(track.cells[index]), track.grid.cell_km2
-            )
+        pixels_by_iid[iid] = pixels_by_iid.get(iid, 0.0) + landed_pixels(
+            track.observations[index], len(track.cells[index]), track.grid.cell_km2
+        )
     overlaps: dict[tuple[str, ...], float] = {}
     for cell in sorted(iids_by_cell):
         instrument_names = tuple(sorted(iids_by_cell[cell]))

@@ -43,8 +43,6 @@ def read_labels(root: Path = paths.LABELS_ROOT) -> list[Label]:
         FileNotFoundError: When no labels have been written there.
     """
     path = root / paths.LABELS_NAME
-    if not path.is_file():
-        raise FileNotFoundError(f"no evaluation labels were written in {root}")
     return [Label(**row) for row in pq.read_table(path, schema=LABELS).to_pylist()]
 
 

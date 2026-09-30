@@ -143,23 +143,21 @@ class InstrumentReach:
 
     Attributes:
         km2: The ground it reaches, counting a cell once however often it was revisited.
-        pixels: The pixels it landed there, or None where any carries no count.
+        pixels: The pixels it landed there.
         observations_taken: How many of its observations the window keeps.
     """
 
     km2: float
-    pixels: float | None
+    pixels: float
     observations_taken: int
 
     @property
-    def pixels_per_look(self) -> float | None:
+    def pixels_per_look(self) -> float:
         """Return the pixels one of its observations lands on the tile.
 
         Returns:
-            pixels: The mean over the window's observations, or None if any lacks one.
+            pixels: The mean over the window's observations.
         """
-        if self.pixels is None or not self.observations_taken:
-            return None
         return self.pixels / self.observations_taken
 
 

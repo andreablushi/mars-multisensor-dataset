@@ -69,7 +69,7 @@ def tile_selection(survey: Survey | None, track: Track | None, tile: Tile) -> Se
         geo_mean=survey.geo_mean if survey else 0.0,
         taken=len(survey.taken) if survey else 0,
     )
-    if survey is None or track is None:
+    if survey is None:
         return Selection(tile=row)
     observations = []
     for index in survey.taken:

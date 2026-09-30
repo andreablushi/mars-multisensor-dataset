@@ -145,12 +145,12 @@ def read_observation(identifier: str) -> CrismObservation:
 
     Raises:
         FileNotFoundError: When any file the observation needs is missing.
-        ValueError: When a window keeps no band of a cube, or no detector measured.
+        ValueError: When a window keeps no band of a cube.
     """
     found = cached_detectors(identifier)
     detectors, held = read_detectors(identifier, found)
     return merge.merge_detectors(
-        clean.clean_detectors(identifier, detectors),
+        clean.clean_detectors(detectors),
         read_geometry(identifier, found[0]),
         read_label(identifier, found[0], held),
     )

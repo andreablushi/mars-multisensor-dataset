@@ -17,20 +17,18 @@ from building.preprocessing.crism.models.detector_cube import DetectorCube
 
 
 def clean_detectors(
-    identifier: str,
     detectors: dict[configs.Detector, tuple[np.ndarray, np.ndarray]],
 ) -> dict[configs.Detector, DetectorCube]:
     """Refuse everything each detector holds that is not measured, dropping empty ones.
 
     Args:
-        identifier: The observation the detectors are halves of.
         detectors: Each detector's cube and wavelengths, as read off disk.
 
     Returns:
         detectors: Every detector that measured, its cube filled and with its mask.
 
     Raises:
-        ValueError: When a window keeps no band of a cube, or no detector measured.
+        ValueError: When a window keeps no band of a cube.
     """
     cleaned = {}
     for name, (cube, table) in detectors.items():
@@ -48,6 +46,4 @@ def clean_detectors(
         despike.remove_spikes(block, centre[kept], mask.pixels)
         cube[:, :, kept] = block
         cleaned[name] = DetectorCube(cube, table, mask)
-    if not cleaned:
-        raise ValueError(f"No detector of {identifier} holds a measurement.")
     return cleaned

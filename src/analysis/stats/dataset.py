@@ -102,7 +102,6 @@ def dataset_stats(
                     tile.reached[iid].pixels_per_look
                     for tile in kept
                     if iid in tile.reached
-                    and tile.reached[iid].pixels_per_look is not None
                 ]
             )
             for iid in iids

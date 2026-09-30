@@ -54,17 +54,15 @@ def counted(number: float, noun: str) -> str:
     return f"{number:,.0f} {noun}" + ("" if number == 1 else "s")
 
 
-def pixels(count: float | None) -> str:
-    """Write a pixel count, or that it was never measured.
+def pixels(count: float) -> str:
+    """Write a pixel count.
 
     Args:
-        count: The pixel count, or None where it was never measured.
+        count: The pixel count.
 
     Returns:
-        written: The count in pixels, or that it was not counted.
+        written: The count in pixels.
     """
-    if count is None:
-        return UNCOUNTED
     return f"{compact(count)} px"
 
 

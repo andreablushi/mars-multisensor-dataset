@@ -80,6 +80,4 @@ def _selection_rows(path: Path, schema: pa.Schema) -> list[dict[str, Any]]:
     Raises:
         FileNotFoundError: When no selection has been written there.
     """
-    if not path.is_file():
-        raise FileNotFoundError(f"no selection was written in {path.parent}")
     return pq.read_table(path, schema=schema).to_pylist()
