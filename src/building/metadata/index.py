@@ -63,5 +63,9 @@ def write_index(
     parquet.write(list(tiles.values()), tile.SCHEMA, root / paths.TILE_METADATA_NAME)
     parquet.write(records, observation.SCHEMA, root / paths.OBSERVATION_METADATA_NAME)
     # What the dataset holds, which is every instrument in it and not a wish.
-    manifest = asdict(dataset.dataset_manifest({one.instrument for one in records}))
+    manifest = asdict(
+        dataset.dataset_manifest(
+            {one.instrument for one in records}, dataset.read_normalization(root)
+        )
+    )
     (root / paths.DATASET_MANIFEST_NAME).write_text(json.dumps(manifest, indent=2))

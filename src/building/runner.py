@@ -14,6 +14,7 @@ from rich.console import Console
 from analysis.selector.models.selection import Selection
 from building import console as printing
 from building import paths, planner
+from building.common.normalize import normalize_dataset
 from building.metadata.index import read_observation_metadata, write_index
 from building.metadata.selection import exclude_tiles
 from building.models.job import Outcome, Plan
@@ -31,6 +32,7 @@ def build_dataset(
     picked: Sequence[Selection],
     force: bool = False,
     checkpoint: Callable[[], None] | None = None,
+    fetch: Callable[[str, Path, Sequence[str]], None] | None = None,
 ) -> int:
     """Build one dataset over the tiles it is handed.
 
@@ -39,6 +41,7 @@ def build_dataset(
         picked: The tiles to build, each with the observations its window keeps.
         force: Whether to build every crop again, rather than only the missing ones.
         checkpoint: What publishes the dataset so far, or None for a local run.
+        fetch: What brings objects of a named build back to disk, or None locally.
 
     Returns:
         code: A process exit code, non zero when any product failed to build.
@@ -58,6 +61,7 @@ def build_dataset(
     with httpx.Client(limits=limits, verify=TLS_CONTEXT) as ode:
         outcomes = build_outcomes(plan, settings, root, ode, console, checkpoint)
     write_index(plan, outcomes, root, on_disk=checkpoint is None)
+    normalize_dataset(settings, root, CHECKPOINT_BYTES, fetch, checkpoint)
     printing.print_summary(plan, outcomes, time.monotonic() - started_at, console)
     dropped = {name for one in outcomes for name in one.emptied}
     if dropped:

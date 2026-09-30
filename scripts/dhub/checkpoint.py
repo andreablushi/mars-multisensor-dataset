@@ -85,7 +85,26 @@ def build_handler[T: Settings](
             archives.download_files(project, name, root, paths.INDEX_NAMES)
         print(f"building the dataset as {settings.name}", flush=True)
         published = partial(checkpoint, project, root, name, settings.workers)
-        failed = runner.build_dataset(settings, selections(settings), force, published)
+
+        def fetch(build: str, into: Path, names: Sequence[str]) -> None:
+            """Bring objects of one published build back to disk.
+
+            Args:
+                build: The build's name, as its settings give it.
+                into: The directory they land in.
+                names: The objects, as paths inside the build.
+            """
+            archives.download_objects(
+                project,
+                f"{Artifact.DATASET.published}-{build}",
+                into,
+                names,
+                settings.workers,
+            )
+
+        failed = runner.build_dataset(
+            settings, selections(settings), force, published, fetch
+        )
         dataset = published()
         archives.published_artifact(project, Artifact.SELECTION)
         if failed:

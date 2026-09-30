@@ -46,6 +46,7 @@ class ObservationMetadata:
         t_start: When the observation started, or None.
         t_end: When it ended, or None for the same reason.
         acquisition: Where the Sun and the spacecraft stood over the crop.
+        normalized: Whether its values are standardised by the dataset's constants.
     """
 
     tile: str
@@ -67,6 +68,7 @@ class ObservationMetadata:
     t_start: datetime | None = None
     t_end: datetime | None = None
     acquisition: AcquisitionInfo = field(default_factory=AcquisitionInfo)
+    normalized: bool = False
 
     @property
     def identity(self) -> tuple[str, str, str]:
@@ -96,14 +98,63 @@ def observation_metadata(
         metadata: The metadata, measured rather than claimed.
     """
     values = getattr(held, layout.measurement)
+    measured = measured_mask(held.measured_ground, held.measured_bands, layout, values)
+    return ObservationMetadata(
+        tile=frame.name,
+        instrument=layout.instrument,
+        identifier=identifier,
+        path=path,
+        axes=layout.axes,
+        shape=tuple(values.shape),
+        sample_spacing_m=relative_positioning.sample_spacing_m(held.position, frame),
+        separable=held.position.separable,
+        t_start=_label_time(held.label, STARTED) or t_start,
+        t_end=_label_time(held.label, STOPPED),
+        acquisition=acquisition_info(held, frame),
+        **measured_statistics(values, measured, layout),
+    )
+
+
+def measured_mask(
+    measured_ground: np.ndarray,
+    measured_bands: np.ndarray | None,
+    layout: Layout,
+    values: np.ndarray,
+) -> np.ndarray:
+    """Return where the value array holds a measurement, on its own shape.
+
+    Args:
+        measured_ground: Whether each ground sample measured, over the ground axes.
+        measured_bands: Whether each band measured, or None without wavelength.
+        layout: What the instrument's arrays hold.
+        values: The value array.
+
+    Returns:
+        measured: The mask, broadcast to the value array's shape.
+    """
     # A ground mask reaches every value on it, so it spreads over the instrument's axes.
-    ground = layout.axis_indices(Axis.GROUND)
-    measured = _spread_mask(held.measured_ground, ground, values)
+    measured = _spread_mask(measured_ground, layout.axis_indices(Axis.GROUND), values)
     # A band the observation never measured holds nothing, whatever the ground says.
-    if held.measured_bands is not None:
+    if measured_bands is not None:
         wavelength = layout.axis_indices(Axis.WAVELENGTH)
-        measured = measured & _spread_mask(held.measured_bands, wavelength, values)
-    counted = int(measured.sum())
+        measured = measured & _spread_mask(measured_bands, wavelength, values)
+    return measured
+
+
+def measured_statistics(
+    values: np.ndarray, measured: np.ndarray, layout: Layout
+) -> dict[str, object]:
+    """Return the index fields that describe the measured values.
+
+    Args:
+        values: The value array.
+        measured: Where it holds a measurement, on its own shape, somewhere True.
+        layout: What the instrument's arrays hold.
+
+    Returns:
+        fields: The count, min, max, mean and std, and each band's where it has one.
+    """
+    ground = layout.axis_indices(Axis.GROUND)
     value_min, value_max, value_mean, value_std = value_statistics(values, measured)
     band_mean = band_std = band_valid_count = None
     # A band is the one axis a reader normalises against, so it survives the reduction.
@@ -122,27 +173,16 @@ def observation_metadata(
             )
             for each in reduced
         )
-    return ObservationMetadata(
-        tile=frame.name,
-        instrument=layout.instrument,
-        identifier=identifier,
-        path=path,
-        axes=layout.axes,
-        shape=tuple(values.shape),
-        sample_spacing_m=relative_positioning.sample_spacing_m(held.position, frame),
-        separable=held.position.separable,
-        valid_count=counted,
-        value_min=value_min,
-        value_max=value_max,
-        value_mean=value_mean,
-        value_std=value_std,
-        band_mean=band_mean,
-        band_std=band_std,
-        band_valid_count=band_valid_count,
-        t_start=_label_time(held.label, STARTED) or t_start,
-        t_end=_label_time(held.label, STOPPED),
-        acquisition=acquisition_info(held, frame),
-    )
+    return {
+        "valid_count": int(measured.sum()),
+        "value_min": value_min,
+        "value_max": value_max,
+        "value_mean": value_mean,
+        "value_std": value_std,
+        "band_mean": band_mean,
+        "band_std": band_std,
+        "band_valid_count": band_valid_count,
+    }
 
 
 def value_statistics(

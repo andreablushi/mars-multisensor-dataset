@@ -15,12 +15,15 @@ class Settings:
         workers: How many products are built at once, one per core.
         downloads: How many downloads run at once from each archive, by its name.
         preprocessing: What each instrument's reader is handed, by its name.
+        reference: The build whose constants this one is standardised by, or None to
+            pool its own.
     """
 
     name: str
     workers: int
     downloads: dict[str, int]
     preprocessing: dict[str, dict[str, Any]]
+    reference: str | None = None
 
 
 @dataclass(slots=True)

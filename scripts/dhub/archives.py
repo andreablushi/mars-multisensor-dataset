@@ -150,6 +150,33 @@ def download_files(project, name: str, into: Path, names: Sequence[str]) -> None
     print(f"filling in from {name}, {len(wanted):,} files of its index", flush=True)
 
 
+def download_objects(
+    project, name: str, into: Path, names: Sequence[str], downloads: int
+) -> None:
+    """Put the named objects of a published folder back where a run reads them.
+
+    Args:
+        project: The DigitalHub project the folder was logged into.
+        name: The name the folder is published under.
+        into: The directory they land in, each at its path inside the folder.
+        names: The objects to bring down, as paths inside the folder.
+        downloads: How many objects are brought down at once.
+    """
+    client, bucket, prefix = stored_folder(project, name)
+
+    def fetch(one: str) -> None:
+        """Bring one object down to its path under the directory.
+
+        Args:
+            one: The object's path inside the folder.
+        """
+        (into / one).parent.mkdir(parents=True, exist_ok=True)
+        client.download_file(Bucket=bucket, Key=prefix + one, Filename=str(into / one))
+
+    with ThreadPoolExecutor(max_workers=downloads) as fetching:
+        list(fetching.map(fetch, names))
+
+
 def download_artifact(project, artifact: Artifact) -> None:
     """Put one published artifact back where a run reads it, an archive unpacked.
 
