@@ -66,7 +66,8 @@ class Progress:
         """Return one line saying what the build is doing right now.
 
         Returns:
-            written: The products per stage, done, idle time and longest held.
+            written: The products done and their share, per stage, idle time and
+                longest held.
         """
         with self._lock:
             now = time.monotonic()
@@ -74,7 +75,11 @@ class Progress:
             done, still = self.finished, now - self.moved_at
         at = Counter(stage for _, stage, _ in held)
         counted = ", ".join(f"{at[stage]} {stage}" for stage in Stage)
-        line = f"{done}/{self.total} done; {counted}; last moved {still:.0f}s ago"
+        share = 100 * done / max(self.total, 1)
+        line = (
+            f"{done}/{self.total} done ({share:.1f}%); {counted}; "
+            f"last moved {still:.0f}s ago"
+        )
         if not held:
             return line
         # Named rather than counted, since a count never says what is holding it up

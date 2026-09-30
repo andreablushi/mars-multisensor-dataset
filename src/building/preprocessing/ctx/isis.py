@@ -60,8 +60,9 @@ INSTRUCTIONS = [
     (
         f"rm -rf {ROOT} && export MAMBA_ROOT_PREFIX={PREFIX} MAMBA_DOWNLOAD_THREADS=2 "
         "MAMBA_REMOTE_MAX_RETRIES=10 MAMBA_REMOTE_BACKOFF_FACTOR=5 && "
-        f"{PREFIX}/bin/micromamba create -y -p {ROOT} -c conda-forge "
-        f"-c usgs-astrogeology isis={VERSION} && {PREFIX}/bin/micromamba clean -a -y",
+        f"{PREFIX}/bin/micromamba create -y -q -p {ROOT} -c conda-forge "
+        f"-c usgs-astrogeology isis={VERSION} "
+        f"&& {PREFIX}/bin/micromamba clean -a -y -q",
         2400,
     ),
     *(
