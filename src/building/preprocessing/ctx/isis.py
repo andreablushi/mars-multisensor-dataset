@@ -24,8 +24,7 @@ ENVS = [
     {"name": "LANG", "value": "C.UTF-8"},
 ]
 
-# Before sharded indexes, whose hundreds of requests the cluster proxy refuses with 429
-MAMBA = "https://conda.anaconda.org/conda-forge/linux-64/micromamba-1.5.9-0.tar.bz2"
+MAMBA = "https://conda.anaconda.org/conda-forge/linux-64/micromamba-2.9.0-0.tar.bz2"
 
 HELD = {
     "mro": (
@@ -58,8 +57,7 @@ INSTRUCTIONS = [
         300,
     ),
     (
-        f"rm -rf {ROOT} && export MAMBA_ROOT_PREFIX={PREFIX} MAMBA_DOWNLOAD_THREADS=2 "
-        "MAMBA_REMOTE_MAX_RETRIES=10 MAMBA_REMOTE_BACKOFF_FACTOR=5 && "
+        f"rm -rf {ROOT} && export MAMBA_ROOT_PREFIX={PREFIX} && "
         f"{PREFIX}/bin/micromamba create -y -q -p {ROOT} -c conda-forge "
         f"-c usgs-astrogeology isis={VERSION}",
         2400,
