@@ -4,19 +4,19 @@ from __future__ import annotations
 
 import numpy as np
 
-from analysis.metadata import summary
+from analysis.metadata.loaders.ancillary import read_distortions
 from analysis.models.ancillary import Distortion
 from analysis.selector.filters.coverage_constraints import cells_per_constraint
 from analysis.selector.models.counter import Counter
-from analysis.selector.models.filter import Filter
+from analysis.selector.models.criteria import Criteria
 from analysis.selector.models.track import Track
-from analysis.utils.tile_group import group_of, tile_grid
+from analysis.utils.tile_group import group_of_tile_named
 
 HYPERSPECTRAL = "hsp"
 
 
 def trimmed_window(
-    track: Track, first: int, last: int, criteria: Filter
+    track: Track, first: int, last: int, criteria: Criteria
 ) -> tuple[list[int], list[int], list[int]]:
     """Drop the observations a tile does not need, keeping the most recent or the best.
 
@@ -24,7 +24,7 @@ def trimmed_window(
         track: The tile's observations on one time axis.
         first: The index of the earliest observation the window holds.
         last: The index of the latest one.
-        criteria: The filter, holding the timeless instruments and redundant shares.
+        criteria: The criteria, holding the timeless instruments and redundant shares.
 
     Returns:
         kept: The window's observations worth keeping, oldest first.
@@ -40,25 +40,43 @@ def trimmed_window(
         for index in range(first, last + 1)
         if track.owners[index] not in timeless_owners
     ]
-    standing = sharad_drop_order(
+    standing = sharad_dropped_first(
         track,
         [index for index, owner in enumerate(track.owners) if owner in timeless_owners],
     )
     # Count what the window and the SHARAD looks hold in cells
     counter = Counter.over(track, kept + standing)
     constraints = track.windowed + track.standing
-    # Drop each redundant observation but the best of its group, oldest or worst first
+    # A hyperspectral look goes last, so it outlasts a multispectral one
+    windowed_order = sorted(
+        kept,
+        key=lambda index: (
+            track.observations[index].pdsid.startswith(HYPERSPECTRAL),
+            index,
+        ),
+    )
+    # Keep the best first, then drop each later one matching a look already kept
     dropped: set[int] = set()
-    for indices in (kept, standing):
-        for group in redundant_groups(track, indices, criteria):
-            for index in group[:-1]:
-                owner, cells = track.owners[index], track.cells[index]
-                counter.release(owner, cells)
-                # If the window can do without the observation
-                if cells_per_constraint(constraints, counter.cells_reached) is not None:
-                    dropped.add(index)
-                else:
-                    counter.hold(owner, cells)
+    retained: list[int] = []
+    for index in reversed(windowed_order + standing):
+        owner, cells = track.owners[index], track.cells[index]
+        share = criteria.redundant_share_threshold.get(track.iids[owner], 1.0)
+        filled = np.zeros(track.grid.cell_count, dtype=bool)
+        filled[cells] = True
+        matched = any(
+            np.count_nonzero(filled[track.cells[other]])
+            > share * min(cells.size, track.cells[other].size)
+            for other in retained
+            if track.owners[other] == owner
+        )
+        if matched:
+            counter.release(owner, cells)
+            # If the window can do without the observation
+            if cells_per_constraint(constraints, counter.cells_reached) is not None:
+                dropped.add(index)
+                continue
+            counter.hold(owner, cells)
+        retained.append(index)
     reached = cells_per_constraint(track.windowed, counter.cells_reached)
     return (
         [index for index in kept if index not in dropped],
@@ -67,58 +85,7 @@ def trimmed_window(
     )
 
 
-def redundant_groups(
-    track: Track, indices: list[int], criteria: Filter
-) -> list[list[int]]:
-    """Gather the looks redundant with each other, directly or through another look.
-
-    Args:
-        track: The tile's observations on one time axis.
-        indices: The looks to gather, as indices into the track, worst first.
-        criteria: The filter holding the share past which two looks are redundant.
-
-    Returns:
-        groups: Each group of one instrument's redundant looks, worst first and
-            every hyperspectral look after every multispectral one.
-    """
-    filled = np.zeros((len(indices), track.grid.cell_count), dtype=np.float32)
-    for row, index in enumerate(indices):
-        filled[row, track.cells[index]] = 1.0
-    shared = filled @ filled.T
-    sizes = np.diag(shared)
-    owners = np.array([track.owners[index] for index in indices])
-    thresholds = np.array(
-        [
-            criteria.redundant_share_threshold.get(track.iids[owner], 1.0)
-            for owner in owners
-        ]
-    )
-    overlapping = shared > (thresholds * sizes)[:, None]
-    linked = (overlapping | overlapping.T) & (owners[:, None] == owners[None, :])
-    groups: list[list[int]] = []
-    seen: set[int] = set()
-    for start in range(len(indices)):
-        if start in seen:
-            continue
-        members, frontier = {start}, [start]
-        while frontier:
-            fresh = set(np.flatnonzero(linked[frontier].any(axis=0)).tolist()) - members
-            members |= fresh
-            frontier = list(fresh)
-        seen |= members
-        # A hyperspectral look goes last, so it outlasts a multispectral one
-        ordered = sorted(
-            members,
-            key=lambda row: (
-                track.observations[indices[row]].pdsid.startswith(HYPERSPECTRAL),
-                row,
-            ),
-        )
-        groups.append([indices[row] for row in ordered])
-    return groups
-
-
-def sharad_drop_order(track: Track, indices: list[int]) -> list[int]:
+def sharad_dropped_first(track: Track, indices: list[int]) -> list[int]:
     """Order the SHARAD looks worst first, so the best over the same ground is kept.
 
     Args:
@@ -130,20 +97,19 @@ def sharad_drop_order(track: Track, indices: list[int]) -> list[int]:
             then day only before night, the most distorted and fewest cells first.
     """
     tile = track.observations[0].tile
-    group = group_of(tile_grid().tile_named(tile))
     distortions = {
         distortion.pdsid: distortion
-        for distortion in summary.read_distortions(group)
+        for distortion in read_distortions(group_of_tile_named(tile))
         if distortion.tile == tile
     }
     return sorted(
         indices,
-        key=lambda index: sharad_drop_rank(track, distortions, index),
+        key=lambda index: sharad_rank(track, distortions, index),
         reverse=True,
     )
 
 
-def sharad_drop_rank(
+def sharad_rank(
     track: Track, distortions: dict[str, Distortion], index: int
 ) -> tuple[int, float, int]:
     """Rank how bad one SHARAD look is.

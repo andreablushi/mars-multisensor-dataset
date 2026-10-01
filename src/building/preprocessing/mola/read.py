@@ -17,18 +17,17 @@ def read_observation(identifier: str) -> MolaObservation:
     """
     grid = configs.GRIDS[identifier]
     topography = configs.Kind.TOPOGRAPHY
-    files = {}
     if grid.product:
-        image = configs.CACHE.files(identifier, grid.product, topography)[".img"]
-        if image.exists():
-            files[grid.product] = image
+        products = {
+            grid.product: configs.CACHE.files(identifier, grid.product, topography)
+        }
     else:
-        for directory in sorted(configs.CACHE.root.iterdir()):
-            if not directory.is_dir():
-                continue
-            if configs.sheet_resolution(directory.name) != grid.resolution:
-                continue
-            image = configs.CACHE.product_files(directory.name, topography)[".img"]
-            if image.exists():
-                files[directory.name] = image
+        products = {
+            directory.name: configs.CACHE.product_files(directory.name, topography)
+            for directory in sorted(configs.CACHE.root.iterdir())
+            if directory.is_dir()
+            and configs.sheet_resolution(directory.name) == grid.resolution
+        }
+    images = {sheet: held[".img"] for sheet, held in products.items()}
+    files = {sheet: image for sheet, image in images.items() if image.exists()}
     return MolaObservation(identifier, grid, files)

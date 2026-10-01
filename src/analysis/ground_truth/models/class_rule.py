@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 
 @dataclass(slots=True)
-class Rule:
+class ClassRule:
     """The features one class is read from, and how a tile earns it.
 
     Attributes:

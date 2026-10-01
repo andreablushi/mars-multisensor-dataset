@@ -22,8 +22,6 @@ class Event:
         t_start: When the observation started.
         own_km2: Ground this footprint covers inside the tile.
         cum_frac: The share of the tile its instrument set has covered so far.
-        width_km: The swath width used, or None when the footprint had area.
-        pixels: How many of the instrument's pixels landed inside the tile.
         mask: The tile's cells this footprint fills, packed as a bitmap or a list.
     """
 
@@ -35,8 +33,6 @@ class Event:
     t_start: datetime
     own_km2: float
     cum_frac: float
-    width_km: float | None
-    pixels: float
     mask: bytes
 
 

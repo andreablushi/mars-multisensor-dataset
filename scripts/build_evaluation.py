@@ -6,16 +6,16 @@ from __future__ import annotations
 from dhub import args, checkpoint, submit
 from dhub.paths import Artifact, Function
 
-from analysis.ground_truth import artifacts
+from analysis.ground_truth import artifacts, catalogue
 from analysis.selector.artifacts import read_selection
 from analysis.selector.models.selection import Selection
 from building import draw, paths
-from building.models.settings import Settings
+from building.models.settings import BuildSettings
 from building.runner import build_dataset
 from common.config import evaluation_settings
 
 
-def evaluation_selections(settings: Settings) -> list[Selection]:
+def evaluation_selections(settings: BuildSettings) -> list[Selection]:
     """Write the drawn labels beside the evaluation build, and read what it covers.
 
     Args:
@@ -27,7 +27,7 @@ def evaluation_selections(settings: Settings) -> list[Selection]:
     Raises:
         FileNotFoundError: When the analysis pipeline has written no labels.
     """
-    labels = artifacts.read_labels()
+    labels = catalogue.read_labels()
     root = paths.dataset_root(settings.name)
     artifacts.write_labels([one for one in labels if one.drawn], root)
     return draw.draw_evaluation(read_selection(), labels)

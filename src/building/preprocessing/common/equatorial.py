@@ -14,14 +14,13 @@ from common.models.tile import Tile
 
 
 def cut(
-    position: Position, frame: Tile, span: float
+    position: Position, frame: Tile
 ) -> tuple[tuple[np.ndarray, ...], np.ndarray | None] | None:
     """Return which samples of one observation placed in degrees the box keeps.
 
     Args:
         position: The samples, placed in the degrees this cut reads them as.
         frame: The tile's local frame, carrying the box the catalogue gives it.
-        span: How many degrees of longitude that box covers.
 
     Returns:
         bounds: The samples to keep of each ground axis, outermost first.
@@ -36,12 +35,12 @@ def cut(
         # The box is a rectangle here, so each axis is asked alone and keeps exactly it.
         lines = np.flatnonzero(upward)
         # A box over the meridian keeps two ends of one strip, joined by ordering east.
-        held = np.flatnonzero(eastward <= span)
+        held = np.flatnonzero(eastward <= frame.span)
         ordered = held[np.argsort(eastward[held], kind="stable")]
         if not lines.size or not ordered.size:
             return None
         return (lines, ordered), None
-    kept = upward & (eastward <= span)
+    kept = upward & (eastward <= frame.span)
     if not kept.any():
         return None
     where = np.argwhere(kept)

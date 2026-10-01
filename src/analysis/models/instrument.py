@@ -1,10 +1,23 @@
-"""The ODE instrument set a download is asked for."""
+"""The ODE instrument set a download is asked for, and the ground its pixels cover."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from common.disk.slugify import slugify
+from common.maths.physics import METRES_PER_KM
+
+SHARAD_SWATH_M = 3000.0
+
+# A sounding is as wide as its swath and as long as a spacing ODE never publishes
+SHARAD_ALONG_TRACK_M = 460.0
+
+# Ground one pixel covers in square kilometres, by instrument
+PIXEL_KM2 = {
+    "CTX": (6.0 / METRES_PER_KM) ** 2,
+    "CRISM": (180.0 / METRES_PER_KM) ** 2,
+    "SHARAD": SHARAD_SWATH_M * SHARAD_ALONG_TRACK_M / METRES_PER_KM**2,
+}
 
 
 @dataclass(frozen=True)
@@ -21,7 +34,7 @@ class InstrumentSet:
     ihid: str
     iid: str
     pt: str
-    product_id: str | None = None
+    product_id: str | None
 
     @classmethod
     def from_key(cls, key: str) -> InstrumentSet:

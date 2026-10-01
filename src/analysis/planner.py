@@ -12,6 +12,7 @@ from analysis.paths import (
     EVENTS_SUFFIX,
     SET_SUMMARY_SUFFIX,
     coverage_path,
+    metadata_files,
     metadata_path,
 )
 
@@ -20,7 +21,7 @@ def download_plan(
     groups: Sequence[TileGroup],
     instrument_sets: Sequence[InstrumentSet],
     *,
-    force: bool = False,
+    force: bool,
 ) -> Plan:
     """Build the download jobs still needed for a run.
 
@@ -45,7 +46,7 @@ def download_plan(
 
 
 def coverage_plan(
-    sources: Sequence[Path], groups: Sequence[TileGroup], *, force: bool = False
+    sources: Sequence[Path], groups: Sequence[TileGroup], *, force: bool
 ) -> Plan:
     """Build the coverage jobs still needed for a run, the largest set first.
 
@@ -70,10 +71,10 @@ def coverage_plan(
     return Plan.of(jobs, [force or not job.summary_path.exists() for job in jobs])
 
 
-def unmeasured_sources(sources: Sequence[Path]) -> list[Path]:
+def unmeasured_sources() -> list[Path]:
     """Return the metadata files with no coverage summary written for them yet."""
     return [
         source
-        for source in sources
+        for source in metadata_files()
         if not coverage_path(source, SET_SUMMARY_SUFFIX).exists()
     ]

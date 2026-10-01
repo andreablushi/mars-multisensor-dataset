@@ -11,16 +11,14 @@ from analysis.visualization import panels
 from analysis.visualization.panels import Coverage
 from common.config import analysis_settings
 
-SURVEY_LINE = "#1a1a1a"
-SURVEY_STYLE = (0, (6, 3))
-SURVEY_WIDTH = 0.8
+SURVEY = dict(color="#1a1a1a", linestyle=(0, (6, 3)), linewidth=0.8)
 
 
 def plot(coverage: Coverage) -> widgets.Widget:
     """Draw one stacked panel per instrument set, over the whole tile."""
     tile_track = read_tile_track(coverage)
     window = tile_track.window if tile_track and tile_track.window.kept else None
-    timeless = analysis_settings().window.timeless
+    timeless = analysis_settings().criteria.timeless
     timelines = timelines_per_set(coverage)
     colours = panels.colours([timeline.label for timeline in timelines])
     figure, axes = panels.stacked(
@@ -36,31 +34,15 @@ def plot(coverage: Coverage) -> widgets.Widget:
             continue
         axis.axvspan(window.start, window.end, color="#9e9e9e", alpha=0.18, zorder=0)
         for edge in (window.start, window.end):
-            axis.axvline(
-                edge,
-                color=SURVEY_LINE,
-                linestyle=SURVEY_STYLE,
-                linewidth=SURVEY_WIDTH,
-                zorder=4,
-            )
+            axis.axvline(edge, zorder=4, **SURVEY)
     if window and any(timeline.iid not in timeless for timeline in timelines):
-        marker = Line2D(
-            [],
-            [],
-            color=SURVEY_LINE,
-            linestyle=SURVEY_STYLE,
-            linewidth=SURVEY_WIDTH,
-            label="the window the tile earned",
-        )
+        marker = Line2D([], [], label="the window the tile earned", **SURVEY)
         axes[0].legend(handles=[marker], fontsize=8, loc="upper right", frameon=False)
     if not any(timeline.observed for timeline in timelines):
-        axes[0].set_xlim(
-            min(timeline.first for timeline in timelines),
-            max(timeline.last for timeline in timelines),
-        )
+        axes[0].set_xlim(timelines[0].first, timelines[0].last)
     axes[0].set_ylim(-0.05, 1.05)
     title = f"{panels.title(coverage)}  -  coverage per observation"
-    axes[0].set_title(title, fontsize=12, loc="left")
+    panels.titled(axes[0], title)
     axes[-1].set_xlabel("Observation start time")
     figure.supylabel("Share of the tile covered by one observation", fontsize=10)
     figure.tight_layout()

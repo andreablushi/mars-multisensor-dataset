@@ -1,14 +1,9 @@
 # What the evaluation build is called.
 
+defaults: [building, _self_]
+
 # The directory it is written in and the name it is published under.
 name: evaluation
 
-# Products built at once, one per core; a run on a platform is given its own.
-workers: 8
-
-# Downloads at once from each archive, which wait on it and not on the cores.
-# JPL answers 503 past about ten connections from one address, so it stays under that.
-downloads:
-  jpl: 8
-  wustl: 12
-  spice: 4
+# The build whose normalization this one applies, so both sit on one scale.
+reference: training

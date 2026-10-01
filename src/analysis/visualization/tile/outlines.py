@@ -11,7 +11,7 @@ from shapely.geometry.base import BaseGeometry
 from analysis import paths
 from analysis.metadata.loaders.observations import load_observations
 from analysis.models.instrument import InstrumentSet
-from analysis.utils.tile_group import group_of, tile_grid
+from analysis.utils.tile_group import group_of_tile_named
 from analysis.visualization.panels import Coverage
 
 
@@ -24,7 +24,7 @@ def read_footprints(coverage: Coverage) -> dict[str, BaseGeometry]:
     Returns:
         footprints: Each observed set's published footprints, by pdsid.
     """
-    group = group_of(tile_grid().tile_named(coverage[0].summary.tile))
+    group = group_of_tile_named(coverage[0].summary.tile)
     footprints: dict[str, BaseGeometry] = {}
     for instrument in coverage:
         if instrument.observed:

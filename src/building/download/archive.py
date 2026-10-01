@@ -7,10 +7,7 @@ from pathlib import Path
 
 import httpx
 
-from common.fetch import http, ode
-
-# How long to wait for the larger half of a product.
-TIMEOUT = 60.0
+from common.fetch import http, ode, ranges
 
 
 def query_products(client: httpx.Client, **params: str) -> list[dict]:
@@ -27,10 +24,7 @@ def query_products(client: httpx.Client, **params: str) -> list[dict]:
         ODEError: When ODE reports an error of its own.
         FetchError: When ODE refuses the query, or every attempt fails.
     """
-    results = ode.fetch_results(
-        {"query": "product", "results": "f", "target": ode.ODE_TARGET, **params},
-        client,
-    )
+    results = ode.fetch_results({**ode.PRODUCT_QUERY, "results": "f", **params}, client)
     # ODE answers a query that matched nothing with a sentence, not a product.
     products = results.get("Products", {})
     entries = products.get("Product", []) if isinstance(products, dict) else []
@@ -107,16 +101,20 @@ def download_files(
     destination: dict[str, Path],
     urls: dict[str, str],
     *,
-    client: httpx.Client | None = None,
+    client: httpx.Client,
     spans: tuple[tuple[int, int], ...] = (),
+    size: int | None = None,
+    origin: int = 0,
 ) -> None:
     """Download each file from the URL of its suffix, skipping those already on disk.
 
     Args:
         destination: Where each file belongs, keyed by suffix.
         urls: Where each file is served from, keyed by the same suffix.
-        client: A client whose connections to reuse, or None to open one each.
+        client: The client the downloads go over.
         spans: The first and past-the-last byte of each part to keep, or none for all.
+        size: How many bytes a sparse copy holds, or None for a plain download.
+        origin: Which byte of the served file a sparse copy starts at.
 
     Raises:
         FileNotFoundError: When a missing file has no URL.
@@ -126,4 +124,9 @@ def download_files(
             continue
         if not urls.get(suffix):
             raise FileNotFoundError(f"No {suffix} offered for {path.stem}.")
-        http.streamed(urls[suffix], path, TIMEOUT, client=client, spans=spans)
+        if size is None:
+            http.streamed(urls[suffix], path, client=client, spans=spans)
+        else:
+            ranges.patched(
+                urls[suffix], path, spans, size, client=client, origin=origin
+            )

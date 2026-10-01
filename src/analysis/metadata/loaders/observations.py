@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import functools
 from itertools import chain
 from pathlib import Path
 
+from analysis import paths
 from analysis.models.observation import Observation, ObservationSet
 from common.disk.files import read_jsonl
 from common.pds.tables import parse_timestamp
@@ -30,7 +32,6 @@ def load_observations(path: Path) -> ObservationSet:
         if not wkt or not start:
             discarded += 1
             continue
-        stop, scale = item.get("UTC_stop_time"), item.get("Map_scale")
         north, south = (
             None if not polar or polar.endswith("EMPTY") else polar
             for polar in (
@@ -45,9 +46,7 @@ def load_observations(path: Path) -> ObservationSet:
                 iid=item["iid"],
                 pt=item["pt"],
                 start=parse_timestamp(start),
-                stop=parse_timestamp(stop) if stop else None,
                 wkt=wkt,
-                map_scale_m=float(scale) if scale else None,
                 north_wkt=north,
                 south_wkt=south,
             )
@@ -56,3 +55,21 @@ def load_observations(path: Path) -> ObservationSet:
     return ObservationSet(
         set_key=set_key, observations=observations, discarded=discarded
     )
+
+
+@functools.lru_cache(maxsize=1)
+def read_incidences(group: str) -> dict[str, float]:
+    """Read the incidence angle ODE published for every look of one group, cached.
+
+    Args:
+        group: The name of the tile group.
+
+    Returns:
+        incidences: The solar zenith angle of each look at its centre, by pdsid.
+    """
+    return {
+        record["pdsid"]: float(record["Incidence_angle"])
+        for path in (paths.METADATA_ROOT / group).glob("*.jsonl")
+        for record in read_jsonl(path)
+        if record.get("Incidence_angle")
+    }

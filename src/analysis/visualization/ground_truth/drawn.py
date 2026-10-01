@@ -9,24 +9,21 @@ from html import escape
 import ipywidgets as widgets
 
 from analysis.ground_truth.models.label import Label
-from analysis.ground_truth.models.settings import Settings
+from analysis.ground_truth.models.settings import GroundTruthSettings
 from analysis.visualization import mosaic, panels
 from analysis.visualization.tile import basemap
 from analysis.visualization.tile.placement import placed_tile
 
 PICKER = widgets.Layout(width="360px")
 STEP = widgets.Layout(width="40px")
+NOTHING_DRAWN = "No tile has been drawn into the evaluation set."
 
 
-def plot(labels: Sequence[Label], settings: Settings) -> widgets.Widget:
+def plot(labels: Sequence[Label], settings: GroundTruthSettings) -> widgets.Widget:
     """Step through the drawn tiles of every class over the mosaic."""
-    grouped = {
-        name: [label for label in labels if label.drawn and label.label == name]
-        for name in settings.classes
-    }
-    grouped = {name: drawn for name, drawn in grouped.items() if drawn}
+    grouped = drawn_by_class(labels, settings)
     if not grouped:
-        return panels.unavailable("No tile has been drawn into the evaluation set.")
+        return panels.unavailable(NOTHING_DRAWN)
     group = widgets.Dropdown(options=list(grouped), description="Class:")
     tile = widgets.Dropdown(description="Tile:", layout=PICKER)
     previous = widgets.Button(icon="arrow-left", layout=STEP)
@@ -43,8 +40,27 @@ def plot(labels: Sequence[Label], settings: Settings) -> widgets.Widget:
     return widgets.VBox([widgets.HBox([group, tile, previous, following]), note, area])
 
 
+def drawn_by_class(
+    labels: Sequence[Label], settings: GroundTruthSettings
+) -> dict[str, list[Label]]:
+    """Group the drawn tiles by their class.
+
+    Args:
+        labels: Every labelled tile, the drawn ones marked so.
+        settings: The classes, in config order.
+
+    Returns:
+        grouped: The drawn tiles of every class holding any, in config order.
+    """
+    grouped = {
+        name: [label for label in labels if label.drawn and label.label == name]
+        for name in settings.classes
+    }
+    return {name: drawn for name, drawn in grouped.items() if drawn}
+
+
 def show_tile(
-    tile: widgets.Dropdown, note: widgets.HTML, area: widgets.HBox, _change=None
+    tile: widgets.Dropdown, note: widgets.HTML, area: widgets.HBox, _change
 ) -> None:
     """Draw the chosen tile's mosaic crop, noting what labelled it.
 
@@ -59,13 +75,11 @@ def show_tile(
     note.value = escape(f"{tile.index + 1} of {len(tile.options)}, {label.feature}")
     placed = placed_tile(label.tile, label)
     if placed is None:
-        crop = panels.unavailable(mosaic.NO_BOX)
+        shown = panels.unavailable(mosaic.NO_BOX)
     else:
         title = f"Tile {label.tile}, {label.label}"
-        crop = mosaic.fetched(
-            placed.box(), lambda image: basemap.tile_map(placed, image, title)
-        )
-    area.children = (crop,)
+        shown = mosaic.fetched(placed.crop(), partial(basemap.tile_map, placed, title))
+    area.children = (shown,)
 
 
 def offer_class(

@@ -16,14 +16,14 @@ class NoMeasurement(ValueError):
 
 
 def refused_mask(
-    cube: np.ndarray, table: np.ndarray, centre: np.ndarray, detector: Detector
+    cube: np.ndarray, table: np.ndarray, centres: np.ndarray, detector: Detector
 ) -> Mask:
     """Fill everything one cube holds that is not a measurement.
 
     Args:
         cube: The values as lines by samples by bands, filled in place.
         table: The centre wavelength of every column and band, in that order.
-        centre: The centre wavelength of every band, averaged over its columns.
+        centres: The centre wavelength of every band, averaged over its columns.
         detector: Which detector, `l` for infrared or `s` for visible.
 
     Returns:
@@ -38,8 +38,8 @@ def refused_mask(
     # What the wavelength file refused to name, which is already NaN.
     columns = np.isnan(table).all(axis=1)
     # The sensor edges, where the window says the reading is not trusted.
-    edges = (centre < low) | (centre > high)
-    bands = np.isnan(centre) | edges
+    edges = (centres < low) | (centres > high)
+    bands = np.isnan(centres) | edges
 
     # What no value test may look at, held per column and band so it broadcasts.
     dead = columns[:, None] | bands

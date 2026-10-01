@@ -6,11 +6,10 @@ from dataclasses import dataclass
 from functools import cached_property
 
 import numpy as np
-from shapely import box
 
 
 @dataclass(frozen=True)
-class Grid:
+class CellGrid:
     """A regular grid of cells covering one tile's projected bounding box.
 
     Attributes:
@@ -44,27 +43,4 @@ class Grid:
         return (
             self.west + steps * (self.east - self.west) / self.side,
             self.south + steps * (self.north - self.south) / self.side,
-        )
-
-    @cached_property
-    def rectangles(self) -> np.ndarray:
-        """Return every cell of the grid as a rectangle.
-
-        Returns:
-            cells: One box per cell, walked row by row from the south west corner.
-        """
-        step_x = (self.east - self.west) / self.side
-        step_y = (self.north - self.south) / self.side
-        return np.asarray(
-            [
-                box(
-                    self.west + column * step_x,
-                    self.south + row * step_y,
-                    self.west + (column + 1) * step_x,
-                    self.south + (row + 1) * step_y,
-                )
-                for row in range(self.side)
-                for column in range(self.side)
-            ],
-            dtype=object,
         )

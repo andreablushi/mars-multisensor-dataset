@@ -14,22 +14,26 @@ from rich.console import Console
 from analysis.selector.models.selection import Selection
 from building import console as printing
 from building import paths, planner
+from building.common.normalize import record_normalization
 from building.metadata.index import read_observation_metadata, write_index
+from building.metadata.selection import exclude_tiles
 from building.models.job import Outcome, Plan
 from building.models.progress import Progress
-from building.models.settings import Settings
+from building.models.settings import BuildSettings, TrainingSettings
 from building.scheduler import Scheduler
 from common.console import print_failure
 from common.fetch.http import TLS_CONTEXT
+from common.pool import cancellable_pool
 
 CHECKPOINT_BYTES = 100 * 1024**3
 
 
 def build_dataset(
-    settings: Settings,
+    settings: BuildSettings,
     picked: Sequence[Selection],
-    force: bool = False,
+    force: bool,
     checkpoint: Callable[[], None] | None = None,
+    fetch: Callable[[str, Path, Sequence[str]], None] | None = None,
 ) -> int:
     """Build one dataset over the tiles it is handed.
 
@@ -38,6 +42,7 @@ def build_dataset(
         picked: The tiles to build, each with the observations its window keeps.
         force: Whether to build every crop again, rather than only the missing ones.
         checkpoint: What publishes the dataset so far, or None for a local run.
+        fetch: What brings objects of a named build back to disk, or None locally.
 
     Returns:
         code: A process exit code, non zero when any product failed to build.
@@ -57,8 +62,17 @@ def build_dataset(
     with httpx.Client(limits=limits, verify=TLS_CONTEXT) as ode:
         outcomes = build_outcomes(plan, settings, root, ode, console, checkpoint)
     write_index(plan, outcomes, root, on_disk=checkpoint is None)
-    printing.print_summary(outcomes, time.monotonic() - started_at, console)
-    return 1 if any(one.error for one in outcomes) else 0
+    record_normalization(settings, root, fetch)
+    dropped = {name for one in outcomes for name in one.emptied}
+    elapsed = time.monotonic() - started_at
+    printing.print_summary(plan, outcomes, dropped, elapsed, console)
+    if dropped:
+        exclude_tiles(dropped)
+    # A drawn tile is labelled, so the evaluation cannot do without one
+    if dropped and not isinstance(settings, TrainingSettings):
+        console.print(f"[red]error: drawn tiles dropped {sorted(dropped)}[/red]")
+        return 1
+    return 1 if any(one.failed for one in outcomes) else 0
 
 
 def indexed_crops(root: Path, console: Console, *, force: bool) -> frozenset[str]:
@@ -88,7 +102,7 @@ def indexed_crops(root: Path, console: Console, *, force: bool) -> frozenset[str
 
 def build_outcomes(
     plan: Plan,
-    settings: Settings,
+    settings: BuildSettings,
     root: Path,
     ode: httpx.Client,
     console: Console,
@@ -110,12 +124,14 @@ def build_outcomes(
     progress = Progress(len(plan.jobs))
     # A download waits on the network and a build on the cores, so the pools differ.
     with (
-        ProcessPoolExecutor(max_workers=settings.workers) as building,
+        cancellable_pool(ProcessPoolExecutor(settings.workers)) as building,
         ExitStack() as pools,
         printing.watch(progress),
     ):
         fetching = {
-            archive: pools.enter_context(ThreadPoolExecutor(max_workers=downloads))
+            archive: pools.enter_context(
+                cancellable_pool(ThreadPoolExecutor(downloads))
+            )
             for archive, downloads in settings.downloads.items()
         }
         scheduler = Scheduler(ode, fetching, building, root, settings, progress)

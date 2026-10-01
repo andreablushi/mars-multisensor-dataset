@@ -1,4 +1,4 @@
-"""The fine cells a tile's coverage is published on, and those a shape fills."""
+"""The cells a tile's coverage is counted on, and those a shape fills."""
 
 from __future__ import annotations
 
@@ -8,36 +8,31 @@ import numpy as np
 from shapely import contains_xy, prepare
 from shapely.geometry.base import BaseGeometry
 
-from analysis.coverage.models.grid import Grid
+from analysis.coverage.models.cell_grid import CellGrid
 from analysis.coverage.models.region import TileRegion
 from common.maths import physics
 
 _NONE = np.empty(0, dtype=np.int64)
 
-# How wide one stretch of the grid is, in kilometres, so large is not coarse
-GRID_KM = 100
-
 # A footprint under this share of a cell is given none, to credit no ground
 MIN_CELL_SHARE = 0.5
 
 
-def grid_over(region: TileRegion, grid_cells: int) -> Grid:
+def cell_grid(region: TileRegion, cell_km: float) -> CellGrid:
     """Give one tile a grid fine enough for the ground it covers.
 
     Args:
         region: The tile the footprints were cut to.
-        grid_cells: How many cells one stretch of the grid holds along each axis.
+        cell_km: The side one cell is sized to, in kilometres.
 
     Returns:
         grid: The grid the tile is measured on.
     """
     span_km = region.span_m / physics.METRES_PER_KM
-    return Grid(
-        *region.shape.bounds, side=max(1, math.ceil(span_km / GRID_KM)) * grid_cells
-    )
+    return CellGrid(*region.laea.bounds, side=max(1, math.ceil(span_km / cell_km)))
 
 
-def filled_cells(grid: Grid, shape: BaseGeometry) -> np.ndarray:
+def filled_cells(grid: CellGrid, shape: BaseGeometry) -> np.ndarray:
     """Find the cells of the grid whose centre a shape covers.
 
     Args:
@@ -47,8 +42,6 @@ def filled_cells(grid: Grid, shape: BaseGeometry) -> np.ndarray:
     Returns:
         cells: The indices of the cells it fills, in ascending order.
     """
-    if shape.is_empty:
-        return _NONE
     eastings, northings = grid.centres
     west, south, east, north = shape.bounds
     columns = np.nonzero((eastings >= west) & (eastings <= east))[0]

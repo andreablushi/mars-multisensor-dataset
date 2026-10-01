@@ -32,27 +32,24 @@ def kept_part(array: np.ndarray, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     runs = tuple(
         slice(int(held[0]), int(held[-1]) + 1)
         for held in bounds
-        if held.size and np.all(np.diff(held) == 1)
+        if np.all(np.diff(held) == 1)
     )
     if len(runs) == len(bounds):
         return array[runs]
-    return array[np.ix_(*bounds)] if len(bounds) > 1 else array[bounds[0]]
+    return array[np.ix_(*bounds)]
 
 
-def line_blocks(
-    sizes: tuple[int, ...], budget: int = BLOCK
-) -> Iterator[tuple[slice, ...]]:
+def line_blocks(sizes: tuple[int, ...]) -> Iterator[tuple[slice, ...]]:
     """Yield the lines of one cut in blocks of about as many samples as fit.
 
     Args:
         sizes: How many samples each ground axis holds.
-        budget: How many samples to read at once.
 
     Yields:
         taken: Which lines of the cut to read, every other ground axis whole.
     """
     rest = (slice(None),) * (len(sizes) - 1)
-    reach = max(1, budget // max(1, int(np.prod(sizes[1:], dtype=int))))
+    reach = max(1, BLOCK // max(1, int(np.prod(sizes[1:], dtype=int))))
     for start in range(0, sizes[0], reach):
         yield (slice(start, start + reach), *rest)
 

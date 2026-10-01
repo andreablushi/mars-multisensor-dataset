@@ -39,8 +39,6 @@ uv sync --group digitalhub
 dhcli register <your-digitalhub-core-endpoint>
 dhcli login                                    # opens a browser tab
 
-cp .env.example .env                           # once, then fill it in
-
 uv run --group digitalhub python scripts/analysis_pipeline.py --dh
 uv run --group digitalhub python scripts/build_training.py --dh
 uv run --group digitalhub python scripts/build_evaluation.py --dh
@@ -55,19 +53,19 @@ uv export --no-hashes --no-dev --group digitalhub --no-emit-project -o requireme
 ## Downloading what it published
 
 ```bash
-chmod +x scripts/dh_download.sh scripts/dh_dataset.sh   # once
+chmod +x scripts/dh_download.sh   # once
 ./scripts/dh_download.sh                 # every analysis archive
 ./scripts/dh_download.sh selection stats # only some of them
 ```
 
 | Name | Where it lands |
 | --- | --- |
-| `coverage`, `summary` | `data/analysis/coverage/` |
+| `coverage` | `data/analysis/coverage/` |
 | `metadata` | `data/analysis/metadata/` |
 | `selection` | `data/analysis/selection/` |
 | `stats` | `data/analysis/stats/` |
 | `labels` | `data/analysis/labels/` |
-| a dataset | `data/building/dataset/<name>/` |
+| `verdicts` | `data/analysis/` |
 
 ## Notebooks
 

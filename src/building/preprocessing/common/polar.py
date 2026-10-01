@@ -17,14 +17,13 @@ STEP = 0.1
 
 
 def cut(
-    position: Position, frame: Tile, span: float
+    position: Position, frame: Tile
 ) -> tuple[tuple[np.ndarray, ...], np.ndarray | None] | None:
     """Return which bins of one grid projected onto a pole the box keeps.
 
     Args:
         position: The samples, placed in the metres of the grid they sit on.
         frame: The tile's local frame, carrying the box the catalogue gives it.
-        span: How many degrees of longitude that box covers.
 
     Returns:
         bounds: The bins to keep of each ground axis, outermost first.
@@ -33,10 +32,7 @@ def cut(
     """
     grid = position.grid
     ring_x, ring_y = geodesy.stereographic_forward(
-        *geodesy.bbox_ring(
-            frame.min_lat, frame.max_lat, frame.west_lon, frame.east_lon, STEP
-        ),
-        *grid,
+        *geodesy.bbox_ring(frame, STEP), *grid
     )
     # The box projects to a sector, and the ring its edge traces bounds it.
     lines = np.flatnonzero(
@@ -49,21 +45,21 @@ def cut(
         return None
     # A latitude is a radius here, so the box keeps one band of the sector alone.
     band = sorted(
-        abs(float(geodesy.stereographic_forward(grid[0], lat, *grid)[1]))
+        abs(float(geodesy.stereographic_forward(grid.centre_lon, lat, *grid)[1]))
         for lat in (frame.min_lat, frame.max_lat)
     )
     # A south grid runs its eastings the other way round, so its turn does too.
-    sign = -1.0 if grid[1] else 1.0
+    sign = -1.0 if grid.north else 1.0
     held = Position(position.north[lines], position.east[across], True, grid)
     inside = np.empty(held.sizes, dtype=bool)
     for block in geometry.line_blocks(held.sizes):
         north, east = held.crossed_part(block)
         radius = np.hypot(north, east)
-        turned = np.degrees(np.arctan2(east, sign * north)) + grid[0]
+        turned = np.degrees(np.arctan2(east, sign * north)) + grid.centre_lon
         inside[block] = (
             (radius >= band[0])
             & (radius <= band[1])
-            & ((turned - frame.west_lon) % TURN <= span)
+            & ((turned - frame.west_lon) % TURN <= frame.span)
         )
     if not inside.any():
         return None
@@ -87,7 +83,7 @@ def placed(position: Position, frame: Tile) -> Position:
     grid = position.grid
     # A grid of the tile's own pole and centre longitude reaches it by a scale.
     if grid is not None and grid[:2] == place[:2]:
-        scale = place[2] / grid[2]
+        scale = place.radius_m / grid.radius_m
         return Position(
             position.north * scale - centre_y,
             position.east * scale - centre_x,

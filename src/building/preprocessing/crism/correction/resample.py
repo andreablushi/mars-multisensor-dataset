@@ -52,11 +52,11 @@ def resample_bands(
         live = np.flatnonzero(kept & ~np.isnan(own))
         if live.size < 2:
             continue
-        centre = own[live]
-        high = np.clip(np.searchsorted(centre, grid), 1, centre.size - 1)
+        centres = own[live]
+        high = np.clip(np.searchsorted(centres, grid), 1, centres.size - 1)
         low = high - 1
         share = np.clip(
-            (grid - centre[low]) / (centre[high] - centre[low]), 0.0, 1.0
+            (grid - centres[low]) / (centres[high] - centres[low]), 0.0, 1.0
         ).astype("f4")
         held = cube[:, at, :]
         out[:, at, bands] = (

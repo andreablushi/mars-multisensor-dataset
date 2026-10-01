@@ -16,9 +16,7 @@ class Observation:
         iid: The instrument identifier.
         pt: The product type.
         start: When the observation started.
-        stop: When the observation finished, or None when none was published.
         wkt: The footprint as well-known text, left unparsed.
-        map_scale_m: The ground size of one pixel, or None when unpublished.
         north_wkt: The footprint in north polar stereographic metres, or None.
         south_wkt: The same in south polar stereographic metres.
     """
@@ -28,21 +26,14 @@ class Observation:
     iid: str
     pt: str
     start: datetime
-    stop: datetime | None
     wkt: str
-    map_scale_m: float | None
-    north_wkt: str | None = None
-    south_wkt: str | None = None
+    north_wkt: str | None
+    south_wkt: str | None
 
     @property
     def is_track(self) -> bool:
         """Return whether the footprint is a ground track, buffered into an area."""
         return self.wkt.startswith(("LINESTRING", "MULTILINESTRING"))
-
-    @property
-    def duration_s(self) -> float:
-        """Return the seconds the observation lasted, zero with no stop published."""
-        return (self.stop - self.start).total_seconds() if self.stop else 0.0
 
 
 @dataclass(frozen=True, slots=True)

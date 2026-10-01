@@ -6,9 +6,11 @@ import math
 
 import ipywidgets as widgets
 
-from analysis.stats.models import CatalogueStats, DatasetStats
+from analysis.models.instrument import PIXEL_KM2
+from analysis.stats.models import CatalogueStats
 from analysis.visualization import panels, wording
 from analysis.visualization.panels import Row
+from common.maths.physics import METRES_PER_KM
 
 _INSTRUMENTS = (
     "Instrument",
@@ -34,24 +36,19 @@ def measured(catalogue: CatalogueStats) -> widgets.Widget:
     )
 
 
-def instruments(catalogue: CatalogueStats, dataset: DatasetStats) -> widgets.Widget:
+def instruments(catalogue: CatalogueStats) -> widgets.Widget:
     """Tabulate what each instrument holds of the measured dataset."""
     rows: list[Row] = []
     for instrument in catalogue.instruments:
-        # The median, since a handful of records publish a pixel far out from the rest
-        pixel_km2 = dataset.pixel_km2.get(instrument.iid)
-        if pixel_km2 is None or not pixel_km2.counted:
-            resolution = wording.UNCOUNTED
-        else:
-            resolution = f"{math.sqrt(pixel_km2.middle) * 1000.0:,.1f} m"
+        resolution = f"{math.sqrt(PIXEL_KM2[instrument.iid]) * METRES_PER_KM:,.1f} m"
         rows.append(
             (
                 instrument.iid,
                 f"{instrument.tiles:,}",
                 f"{instrument.observations:,}",
                 resolution,
-                instrument.first.date().isoformat(),
-                instrument.last.date().isoformat(),
+                f"{instrument.first:%Y-%m-%d}",
+                f"{instrument.last:%Y-%m-%d}",
             )
         )
     return panels.written("Global instrument coverage", _INSTRUMENTS, rows)

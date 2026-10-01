@@ -48,19 +48,6 @@ def cached_detectors(identifier: str) -> tuple[configs.Detector, ...]:
     return found
 
 
-def read_wavelengths(record: Path) -> np.ndarray:
-    """Read the centre wavelength of every column and band one record holds.
-
-    Args:
-        record: The `.img` of a wavelength file, which holds a single line.
-
-    Returns:
-        wavelengths: The centre wavelength in nm as columns by bands.
-    """
-    written = images.load_cube(record)[0][0]
-    return np.where(written >= UNCALIBRATED, np.nan, written.astype("f8"))
-
-
 def read_detectors(
     identifier: str, found: tuple[configs.Detector, ...]
 ) -> tuple[dict[configs.Detector, tuple[np.ndarray, np.ndarray]], list[dict[str, str]]]:
@@ -71,7 +58,7 @@ def read_detectors(
         found: The detectors that landed whole.
 
     Returns:
-        detectors: Each detector's cube and wavelengths, bands ascending.
+        detectors: Each detector's cube and wavelength table, bands ascending.
         held: Each detector's observation label, in the order found.
 
     Raises:
@@ -90,48 +77,11 @@ def read_detectors(
         # The wavelength file this half was calibrated against, and no other.
         wavelength = Path(label[configs.WAVELENGTH_KEY]).stem.lower()
         record = configs.CACHE.files(configs.WAVELENGTH_DIR, wavelength)[".img"]
+        written = images.load_cube(record)[0][0]
+        table = np.where(written >= UNCALIBRATED, np.nan, written.astype("f8"))
         # Order the bands by wavelength and mark what was never calibrated.
-        detectors[name] = bands_calibration.calibrated_cube(
-            cube, read_wavelengths(record)
-        )
+        detectors[name] = bands_calibration.calibrated_cube(cube, table)
     return detectors, held
-
-
-def read_label(
-    identifier: str, placing: configs.Detector, held: list[dict[str, str]]
-) -> dict[str, str]:
-    """Read what every product one observation is published as says about it.
-
-    Args:
-        identifier: The observation, its files already in the download cache.
-        placing: The detector that places it, whose geometry label is read.
-        held: Each detector's observation label, the placing one first.
-
-    Returns:
-        label: Their labels merged, without the calibration software's tuning.
-
-    Raises:
-        FileNotFoundError: When the geometry label is missing.
-    """
-    geometry = labels.load(
-        configs.CACHE.product_files(
-            identifier, configs.Kind.GEOMETRY, detector=placing
-        )[".lbl"]
-    )
-    return {
-        key: value
-        for key, value in labels.merge(*held, geometry).items()
-        if not key.startswith(GROUND_SOFTWARE)
-    }
-
-
-def read_geometry(identifier: str, placing: configs.Detector) -> np.ndarray:
-    """Read the backplanes that place every pixel of one observation."""
-    return images.load_cube(
-        configs.CACHE.product_files(
-            identifier, configs.Kind.GEOMETRY, detector=placing
-        )[".img"]
-    )[0]
 
 
 def read_observation(identifier: str) -> CrismObservation:
@@ -145,12 +95,19 @@ def read_observation(identifier: str) -> CrismObservation:
 
     Raises:
         FileNotFoundError: When any file the observation needs is missing.
-        ValueError: When a window keeps no band of a cube, or no detector measured.
+        ValueError: When a window keeps no band of a cube.
     """
     found = cached_detectors(identifier)
     detectors, held = read_detectors(identifier, found)
-    return merge.merge_detectors(
-        clean.clean_detectors(identifier, detectors),
-        read_geometry(identifier, found[0]),
-        read_label(identifier, found[0], held),
+    cleaned = clean.clean_detectors(detectors)
+    geometry, geometry_label = images.load_cube(
+        configs.CACHE.product_files(
+            identifier, configs.Kind.GEOMETRY, detector=found[0]
+        )[".img"]
     )
+    label = {
+        key: value
+        for key, value in labels.merge(*held, geometry_label).items()
+        if not key.startswith(GROUND_SOFTWARE)
+    }
+    return merge.merge_detectors(cleaned, geometry, label)

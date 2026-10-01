@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
+
 from analysis.models.instrument import InstrumentSet
 from analysis.models.tile_group import TileGroup
 from common.fetch import ode
-from common.fetch.ode import ODEClient, ODEError
+from common.fetch.ode import ODEError
+from common.maths.geodesy import HALF_TURN, TURN
 
 # A group circling a pole is asked in two halves, no ODE box reaching round
-LONGITUDE_HALVES = ((0.0, 180.0), (180.0, 360.0))
+LONGITUDE_HALVES = ((0.0, HALF_TURN), (HALF_TURN, TURN))
 
 PAGE_SIZE = 5000
 PAGE_ORDER = "oba"
@@ -20,9 +23,8 @@ RETAINED_FIELDS = (
     "ihid",
     "iid",
     "pt",
-    "Map_scale",
+    "Incidence_angle",
     "UTC_start_time",
-    "UTC_stop_time",
     "Minimum_latitude",
     "Maximum_latitude",
     "Westernmost_longitude",
@@ -34,7 +36,7 @@ RETAINED_FIELDS = (
 
 
 def fetch_products(
-    client: ODEClient,
+    client: httpx.Client,
     group: TileGroup,
     instrument_set: InstrumentSet,
     loc: str,
@@ -83,18 +85,9 @@ def fetch_products(
 
 
 def product_params(instrument_set: InstrumentSet, pt: str) -> dict[str, str]:
-    """Return what names one instrument's products of one type to ODE.
-
-    Args:
-        instrument_set: The instrument host and instrument asked about.
-        pt: The product type asked for.
-
-    Returns:
-        params: The query parameters naming them.
-    """
+    """Return the ODE query parameters naming one instrument's products of one type."""
     return {
-        "query": "product",
-        "target": ode.ODE_TARGET,
+        **ode.PRODUCT_QUERY,
         "ihid": instrument_set.ihid,
         "iid": instrument_set.iid,
         "pt": pt,
@@ -102,7 +95,7 @@ def product_params(instrument_set: InstrumentSet, pt: str) -> dict[str, str]:
 
 
 def every_product(
-    client: ODEClient, params: dict[str, str], results: str
+    client: httpx.Client, params: dict[str, str], results: str
 ) -> list[dict[str, Any]]:
     """Fetch every product one query matches, a page at a time.
 
@@ -117,21 +110,22 @@ def every_product(
     Raises:
         ODEError: When ODE reports no usable count for the query.
     """
-    raw = client.query({**params, "results": "c"}).get("Count")
+    raw = ode.fetch_results({**params, "results": "c"}, client).get("Count")
     try:
         total = int(raw)
     except (TypeError, ValueError):
         raise ODEError(f"ODE returned no product count, found {raw!r}") from None
     products: list[dict[str, Any]] = []
     while len(products) < total:
-        page = client.query(
+        page = ode.fetch_results(
             {
                 **params,
                 "results": results,
                 "order": PAGE_ORDER,
                 "limit": str(PAGE_SIZE),
                 "offset": str(len(products)),
-            }
+            },
+            client,
         )
         answered = page["Products"]["Product"]
         # A box holding one product is answered with that product, not a list of one

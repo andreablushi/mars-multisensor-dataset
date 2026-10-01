@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from functools import partial
 from html import escape
 
 import ipywidgets as widgets
 
+from analysis.stats.artifacts import read_tile_selection
 from analysis.stats.tile import read_tile_track
+from analysis.utils.tile_group import tile_grid
 from analysis.visualization import mosaic, panels, wording
 from analysis.visualization.panels import Coverage
 from analysis.visualization.tile.placement import (
@@ -19,18 +22,15 @@ from common.config import analysis_settings
 
 def plot(coverage: Coverage) -> widgets.Widget:
     """Show the ground the tile covers, and what the filter asked of it."""
-    summary = coverage[0].summary
-    tile_track = read_tile_track(coverage)
-    placed = placed_tile(summary.tile)
+    name = coverage[0].summary.tile
+    placed = placed_tile(name)
     if placed is None:
         return panels.unavailable(mosaic.NO_BOX)
     title = panels.title(coverage)
-    box = placed.box()
-    if tile_track and tile_track.window.kept:
-        verdict = "There is a window that covers the tile"
-    else:
-        verdict = "No window available that respects the requirements"
-    criteria = analysis_settings().window
+    tile_track = read_tile_track(coverage)
+    ground = f"{wording.area(tile_track.window.area_km2)}, " if tile_track else ""
+    report = panels.tile_report(tile_grid().tile_named(name), read_tile_selection(name))
+    criteria = analysis_settings().criteria
     asked = ["What the filter asks"]
     asked += [
         "  "
@@ -40,7 +40,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
         for constraint in criteria.constraints
     ]
     asked += [
-        f"  {iid} counts at {wording.pixels(pixels)} a look"
+        f"  {iid} counts at {wording.pixels(pixels, iid)} a look"
         for iid, pixels in criteria.admits.items()
     ]
     asked.append(
@@ -53,11 +53,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
         for instrument in coverage
     )
     report = widgets.HTML(
-        f"<b>{escape(title)}</b><br>"
-        f"{summary.tile_area_km2:,.1f} km2 bounding box, "
-        f"{box.south:.3f} to {box.north:.3f} lat, "
-        f"{box.west:.3f} to {box.east:.3f} lon<br>"
-        f"{escape(verdict)}"
+        f"<b>{escape(title)}</b><br>{escape(ground + report)}"
         + "".join(
             f"<pre style='margin: 8px 0 0; line-height: 1.4'>{escape(text)}</pre>"
             for text in (observed, "\n".join(asked))
@@ -67,7 +63,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
     return widgets.HBox(
         [
             report,
-            mosaic.fetched(box, lambda image: tile_map(placed, image, title)),
+            mosaic.fetched(placed.crop(), partial(tile_map, placed, title)),
         ],
         layout=widgets.Layout(
             align_items="flex-start", flex_flow="row nowrap", grid_gap="24px"
@@ -75,18 +71,18 @@ def plot(coverage: Coverage) -> widgets.Widget:
     )
 
 
-def tile_map(placed: PlacedTile, image: bytes, title: str) -> widgets.Image:
+def tile_map(placed: PlacedTile, title: str, image: bytes) -> widgets.Image:
     """Draw the tile's crop of the mosaic, with the ground it covers outlined.
 
     Args:
         placed: Where the tile falls in lon and lat.
-        image: The tile's crop, as the mosaic fetched it.
         title: What the map is titled.
+        image: The tile's crop, as the mosaic fetched it.
 
     Returns:
         map: The map, rendered.
     """
     drawn, axis = outlined_board(placed, (7.0, 6.0), image, zorder=3)
-    axis.set_title(title, fontsize=12, loc="left")
+    panels.titled(axis, title)
     drawn.tight_layout()
     return panels.rendered(drawn)

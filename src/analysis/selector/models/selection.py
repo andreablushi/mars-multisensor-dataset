@@ -5,9 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from common.maths.box import Boxed
+
 
 @dataclass(frozen=True, slots=True)
-class SelectedTile:
+class SelectedTile(Boxed):
     """One searched tile, and the window it earned or did not.
 
     Attributes:
@@ -17,7 +19,7 @@ class SelectedTile:
         min_lat: The southernmost planetocentric latitude in degrees.
         max_lat: The northernmost planetocentric latitude in degrees.
         west_lon: The westernmost longitude in degrees, 0 to 360.
-        east_lon: The easternmost longitude in degrees, 0 to 360.
+        east_lon: The easternmost longitude, 0 to 360, the westernmost at a pole.
         kept: Whether the tile earned a place at all.
         area_km2: How much ground it covers.
         start: When its earliest kept observation was taken, or None without a window.

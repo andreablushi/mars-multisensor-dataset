@@ -9,13 +9,12 @@ from analysis.metadata.loaders.observations import load_observations
 from analysis.models.job import CoverageJob, Outcome
 
 
-def compute_coverage(job: CoverageJob, grid_cells: int, union_threads: int) -> Outcome:
+def compute_coverage(job: CoverageJob, cell_km: float) -> Outcome:
     """Measure one instrument set's coverage of every tile of its group, and write it.
 
     Args:
         job: The instrument set being computed, naming what it reads and writes.
-        grid_cells: How many cells one stretch of a tile's grid holds per axis.
-        union_threads: How many of a tile's cells to accumulate at once.
+        cell_km: The side of one coverage cell, in kilometres.
 
     Returns:
         outcome: The outcome, carrying the error when the job failed.
@@ -25,8 +24,7 @@ def compute_coverage(job: CoverageJob, grid_cells: int, union_threads: int) -> O
             load_observations(job.source), job.group.tiles
         )
         measured = [
-            measure.measure_set(projected_set, grid_cells, union_threads)
-            for projected_set in projected
+            measure.measure_set(projected_set, cell_km) for projected_set in projected
         ]
         events = [event for set_events, _ in measured for event in set_events]
         write_coverage(job, events, [summary for _, summary in measured])

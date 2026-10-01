@@ -10,12 +10,12 @@ from building.preprocessing.crism.correction import moving_median
 SPIKE_PASSES = ((72.0, 20.0), (46.0, 20.0), (20.0, 20.0))
 
 
-def remove_spikes(cube: np.ndarray, centre: np.ndarray, refused: np.ndarray) -> None:
+def remove_spikes(cube: np.ndarray, centres: np.ndarray, refused: np.ndarray) -> None:
     """Remove spikes with narrowing windows, as crism_ml does.
 
     Args:
         cube: The ratioed values as lines by samples by bands, changed in place.
-        centre: The centre wavelength of every band it holds.
+        centres: The centre wavelength of every band it holds.
         refused: Lines by samples, True where the pixel is not a measurement.
     """
     if refused.all():
@@ -27,7 +27,7 @@ def remove_spikes(cube: np.ndarray, centre: np.ndarray, refused: np.ndarray) -> 
     apart = np.empty_like(cube)
     caught = np.empty(cube.shape, dtype=bool)
     for width, sigma in SPIKE_PASSES:
-        size = moving_median.window_size(centre, width)
+        size = moving_median.window_size(centres, width)
         moving_median.moving_median(cube, size, out=median)
         np.subtract(median, cube, out=apart)
         np.abs(apart, out=apart)

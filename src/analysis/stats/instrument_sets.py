@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from analysis.coverage.models.coverage import SetCoverage
-from analysis.selector.filters.admit import landed_pixels
+from analysis.selector.filters.admit import floor_km2
 from analysis.stats.models import Landing, TileTrack, Timeline
+from common.config import analysis_settings
 
 
 def landings_per_set(tile_track: TileTrack) -> list[Landing]:
@@ -22,17 +23,16 @@ def landings_per_set(tile_track: TileTrack) -> list[Landing]:
     counted: list[list[float]] = [[] for _ in track.labels]
     offered = [*zip(track.observations, track.owners, track.cells), *track.refused]
     for observation, owner, cells in offered:
-        counted[owner].append(
-            landed_pixels(observation, len(cells), track.grid.cell_km2)
-        )
+        counted[owner].append(len(cells) * track.grid.cell_km2)
+    criteria = analysis_settings().criteria
     return [
         Landing(
-            label=track.labels[owner],
-            iid=track.iids[owner],
-            counts=sorted(counted[owner]),
-            bar=track.min_pixels[owner],
+            label=label,
+            iid=iid,
+            landed_km2=sorted(counts),
+            bar_km2=floor_km2(criteria, iid),
         )
-        for owner in range(len(track.labels))
+        for label, iid, counts in zip(track.labels, track.iids, counted, strict=True)
     ]
 
 

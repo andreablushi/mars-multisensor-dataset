@@ -4,9 +4,6 @@ from __future__ import annotations
 
 SPEED_OF_LIGHT_M_S = 299_792_458.0
 
-# The gravitational parameter for Mars, whose radius is named beside the planet
-MARS_GM = 4.2828372e13
-
 # IAU mean radius for Mars, which the equal-area projection is built on
 RADIUS_M = 3_389_500.0
 

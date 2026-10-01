@@ -3,20 +3,26 @@
 from __future__ import annotations
 
 import csv
-import json
+from collections.abc import Sequence
 
 import numpy as np
 
 from building.configs import ctx as configs
 from building.preprocessing.ctx.isis import read_cube_label, run_isis
 from building.preprocessing.ctx.models.observation import CtxObservation
+from building.preprocessing.ctx.normalize import scan_statistics
+from common.disk.files import read_json
 
 
-def read_observation(identifier: str) -> CtxObservation:
+def read_observation(
+    identifier: str, clip: Sequence[float], stride: int
+) -> CtxObservation:
     """Calibrate one placed scan and sample where its lines fall on the ground.
 
     Args:
         identifier: The observation, its files already in the download cache.
+        clip: The low and high percentiles the scan's counts are clipped at.
+        stride: How many lines and samples apart its statistics are measured.
 
     Returns:
         observation: The calibrated scan and its sampled ground points.
@@ -57,12 +63,12 @@ def read_observation(identifier: str) -> CtxObservation:
     )
     with table.open() as held:
         rows = [row for row in csv.DictReader(held) if row["PlanetocentricLatitude"]]
-    said = files[configs.METADATA_SUFFIX]
     return CtxObservation(
-        json.loads(said.read_text()) if said.exists() else {},
+        read_json(files[configs.METADATA_SUFFIX]),
         cube,
         lines,
         np.array([float(row["Line"]) for row in rows]),
         np.array([float(row["PlanetocentricLatitude"]) for row in rows]),
         np.array([float(row["PositiveEast360Longitude"]) for row in rows]),
+        scan_statistics(cube, clip, stride),
     )

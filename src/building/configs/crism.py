@@ -88,8 +88,6 @@ ATMOSPHERIC_BANDS_NM = {Detector.INFRARED: ((1940.0, 2090.0),), Detector.VISIBLE
 # How far above its column's mean a band reads as a spike, set per detector.
 STRIPE_SIGMA = {Detector.INFRARED: 5.0, Detector.VISIBLE: 3.0}
 
-MAX_INCIDENCE_DEG = 85.0
-
 # How ODE spells one detector; radiance and reflectance are the one observation
 NAMING = Naming(
     re.compile(
@@ -120,6 +118,15 @@ LAYOUT = Layout(
     stored="f2",
     band_centres_nm=BANDS_NM,
 )
+
+# What ODE publishes CRISM under.
+ODE = {"ihid": "MRO", "iid": LAYOUT.instrument}
+
+# The ODE product types an observation and its geometry are published under.
+PRODUCT_TYPES = {Kind.OBSERVATION: "TRDR", Kind.GEOMETRY: "DDR"}
+
+# The ODE product type a wavelength file is published under.
+WAVELENGTH_PRODUCT_TYPE = "CDR"
 
 # Where each product is kept, the geometry in a subdirectory beside its own scan.
 CACHE = ProductCache(

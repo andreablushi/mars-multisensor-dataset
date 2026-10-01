@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from analysis.models.instrument import PIXEL_KM2
 from analysis.stats.models import Spread
+from building.configs import sharad
 
 NOTHING = "none"
 UNCOUNTED = "not counted"
-SOUNDER = "SHARAD"
 
 _STEPS = ((1e12, "T"), (1e9, "G"), (1e6, "M"), (1e3, "k"))
 
@@ -54,18 +55,14 @@ def counted(number: float, noun: str) -> str:
     return f"{number:,.0f} {noun}" + ("" if number == 1 else "s")
 
 
-def pixels(count: float | None) -> str:
-    """Write a pixel count, or that it was never measured.
+def pixels(count: float, iid: str) -> str:
+    """Write a pixel count, in traces for SHARAD."""
+    return f"{compact(count)} {'traces' if iid == sharad.LAYOUT.instrument else 'px'}"
 
-    Args:
-        count: The pixel count, or None where it was never measured.
 
-    Returns:
-        written: The count in pixels, or that it was not counted.
-    """
-    if count is None:
-        return UNCOUNTED
-    return f"{compact(count)} px"
+def pixels_of_ground(km2: float, iid: str) -> str:
+    """Write the pixels a ground holds, in traces for SHARAD."""
+    return pixels(km2 / PIXEL_KM2[iid], iid)
 
 
 def spread(

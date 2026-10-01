@@ -83,7 +83,7 @@ class CatalogueStats:
         tile_km: The side every tile is sized to, in kilometres.
         measured: How many of them any instrument reached.
         tile_km2: How much ground a measured tile holds, tile by tile.
-        instruments: What each instrument holds, most observations first.
+        instruments: What each instrument holds, in the order they are drawn.
     """
 
     tiles: int
@@ -102,8 +102,7 @@ class DatasetStats:
         kept: How many of them earned a window worth keeping.
         days: How long the windows last, over the kept tiles.
         reached: The share of a tile each instrument reaches, over the kept.
-        pixels_per_look: The pixels one observation lands on a tile, per instrument.
-        pixel_km2: The ground one pixel covers, per instrument.
+        landed_km2_per_look: The ground one observation lands on a tile, per instrument.
         selected: How many observations of each instrument a kept tile keeps.
         downloads: How many distinct products of each instrument the kept tiles keep.
         overlap: The share of a tile every instrument reaches at once, over the kept.
@@ -114,8 +113,7 @@ class DatasetStats:
     kept: int
     days: Spread
     reached: dict[str, Spread]
-    pixels_per_look: dict[str, Spread]
-    pixel_km2: dict[str, Spread]
+    landed_km2_per_look: dict[str, Spread]
     selected: dict[str, Spread]
     downloads: dict[str, int]
     overlap: Spread
@@ -143,24 +141,22 @@ class InstrumentReach:
 
     Attributes:
         km2: The ground it reaches, counting a cell once however often it was revisited.
-        pixels: The pixels it landed there, or None where any carries no count.
+        landed_km2: The ground its observations landed there, revisits counted again.
         observations_taken: How many of its observations the window keeps.
     """
 
     km2: float
-    pixels: float | None
+    landed_km2: float
     observations_taken: int
 
     @property
-    def pixels_per_look(self) -> float | None:
-        """Return the pixels one of its observations lands on the tile.
+    def landed_km2_per_look(self) -> float:
+        """Return the ground one of its observations lands on the tile.
 
         Returns:
-            pixels: The mean over the window's observations, or None if any lacks one.
+            km2: The mean over the window's observations.
         """
-        if self.pixels is None or not self.observations_taken:
-            return None
-        return self.pixels / self.observations_taken
+        return self.landed_km2 / self.observations_taken
 
 
 @dataclass(frozen=True, slots=True)
@@ -170,14 +166,12 @@ class TileStats:
     Attributes:
         window: The window the selection gave it, with its name, box and span.
         iids: The instruments it holds, in the order they are drawn.
-        pixel_km2: The ground one pixel covers, per instrument offered to the tile.
         reached: What each instrument left on it, by instrument.
         overlaps: The ground each set of instruments reaches, most ground first.
     """
 
     window: SelectedTile
     iids: list[str]
-    pixel_km2: dict[str, float]
     reached: dict[str, InstrumentReach]
     overlaps: dict[tuple[str, ...], float]
 
@@ -189,14 +183,14 @@ class Landing:
     Attributes:
         label: The set's short readable name.
         iid: The instrument it belongs to, which is what the filter names.
-        counts: The pixels each observation landed on the tile, smallest first.
-        bar: The pixels the filter asks of it before a look counts as one.
+        landed_km2: The ground each observation landed on the tile, smallest first.
+        bar_km2: The ground the filter asks of it before a look counts as one.
     """
 
     label: str
     iid: str
-    counts: list[float]
-    bar: float
+    landed_km2: list[float]
+    bar_km2: float
 
 
 @dataclass(frozen=True, slots=True)

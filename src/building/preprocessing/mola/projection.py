@@ -6,6 +6,7 @@ import numpy as np
 
 from building.preprocessing.common.models.position import Position
 from common.maths import physics
+from common.maths.geodesy import PolarGrid
 
 # The two projections the gridded record is written in.
 EQUATORIAL = "SIMPLE CYLINDRICAL"
@@ -36,7 +37,7 @@ def grid_position(label: dict[str, str]) -> Position:
         across = (
             np.radians((np.arange(samples) - samples / 2.0 + 0.5) / resolution) * radius
         )
-        polar = (0.0, float(label["CENTER_LATITUDE"]) > 0.0, radius)
+        polar = PolarGrid(0.0, float(label["CENTER_LATITUDE"]) > 0.0, radius)
         return Position(down, across, True, polar)
     if named != EQUATORIAL:
         raise ValueError(f"Cannot place a {named} grid.")

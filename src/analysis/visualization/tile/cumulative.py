@@ -16,7 +16,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
     colours = panels.colours([timeline.label for timeline in timelines])
     figure = Figure(figsize=(13, 5))
     running, bars = figure.subplots(1, 2, width_ratios=[3, 1])
-    last = max(timeline.last for timeline in timelines)
+    last = timelines[0].last
     for timeline in timelines:
         if timeline.observed:
             times = [timeline.times[0], *timeline.times]
@@ -36,9 +36,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
             color=colours[timeline.label],
             label=f"{timeline.label}  ({note})",
         )
-    running.set_title(
-        f"{panels.title(coverage)}  -  cumulative coverage", fontsize=12, loc="left"
-    )
+    panels.titled(running, f"{panels.title(coverage)}  -  cumulative coverage")
     running.set_xlabel("Observation start time")
     running.set_ylabel("Share of the tile covered so far")
     running.set_ylim(0, 1.05)

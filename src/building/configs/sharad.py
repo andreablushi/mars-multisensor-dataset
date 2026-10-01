@@ -46,6 +46,16 @@ LAYOUT = Layout(
     },
 )
 
+# What ODE publishes SHARAD under.
+ODE = {"ihid": "MRO", "iid": LAYOUT.instrument}
+
+# The ODE product types a radargram, its geometry and its clutter are published under.
+PRODUCT_TYPES = {
+    Kind.OBSERVATION: "USRDRV2",
+    Kind.GEOMETRY: "USGEOMV2",
+    Kind.CLUTTER: "SHSIMU",
+}
+
 # Where each product is kept. The geometry and the clutter each in a subdirectory.
 CACHE = ProductCache(
     paths.SHARAD_ROOT,

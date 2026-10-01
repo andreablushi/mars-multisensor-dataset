@@ -22,9 +22,26 @@ from shapely import (
 from shapely.geometry.base import BaseGeometry
 
 from analysis.coverage.models.region import TileRegion
-from analysis.coverage.projection import frame
-from common.maths import geodesy
+from common.maths import geodesy, physics
+from common.maths.geodesy import HALF_TURN, POLE, TURN, PolarGrid
 from common.models.tile import Tile
+
+POLAR_FOOTPRINT_DEG = 60.0
+
+ODE_POLAR = {
+    north: PolarGrid(0.0, north, physics.POLAR_RADIUS_M) for north in (True, False)
+}
+
+# Tracks are clipped to a dilated box so buffering still reaches the edge
+CLIP_MARGIN_DEG = 2.0
+
+# Straight lon/lat edges curve once projected, so resample below this step
+MAX_SEGMENT_DEG = 0.25
+
+MAX_SEGMENT_M = 1000.0
+
+# Segments per quarter circle when a track is buffered to its swath
+BUFFER_QUAD_SEGMENTS = 16
 
 _EMPTY = Polygon()
 _LINESTRING = 1
@@ -34,9 +51,7 @@ _FIRST_MULTIPART = 4
 
 def tile_ring(tile: Tile) -> tuple[np.ndarray, np.ndarray]:
     """Return the tile's box as a closed lon/lat ring, densified to project smoothly."""
-    return geodesy.bbox_ring(
-        tile.min_lat, tile.max_lat, tile.west_lon, tile.east_lon, frame.MAX_SEGMENT_DEG
-    )
+    return geodesy.bbox_ring(tile, MAX_SEGMENT_DEG)
 
 
 def ring_polygon(x: np.ndarray, y: np.ndarray) -> BaseGeometry:
@@ -56,7 +71,7 @@ def ring_polygon(x: np.ndarray, y: np.ndarray) -> BaseGeometry:
     return polygon
 
 
-def tile_shape(tile: Tile) -> BaseGeometry:
+def laea_tile(tile: Tile) -> BaseGeometry:
     """Project one tile's box onto the equal-area plane centred on the tile.
 
     Args:
@@ -82,22 +97,20 @@ def tile_region(tile: Tile) -> TileRegion:
         region: The projected box and its clipping regions.
     """
     north = tile.min_lat >= 0.0
-    polar = polar_wide = None
-    if min(abs(tile.min_lat), abs(tile.max_lat)) >= frame.POLAR_REACH_DEG:
-        polar = ring_polygon(
-            *geodesy.stereographic_forward(
-                *tile_ring(tile), *frame.ode_polar_grid(north)
-            )
+    polar_clip = polar_clip_wide = None
+    if min(abs(tile.min_lat), abs(tile.max_lat)) >= POLAR_FOOTPRINT_DEG:
+        polar_clip = ring_polygon(
+            *geodesy.stereographic_forward(*tile_ring(tile), *ODE_POLAR[north])
         )
-        polar_wide = buffer(polar, geodesy.northward_m(frame.CLIP_MARGIN_DEG))
+        polar_clip_wide = buffer(polar_clip, geodesy.northward_m(CLIP_MARGIN_DEG))
     return TileRegion(
         centre_lon=tile.centre_lon,
         centre_lat=tile.centre_lat,
-        shape=tile_shape(tile),
-        tight=clip_region(tile, 0.0),
-        wide=clip_region(tile, frame.CLIP_MARGIN_DEG),
-        polar=polar,
-        polar_wide=polar_wide,
+        laea=laea_tile(tile),
+        clip=clip_region(tile, 0.0),
+        clip_wide=clip_region(tile, CLIP_MARGIN_DEG),
+        polar_clip=polar_clip,
+        polar_clip_wide=polar_clip_wide,
         north=north,
     )
 
@@ -112,25 +125,24 @@ def clip_region(tile: Tile, margin_deg: float) -> BaseGeometry:
     Returns:
         region: The clipping region, as one rectangle or the union of two.
     """
-    stretch_lat = min(
-        max(abs(tile.min_lat), abs(tile.max_lat)), frame.MAX_STRETCH_LAT_DEG
+    lon_margin = margin_deg / geodesy.longitude_stretch(
+        max(abs(tile.min_lat), abs(tile.max_lat))
     )
-    lon_margin = margin_deg / geodesy.longitude_stretch(stretch_lat)
-    lat_lo = max(-90.0, tile.min_lat - margin_deg)
-    lat_hi = min(90.0, tile.max_lat + margin_deg)
-    span = geodesy.longitude_span(tile.west_lon, tile.east_lon) + 2.0 * lon_margin
-    if span >= 360.0:
-        return box(-180.0, lat_lo, 180.0, lat_hi)
+    lat_lo = max(-POLE, tile.min_lat - margin_deg)
+    lat_hi = min(POLE, tile.max_lat + margin_deg)
+    span = tile.span + 2.0 * lon_margin
+    if span >= TURN:
+        return box(-HALF_TURN, lat_lo, HALF_TURN, lat_hi)
     west = float(geodesy.normalise_longitude(tile.west_lon - lon_margin))
     east = west + span
-    if east <= 180.0:
+    if east <= HALF_TURN:
         return box(west, lat_lo, east, lat_hi)
-    return box(west, lat_lo, 180.0, lat_hi).union(
-        box(-180.0, lat_lo, east - 360.0, lat_hi)
+    return box(west, lat_lo, HALF_TURN, lat_hi).union(
+        box(-HALF_TURN, lat_lo, east - TURN, lat_hi)
     )
 
 
-def projected_footprints(
+def laea_footprints(
     region: TileRegion,
     geoms: np.ndarray,
     swath_widths_m: np.ndarray,
@@ -149,9 +161,9 @@ def projected_footprints(
         footprints: One clipped footprint per input, empty where it falls outside.
     """
     if stereographic:
-        wide, tight, step = region.polar_wide, region.polar, frame.MAX_SEGMENT_M
+        clip_wide, clip, step = region.polar_clip_wide, region.polar_clip, MAX_SEGMENT_M
     else:
-        wide, tight, step = region.wide, region.tight, frame.MAX_SEGMENT_DEG
+        clip_wide, clip, step = region.clip_wide, region.clip, MAX_SEGMENT_DEG
     parts, owners = single_parts(geoms)
     kinds = get_type_id(parts)
     # A footprint with any polygon is taken as areal, and its lines are dropped
@@ -159,19 +171,18 @@ def projected_footprints(
     areal[owners[kinds == _POLYGON]] = True
     keep = np.where(areal[owners], kinds == _POLYGON, kinds == _LINESTRING)
     parts, owners = parts[keep], owners[keep]
-    clips = np.asarray([wide, tight], dtype=object)
+    clips = np.asarray([clip_wide, clip], dtype=object)
     clipped = intersection(parts, clips[areal[owners].astype(int)])
     alive = ~is_empty(clipped)
     parts, owners = clipped[alive], owners[alive]
     radii = np.where(areal[owners], 0.0, np.asarray(swath_widths_m)[owners] / 2.0)
 
-    polar_grid = frame.ode_polar_grid(region.north)
     projected = transform(
         segmentize(parts, step),
         lambda coords: np.column_stack(
             geodesy.laea_forward(
                 *(
-                    geodesy.stereographic_inverse(*coords.T, *polar_grid)
+                    geodesy.stereographic_inverse(*coords.T, *ODE_POLAR[region.north])
                     if stereographic
                     else coords.T
                 ),
@@ -182,14 +193,13 @@ def projected_footprints(
     )
     grown = radii > 0.0
     projected[grown] = buffer(
-        projected[grown], radii[grown], quad_segs=frame.BUFFER_QUAD_SEGMENTS
+        projected[grown], radii[grown], quad_segs=BUFFER_QUAD_SEGMENTS
     )
     # A footprint reaching far around the projection centre crosses itself
     broken = ~is_valid(projected)
-    if broken.any():
-        projected[broken] = make_valid(
-            projected[broken], method="structure", keep_collapsed=False
-        )
+    projected[broken] = make_valid(
+        projected[broken], method="structure", keep_collapsed=False
+    )
 
     # Each footprint's parts are put back together as the one shape they were
     shapes = np.full(len(geoms), _EMPTY, dtype=object)
@@ -203,9 +213,8 @@ def projected_footprints(
     for index in np.nonzero(counts > 1)[0]:
         shapes[index] = union_all(projected[starts[index] : ends[index]])
     # Whatever reached past the tile is cut back to it
-    outside = ~covers(region.shape, shapes)
-    if outside.any():
-        shapes[outside] = intersection(shapes[outside], region.shape)
+    outside = ~covers(region.laea, shapes)
+    shapes[outside] = intersection(shapes[outside], region.laea)
     return shapes
 
 

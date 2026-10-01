@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import replace
 from typing import NamedTuple
 
 import numpy as np
 
-from common.maths.geodesy import TURN, longitude_span, longitude_stretch
+from common.maths.geodesy import POLE, TURN, longitude_span, longitude_stretch
 
-POLE = 90.0
+EDGES = ("min_lat", "max_lat", "west_lon", "east_lon")
 
 # A box as its southern and northern latitudes, its west edge and its eastward span.
 Box = tuple[
@@ -17,35 +18,40 @@ Box = tuple[
 ]
 
 
-def bounds_box(bounded) -> Box:
-    """Return the box one tile or one feature is bounded by.
+class Boxed:
+    """Anything bounded by two latitudes and two longitudes."""
 
-    Args:
-        bounded: Anything bounded by two latitudes and two longitudes.
+    __slots__ = ()
 
-    Returns:
-        box: Its latitudes, its west edge and its eastward span.
-    """
-    span = longitude_span(bounded.west_lon, bounded.east_lon)
-    return bounded.min_lat, bounded.max_lat, bounded.west_lon, span
+    @property
+    def span(self) -> float:
+        """Return how many degrees of longitude the box spans eastward."""
+        return longitude_span(self.west_lon, self.east_lon)
+
+    @property
+    def circles_a_pole(self) -> bool:
+        """Return whether the box runs through every longitude."""
+        return self.west_lon == self.east_lon
 
 
-def bounds_boxes(bounded) -> Box:
+def bounds_box(bounded: Boxed) -> Box:
+    """Return the box one tile or one feature is bounded by, as Box lays it out."""
+    return bounded.min_lat, bounded.max_lat, bounded.west_lon, bounded.span
+
+
+def bounds_boxes(bounded: Iterable[Boxed]) -> Box:
     """Return the boxes many tiles or features are bounded by, stacked."""
-    return tuple(
-        np.array(edges) for edges in zip(*map(bounds_box, bounded), strict=True)
-    )
+    return tuple(np.array(list(map(bounds_box, bounded)), dtype=float).reshape(-1, 4).T)
+
+
+def box_edges(bounded) -> dict[str, float]:
+    """Return the four edges one tile or one feature is bounded by, by name."""
+    return {edge: getattr(bounded, edge) for edge in EDGES}
 
 
 def recut[Bounded](bounded: Bounded, cut) -> Bounded:
     """Return a copy of one bounded record, bounded by another's box instead."""
-    return replace(
-        bounded,
-        min_lat=cut.min_lat,
-        max_lat=cut.max_lat,
-        west_lon=cut.west_lon,
-        east_lon=cut.east_lon,
-    )
+    return replace(bounded, **box_edges(cut))
 
 
 def centre_offset(inner: Box, outer: Box) -> np.ndarray:

@@ -6,6 +6,7 @@ import ipywidgets as widgets
 import numpy as np
 from matplotlib.ticker import FuncFormatter, MaxNLocator
 
+from analysis.models.instrument import PIXEL_KM2
 from analysis.stats.instrument_sets import landings_per_set
 from analysis.stats.tile import read_tile_track
 from analysis.visualization import panels, wording
@@ -20,15 +21,17 @@ def plot(coverage: Coverage) -> widgets.Widget:
     """Draw what each instrument lands on the tile, one observation at a time."""
     tile_track = read_tile_track(coverage)
     if tile_track is None:
-        return panels.unavailable(_NOTHING)
+        return panels.unavailable(panels.NO_TRACK)
     landings = landings_per_set(tile_track)
     colours = panels.colours([landing.label for landing in landings])
     tall = 1.4 * len(landings) + TITLE_BAND
     figure, axes = panels.stacked(len(landings), tall)
     for axis, landing in zip(axes, landings, strict=True):
-        counts = np.asarray(landing.counts, dtype=float)
+        pixel_km2 = PIXEL_KM2[landing.iid]
+        counts = np.asarray(landing.landed_km2, dtype=float) / pixel_km2
+        bar = landing.bar_km2 / pixel_km2
         # The axis reaches the bar even where every look fell short of it
-        top = max(float(counts.max()), landing.bar) if counts.size else 0.0
+        top = max(float(counts.max()), bar) if counts.size else 0.0
         if top > 0.0:
             # A stem stands where the looks landing, as tall as there are of them
             counted, edges = np.histogram(counts, bins=60, range=(0.0, top))
@@ -37,20 +40,19 @@ def plot(coverage: Coverage) -> widgets.Widget:
             panels.stems(
                 axis, middles[standing], counted[standing], colours[landing.label]
             )
-            if landing.bar > 0.0:
+            if bar > 0.0:
                 axis.axvline(
-                    landing.bar,
+                    bar,
                     color="#1a1a1a",
                     linestyle=(0, (4, 2)),
                     linewidth=1.0,
                     zorder=3,
                 )
-            unit = "traces" if landing.iid == wording.SOUNDER else "px"
             axis.set_title(
                 f"{counts.size:,} observations  -  "
                 f"middle one lands "
-                f"{wording.compact(float(np.median(counts)))} {unit}"
-                f"  -  asked for {wording.compact(landing.bar)} {unit}",
+                f"{wording.pixels(float(np.median(counts)), landing.iid)}"
+                f"  -  asked for {wording.pixels(bar, landing.iid)}",
                 fontsize=8,
                 color=panels.GREY,
                 loc="left",

@@ -7,7 +7,6 @@ from dataclasses import replace
 from building.preprocessing.common import equatorial, geometry, polar
 from building.preprocessing.common.models.overlap import Overlap
 from building.preprocessing.common.models.position import Position
-from common.maths import geodesy
 from common.models.tile import Tile
 
 
@@ -21,9 +20,7 @@ def placed(position: Position, frame: Tile) -> Position:
     Returns:
         position: The offsets from that centre, in polar metres or degrees.
     """
-    if frame.grid is None:
-        return equatorial.placed(position, frame)
-    return polar.placed(position, frame)
+    return (equatorial if frame.grid is None else polar).placed(position, frame)
 
 
 def overlap(position: Position, frame: Tile) -> Overlap | None:
@@ -36,13 +33,8 @@ def overlap(position: Position, frame: Tile) -> Overlap | None:
     Returns:
         held: What the box keeps, or None where the observation reaches none of it.
     """
-    span = geodesy.longitude_span(frame.west_lon, frame.east_lon)
     # A cut is made where the samples sit; a placement is made where the tile is.
-    held = (
-        polar.cut(position, frame, span)
-        if position.grid is not None
-        else equatorial.cut(position, frame, span)
-    )
+    held = (polar if position.grid is not None else equatorial).cut(position, frame)
     if held is None:
         return None
     bounds, inside = held

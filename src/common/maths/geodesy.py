@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import NamedTuple
 
 import numpy as np
 from pyproj import Geod
@@ -14,40 +15,39 @@ TURN = 360.0
 
 HALF_TURN = 180.0
 
+POLE = 90.0
+
 # A degree of longitude vanishes at a pole, so the correction is floored
 MIN_COSINE = 0.05
 
 # How near the antipode the projection is allowed to divide by
 LAEA_MIN_DENOMINATOR = 1e-12
 
-# A polar grid: its centre longitude, whether north, and the sphere it is built on.
-PolarGrid = tuple[float, bool, float]
-
 # The spheroid every ground distance is walked on, which no sphere stands in for.
 SPHEROID = Geod(a=EQUATORIAL_RADIUS_M, b=POLAR_RADIUS_M)
 
 
-def normalise_longitude(lon: np.ndarray | float) -> np.ndarray:
-    """Wrap longitudes into the -180 to 180 degree range.
+class PolarGrid(NamedTuple):
+    """One polar stereographic grid, by its centre, its pole and its sphere.
 
-    Args:
-        lon: One longitude in degrees, or an array of them.
-
-    Returns:
-        longitudes: The wrapped longitudes as a float array.
+    Attributes:
+        centre_lon: The longitude the projection is centred on, in degrees.
+        north: Whether it is centred on the north pole rather than the south.
+        radius_m: The sphere the projection is built on, in metres.
     """
-    return (np.asarray(lon, dtype=float) + 180.0) % 360.0 - 180.0
+
+    centre_lon: float
+    north: bool
+    radius_m: float
+
+
+def normalise_longitude(lon: np.ndarray | float) -> np.ndarray:
+    """Wrap one longitude or an array of them into -180 to 180 degrees, as floats."""
+    return (np.asarray(lon, dtype=float) + HALF_TURN) % TURN - HALF_TURN
 
 
 def longitude_stretch(lat: float) -> float:
-    """Return how much a degree of longitude shrinks at one latitude.
-
-    Args:
-        lat: The latitude in degrees.
-
-    Returns:
-        cosine: The cosine of the latitude, never below MIN_COSINE.
-    """
+    """Return how a degree of longitude shrinks at a latitude, at least MIN_COSINE."""
     return max(math.cos(math.radians(lat)), MIN_COSINE)
 
 
@@ -64,56 +64,46 @@ def longitude_span(west_lon: float, east_lon: float) -> float:
     raw = east_lon - west_lon
     if raw >= TURN or raw == 0.0:
         return TURN
-    if raw > 0.0:
-        return raw
     return raw % TURN
 
 
-def bbox_centre(
-    min_lat: float, max_lat: float, west_lon: float, east_lon: float
-) -> tuple[float, float]:
-    """Return the centre of a bounding box.
+def bbox_centre(bounded) -> tuple[float, float]:
+    """Return the centre of the box one tile or one feature is bounded by.
 
     Args:
-        min_lat: The southernmost latitude in degrees.
-        max_lat: The northernmost latitude in degrees.
-        west_lon: The westernmost longitude in degrees.
-        east_lon: The easternmost longitude in degrees.
+        bounded: Anything bounded by two latitudes and two longitudes.
 
     Returns:
         longitude: The centre longitude in -180 to 180 degrees.
         latitude: The centre latitude in degrees.
     """
-    centre_lon = west_lon + longitude_span(west_lon, east_lon) / 2.0
-    return float(normalise_longitude(centre_lon)), (min_lat + max_lat) / 2.0
+    west = bounded.west_lon
+    centre_lon = west + longitude_span(west, bounded.east_lon) / 2.0
+    centre_lat = (bounded.min_lat + bounded.max_lat) / 2.0
+    return float(normalise_longitude(centre_lon)), centre_lat
 
 
-def bbox_ring(
-    min_lat: float, max_lat: float, west_lon: float, east_lon: float, step: float
-) -> tuple[np.ndarray, np.ndarray]:
-    """Return a densified closed lon/lat ring tracing a bounding box.
+def bbox_ring(bounded, step: float) -> tuple[np.ndarray, np.ndarray]:
+    """Return a densified closed lon/lat ring tracing the box one tile is bounded by.
 
     Args:
-        min_lat: The southernmost latitude in degrees.
-        max_lat: The northernmost latitude in degrees.
-        west_lon: The westernmost longitude in degrees.
-        east_lon: The easternmost longitude in degrees.
+        bounded: Anything bounded by two latitudes and two longitudes.
         step: The longest segment the ring is densified to, in degrees.
 
     Returns:
         longitudes: The ring longitudes, closed back onto the first point.
         latitudes: The ring latitudes, closed the same way.
     """
-    span = longitude_span(west_lon, east_lon)
-    east = west_lon + span
-    rise = max_lat - min_lat
-    along = np.linspace(west_lon, east, max(2, math.ceil(span / step) + 1))
-    up = np.linspace(min_lat, max_lat, max(2, math.ceil(rise / step) + 1))
+    south, north, west = bounded.min_lat, bounded.max_lat, bounded.west_lon
+    span = longitude_span(west, bounded.east_lon)
+    east = west + span
+    along = np.linspace(west, east, max(2, math.ceil(span / step) + 1))
+    up = np.linspace(south, north, max(2, math.ceil((north - south) / step) + 1))
     lons = np.concatenate(
-        [along, np.full(up.size, east), along[::-1], np.full(up.size, west_lon)]
+        [along, np.full(up.size, east), along[::-1], np.full(up.size, west)]
     )
     lats = np.concatenate(
-        [np.full(along.size, min_lat), up, np.full(along.size, max_lat), up[::-1]]
+        [np.full(along.size, south), up, np.full(along.size, north), up[::-1]]
     )
     return lons, lats
 
@@ -166,28 +156,8 @@ def geodesic_steps(lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
     return steps
 
 
-def geodesic_length(lon: np.ndarray, lat: np.ndarray) -> float:
-    """Return the geodesic length along a sequence of lon/lat points.
-
-    Args:
-        lon: The point longitudes in degrees.
-        lat: The point latitudes in degrees.
-
-    Returns:
-        length: The summed length in metres, or 0.0 for fewer than two points.
-    """
-    return float(geodesic_steps(lon, lat).sum())
-
-
 def northward_m(degrees: float) -> float:
-    """Return how far north a span of latitude reaches, in metres.
-
-    Args:
-        degrees: The span of latitude in degrees.
-
-    Returns:
-        metres: The distance in metres along a meridian.
-    """
+    """Return how far north a span of latitude in degrees reaches, in metres."""
     return math.radians(degrees) * RADIUS_M
 
 
@@ -248,7 +218,7 @@ def stereographic_forward(
     lat: np.ndarray | float,
     centre_lon: float,
     north: bool,
-    radius: float = RADIUS_M,
+    radius: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Project lon/lat degrees into polar stereographic metres.
 
@@ -275,7 +245,7 @@ def stereographic_inverse(
     y: np.ndarray | float,
     centre_lon: float,
     north: bool,
-    radius: float = RADIUS_M,
+    radius: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Turn polar stereographic metres back into lon/lat degrees.
 
@@ -296,32 +266,3 @@ def stereographic_inverse(
     lat = np.degrees(math.pi / 2.0 - angle) * (1.0 if north else -1.0)
     lon = centre_lon + np.degrees(np.arctan2(x, -y if north else y))
     return normalise_longitude(lon), lat
-
-
-def geodesic_forward(
-    lon: np.ndarray | float,
-    lat: np.ndarray | float,
-    centre_lon: float,
-    centre_lat: float,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Project lon/lat degrees into ground metres east and north of one centre.
-
-    Args:
-        lon: The longitudes in degrees.
-        lat: The latitudes in degrees.
-        centre_lon: The longitude the frame is centred on, in degrees.
-        centre_lat: The latitude it is centred on, in degrees.
-
-    Returns:
-        eastings: The eastings in ground metres.
-        northings: The northings in ground metres.
-    """
-    lon, lat = np.broadcast_arrays(
-        np.asarray(lon, dtype=float), np.asarray(lat, dtype=float)
-    )
-    # The geodesic each sample stands at, walked on the spheroid rather than a sphere.
-    azimuth, _, span = SPHEROID.inv(
-        np.full(lon.shape, centre_lon), np.full(lon.shape, centre_lat), lon, lat
-    )
-    bearing = np.radians(azimuth)
-    return span * np.sin(bearing), span * np.cos(bearing)

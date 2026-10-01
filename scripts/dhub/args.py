@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable
 
-from common.console import print_interrupted
+from rich.console import Console
 
 REBUILT = (
     "build the dataset again from nothing, rather than filling in what the last "
@@ -42,5 +42,8 @@ def run_script(main: Callable[[], int], kept: str) -> None:
     try:
         raise SystemExit(main())
     except KeyboardInterrupt:
-        print_interrupted(kept)
+        Console().print(
+            f"[yellow]interrupted: pending jobs cancelled, {kept} kept. "
+            "Re-run to resume.[/yellow]"
+        )
         raise SystemExit(130) from None

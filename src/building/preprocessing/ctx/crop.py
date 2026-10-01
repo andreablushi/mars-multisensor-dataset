@@ -11,11 +11,11 @@ import tifffile
 from building.configs import ctx as configs
 from building.preprocessing.common import cut, geometry
 from building.preprocessing.ctx import projection
-from building.preprocessing.ctx.isis import read_cube_label, run_isis
+from building.preprocessing.ctx.isis import export_image, read_cube_label, run_isis
 from building.preprocessing.ctx.models.observation import CtxObservation
 from building.preprocessing.ctx.models.sample import BLANK, CtxSample
-from common.maths import geodesy
-from common.maths.geodesy import TURN
+from building.preprocessing.ctx.normalize import normalized_pixels
+from common.maths import box
 from common.models.tile import Tile
 from common.pds import labels
 
@@ -59,13 +59,10 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
     Raises:
         RuntimeError: When an ISIS application fails.
     """
-    span = geodesy.longitude_span(frame.west_lon, frame.east_lon)
-    inside = (
-        (frame.min_lat <= observation.latitude)
-        & (observation.latitude <= frame.max_lat)
-        & ((observation.longitude - frame.west_lon) % TURN <= span)
-    )
-    reached = observation.line[inside]
+    edges = box.bounds_box(frame)
+    min_lat, max_lat, west, span = edges
+    points = (observation.latitude, observation.latitude, observation.longitude, 0.0)
+    reached = observation.line[box.inside(points, edges)]
     if not reached.size:
         return None
     first = max(1, int(reached.min()) - configs.CROP_MARGIN_LINES)
@@ -75,7 +72,6 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         work.with_suffix(suffix) for suffix in (".cut.cub", ".map", ".map.cub", ".tif")
     )
     template.write_text(projection.map_template(frame.grid))
-    low, high = configs.REFLECTANCE_RANGE
     try:
         run_isis(
             "crop",
@@ -95,26 +91,16 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
                 "pixres": "mpp",
                 "resolution": configs.PIXEL_RESOLUTION_M,
                 "warpalgorithm": configs.WARP_ALGORITHM,
+                "interp": configs.INTERPOLATION,
                 "patchsize": configs.PATCH_SIZE,
                 "defaultrange": "map",
-                "minlat": frame.min_lat,
-                "maxlat": frame.max_lat,
-                "minlon": frame.west_lon,
-                "maxlon": frame.west_lon + span,
+                "minlat": min_lat,
+                "maxlat": max_lat,
+                "minlon": west,
+                "maxlon": west + span,
             },
         )
-        run_isis(
-            "isis2std",
-            {
-                "from": projected,
-                "to": image,
-                "format": "tiff",
-                "bittype": "u16bit",
-                "stretch": "manual",
-                "minimum": low,
-                "maximum": high,
-            },
-        )
+        export_image(projected, image)
         label = labels.merge(read_cube_label(projected), observation.label)
         held = cut.overlap(projection.grid_position(label), frame)
         if held is None:
@@ -123,10 +109,11 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
     finally:
         for path in work.parent.glob(f"{work.name}.*"):
             path.unlink()
+    measured = pixels != BLANK
     return CtxSample(
         position=held.position,
         label=label,
         inside=held.inside,
-        valid=geometry.partial_mask(pixels != BLANK),
-        image=pixels,
+        valid=geometry.partial_mask(measured),
+        image=normalized_pixels(pixels, measured, observation.statistics),
     )

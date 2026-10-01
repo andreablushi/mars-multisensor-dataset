@@ -11,15 +11,6 @@ from building.download import archive
 from common.models.tile import Tile
 from common.pds import labels
 
-# What ODE publishes CRISM under.
-ODE = {"ihid": "MRO", "iid": "CRISM"}
-
-# The ODE product types an observation and its geometry are published under.
-PRODUCT_TYPES = {configs.Kind.OBSERVATION: "TRDR", configs.Kind.GEOMETRY: "DDR"}
-
-# The ODE product type a wavelength file is published under.
-WAVELENGTH_PRODUCT_TYPE = "CDR"
-
 
 def detector_published(
     identifier: str, detector: configs.Detector, client: httpx.Client
@@ -37,7 +28,7 @@ def detector_published(
     Raises:
         FileNotFoundError: When the scan is published but its geometry is not.
     """
-    for kind, product_type in PRODUCT_TYPES.items():
+    for kind, product_type in configs.PRODUCT_TYPES.items():
         product_id = configs.NAMING.product(identifier, kind, detector=detector)
         try:
             archive.download_product(
@@ -45,7 +36,7 @@ def detector_published(
                 product_id,
                 configs.CACHE.files(identifier, product_id, kind),
                 pt=product_type,
-                **ODE,
+                **configs.ODE,
             )
         except FileNotFoundError:
             if kind != configs.Kind.OBSERVATION:
@@ -85,6 +76,6 @@ def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> No
             client,
             name,
             configs.CACHE.files(configs.WAVELENGTH_DIR, name.lower()),
-            pt=WAVELENGTH_PRODUCT_TYPE,
-            **ODE,
+            pt=configs.WAVELENGTH_PRODUCT_TYPE,
+            **configs.ODE,
         )

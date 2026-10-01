@@ -14,7 +14,7 @@ class SharadSample(Sample):
     """The echoes one track sounded over one tile.
 
     Attributes:
-        power: Delay samples by traces in dB, holding only the traces that are left.
+        power: Normalized dB, delay samples by traces, only the traces left.
         clutter: The simulated clutter power on the same grid, zero without echo.
         traces: Which original radargram columns these traces are, from zero.
     """

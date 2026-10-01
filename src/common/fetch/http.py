@@ -6,7 +6,7 @@ import functools
 import random
 import ssl
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +26,8 @@ RETRYABLE_STATUS = frozenset({403, 429, 500, 502, 503, 504})
 CROWDED_STATUS = frozenset({403, 429, 503})
 # Fewer tries for a transfer than a query, one running for minutes not seconds
 STREAM_RETRIES = 5
+# How long to wait for the larger half of a product.
+STREAM_TIMEOUT = 60.0
 
 CONNECT_TIMEOUT = 30.0
 
@@ -43,14 +45,7 @@ TLS_CONTEXT.verify_flags &= ~ssl.VERIFY_X509_STRICT
 
 @functools.cache
 def throttle(host: str) -> Throttle:
-    """Return the pause every request to one host waits out.
-
-    Args:
-        host: The host asked, whose refusals hold back its requests alone.
-
-    Returns:
-        throttle: The one throttle that host shares across threads.
-    """
+    """Return the throttle one host's requests share, held back by its refusals."""
     return Throttle()
 
 
@@ -58,48 +53,95 @@ class FetchError(RuntimeError):
     """Raised when a server refuses a request, or keeps failing to answer one."""
 
 
-def gave_up(host: str, started: float, last: Exception | None) -> FetchError:
+def gave_up(host: str, started: float, last: Exception) -> FetchError:
     """Return the error a fetch ends on, naming the host and what it last failed with.
 
     Args:
         host: The host that was asked.
         started: When the fetch began, on the monotonic clock.
-        last: What the last attempt failed with, or None.
+        last: What the last attempt failed with.
 
     Returns:
         error: The error to raise.
     """
-    cause = f"{type(last).__name__}: {last}" if last else "no attempt was made"
     elapsed = time.monotonic() - started
-    return FetchError(f"gave up on {host} after {elapsed:.0f}s, {cause}")
+    return FetchError(
+        f"gave up on {host} after {elapsed:.0f}s, {type(last).__name__}: {last}"
+    )
 
 
-def certificate_refused(error: BaseException | None) -> bool:
-    """Return whether a failure is a server certificate that did not verify.
+def transport_failure(
+    error: httpx.HTTPError, host: str, archive: Throttle
+) -> httpx.HTTPError:
+    """Return what an attempt failed with, to ask again unless a certificate refused it.
 
     Args:
-        error: What an attempt failed with, followed through what caused it.
+        error: What the attempt failed with.
+        host: The host that was asked.
+        archive: The throttle of that host, held back when it could not be reached.
 
     Returns:
-        refused: True when a certificate check lies anywhere in its chain.
+        error: The same error, named should every attempt fail.
+
+    Raises:
+        FetchError: When a certificate check lies anywhere in its chain.
     """
-    while error is not None:
-        if isinstance(error, ssl.SSLCertVerificationError):
-            return True
-        error = error.__cause__ or error.__context__
-    return False
+    cause: BaseException | None = error
+    while cause is not None:
+        if isinstance(cause, ssl.SSLCertVerificationError):
+            raise FetchError(f"{host} failed its certificate check: {error}") from error
+        cause = cause.__cause__ or cause.__context__
+    if isinstance(error, CONNECT_ERRORS):
+        archive.refused()
+    return error
 
 
-def slept(attempt: int, backoff: float) -> None:
-    """Wait out one server's refusal, longer each time and never in step.
+def retry_error(status: int, url: str, archive: Throttle) -> FetchError | None:
+    """Return the error to ask again on, or None once the server has answered.
 
     Args:
-        attempt: Which retry is about to be made, counting the first as one.
-        backoff: The base delay, in seconds.
+        status: The HTTP status the server replied with.
+        url: Where it was asked.
+        archive: The throttle of its host, eased by an answer and held by a crowd.
+
+    Returns:
+        retry: The error to ask again on, or None for a reply worth reading.
+
+    Raises:
+        FetchError: When the server refuses the request outright.
     """
-    time.sleep(
-        min(backoff * 2 ** (attempt - 1), BACKOFF_MAX) + random.uniform(0.0, backoff)
-    )
+    if status in RETRYABLE_STATUS:
+        # One refusal slows every thread on that host, so a run stops being blocked.
+        if status in CROWDED_STATUS:
+            archive.refused()
+        return FetchError(f"HTTP {status}")
+    archive.answered()
+    if status >= 400:
+        raise FetchError(f"{url} refused the request: HTTP {status}")
+    return None
+
+
+def attempts(archive: Throttle, give_up_at: float, retries: int) -> Iterator[None]:
+    """Yield once per attempt, each waited out longer than the last and never in step.
+
+    Args:
+        archive: The throttle of the host asked, waited out before every attempt.
+        give_up_at: When to stop asking, on the monotonic clock.
+        retries: How many times to ask again after the first attempt.
+
+    Yields:
+        None: Once an attempt may be made.
+    """
+    for attempt in range(retries + 1):
+        if attempt:
+            time.sleep(
+                min(BACKOFF_BASE * 2 ** (attempt - 1), BACKOFF_MAX)
+                + random.uniform(0.0, BACKOFF_BASE)
+            )
+        if time.monotonic() >= give_up_at:
+            return
+        archive.wait()
+        yield
 
 
 def fetched_json(
@@ -107,11 +149,7 @@ def fetched_json(
     params: dict[str, str],
     *,
     accepted: Callable[[Any], Any | None],
-    client: httpx.Client | None = None,
-    timeout: float = REQUEST_TIMEOUT,
-    retries: int = MAX_RETRIES,
-    backoff: float = BACKOFF_BASE,
-    deadline: float = QUERY_DEADLINE,
+    client: httpx.Client,
 ) -> Any:
     """Read one JSON reply, asking again until the server answers a usable one.
 
@@ -119,11 +157,7 @@ def fetched_json(
         url: Where to ask.
         params: What to ask for.
         accepted: What reads one reply, or hands back None to ask again.
-        client: A client whose connections to reuse, or None to ask on its own.
-        timeout: How long to wait on one attempt.
-        retries: How many times to ask again after the first attempt.
-        backoff: The base delay between attempts, in seconds.
-        deadline: How long to keep asking for in all, in seconds.
+        client: The client whose connections to reuse.
 
     Returns:
         found: What `accepted` read out of the first usable reply.
@@ -131,42 +165,23 @@ def fetched_json(
     Raises:
         FetchError: When refused, when no reply was readable, or past the deadline.
     """
-    asking = client.get if client else functools.partial(httpx.get, verify=TLS_CONTEXT)
     host = httpx.URL(url).host
     archive = throttle(host)
     started = time.monotonic()
-    give_up_at = started + deadline
-    last: Exception | None = None
-    for attempt in range(retries + 1):
-        if attempt:
-            slept(attempt, backoff)
-        if time.monotonic() >= give_up_at:
-            break
-        archive.wait()
+    last: Exception = FetchError("no attempt was made")
+    for _ in attempts(archive, started + QUERY_DEADLINE, MAX_RETRIES):
         try:
-            reply = asking(
+            reply = client.get(
                 url,
                 params=params,
-                timeout=httpx.Timeout(timeout, connect=CONNECT_TIMEOUT),
+                timeout=httpx.Timeout(REQUEST_TIMEOUT, connect=CONNECT_TIMEOUT),
             )
         except httpx.HTTPError as error:
-            if certificate_refused(error):
-                raise FetchError(
-                    f"{host} failed its certificate check: {error}"
-                ) from error
-            if isinstance(error, CONNECT_ERRORS):
-                archive.refused()
-            last = error
+            last = transport_failure(error, host, archive)
             continue
-        if reply.status_code in RETRYABLE_STATUS:
-            # One refusal slows every thread on that host, so a run stops being blocked.
-            if reply.status_code in CROWDED_STATUS:
-                archive.refused()
-            last = FetchError(f"HTTP {reply.status_code}")
+        if retry := retry_error(reply.status_code, url, archive):
+            last = retry
             continue
-        archive.answered()
-        if reply.status_code >= 400:
-            raise FetchError(f"{url} refused the request: HTTP {reply.status_code}")
         try:
             payload = reply.json()
         except ValueError as error:
@@ -182,80 +197,51 @@ def fetched_json(
 def streamed(
     url: str,
     path: Path,
-    timeout: float,
     *,
-    client: httpx.Client | None = None,
-    retries: int = STREAM_RETRIES,
-    backoff: float = BACKOFF_BASE,
-    deadline: float = STREAM_DEADLINE,
-    spans: Sequence[tuple[int, int]] = (),
+    client: httpx.Client,
+    spans: Sequence[tuple[int, int]],
 ) -> None:
     """Stream one file to disk, asking again while the server keeps failing.
 
     Args:
         url: Where to read it from.
         path: Where it belongs once it is whole.
-        timeout: How long to wait on one transfer, between one chunk and the next.
-        client: A client whose connections to reuse, or None to open one.
-        retries: How many times to ask again after the first attempt.
-        backoff: The base delay between attempts, in seconds.
-        deadline: How long the whole transfer may run for, in seconds.
+        client: The client whose connections to reuse.
         spans: The first and past-the-last byte of each part to keep, or none for all.
 
     Raises:
         FetchError: When refused, when every attempt fails, or past the deadline.
     """
-    reading = (
-        client.stream if client else functools.partial(httpx.stream, verify=TLS_CONTEXT)
-    )
     ranges = ",".join(f"{first}-{last - 1}" for first, last in spans)
     headers = {"Range": f"bytes={ranges}"} if spans else None
     host = httpx.URL(url).host
     archive = throttle(host)
     started = time.monotonic()
-    give_up_at = started + deadline
-    last: Exception | None = None
-    for attempt in range(retries + 1):
-        if attempt:
-            slept(attempt, backoff)
-        if time.monotonic() >= give_up_at:
-            break
-        archive.wait()
+    last: Exception = FetchError("no attempt was made")
+    give_up_at = started + STREAM_DEADLINE
+    for _ in attempts(archive, give_up_at, STREAM_RETRIES):
         try:
-            with reading(
+            with client.stream(
                 "GET",
                 url,
-                timeout=httpx.Timeout(timeout, connect=CONNECT_TIMEOUT),
+                timeout=httpx.Timeout(STREAM_TIMEOUT, connect=CONNECT_TIMEOUT),
                 headers=headers,
             ) as reply:
-                if reply.status_code in RETRYABLE_STATUS:
-                    if reply.status_code in CROWDED_STATUS:
-                        archive.refused()
-                    last = FetchError(f"HTTP {reply.status_code}")
+                if retry := retry_error(reply.status_code, url, archive):
+                    last = retry
                     continue
-                if reply.status_code >= 400:
-                    raise FetchError(
-                        f"{url} refused the request: HTTP {reply.status_code}"
-                    )
                 if spans and reply.status_code != httpx.codes.PARTIAL_CONTENT:
                     raise FetchError(f"{url} ignored the byte range it was asked for")
-                archive.answered()
                 # Nothing is left behind when a transfer fails part way through.
                 with atomic_path(path) as tmp, tmp.open("wb") as handle:
                     for chunk in reply.iter_bytes():
                         # A timeout bounds one chunk, and this the whole transfer
                         if time.monotonic() >= give_up_at:
                             raise FetchError(
-                                f"{url} was still sending after {deadline:.0f}s"
+                                f"{url} was still sending after {STREAM_DEADLINE:.0f}s"
                             )
                         handle.write(chunk)
                 return
         except httpx.HTTPError as error:
-            if certificate_refused(error):
-                raise FetchError(
-                    f"{host} failed its certificate check: {error}"
-                ) from error
-            if isinstance(error, CONNECT_ERRORS):
-                archive.refused()
-            last = error
+            last = transport_failure(error, host, archive)
     raise gave_up(host, started, last)

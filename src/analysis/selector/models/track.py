@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from analysis.coverage.models.coverage import Event
-from analysis.selector.models.filter import Constraints
+from analysis.selector.models.criteria import Constraints
 from analysis.selector.models.search_grid import SearchGrid
 
 # The observations offered to a tile, the set each belongs to, and the cells each fills
@@ -28,7 +28,6 @@ class Track:
         iids: The instrument each set belongs to, in the same order.
         grid: The grid the tile is searched over.
         refused: The observations left off the axis, with their sets and cells.
-        min_pixels: The pixels each set has to land on the tile, by set.
         windowed: What a window is scored on, tightest constraint first.
         standing: What the whole record answers for, tightest first.
     """
@@ -42,6 +41,5 @@ class Track:
     iids: list[str]
     grid: SearchGrid
     refused: Offered
-    min_pixels: list[float]
     windowed: Constraints
     standing: Constraints

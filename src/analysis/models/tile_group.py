@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from common.maths.box import Boxed
 from common.models.tile import Tile
 
 
 @dataclass(frozen=True, slots=True)
-class TileGroup:
+class TileGroup(Boxed):
     """A run of neighbouring tiles, queried and measured together.
 
     Attributes:
@@ -26,8 +27,3 @@ class TileGroup:
     max_lat: float
     west_lon: float
     east_lon: float
-
-    @property
-    def circles_a_pole(self) -> bool:
-        """Return whether the group runs through every longitude."""
-        return self.west_lon == self.east_lon

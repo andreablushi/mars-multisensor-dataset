@@ -11,7 +11,7 @@ from digitalhub_runtime_python import handler
 
 from analysis.selector.models.selection import Selection
 from building import paths, runner
-from building.models.settings import Settings
+from building.models.settings import BuildSettings
 from building.preprocessing.ctx.isis import install_isis
 from common.console import PLAIN_LOG_ENV
 from dhub import archives
@@ -40,7 +40,16 @@ def checkpoint(project, root: Path, name: str, uploads: int):
     return dataset
 
 
-def build_handler[T: Settings](
+def fetch_build(
+    project, workers: int, build: str, into: Path, names: Sequence[str]
+) -> None:
+    """Bring the named objects of one published build back into a directory."""
+    archives.download_objects(
+        project, f"{Artifact.DATASET.published}-{build}", into, names, workers
+    )
+
+
+def build_handler[T: BuildSettings](
     settled: Callable[[int | None], T],
     selections: Callable[[T], list[Selection]],
     fetched: Sequence[Artifact],
@@ -85,8 +94,12 @@ def build_handler[T: Settings](
             archives.download_files(project, name, root, paths.INDEX_NAMES)
         print(f"building the dataset as {settings.name}", flush=True)
         published = partial(checkpoint, project, root, name, settings.workers)
-        failed = runner.build_dataset(settings, selections(settings), force, published)
+        fetch = partial(fetch_build, project, settings.workers)
+        failed = runner.build_dataset(
+            settings, selections(settings), force, published, fetch
+        )
         dataset = published()
+        archives.published_artifact(project, Artifact.SELECTION)
         if failed:
             raise RuntimeError(
                 "the build had failures; what was published holds what finished"

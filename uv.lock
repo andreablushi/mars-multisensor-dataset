@@ -1358,7 +1358,6 @@ dev = [
 digitalhub = [
     { name = "digitalhub" },
     { name = "digitalhub-runtime-python" },
-    { name = "python-dotenv" },
 ]
 notebook = [
     { name = "cartopy" },
@@ -1388,7 +1387,6 @@ dev = [{ name = "ruff", specifier = ">=0.16.2" }]
 digitalhub = [
     { name = "digitalhub", specifier = ">=0.15.11,<0.16" },
     { name = "digitalhub-runtime-python", specifier = ">=0.15.2,<0.16" },
-    { name = "python-dotenv", specifier = ">=1.2.3" },
 ]
 notebook = [
     { name = "cartopy", specifier = ">=0.25.0" },

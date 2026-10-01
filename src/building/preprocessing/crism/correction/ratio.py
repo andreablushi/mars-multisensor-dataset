@@ -12,7 +12,7 @@ from building.preprocessing.crism.models.mask import Mask
 FILL = 0.0
 
 
-def ratio_by_column_median(cube: np.ndarray, mask: Mask) -> Mask:
+def ratioed_mask(cube: np.ndarray, mask: Mask) -> Mask:
     """Use the median of a column for ratioing, as crism_ml's ColMed does.
 
     Args:
@@ -22,22 +22,13 @@ def ratio_by_column_median(cube: np.ndarray, mask: Mask) -> Mask:
     Returns:
         mask: The same mask, in the units the ratio leaves the cube in.
     """
-    divide_by_column_median(cube, ~mask.pixels)
-    cube[mask.pixels] = FILL
-    return replace(mask, fill=FILL)
-
-
-def divide_by_column_median(cube: np.ndarray, valid: np.ndarray) -> None:
-    """Divide the valid pixels of every column by their own median spectrum.
-
-    Args:
-        cube: The values as lines by samples by bands, divided in place.
-        valid: Lines by samples, True where the pixel is a measurement.
-    """
+    refused = mask.pixels
     for at in range(cube.shape[1]):
-        live = valid[:, at]
+        live = ~refused[:, at]
         # A column with no measurement has nothing to ratio, and is refused anyway.
         if live.any():
             column = cube[:, at, :]
             held = column[live]
             column[live] = held / np.median(held, axis=0)
+    cube[refused] = FILL
+    return replace(mask, fill=FILL)

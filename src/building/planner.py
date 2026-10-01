@@ -20,8 +20,8 @@ def build_plan(
     picked: Sequence[Selection],
     root: Path,
     *,
-    force: bool = False,
-    published: frozenset[str] = frozenset(),
+    force: bool,
+    published: frozenset[str],
 ) -> Plan:
     """Work out every product one build has to fetch, and what to cut it to.
 
@@ -80,4 +80,4 @@ def build_plan(
     jobs.sort(
         key=lambda job: (-INSTRUMENTS[job.instrument].worker_bytes, -len(job.frames))
     )
-    return Plan(tuple(jobs), tuple(tiles), skipped_existing=skipped, unread=unread)
+    return Plan(tuple(jobs), tuple(tiles), skipped=skipped, unread=unread)

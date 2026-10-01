@@ -27,19 +27,19 @@ def trace_position(geometry: np.recarray) -> Position:
     return Position(geometry[LATITUDE_FIELD], geometry[LONGITUDE_FIELD], False)
 
 
-def kept_columns(placing: np.recarray, frames: Sequence[Tile]) -> np.ndarray:
+def kept_columns(geometry: np.recarray, frames: Sequence[Tile]) -> np.ndarray:
     """Return every radargram column the boxes of one track's tiles keep.
 
     Args:
-        placing: The track's geometry, one row per placed trace.
+        geometry: The track's geometry, one row per placed trace.
         frames: The local frames of the tiles it is cut to.
 
     Returns:
         columns: The sorted columns any of them keeps, counted from zero.
     """
     # Cut as `crop` cuts, so exactly the columns it goes on to read are kept.
-    position = trace_position(placing)
-    traces = radargram_columns(placing)
+    position = trace_position(geometry)
+    traces = radargram_columns(geometry)
     held = [cut.overlap(position, frame) for frame in frames]
     return np.unique(
         np.concatenate(
@@ -64,9 +64,9 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
         return None
     # The traces are the radargram's second axis, and the delay is left whole.
     (traces,) = held.bounds
-    power = 10 * np.log10(observation.power[:, traces])
+    power = observation.power[:, traces]
     columns = observation.traces[traces]
-    placing = observation.geometry[traces]
+    geometry = observation.geometry[traces]
     return SharadSample(
         position=held.position,
         label=observation.label,
@@ -76,8 +76,8 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
         power=power,
         clutter=observation.clutter[:, columns],
         traces=columns,
-        incidence_deg=placing[SOLAR_ZENITH_FIELD],
+        incidence_deg=geometry[SOLAR_ZENITH_FIELD],
         spacecraft_altitude_km=(
-            placing[SPACECRAFT_RADIUS_FIELD] - placing[MARS_RADIUS_FIELD]
+            geometry[SPACECRAFT_RADIUS_FIELD] - geometry[MARS_RADIUS_FIELD]
         ),
     )

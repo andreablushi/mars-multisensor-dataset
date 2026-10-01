@@ -25,7 +25,7 @@ class SharadObservation:
 
     Attributes:
         label: What every product it was published as says about it, merged.
-        power: Delay samples by traces, holding only the placed traces.
+        power: Normalized dB, delay samples by traces, only the placed traces.
         clutter: The simulated clutter power per column, zero without echo.
         geometry: One row per kept trace, in the same order.
         traces: Which original radargram columns these traces are, from zero.

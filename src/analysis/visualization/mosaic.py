@@ -18,7 +18,7 @@ from matplotlib.image import imread
 from analysis.visualization import panels
 from common.fetch.http import TLS_CONTEXT
 from common.maths import geodesy
-from common.maths.box import Crop
+from common.maths.box import POLE, Crop
 from common.maths.physics import RADIUS_M
 
 BASEMAP_URL = "https://planetarymaps.usgs.gov/cgi-bin/mapserv"
@@ -32,7 +32,7 @@ NO_BOX = BASEMAP_FAILED.format(
     reason="this tile has no lon/lat box to crop the mosaic to"
 )
 
-MARS = Crop(-180.0, -90.0, 180.0, 90.0)
+MARS = Crop(-geodesy.HALF_TURN, -POLE, geodesy.HALF_TURN, POLE)
 MARS_PIXELS = 2400
 MARS_FIGURE_SIZE = (14.0, 7.6)
 
@@ -51,12 +51,12 @@ MARS_LAID = dict(
 
 
 def fetched(
-    box: Crop, draw: Callable[[bytes], widgets.Widget], pixels: int = BASEMAP_PIXELS
+    crop: Crop, draw: Callable[[bytes], widgets.Widget], pixels: int = BASEMAP_PIXELS
 ) -> widgets.Box:
     """Claim the space one crop goes in and fill it off the thread that fetches it.
 
     Args:
-        box: The lon/lat box the crop covers.
+        crop: The lon/lat box the crop covers.
         draw: What turns the fetched crop into the figure shown.
         pixels: How many pixels the crop's longer side is fetched at.
 
@@ -77,24 +77,24 @@ def fetched(
         ]
     )
     threading.Thread(
-        target=lambda: _fill(space, box, draw, pixels), daemon=True
+        target=_fill, args=(space, crop, draw, pixels), daemon=True
     ).start()
     return space
 
 
 def _fill(
-    space: widgets.Box, box: Crop, draw: Callable[[bytes], widgets.Widget], pixels: int
+    space: widgets.Box, crop: Crop, draw: Callable[[bytes], widgets.Widget], pixels: int
 ) -> None:
     """Fetch one crop and put the figure drawn from it in the claimed space.
 
     Args:
         space: The space claimed for the figure.
-        box: The lon/lat box the crop covers.
+        crop: The lon/lat box the crop covers.
         draw: What turns the fetched crop into the figure shown.
         pixels: How many pixels the crop's longer side is fetched at.
     """
     try:
-        image = crop(box, pixels)
+        image = crop_image(crop, pixels)
     except Exception as exc:
         space.children = (panels.unavailable(BASEMAP_FAILED.format(reason=exc)),)
         return
@@ -102,24 +102,17 @@ def _fill(
 
 
 def read_mosaic(image: bytes) -> np.ndarray:
-    """Decode one mosaic crop as fetched.
-
-    Args:
-        image: The crop, as `crop` hands it back.
-
-    Returns:
-        pixels: Its pixels, rows from the north.
-    """
+    """Decode one mosaic crop as fetched, rows from the north."""
     return imread(io.BytesIO(image), format="png")
 
 
-def board(size: tuple[float, float], box: Crop, image: bytes) -> tuple[Figure, Axes]:
+def board(size: tuple[float, float], crop: Crop, image: bytes) -> tuple[Figure, Axes]:
     """Open a figure with one mosaic crop drawn on it, labelled in lon and lat.
 
     Args:
         size: The figure's size in inches.
-        box: The lon/lat box the crop covers.
-        image: The crop, as `crop` hands it back.
+        crop: The lon/lat box the crop covers.
+        image: The crop's image, as `crop_image` hands it back.
 
     Returns:
         figure: The figure the crop is drawn on.
@@ -128,13 +121,13 @@ def board(size: tuple[float, float], box: Crop, image: bytes) -> tuple[Figure, A
     figure, axis = panels.board(size)
     axis.imshow(
         read_mosaic(image),
-        extent=box.extent,
+        extent=crop.extent,
         origin="upper",
         cmap="gray",
     )
-    axis.set_aspect(1.0 / geodesy.longitude_stretch(box.centre_lat))
-    axis.set_xlim(box.west, box.east)
-    axis.set_ylim(box.south, box.north)
+    axis.set_aspect(1.0 / geodesy.longitude_stretch(crop.centre_lat))
+    axis.set_xlim(crop.west, crop.east)
+    axis.set_ylim(crop.south, crop.north)
     axis.set_xlabel("Longitude")
     axis.set_ylabel("Latitude")
     axis.tick_params(labelsize=8)
@@ -147,7 +140,7 @@ def mars_board(image: bytes, title: str) -> tuple[Figure, Axes]:
     """Open a figure with the mosaic of Mars drawn under its graticule.
 
     Args:
-        image: The mosaic of the whole planet, as `crop` hands it back.
+        image: The mosaic of the whole planet, as `crop_image` hands it back.
         title: What the map is titled.
 
     Returns:
@@ -161,16 +154,16 @@ def mars_board(image: bytes, title: str) -> tuple[Figure, Axes]:
         LONLAT, draw_labels=True, color=GRATICULE, linewidth=0.4, alpha=0.5
     )
     lines.xlabel_style = lines.ylabel_style = {"size": 8}
-    axis.set_title(title, fontsize=12, loc="left")
+    panels.titled(axis, title)
     return figure, axis
 
 
 @lru_cache(maxsize=32)
-def crop(box: Crop, pixels: int = BASEMAP_PIXELS) -> bytes:
+def crop_image(crop: Crop, pixels: int) -> bytes:
     """Fetch the mosaic over one lon/lat box, held for the panels sharing it.
 
     Args:
-        box: The lon/lat box to fetch.
+        crop: The lon/lat box to fetch.
         pixels: How many pixels the crop's longer side is fetched at.
 
     Returns:
@@ -179,8 +172,8 @@ def crop(box: Crop, pixels: int = BASEMAP_PIXELS) -> bytes:
     Raises:
         ValueError: When the server answers with something other than an image.
     """
-    tall = box.north - box.south
-    wide = (box.east - box.west) * geodesy.longitude_stretch(box.centre_lat)
+    tall = crop.north - crop.south
+    wide = (crop.east - crop.west) * geodesy.longitude_stretch(crop.centre_lat)
     longest = max(wide, tall)
     response = httpx.get(
         BASEMAP_URL,
@@ -194,7 +187,8 @@ def crop(box: Crop, pixels: int = BASEMAP_PIXELS) -> bytes:
             "STYLES": "",
             "SRS": "EPSG:4326",
             "BBOX": ",".join(
-                f"{bound:.4f}" for bound in (box.west, box.south, box.east, box.north)
+                f"{bound:.4f}"
+                for bound in (crop.west, crop.south, crop.east, crop.north)
             ),
             "WIDTH": max(1, round(pixels * wide / longest)),
             "HEIGHT": max(1, round(pixels * tall / longest)),

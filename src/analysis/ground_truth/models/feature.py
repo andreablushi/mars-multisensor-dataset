@@ -1,12 +1,17 @@
-"""One named feature of Mars, as ODE publishes it."""
+"""One named feature of Mars as ODE publishes it, and the catalogue read in classes."""
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
+
+import numpy as np
+
+from common.maths.box import Box, Boxed
 
 
 @dataclass(frozen=True, slots=True)
-class Feature:
+class Feature(Boxed):
     """One feature of the IAU nomenclature, bounded by the box ODE gives it.
 
     Attributes:
@@ -24,3 +29,20 @@ class Feature:
     max_lat: float
     west_lon: float
     east_lon: float
+
+
+@dataclass(frozen=True, slots=True)
+class ClassifiedFeatures:
+    """Every feature of the catalogue, with its box, its classes, and whether it counts.
+
+    Attributes:
+        features: Every feature ODE publishes.
+        boxes: Their boxes, stacked.
+        classes: The evaluation classes each feature is read into.
+        counted: Which features count against a label they touch.
+    """
+
+    features: Sequence[Feature]
+    boxes: Box
+    classes: list[set[str]]
+    counted: np.ndarray

@@ -1,17 +1,29 @@
-"""The signal phase distortion one ancillary table holds over each tile."""
+"""The signal phase distortion SHARAD geometry tables hold over each tile, read back."""
 
 from __future__ import annotations
 
+import functools
 import math
 from collections.abc import Mapping
 from pathlib import Path
 
 import numpy as np
 
-from analysis.models.ancillary import Ancillary, Distortion
+from analysis import paths
+from analysis.models.ancillary import Distortion
+from analysis.models.settings import AnalysisSettings
 from analysis.models.tile_group import TileGroup
-from common.maths.tessellate import Tessellate
+from analysis.partition import Tessellate
+from building.configs import sharad
+from building.preprocessing.sharad.models.observation import (
+    LATITUDE_FIELD,
+    LONGITUDE_FIELD,
+    SOLAR_ZENITH_FIELD,
+)
+from common.disk import parquet
 from common.pds import tables
+
+DISTORTIONS = parquet.schema_of(Distortion)
 
 
 def load_distortions(
@@ -19,7 +31,7 @@ def load_distortions(
     pdsid: str,
     label: dict[str, str],
     columns: list[dict[str, str]],
-    ancillary: Ancillary,
+    settings: AnalysisSettings,
     groups: Mapping[str, TileGroup],
     grid: Tessellate,
 ) -> list[Distortion]:
@@ -28,9 +40,10 @@ def load_distortions(
     Args:
         table: The fixed width table, one row per sample of its product.
         pdsid: The product the table is published beside.
-        label: The parsed label every table of the ancillary shares.
-        columns: The COLUMN objects of the columns the ancillary reads alone.
-        ancillary: What the ancillary is, and which of its columns are read.
+        label: The parsed label every geometry table shares.
+        columns: The COLUMN objects of the columns read alone.
+        settings: The settled choices for the run, naming the distortion column
+            and the night threshold.
         groups: The groups the product still has to be read over, by name.
         grid: The grid the tiles are cut from.
 
@@ -40,12 +53,13 @@ def load_distortions(
     rows = table.stat().st_size // int(label["ROW_BYTES"])
     read = tables.build_table(table, {**label, "ROWS": str(rows)}, columns)
     flat = grid.flat_tile_indices(
-        *grid.tile_indices(read[ancillary.latitude], read[ancillary.longitude])
+        *grid.tile_indices(read[LONGITUDE_FIELD], read[LATITUDE_FIELD])
     )
     order = np.argsort(flat, kind="stable")
     tiles, starts = np.unique(flat[order], return_index=True)
-    distortion = read[ancillary.distortion][order]
-    night = (read[ancillary.solar_zenith] > ancillary.night_above)[order]
+    distortion = read[settings.sharad_distortion][order]
+    night_zenith = settings.criteria.solar_zenith[sharad.LAYOUT.instrument]
+    night = (read[SOLAR_ZENITH_FIELD] > night_zenith)[order]
     overall = np.minimum.reduceat(distortion, starts).tolist()
     nightly = np.minimum.reduceat(np.where(night, distortion, np.inf), starts)
     dark = [None if math.isinf(value) else value for value in nightly.tolist()]
@@ -57,3 +71,21 @@ def load_distortions(
             if pair is not None:
                 distortions.append(Distortion(name, tile.name, pdsid, *pair))
     return distortions
+
+
+@functools.lru_cache(maxsize=1)
+def read_distortions(group: str | None = None) -> tuple[Distortion, ...]:
+    """Read the distortion of every look over each tile of one group, cached.
+
+    Args:
+        group: The name of the tile group, or None for every group.
+
+    Returns:
+        distortions: Each look's distortion over each tile, in the order written.
+    """
+    if not paths.DISTORTIONS_PATH.exists():
+        return ()
+    filters = None if group is None else [("group", "==", group)]
+    return tuple(
+        parquet.read_rows(Distortion, DISTORTIONS, paths.DISTORTIONS_PATH, filters)
+    )

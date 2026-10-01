@@ -30,7 +30,17 @@ LAYOUT = Layout(
     dims=("line", "sample"),
     axes=(Axis.GROUND, Axis.GROUND),
     measurement="image",
+    stored="f2",
 )
+
+# What ODE publishes CTX under.
+ODE = {"ihid": "MRO", "iid": LAYOUT.instrument}
+
+# The ODE product type the raw scan is published under, the only one fetched.
+PRODUCT_TYPE = "EDR"
+
+# The scan's files and metadata, which carries the geometry it was taken at.
+ODE_RESULTS = "fopm"
 
 CACHE = ProductCache(paths.CTX_ROOT, NAMING, {None: (CUBE_SUFFIX, METADATA_SUFFIX)})
 
@@ -44,9 +54,11 @@ ODE_ACQUISITION = (
     "Solar_time",
 )
 
-PIXEL_RESOLUTION_M = 5.0
+PIXEL_RESOLUTION_M = 6.0
 
 WARP_ALGORITHM = "forwardpatch"
+
+INTERPOLATION = "bilinear"
 
 PATCH_SIZE = 50
 

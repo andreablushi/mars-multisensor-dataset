@@ -6,7 +6,7 @@ from __future__ import annotations
 from dhub import args, checkpoint, submit
 from dhub.paths import Artifact, Function
 
-from analysis.ground_truth import artifacts
+from analysis.ground_truth import catalogue
 from analysis.selector.artifacts import read_selection
 from analysis.selector.models.selection import Selection
 from building import draw
@@ -16,22 +16,12 @@ from common.config import training_settings
 
 
 def training_selections(settings: TrainingSettings) -> list[Selection]:
-    """Read the selection and draw the tiles the training build covers.
-
-    Args:
-        settings: The settled choices for the build, which size the draw.
-
-    Returns:
-        picked: The tiles to build with their windows, none held out or refused.
-
-    Raises:
-        FileNotFoundError: When no labels were written, so none can be held out.
-    """
+    """Draw the training tiles, none held out or refused, failing without labels."""
     return draw.draw_training(
         read_selection(),
         settings,
-        artifacts.read_labels(),
-        artifacts.read_refused(),
+        catalogue.read_labels(),
+        catalogue.read_refused(),
     )
 
 

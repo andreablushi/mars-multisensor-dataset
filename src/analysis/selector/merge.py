@@ -8,8 +8,8 @@ import numpy as np
 
 from analysis.coverage.models.coverage import SetCoverage
 from analysis.selector.filters.admit import admitted_observations
-from analysis.selector.filters.tile_floors import tile_floors
-from analysis.selector.models.filter import Filter
+from analysis.selector.filters.coverage_constraints import tile_constraints
+from analysis.selector.models.criteria import Criteria
 from analysis.selector.models.search_grid import SearchGrid
 from analysis.selector.models.track import Track
 from analysis.selector.solar_longitude import solar_longitude
@@ -19,8 +19,8 @@ from analysis.utils import mask as packing
 DAY_SECONDS = 86400.0
 
 
-def merge_track(coverage: Sequence[SetCoverage], criteria: Filter) -> Track | None:
-    """Merge a tile's instrument sets onto one timeline, under what the filter asks.
+def merge_track(coverage: Sequence[SetCoverage], criteria: Criteria) -> Track | None:
+    """Merge a tile's instrument sets onto one timeline, under what the criteria ask.
 
     Args:
         coverage: The tile's instrument sets, in any order.
@@ -37,9 +37,9 @@ def merge_track(coverage: Sequence[SetCoverage], criteria: Filter) -> Track | No
         cell_km2=summary.cell_km2,
         inside=frozenset(inside),
     )
-    # The one place the filter is read, which everything below takes it from
-    min_pixels, windowed, standing = tile_floors(criteria, coverage, grid)
-    admitted, refused = admitted_observations(coverage, grid, min_pixels)
+    # The one place the constraints are read, which everything below takes them from
+    windowed, standing = tile_constraints(criteria, coverage, grid)
+    admitted, refused = admitted_observations(coverage, grid, criteria)
     if not admitted:
         return None
     admitted.sort(key=lambda offered: offered[0].t_start)
@@ -56,7 +56,6 @@ def merge_track(coverage: Sequence[SetCoverage], criteria: Filter) -> Track | No
         iids=[instrument.summary.iid for instrument in coverage],
         grid=grid,
         refused=sorted(refused, key=lambda offered: offered[0].t_start),
-        min_pixels=min_pixels,
         windowed=windowed,
         standing=standing,
     )

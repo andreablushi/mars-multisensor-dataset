@@ -32,29 +32,29 @@ def write_coverage(
         events: The set's observation rows, tile by tile in chronological order.
         summaries: One row per tile the set reached, describing it as a whole.
     """
-    parquet.write(events, EVENTS, job.events_path)
-    parquet.write(summaries, SUMMARY, job.summary_path)
+    parquet.write_rows(events, EVENTS, job.events_path)
+    parquet.write_rows(summaries, SUMMARY, job.summary_path)
 
 
-def reindex() -> None:
-    """Rebuild the grid-wide summary from every group's summaries on disk."""
+def write_index() -> None:
+    """Rebuild the grid-wide index from every group's summaries on disk."""
     summary_paths = sorted(paths.GROUPS_ROOT.glob(f"*/*{paths.SET_SUMMARY_SUFFIX}"))
     tables = [pq.read_table(path, schema=SUMMARY) for path in summary_paths]
     combined = pa.concat_tables(tables) if tables else SUMMARY.empty_table()
-    with atomic_path(paths.COVERAGE_SUMMARY_PATH) as tmp:
+    with atomic_path(paths.COVERAGE_INDEX_PATH) as tmp:
         pq.write_table(combined, tmp, compression="zstd")
 
 
 def read_index() -> list[Summary]:
-    """Read every row of the grid-wide summary.
+    """Read every row of the grid-wide index.
 
     Returns:
         rows: One row per tile and instrument set measured, in index order.
     """
-    path = paths.COVERAGE_SUMMARY_PATH
+    path = paths.COVERAGE_INDEX_PATH
     if not path.exists():
         return []
-    return [Summary(**row) for row in pq.read_table(path, schema=SUMMARY).to_pylist()]
+    return parquet.read_rows(Summary, SUMMARY, path)
 
 
 def measured_groups() -> list[str]:
@@ -99,15 +99,13 @@ def read_group_coverage(
     for summary_path in sorted(directory.glob(f"*{paths.SET_SUMMARY_SUFFIX}")):
         slug = summary_path.name.removesuffix(paths.SET_SUMMARY_SUFFIX)
         events_path = summary_path.with_name(f"{slug}{paths.EVENTS_SUFFIX}")
-        events = pq.read_table(events_path, schema=EVENTS, filters=filters)
-        summaries = pq.read_table(summary_path, schema=SUMMARY, filters=filters)
         events_by_tile: dict[str, list[Event]] = {}
-        for row in events.to_pylist():
-            events_by_tile.setdefault(row["tile"], []).append(Event(**row))
-        for row in summaries.to_pylist():
-            measured.setdefault(row["tile"], []).append(
+        for event in parquet.read_rows(Event, EVENTS, events_path, filters):
+            events_by_tile.setdefault(event.tile, []).append(event)
+        for summary in parquet.read_rows(Summary, SUMMARY, summary_path, filters):
+            measured.setdefault(summary.tile, []).append(
                 SetCoverage(
-                    events=events_by_tile.get(row["tile"], []), summary=Summary(**row)
+                    events=events_by_tile.get(summary.tile, []), summary=summary
                 )
             )
     configured = analysis_settings().instrument_sets

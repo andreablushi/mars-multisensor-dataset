@@ -7,6 +7,7 @@ import tarfile
 import warnings
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
+from itertools import repeat
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -15,6 +16,7 @@ from digitalhub.stores.data.api import get_default_store
 
 from analysis.paths import ANALYSIS_ROOT
 from common.paths import DATA_ROOT
+from common.pool import cancellable_pool
 from dhub.paths import Artifact
 
 # The platform says twice per publish that 0.16 renames what it is called by.
@@ -110,19 +112,20 @@ def published_folder(
     told = f"{len(files) + len(last):,} files, {going / 1e6:.0f} MB"
     print(f"uploading {name}, {told}", flush=True)
 
-    def send(path: Path) -> None:
-        """Send one file to the key its path inside the tree names.
-
-        Args:
-            path: The file to send.
-        """
-        key = prefix + path.relative_to(root).as_posix()
-        client.upload_file(Filename=str(path), Bucket=bucket, Key=key)
-
-    with ThreadPoolExecutor(max_workers=uploads) as sending:
-        list(sending.map(send, files))
+    keys = {
+        path: prefix + path.relative_to(root).as_posix() for path in [*files, *last]
+    }
+    with cancellable_pool(ThreadPoolExecutor(uploads)) as sending:
+        list(
+            sending.map(
+                client.upload_file,
+                map(str, files),
+                repeat(bucket),
+                map(keys.get, files),
+            )
+        )
     for path in last:
-        send(path)
+        client.upload_file(str(path), bucket, keys[path])
     return project.new_artifact(
         name=name, kind="artifact", path=published_at(project, name, "")
     )
@@ -148,6 +151,27 @@ def download_files(project, name: str, into: Path, names: Sequence[str]) -> None
     for one in wanted:
         client.download_file(Bucket=bucket, Key=prefix + one, Filename=str(into / one))
     print(f"filling in from {name}, {len(wanted):,} files of its index", flush=True)
+
+
+def download_objects(
+    project, name: str, into: Path, names: Sequence[str], downloads: int
+) -> None:
+    """Put the named objects of a published folder back where a run reads them.
+
+    Args:
+        project: The DigitalHub project the folder was logged into.
+        name: The name the folder is published under.
+        into: The directory they land in, each at its path inside the folder.
+        names: The objects to bring down, as paths inside the folder.
+        downloads: How many objects are brought down at once.
+    """
+    client, bucket, prefix = stored_folder(project, name)
+    for one in names:
+        (into / one).parent.mkdir(parents=True, exist_ok=True)
+    keys = [prefix + one for one in names]
+    files = [str(into / one) for one in names]
+    with cancellable_pool(ThreadPoolExecutor(downloads)) as fetching:
+        list(fetching.map(client.download_file, repeat(bucket), keys, files))
 
 
 def download_artifact(project, artifact: Artifact) -> None:

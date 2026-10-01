@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from functools import partial
 
 import ipywidgets as widgets
 import numpy as np
 from matplotlib.colors import to_rgba
 from matplotlib.patches import Patch
 
+from analysis.partition import Tessellate
 from analysis.selector.models.selection import Selection
 from analysis.utils.tile_group import tile_grid
 from analysis.visualization import mosaic, panels
 from analysis.visualization.mosaic import MARS
-from common.maths.tessellate import Tessellate
 
 RASTER_DEG = 0.1
 
@@ -32,9 +33,7 @@ def plot(selections: Sequence[Selection]) -> widgets.Widget:
             [tile.band for tile in kept_tiles], [tile.column for tile in kept_tiles]
         )
     ] = True
-    return mosaic.fetched(
-        MARS, lambda image: kept_map(kept, grid, image), mosaic.MARS_PIXELS
-    )
+    return mosaic.fetched(MARS, partial(kept_map, kept, grid), mosaic.MARS_PIXELS)
 
 
 def kept_map(kept: np.ndarray, grid: Tessellate, image: bytes) -> widgets.Image:
@@ -50,7 +49,7 @@ def kept_map(kept: np.ndarray, grid: Tessellate, image: bytes) -> widgets.Image:
     """
     lat = np.arange(MARS.north - RASTER_DEG / 2.0, MARS.south, -RASTER_DEG)
     lon = np.arange(MARS.west + RASTER_DEG / 2.0, MARS.east, RASTER_DEG)
-    bands, columns = grid.tile_indices(*np.meshgrid(lat, lon, indexing="ij"))
+    bands, columns = grid.tile_indices(*np.meshgrid(lon, lat))
     painted = np.where(
         kept[grid.flat_tile_indices(bands, columns)][..., None],
         to_rgba(KEPT, TILE_ALPHA),

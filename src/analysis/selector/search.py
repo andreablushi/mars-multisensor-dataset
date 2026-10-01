@@ -9,17 +9,17 @@ from collections.abc import Sequence
 from analysis.selector.filters import redundancy
 from analysis.selector.filters.coverage_constraints import cells_per_constraint
 from analysis.selector.models.counter import Counter
-from analysis.selector.models.filter import Filter
+from analysis.selector.models.criteria import Criteria
 from analysis.selector.models.survey import Survey
 from analysis.selector.models.track import Track
 
 
-def best_survey(track: Track, criteria: Filter) -> Survey | None:
+def best_survey(track: Track, criteria: Criteria) -> Survey | None:
     """Search a timeline for the window the ground is best studied over.
 
     Args:
         track: The admissible observations on one time axis.
-        criteria: The filter the tile is searched under.
+        criteria: The criteria the tile is searched under.
 
     Returns:
         survey: The chosen window, or None when no window is worth keeping.
@@ -36,13 +36,9 @@ def best_survey(track: Track, criteria: Filter) -> Survey | None:
     last_seen_before: list[list[int]] = []
     last_seen: list[dict[int, int]] = [{} for _ in track.iids]
     for index, owner in enumerate(track.owners):
-        seen_by_owner = last_seen[owner]
-        before: list[int] = []
-        for cell in track.cells[index].tolist():
-            before.append(seen_by_owner.get(cell, -1))
-            seen_by_owner[cell] = index
-        before.sort()
-        last_seen_before.append(before)
+        seen_by_owner, cells = last_seen[owner], track.cells[index].tolist()
+        last_seen_before.append(sorted(seen_by_owner.get(cell, -1) for cell in cells))
+        seen_by_owner.update(dict.fromkeys(cells, index))
     # Take the best window
     best: tuple[int, int] | None = None
     best_score = float("-inf")

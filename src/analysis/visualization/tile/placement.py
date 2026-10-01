@@ -10,8 +10,6 @@ from analysis.coverage.projection import footprints
 from analysis.utils.tile_group import tile_grid
 from analysis.visualization import mosaic
 from common.maths import box, geodesy
-from common.maths.box import Crop, crop_around
-from common.maths.geodesy import HALF_TURN
 from common.models.tile import Tile
 
 MIN_SPAN_DEG = 0.5
@@ -37,7 +35,7 @@ class PlacedTile:
             tile: The tile to place.
         """
         self.centre_lon = tile.centre_lon
-        west, south, east, north = footprints.tile_shape(tile).bounds
+        west, south, east, north = footprints.laea_tile(tile).bounds
         along = np.linspace(west, east, RING_SAMPLES)
         up = np.linspace(south, north, RING_SAMPLES)
         flat = np.full(RING_SAMPLES, 0.0)
@@ -50,19 +48,12 @@ class PlacedTile:
         self.lon = self.around(lon)
 
     def around(self, lon: np.ndarray) -> np.ndarray:
-        """Bring longitudes onto the same turn as the tile's own.
-
-        Args:
-            lon: The longitudes to bring around, in degrees.
-
-        Returns:
-            longitudes: The same longitudes, on the tile's own turn.
-        """
+        """Bring longitudes onto the same turn as the tile's own."""
         return self.centre_lon + geodesy.normalise_longitude(lon - self.centre_lon)
 
-    def box(self) -> Crop:
+    def crop(self) -> box.Crop:
         """Return the lon/lat crop the whole tile falls in, held open to a minimum."""
-        return crop_around(self.lon, self.lat, MIN_SPAN_DEG)
+        return box.crop_around(self.lon, self.lat, MIN_SPAN_DEG)
 
 
 def placed_tile(name: str, cut=None) -> PlacedTile | None:
@@ -80,7 +71,7 @@ def placed_tile(name: str, cut=None) -> PlacedTile | None:
     placed = PlacedTile(tile if cut is None else box.recut(tile, cut))
     # A tile wrapping the pole has no lon/lat box a plate carree crop can cover
     spread = placed.lon.max() - placed.lon.min()
-    return placed if spread <= HALF_TURN else None
+    return placed if spread <= geodesy.HALF_TURN else None
 
 
 def outlined_board(
@@ -98,6 +89,6 @@ def outlined_board(
         figure: The figure the crop is drawn on.
         axis: The crop itself, in lon and lat, with the tile outlined.
     """
-    figure, axis = mosaic.board(size, placed.box(), image)
+    figure, axis = mosaic.board(size, placed.crop(), image)
     axis.plot(placed.lon, placed.lat, color=TILE_EDGE, linewidth=TILE_WIDTH, **style)
     return figure, axis

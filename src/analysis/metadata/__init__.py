@@ -1,1 +1,1 @@
-"""The ODE observation metadata: its download, its ancillary summary, its readers."""
+"""The ODE observation metadata: its download, its fetchers, and its readers."""

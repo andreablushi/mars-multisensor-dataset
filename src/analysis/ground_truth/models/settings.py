@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from analysis.ground_truth.models.rule import Rule
+from analysis.ground_truth.models.class_rule import ClassRule
 
 
 @dataclass(slots=True)
-class Settings:
+class GroundTruthSettings:
     """The settled choices for labelling the tiles the selection kept.
 
     Attributes:
@@ -19,6 +19,6 @@ class Settings:
     """
 
     excluded: list[str]
-    classes: dict[str, Rule]
+    classes: dict[str, ClassRule]
     per_class: int | None
     seed: int

@@ -50,10 +50,9 @@ def patched(
     path: Path,
     spans: Sequence[tuple[int, int]],
     size: int,
-    timeout: float,
     *,
-    client: httpx.Client | None = None,
-    origin: int = 0,
+    client: httpx.Client,
+    origin: int,
 ) -> None:
     """Write some byte ranges of one file into a copy that leaves the rest a hole.
 
@@ -62,8 +61,7 @@ def patched(
         path: Where the copy belongs.
         spans: The first and past-the-last byte of each range, in order.
         size: How many bytes the copy holds.
-        timeout: How long to wait on one transfer, between one chunk and the next.
-        client: A client whose connections to reuse, or None to open one each.
+        client: The client whose connections to reuse.
         origin: Which byte of the file the copy starts at.
 
     Raises:
@@ -83,7 +81,7 @@ def patched(
             # One request at a time, so a copy never opens more connections than a file.
             for start in range(0, len(joined), BATCH):
                 batch = joined[start : start + BATCH]
-                http.streamed(url, body, timeout, client=client, spans=batch)
+                http.streamed(url, body, client=client, spans=batch)
                 held = 0
                 for first, data in parts(body.read_bytes(), batch):
                     copy.seek(first - origin)

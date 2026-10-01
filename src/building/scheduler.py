@@ -10,6 +10,7 @@ from collections.abc import Iterator
 from concurrent.futures import Future, ProcessPoolExecutor, ThreadPoolExecutor
 from functools import partial
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -17,7 +18,7 @@ from building.dispatcher import INSTRUMENTS, Archive
 from building.metadata.observation import ObservationMetadata, observation_metadata
 from building.models.job import Job, Outcome
 from building.models.progress import Progress, Stage
-from building.models.settings import Settings
+from building.models.settings import BuildSettings
 from building.preprocessing.common import store
 
 
@@ -30,7 +31,7 @@ class Scheduler:
         fetching: dict[str, ThreadPoolExecutor],
         building: ProcessPoolExecutor,
         root: Path,
-        settings: Settings,
+        settings: BuildSettings,
         progress: Progress,
     ) -> None:
         """Open a schedule over the pools a build runs on.
@@ -40,13 +41,15 @@ class Scheduler:
             fetching: The threads the downloads run on, by the archive they wait on.
             building: The processes the builds run on.
             root: The dataset's own root directory, which every build writes in.
-            settings: The settled choices, bounding how many products run at once.
+            settings: The settled choices, bounding how many products run at once
+                and handing each reader its own.
             progress: What every product still in the build is doing.
         """
         self._ode = ode
         self._fetching = fetching
         self._building = building
         self._root = root
+        self._preprocessing = settings.preprocessing
         self._progress = progress
         self._finished: queue.Queue[Outcome] = queue.Queue()
         # Places per archive, so one waiting on the cores never stalls another
@@ -107,8 +110,8 @@ class Scheduler:
             INSTRUMENTS[job.instrument].place(job.identifier)
         except Exception as error:  # noqa: BLE001
             self._finish(Outcome(job, error=error))
-            return
-        self._lined_up(job)
+        else:
+            self._lined_up(job)
 
     def _lined_up(self, job: Job) -> None:
         """Line one ready product up for a core, and start it if one is free.
@@ -133,7 +136,9 @@ class Scheduler:
                 _, _, job = heapq.heappop(self._ready)
             self._progress.moved(job, Stage.BUILDING)
             try:
-                started = self._building.submit(build_product, job, self._root)
+                started = self._building.submit(
+                    build_product, job, self._root, self._preprocessing
+                )
             except Exception as error:  # noqa: BLE001
                 # The pool is closing, so this builds nowhere.
                 started = Future()
@@ -167,12 +172,15 @@ class Scheduler:
         self._places[INSTRUMENTS[outcome.job.instrument].archive].release()
 
 
-def build_product(job: Job, root: Path) -> Outcome:
+def build_product(
+    job: Job, root: Path, preprocessing: dict[str, dict[str, Any]]
+) -> Outcome:
     """Cut one downloaded product to every tile that kept it, and write each.
 
     Args:
         job: The product to build, and the tiles to cut it to.
         root: The dataset's own root directory.
+        preprocessing: What each instrument's reader is handed, by its name.
 
     Returns:
         outcome: The outcome, its written samples and the first error a cut raised.
@@ -182,11 +190,13 @@ def build_product(job: Job, root: Path) -> Outcome:
     """
     instrument = INSTRUMENTS[job.instrument]
     written: list[ObservationMetadata] = []
-    missed = 0
+    emptied: list[str] = []
     failed: Exception | None = None
     try:
         # Read once however many tiles want it, which is why the product is the unit.
-        observation = instrument.read_observation(job.identifier)
+        observation = instrument.read_observation(
+            job.identifier, **preprocessing.get(job.instrument, {})
+        )
         for frame in job.frames:
             try:
                 sample = instrument.crop(observation, frame)
@@ -194,9 +204,8 @@ def build_product(job: Job, root: Path) -> Outcome:
                 # A tile failing to cut is kept as the error, and the rest still cut.
                 failed = failed or error
                 continue
-            # Reaching or measuring none of a tile is no failure.
             if sample is None or not sample.measured:
-                missed += 1
+                emptied.append(frame.name)
                 continue
             path = store.write_sample(
                 sample, instrument.layout, frame, job.identifier, root
@@ -215,4 +224,4 @@ def build_product(job: Job, root: Path) -> Outcome:
         # A product goes once every tile that wanted it is cut; it is a cache.
         if instrument.discard:
             instrument.discard(job.identifier)
-    return Outcome(job, records=tuple(written), missed=missed, error=failed)
+    return Outcome(job, records=tuple(written), emptied=tuple(emptied), error=failed)

@@ -45,7 +45,7 @@ class Instrument:
     Attributes:
         layout: What its arrays hold, and which of them it is stored for.
         fetch: What brings one product down into the cache, as much as its tiles need.
-        read_observation: What reads a fetched product off disk.
+        read_observation: What reads a fetched product off disk, given its settings.
         crop: What cuts that observation to a tile's box, or None where it misses.
         archive: Which archive its products are downloaded from.
         worker_bytes: What one build holds of its largest product at once.
@@ -57,7 +57,7 @@ class Instrument:
 
     layout: Layout
     fetch: Callable[[str, httpx.Client, tuple[Tile, ...]], None]
-    read_observation: Callable[[str], Any]
+    read_observation: Callable[..., Any]
     crop: Callable[[Any, Tile], Sample | None]
     archive: Archive
     worker_bytes: int
@@ -97,7 +97,7 @@ INSTRUMENTS = {
         mola_read.read_observation,
         mola_crop.crop,
         Archive.WUSTL,
-        grid_of=mola_download.tile_grid,
+        grid_of=mola_download.mola_grid,
         # The whole gridded record is 2 GB, so a sheet is held for the run.
         worker_bytes=256 * 1024**2,
     ),

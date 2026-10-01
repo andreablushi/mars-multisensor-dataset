@@ -9,8 +9,8 @@ tile_km: 32
 # The side of the tile groups ODE is asked about at once, in degrees.
 tile_group_deg: 10
 
-# How many cells every 100 km of a tile is divided into. For computation purpose.
-grid_cells: 32
+# The side of one coverage cell, in km. For computation purpose.
+cell_km: 0.5
 
 # What a run downloads and measures, as IHID/IID/PT narrowed by a colon and an ODE product id pattern.
 instruments:
@@ -18,21 +18,14 @@ instruments:
   - MRO/CRISM/TRDR:*sp*_if*_trr3
   - MRO/SHARAD/USRDRV2
 
-# The table published beside a set's products, read into the least signal phase distortion of a look over each tile, and of its night side.
-ancillary:
-  MRO/SHARAD/USRDRV2:
-    pt: USGEOMV2
-    latitude: LATITUDE
-    longitude: LONGITUDE
-    solar_zenith: SZA
-    night_above: 90.0
-    distortion: PHASE/1.0E16
+# The column of the geometry table published beside each SHARAD track read into the least signal phase distortion of a look over each tile, and of its night side.
+sharad_distortion: PHASE/1.0E16
 
 # Which products a box returns: b box overlap, f footprint overlap, o inside, i containing.
 loc: f
 
 # What a window has to hold before a tile earns a place in the dataset.
-window:
+criteria:
   # The coverage each instrument is asked of a tile, as a share of its area.
   constraints:
     - {CTX: 0.60}
@@ -41,6 +34,9 @@ window:
 
   # The pixels an instrument has to land on a tile to count, powers of two preferred
   admits: {CTX: 2097152, CRISM: 4096, SHARAD: 64}
+
+  # The solar zenith angle past which an instrument's look is taken at night, in degrees: refused for CTX and CRISM, preferred for SHARAD
+  solar_zenith: {CTX: 90.0, CRISM: 90.0, SHARAD: 100.0}
 
   # How far Mars may turn inside a window, in degrees of Ls; 90 is one season
   span_ls: 90.0
@@ -51,7 +47,7 @@ window:
   # What instruments are excluded from the window, and kept whenever they came
   timeless: [SHARAD]
 
-  # The share of its own cells a look shares with another past which the two are redundant
+  # The share of its own cells the other kept looks also reach, past which a look is redundant
   redundant_share_threshold: {CTX: 0.75, CRISM: 0.75, SHARAD: 0.3}
 
 # How the tiles the selection kept are labelled.

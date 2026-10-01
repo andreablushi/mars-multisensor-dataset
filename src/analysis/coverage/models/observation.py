@@ -22,8 +22,6 @@ class ProjectedObservation:
         pt: The product type.
         start: When the observation started.
         shape: The projected footprint, clipped to the tile.
-        width_km: The swath width used, or None when the footprint had area.
-        pixel_km2: The ground one of its pixels covers.
     """
 
     pdsid: str
@@ -32,8 +30,6 @@ class ProjectedObservation:
     pt: str
     start: datetime
     shape: BaseGeometry
-    width_km: float | None
-    pixel_km2: float
 
 
 @dataclass(frozen=True, slots=True)
