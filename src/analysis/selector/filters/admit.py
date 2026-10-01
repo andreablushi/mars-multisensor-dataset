@@ -9,7 +9,7 @@ from analysis.metadata.loaders.observations import read_incidences
 from analysis.selector.models.search_grid import SearchGrid
 from analysis.selector.models.track import Offered
 from analysis.utils import mask as packing
-from analysis.utils.tile_group import group_of, tile_grid
+from analysis.utils.tile_group import group_of_tile_named
 
 
 def admitted_observations(
@@ -32,8 +32,7 @@ def admitted_observations(
     """
     admitted: Offered = []
     refused: Offered = []
-    group = group_of(tile_grid().tile_named(coverage[0].summary.tile))
-    incidences = read_incidences(group)
+    incidences = read_incidences(group_of_tile_named(coverage[0].summary.tile))
     for owner, instrument in enumerate(coverage):
         limit = solar_zenith.get(instrument.summary.iid, float("inf"))
         for observation in instrument.events:

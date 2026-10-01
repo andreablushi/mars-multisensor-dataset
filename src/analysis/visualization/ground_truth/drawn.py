@@ -44,7 +44,7 @@ def plot(labels: Sequence[Label], settings: Settings) -> widgets.Widget:
 
 
 def show_tile(
-    tile: widgets.Dropdown, note: widgets.HTML, area: widgets.HBox, _change=None
+    tile: widgets.Dropdown, note: widgets.HTML, area: widgets.HBox, _change
 ) -> None:
     """Draw the chosen tile's mosaic crop, noting what labelled it.
 
@@ -62,9 +62,7 @@ def show_tile(
         crop = panels.unavailable(mosaic.NO_BOX)
     else:
         title = f"Tile {label.tile}, {label.label}"
-        crop = mosaic.fetched(
-            placed.box(), lambda image: basemap.tile_map(placed, image, title)
-        )
+        crop = mosaic.fetched(placed.box(), partial(basemap.tile_map, placed, title))
     area.children = (crop,)
 
 

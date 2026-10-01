@@ -15,8 +15,7 @@ from building.preprocessing.ctx.isis import export_image, read_cube_label, run_i
 from building.preprocessing.ctx.models.observation import CtxObservation
 from building.preprocessing.ctx.models.sample import BLANK, CtxSample
 from building.preprocessing.ctx.normalize import normalized_pixels
-from common.maths import geodesy
-from common.maths.geodesy import TURN
+from common.maths import box
 from common.models.tile import Tile
 from common.pds import labels
 
@@ -60,13 +59,10 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
     Raises:
         RuntimeError: When an ISIS application fails.
     """
-    span = geodesy.longitude_span(frame.west_lon, frame.east_lon)
-    inside = (
-        (frame.min_lat <= observation.latitude)
-        & (observation.latitude <= frame.max_lat)
-        & ((observation.longitude - frame.west_lon) % TURN <= span)
-    )
-    reached = observation.line[inside]
+    edges = box.bounds_box(frame)
+    min_lat, max_lat, west, span = edges
+    points = (observation.latitude, observation.latitude, observation.longitude, 0.0)
+    reached = observation.line[box.inside(points, edges)]
     if not reached.size:
         return None
     first = max(1, int(reached.min()) - configs.CROP_MARGIN_LINES)
@@ -97,10 +93,10 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
                 "warpalgorithm": configs.WARP_ALGORITHM,
                 "patchsize": configs.PATCH_SIZE,
                 "defaultrange": "map",
-                "minlat": frame.min_lat,
-                "maxlat": frame.max_lat,
-                "minlon": frame.west_lon,
-                "maxlon": frame.west_lon + span,
+                "minlat": min_lat,
+                "maxlat": max_lat,
+                "minlon": west,
+                "maxlon": west + span,
             },
         )
         export_image(projected, image)

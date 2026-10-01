@@ -94,8 +94,7 @@ def product_params(instrument_set: InstrumentSet, pt: str) -> dict[str, str]:
         params: The query parameters naming them.
     """
     return {
-        "query": "product",
-        "target": ode.ODE_TARGET,
+        **ode.PRODUCT_QUERY,
         "ihid": instrument_set.ihid,
         "iid": instrument_set.iid,
         "pt": pt,

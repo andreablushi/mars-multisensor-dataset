@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from pathlib import Path
 
 from analysis import paths
 from analysis.ground_truth.models.feature import Feature
@@ -11,13 +10,10 @@ from common.disk.files import read_jsonl, write_jsonl
 from common.fetch.ode import ODE_TARGET, ODEClient
 
 
-def read_features(
-    path: Path = paths.FEATURES_PATH, *, refresh: bool = False
-) -> list[Feature]:
+def read_features(refresh: bool) -> list[Feature]:
     """Read the Mars feature catalogue, fetching it from ODE when none is cached.
 
     Args:
-        path: Where the catalogue is cached.
         refresh: Whether to fetch it again even when it is cached.
 
     Returns:
@@ -26,8 +22,8 @@ def read_features(
     Raises:
         KeyError: When ODE answers without the catalogue it always publishes.
     """
-    if path.exists() and not refresh:
-        return [Feature(**row) for row in read_jsonl(path)]
+    if paths.FEATURES_PATH.exists() and not refresh:
+        return [Feature(**row) for row in read_jsonl(paths.FEATURES_PATH)]
     with ODEClient() as client:
         results = client.query({"query": "featuredata", "odemetadb": ODE_TARGET})
     # ODE publishes some features twice, so the first of each is kept
@@ -44,5 +40,5 @@ def read_features(
             for item in results["Features"]["Feature"]
         )
     )
-    write_jsonl(path, [asdict(feature) for feature in features])
+    write_jsonl(paths.FEATURES_PATH, [asdict(feature) for feature in features])
     return features

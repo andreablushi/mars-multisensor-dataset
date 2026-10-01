@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from functools import partial
+
 import ipywidgets as widgets
 from matplotlib.lines import Line2D
 
@@ -26,8 +28,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
         return panels.unavailable(mosaic.NO_BOX)
     tile_track = read_tile_track(coverage)
     return mosaic.fetched(
-        placed.box(),
-        lambda image: footprints_map(placed, coverage, tile_track, image),
+        placed.box(), partial(footprints_map, placed, coverage, tile_track)
     )
 
 

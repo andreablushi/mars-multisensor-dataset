@@ -20,8 +20,8 @@ def build_plan(
     picked: Sequence[Selection],
     root: Path,
     *,
-    force: bool = False,
-    published: frozenset[str] = frozenset(),
+    force: bool,
+    published: frozenset[str],
 ) -> Plan:
     """Work out every product one build has to fetch, and what to cut it to.
 

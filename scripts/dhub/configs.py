@@ -5,9 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from common.config import load_config
-from common.paths import CONFIGS_ROOT
-
-PLATFORM_CONFIG_PATH = CONFIGS_ROOT / "digitalhub.yaml"
 
 
 @dataclass(slots=True)
@@ -58,7 +55,7 @@ def load() -> Platform:
     Returns:
         platform: The settled choices, each profile marked for its pool.
     """
-    platform = load_config(PLATFORM_CONFIG_PATH, Platform)
+    platform = load_config("digitalhub", Platform)
     return replace(
         platform,
         resources={

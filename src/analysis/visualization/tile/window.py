@@ -47,11 +47,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
     rows += [
         (
             f"Ground reached by {wording.counted(shared, 'instrument')}",
-            (
-                f"{wording.area(km2)}, {km2 / window.area_km2:.0%}"
-                if km2
-                else wording.NOTHING
-            ),
+            f"{wording.area(km2)}, {km2 / window.area_km2:.0%}",
         )
         for shared, km2 in ground_by_instrument_count(stats.overlaps).items()
     ]

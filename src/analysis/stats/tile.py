@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 
 from analysis.coverage.models.coverage import SetCoverage
@@ -85,30 +86,26 @@ def measure_tile(tile_track: TileTrack) -> TileStats:
     """
     track = tile_track.track
     # What each instrument left inside the window, and which of them each cell holds
-    cells_by_iid: dict[str, set[int]] = {}
-    observations_by_iid: dict[str, int] = {}
-    iids_by_cell: dict[int, set[str]] = {}
-    pixels_by_iid: dict[str, float] = {}
+    cells_by_iid: defaultdict[str, set[int]] = defaultdict(set)
+    observations_by_iid: Counter[str] = Counter()
+    iids_by_cell: defaultdict[int, set[str]] = defaultdict(set)
+    pixels_by_iid: defaultdict[str, float] = defaultdict(float)
     for index in tile_track.taken:
         iid = track.iids[track.owners[index]]
-        cells_by_iid.setdefault(iid, set()).update(track.cells[index])
-        observations_by_iid[iid] = observations_by_iid.get(iid, 0) + 1
+        cells_by_iid[iid].update(track.cells[index])
+        observations_by_iid[iid] += 1
         for cell in track.cells[index].tolist():
-            iids_by_cell.setdefault(cell, set()).add(iid)
-        pixels_by_iid[iid] = pixels_by_iid.get(iid, 0.0) + landed_pixels(
+            iids_by_cell[cell].add(iid)
+        pixels_by_iid[iid] += landed_pixels(
             track.observations[index], len(track.cells[index]), track.grid.cell_km2
         )
-    overlaps: dict[tuple[str, ...], float] = {}
+    overlaps: defaultdict[tuple[str, ...], float] = defaultdict(float)
     for cell in sorted(iids_by_cell):
-        instrument_names = tuple(sorted(iids_by_cell[cell]))
-        overlaps[instrument_names] = (
-            overlaps.get(instrument_names, 0.0) + track.grid.cell_km2
-        )
+        overlaps[tuple(sorted(iids_by_cell[cell]))] += track.grid.cell_km2
     # A pixel is one size whether or not its look was chosen, so all are read
     pixel_km2: dict[str, float] = {}
-    for index, owner in enumerate(track.owners):
+    for observation, owner in zip(track.observations, track.owners, strict=True):
         iid = track.iids[owner]
-        observation = track.observations[index]
         if iid not in pixel_km2 and observation.pixels and observation.own_km2:
             pixel_km2[iid] = observation.own_km2 / observation.pixels
     return TileStats(
@@ -138,7 +135,7 @@ def ground_by_instrument_count(
     Returns:
         ground: The ground in km2 by how many instruments reach it, fewest first.
     """
-    summed: dict[int, float] = {}
+    summed: defaultdict[int, float] = defaultdict(float)
     for instrument_names, km2 in overlaps.items():
-        summed[len(instrument_names)] = summed.get(len(instrument_names), 0.0) + km2
+        summed[len(instrument_names)] += km2
     return dict(sorted(summed.items()))

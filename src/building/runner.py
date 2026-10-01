@@ -30,7 +30,7 @@ CHECKPOINT_BYTES = 100 * 1024**3
 def build_dataset(
     settings: Settings,
     picked: Sequence[Selection],
-    force: bool = False,
+    force: bool,
     checkpoint: Callable[[], None] | None = None,
     fetch: Callable[[str, Path, Sequence[str]], None] | None = None,
 ) -> int:

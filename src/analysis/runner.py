@@ -19,7 +19,7 @@ from common.fetch.ode import ODEClient
 
 
 def pipeline_outcomes(
-    settings: Settings, console: Console, force: bool = False, cores: int | None = None
+    settings: Settings, console: Console, force: bool, cores: int | None
 ) -> tuple[list[Outcome], list[Outcome]]:
     """Download every set still missing and measure every set not yet measured.
 

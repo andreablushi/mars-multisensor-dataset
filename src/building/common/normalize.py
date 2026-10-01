@@ -81,14 +81,14 @@ def normalize_dataset(
     print(f"normalizing {len(pending):,} crops", flush=True)
     with ProcessPoolExecutor(max_workers=settings.workers) as pool:
         for batch in _batches(pending, records, budget if checkpoint else math.inf):
-            missing = [records[at].path for at in batch]
-            missing = [one for one in missing if not (root / one).exists()]
+            rows = [records[at] for at in batch]
+            missing = [one.path for one in rows if not (root / one.path).exists()]
             if fetch and missing:
                 fetch(settings.name, root, missing)
             scaled = pool.map(
                 partial(normalized_crop, root),
-                [records[at] for at in batch],
-                [constants[records[at].instrument] for at in batch],
+                rows,
+                [constants[one.instrument] for one in rows],
             )
             for at, one in zip(batch, scaled, strict=True):
                 records[at] = one

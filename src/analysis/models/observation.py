@@ -31,8 +31,8 @@ class Observation:
     stop: datetime | None
     wkt: str
     map_scale_m: float | None
-    north_wkt: str | None = None
-    south_wkt: str | None = None
+    north_wkt: str | None
+    south_wkt: str | None
 
     @property
     def is_track(self) -> bool:

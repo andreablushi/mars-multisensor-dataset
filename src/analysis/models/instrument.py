@@ -21,7 +21,7 @@ class InstrumentSet:
     ihid: str
     iid: str
     pt: str
-    product_id: str | None = None
+    product_id: str | None
 
     @classmethod
     def from_key(cls, key: str) -> InstrumentSet:

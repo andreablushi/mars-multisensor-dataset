@@ -69,11 +69,6 @@ class Outcome:
     error: Exception | None = None
 
     @property
-    def label(self) -> str:
-        """Return the label of the job that was run."""
-        return self.job.label
-
-    @property
     def failed(self) -> bool:
         """Return whether the job raised an error."""
         return self.error is not None

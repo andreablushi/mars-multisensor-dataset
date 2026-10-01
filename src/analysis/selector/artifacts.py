@@ -3,11 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from pathlib import Path
-from typing import Any
-
-import pyarrow as pa
-import pyarrow.parquet as pq
 
 from analysis import paths
 from analysis.selector.models.selection import (
@@ -43,9 +38,7 @@ def write_selection(selections: Sequence[Selection]) -> None:
 
 def read_selected_tiles() -> list[SelectedTile]:
     """Read back every tile the selection stage searched, without what each keeps."""
-    return [
-        SelectedTile(**row) for row in _selection_rows(paths.SELECTED_TILES_PATH, TILES)
-    ]
+    return parquet.read_rows(SelectedTile, TILES, paths.SELECTED_TILES_PATH)
 
 
 def read_selection() -> list[Selection]:
@@ -58,26 +51,11 @@ def read_selection() -> list[Selection]:
         FileNotFoundError: When no selection has been written there.
     """
     observations_by_tile: dict[str, list[SelectedObservation]] = {}
-    for row in _selection_rows(paths.SELECTED_OBSERVATIONS_PATH, OBSERVATIONS):
-        observation = SelectedObservation(**row)
+    for observation in parquet.read_rows(
+        SelectedObservation, OBSERVATIONS, paths.SELECTED_OBSERVATIONS_PATH
+    ):
         observations_by_tile.setdefault(observation.tile, []).append(observation)
     return [
         Selection(tile=tile, observations=observations_by_tile.get(tile.tile, []))
         for tile in read_selected_tiles()
     ]
-
-
-def _selection_rows(path: Path, schema: pa.Schema) -> list[dict[str, Any]]:
-    """Read one written selection file as plain rows.
-
-    Args:
-        path: The parquet file to read.
-        schema: The schema it was written under.
-
-    Returns:
-        rows: Its rows, in the order they were written.
-
-    Raises:
-        FileNotFoundError: When no selection has been written there.
-    """
-    return pq.read_table(path, schema=schema).to_pylist()

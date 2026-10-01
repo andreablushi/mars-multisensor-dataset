@@ -50,14 +50,7 @@ class PlacedTile:
         self.lon = self.around(lon)
 
     def around(self, lon: np.ndarray) -> np.ndarray:
-        """Bring longitudes onto the same turn as the tile's own.
-
-        Args:
-            lon: The longitudes to bring around, in degrees.
-
-        Returns:
-            longitudes: The same longitudes, on the tile's own turn.
-        """
+        """Bring longitudes onto the same turn as the tile's own."""
         return self.centre_lon + geodesy.normalise_longitude(lon - self.centre_lon)
 
     def box(self) -> Crop:

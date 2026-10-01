@@ -76,9 +76,7 @@ def fetched(
             )
         ]
     )
-    threading.Thread(
-        target=lambda: _fill(space, box, draw, pixels), daemon=True
-    ).start()
+    threading.Thread(target=_fill, args=(space, box, draw, pixels), daemon=True).start()
     return space
 
 
@@ -102,14 +100,7 @@ def _fill(
 
 
 def read_mosaic(image: bytes) -> np.ndarray:
-    """Decode one mosaic crop as fetched.
-
-    Args:
-        image: The crop, as `crop` hands it back.
-
-    Returns:
-        pixels: Its pixels, rows from the north.
-    """
+    """Decode one mosaic crop as fetched, rows from the north."""
     return imread(io.BytesIO(image), format="png")
 
 
@@ -166,7 +157,7 @@ def mars_board(image: bytes, title: str) -> tuple[Figure, Axes]:
 
 
 @lru_cache(maxsize=32)
-def crop(box: Crop, pixels: int = BASEMAP_PIXELS) -> bytes:
+def crop(box: Crop, pixels: int) -> bytes:
     """Fetch the mosaic over one lon/lat box, held for the panels sharing it.
 
     Args:

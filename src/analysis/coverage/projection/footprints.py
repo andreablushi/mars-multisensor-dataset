@@ -24,6 +24,8 @@ from shapely.geometry.base import BaseGeometry
 from analysis.coverage.models.region import TileRegion
 from analysis.coverage.projection import frame
 from common.maths import geodesy
+from common.maths.box import POLE
+from common.maths.geodesy import HALF_TURN, TURN
 from common.models.tile import Tile
 
 _EMPTY = Polygon()
@@ -34,9 +36,7 @@ _FIRST_MULTIPART = 4
 
 def tile_ring(tile: Tile) -> tuple[np.ndarray, np.ndarray]:
     """Return the tile's box as a closed lon/lat ring, densified to project smoothly."""
-    return geodesy.bbox_ring(
-        tile.min_lat, tile.max_lat, tile.west_lon, tile.east_lon, frame.MAX_SEGMENT_DEG
-    )
+    return geodesy.bbox_ring(tile, frame.MAX_SEGMENT_DEG)
 
 
 def ring_polygon(x: np.ndarray, y: np.ndarray) -> BaseGeometry:
@@ -116,17 +116,17 @@ def clip_region(tile: Tile, margin_deg: float) -> BaseGeometry:
         max(abs(tile.min_lat), abs(tile.max_lat)), frame.MAX_STRETCH_LAT_DEG
     )
     lon_margin = margin_deg / geodesy.longitude_stretch(stretch_lat)
-    lat_lo = max(-90.0, tile.min_lat - margin_deg)
-    lat_hi = min(90.0, tile.max_lat + margin_deg)
-    span = geodesy.longitude_span(tile.west_lon, tile.east_lon) + 2.0 * lon_margin
-    if span >= 360.0:
-        return box(-180.0, lat_lo, 180.0, lat_hi)
+    lat_lo = max(-POLE, tile.min_lat - margin_deg)
+    lat_hi = min(POLE, tile.max_lat + margin_deg)
+    span = tile.span + 2.0 * lon_margin
+    if span >= TURN:
+        return box(-HALF_TURN, lat_lo, HALF_TURN, lat_hi)
     west = float(geodesy.normalise_longitude(tile.west_lon - lon_margin))
     east = west + span
-    if east <= 180.0:
+    if east <= HALF_TURN:
         return box(west, lat_lo, east, lat_hi)
-    return box(west, lat_lo, 180.0, lat_hi).union(
-        box(-180.0, lat_lo, east - 360.0, lat_hi)
+    return box(west, lat_lo, HALF_TURN, lat_hi).union(
+        box(-HALF_TURN, lat_lo, east - TURN, lat_hi)
     )
 
 
@@ -186,10 +186,9 @@ def projected_footprints(
     )
     # A footprint reaching far around the projection centre crosses itself
     broken = ~is_valid(projected)
-    if broken.any():
-        projected[broken] = make_valid(
-            projected[broken], method="structure", keep_collapsed=False
-        )
+    projected[broken] = make_valid(
+        projected[broken], method="structure", keep_collapsed=False
+    )
 
     # Each footprint's parts are put back together as the one shape they were
     shapes = np.full(len(geoms), _EMPTY, dtype=object)
@@ -204,8 +203,7 @@ def projected_footprints(
         shapes[index] = union_all(projected[starts[index] : ends[index]])
     # Whatever reached past the tile is cut back to it
     outside = ~covers(region.shape, shapes)
-    if outside.any():
-        shapes[outside] = intersection(shapes[outside], region.shape)
+    shapes[outside] = intersection(shapes[outside], region.shape)
     return shapes
 
 

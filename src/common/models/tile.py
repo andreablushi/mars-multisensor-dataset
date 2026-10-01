@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from common.maths import geodesy, physics
+from common.maths.box import Boxed
 from common.maths.geodesy import PolarGrid
 
 # From this latitude up a tile is read on its pole, below it in degrees.
@@ -12,7 +13,7 @@ POLAR_LATITUDE = 70.0
 
 
 @dataclass(frozen=True, slots=True)
-class Tile:
+class Tile(Boxed):
     """One tile of the grid Mars is split into, with its bounding box.
 
     Attributes:
@@ -78,9 +79,7 @@ class Tile:
         Returns:
             centre: The centre of the box in degrees, -180 to 180.
         """
-        return geodesy.bbox_centre(
-            self.min_lat, self.max_lat, self.west_lon, self.east_lon
-        )[0]
+        return geodesy.bbox_centre(self)[0]
 
     @property
     def centre_lat(self) -> float:
@@ -89,15 +88,4 @@ class Tile:
         Returns:
             centre: The centre of the box in degrees.
         """
-        return geodesy.bbox_centre(
-            self.min_lat, self.max_lat, self.west_lon, self.east_lon
-        )[1]
-
-    @property
-    def circles_a_pole(self) -> bool:
-        """Return whether the tile runs through every longitude.
-
-        Returns:
-            circles: True when the west and east longitudes are the same.
-        """
-        return self.west_lon == self.east_lon
+        return (self.min_lat + self.max_lat) / 2.0

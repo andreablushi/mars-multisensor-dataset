@@ -47,8 +47,6 @@ def filled_cells(grid: Grid, shape: BaseGeometry) -> np.ndarray:
     Returns:
         cells: The indices of the cells it fills, in ascending order.
     """
-    if shape.is_empty:
-        return _NONE
     eastings, northings = grid.centres
     west, south, east, north = shape.bounds
     columns = np.nonzero((eastings >= west) & (eastings <= east))[0]

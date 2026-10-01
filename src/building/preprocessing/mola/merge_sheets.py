@@ -9,7 +9,6 @@ import numpy as np
 from building.preprocessing.common.models.position import Position
 from building.preprocessing.mola import projection
 from building.preprocessing.mola.models.observation import MolaObservation
-from common.maths import geodesy
 from common.maths.geodesy import TURN
 from common.models.tile import Tile
 from common.pds import images, labels
@@ -38,14 +37,13 @@ def merge_sheets(
     resolution = observation.grid.resolution
     whole = round(TURN) * resolution
     # Which bins the box covers: lines south from the pole, samples east of it
-    span = geodesy.longitude_span(frame.west_lon, frame.east_lon)
     down = range(
         math.ceil((90.0 - frame.max_lat) * resolution - 0.5),
         math.floor((90.0 - frame.min_lat) * resolution - 0.5) + 1,
     )
     across = range(
         math.ceil(frame.west_lon * resolution - 0.5),
-        math.floor((frame.west_lon + span) * resolution - 0.5) + 1,
+        math.floor((frame.west_lon + frame.span) * resolution - 0.5) + 1,
     )
     height: np.ndarray | None = None
     written = np.zeros((len(down), len(across)), dtype=bool)

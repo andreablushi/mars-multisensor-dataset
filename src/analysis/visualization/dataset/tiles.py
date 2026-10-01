@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from functools import partial
 
 import ipywidgets as widgets
 import numpy as np
@@ -32,9 +33,7 @@ def plot(selections: Sequence[Selection]) -> widgets.Widget:
             [tile.band for tile in kept_tiles], [tile.column for tile in kept_tiles]
         )
     ] = True
-    return mosaic.fetched(
-        MARS, lambda image: kept_map(kept, grid, image), mosaic.MARS_PIXELS
-    )
+    return mosaic.fetched(MARS, partial(kept_map, kept, grid), mosaic.MARS_PIXELS)
 
 
 def kept_map(kept: np.ndarray, grid: Tessellate, image: bytes) -> widgets.Image:

@@ -33,10 +33,7 @@ def cut(
     """
     grid = position.grid
     ring_x, ring_y = geodesy.stereographic_forward(
-        *geodesy.bbox_ring(
-            frame.min_lat, frame.max_lat, frame.west_lon, frame.east_lon, STEP
-        ),
-        *grid,
+        *geodesy.bbox_ring(frame, STEP), *grid
     )
     # The box projects to a sector, and the ring its edge traces bounds it.
     lines = np.flatnonzero(

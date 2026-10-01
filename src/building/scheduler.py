@@ -110,8 +110,8 @@ class Scheduler:
             INSTRUMENTS[job.instrument].place(job.identifier)
         except Exception as error:  # noqa: BLE001
             self._finish(Outcome(job, error=error))
-            return
-        self._lined_up(job)
+        else:
+            self._lined_up(job)
 
     def _lined_up(self, job: Job) -> None:
         """Line one ready product up for a core, and start it if one is free.

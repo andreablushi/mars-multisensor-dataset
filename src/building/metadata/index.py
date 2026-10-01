@@ -7,8 +7,6 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
-import pyarrow.parquet as pq
-
 from building import paths
 from building.metadata import dataset, observation, tile
 from building.metadata.observation import ObservationMetadata
@@ -28,8 +26,7 @@ def read_observation_metadata(root: Path) -> list[ObservationMetadata]:
     path = root / paths.OBSERVATION_METADATA_NAME
     if not path.exists():
         return []
-    held = pq.read_table(path, schema=observation.SCHEMA)
-    return [parquet.build(ObservationMetadata, row) for row in held.to_pylist()]
+    return parquet.read_rows(ObservationMetadata, observation.SCHEMA, path)
 
 
 def write_index(

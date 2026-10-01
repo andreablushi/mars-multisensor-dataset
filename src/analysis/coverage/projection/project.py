@@ -34,16 +34,12 @@ def project_every_tile(
     observations = stored.observations
     if not observations:
         return [], stored.discarded
-    geoms = from_wkt(
-        np.asarray([observation.wkt for observation in observations], dtype=object)
-    )
+    geoms = from_wkt([observation.wkt for observation in observations])
     widths_m = size.track_widths(observations, geoms)
     swath_widths_m = np.asarray([width or 0.0 for width in widths_m], dtype=float)
     index = STRtree(geoms)
     polar = {
-        north: from_wkt(
-            np.asarray([getattr(observation, key) for observation in observations])
-        )
+        north: from_wkt([getattr(observation, key) for observation in observations])
         for north, key in ((True, "north_wkt"), (False, "south_wkt"))
     }
     polar_index = {north: STRtree(shapes) for north, shapes in polar.items()}

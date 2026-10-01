@@ -144,9 +144,7 @@ def label_craters(
         ]
         if not sized_classes:
             continue
-        longitude, latitude = bbox_centre(
-            feature.min_lat, feature.max_lat, feature.west_lon, feature.east_lon
-        )
+        longitude, latitude = bbox_centre(feature)
         centre = (latitude, latitude, longitude, 0.0)
         for tile in np.flatnonzero(box.inside(centre, tile_boxes)):
             for label in sized_classes:
@@ -193,7 +191,7 @@ def claimed_box(feature: Feature, latitudes: list[float] | None) -> box.Box | No
 
 
 def draw_labels(
-    labels: Sequence[Label], settings: Settings, refused: Collection[str] = ()
+    labels: Sequence[Label], settings: Settings, refused: Collection[str]
 ) -> list[Label]:
     """Mark the tiles the balanced draw takes of every class, the clearest first.
 

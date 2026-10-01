@@ -9,8 +9,6 @@ from contextlib import contextmanager, suppress
 from pathlib import Path
 
 from rich.console import Console
-from rich.progress import BarColumn, MofNCompleteColumn
-from rich.progress import Progress as Bar
 
 from building.models.job import Outcome, Plan
 from building.models.progress import Progress
@@ -126,10 +124,7 @@ def collect_outcomes(
     collected: list[Outcome] = []
     failed = 0
     # A platform log takes plain flushed lines, since no cursor can be moved there
-    plain = printing.plain_log()
-    step = max(1, total // LOGGED_LINES)
-    columns = (BarColumn(bar_width=None), MofNCompleteColumn())
-    with Bar(*columns, console=console, disable=plain) as progress:
+    with printing.progress_bar(console) as progress:
         task = progress.add_task(DESCRIPTION, total=total)
         for outcome in outcomes:
             collected.append(outcome)
@@ -139,13 +134,14 @@ def collect_outcomes(
                     outcome.job.label, outcome.error, failed, console
                 )
             progress.update(task, completed=len(collected))
-            if plain and (len(collected) % step == 0 or len(collected) == total):
+            if progress.disable:
                 # The one named is the one just finished, never the one under way
                 printing.print_progress_line(
                     DESCRIPTION,
                     len(collected),
                     total,
                     f"{outcome.job.label} done{_memory_peak()}",
+                    LOGGED_LINES,
                 )
     return collected
 

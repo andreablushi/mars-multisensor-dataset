@@ -59,30 +59,18 @@ def acquisition_info(held: Sample, frame: Tile) -> AcquisitionInfo:
     collected = {}
     for one in fields(AcquisitionInfo):
         plane = getattr(held, one.name, None)
-        collected[one.name] = (
-            _measured_mean(plane, measured)
-            if plane is not None
-            else _label_scalar(held.label, LABEL_KEYS.get(one.name, ()))
-        )
+        if plane is None:
+            collected[one.name] = _label_scalar(
+                held.label, LABEL_KEYS.get(one.name, ())
+            )
+            continue
+        kept = measured & np.isfinite(plane)
+        collected[one.name] = float(plane[kept].mean()) if kept.any() else None
     distance = _label_scalar(held.label, TARGET_DISTANCE_KEYS)
     if collected["spacecraft_altitude_km"] is None and distance is not None:
         radius = geodesy.spheroid_radius_m(frame.centre_lat) / physics.METRES_PER_KM
         collected["spacecraft_altitude_km"] = distance - radius
     return AcquisitionInfo(**collected)
-
-
-def _measured_mean(plane: np.ndarray, measured: np.ndarray) -> float | None:
-    """Return the mean of one plane over the samples its crop measured.
-
-    Args:
-        plane: The quantity at every sample of the crop, over its ground axes.
-        measured: Which of those samples are measurements inside the tile's box.
-
-    Returns:
-        mean: The mean, or None where no finite sample was measured.
-    """
-    kept = measured & np.isfinite(plane)
-    return float(plane[kept].mean()) if kept.any() else None
 
 
 def _label_scalar(label: dict[str, str], keys: tuple[str, ...]) -> float | None:

@@ -10,7 +10,7 @@ from analysis.selector.filters.coverage_constraints import cells_per_constraint
 from analysis.selector.models.counter import Counter
 from analysis.selector.models.filter import Filter
 from analysis.selector.models.track import Track
-from analysis.utils.tile_group import group_of, tile_grid
+from analysis.utils.tile_group import group_of_tile_named
 
 HYPERSPECTRAL = "hsp"
 
@@ -130,10 +130,9 @@ def sharad_drop_order(track: Track, indices: list[int]) -> list[int]:
             then day only before night, the most distorted and fewest cells first.
     """
     tile = track.observations[0].tile
-    group = group_of(tile_grid().tile_named(tile))
     distortions = {
         distortion.pdsid: distortion
-        for distortion in summary.read_distortions(group)
+        for distortion in summary.read_distortions(group_of_tile_named(tile))
         if distortion.tile == tile
     }
     return sorted(

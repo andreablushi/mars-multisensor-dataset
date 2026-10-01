@@ -53,8 +53,7 @@ def measure_group(group: str, selections: Sequence[Selection]) -> list[TileStats
     measured: list[TileStats] = []
     for selection in selections:
         tile_coverage = coverage.get(selection.tile.tile)
-        tile_track = track_tile(tile_coverage, selection) if tile_coverage else None
-        if tile_track is not None:
+        if tile_coverage and (tile_track := track_tile(tile_coverage, selection)):
             measured.append(measure_tile(tile_track))
     return measured
 

@@ -47,14 +47,13 @@ def schema_of(model: type) -> pa.Schema:
         kind = set_type(hints[field.name])
         # A nested row is written as its own columns, so the file gains no level
         if is_dataclass(kind):
-            columns.extend(zip(schema_of(kind).names, schema_of(kind).types))
-            continue
+            columns.extend(schema_of(kind))
         # A column holding many of one type is written as a list of it
-        if get_origin(kind) is tuple:
+        elif get_origin(kind) is tuple:
             held = set_type(get_args(kind)[0])
             columns.append((field.name, pa.list_(_ARROW[held])))
-            continue
-        columns.append((field.name, _ARROW[kind]))
+        else:
+            columns.append((field.name, _ARROW[kind]))
     return pa.schema(columns)
 
 
@@ -83,29 +82,34 @@ def build[Row](model: type[Row], row: Mapping[str, Any]) -> Row:
     return model(**held)
 
 
-def write(
-    data: Mapping[str, Sequence[Any]] | Sequence[Any], schema: pa.Schema, path: Path
-) -> None:
-    """Write dataclass rows, or ready-made columns, to a parquet file atomically.
+def read_rows[Row](
+    model: type[Row], schema: pa.Schema, path: Path, filters: Any = None
+) -> list[Row]:
+    """Read back every row of one parquet file, as the model it was written from."""
+    return [
+        build(model, row)
+        for row in pq.read_table(path, schema=schema, filters=filters).to_pylist()
+    ]
+
+
+def write(data: Sequence[Any], schema: pa.Schema, path: Path) -> None:
+    """Write dataclass rows to a parquet file atomically.
 
     Args:
-        data: The dataclass rows to write, or the columns keyed by the schema's fields.
+        data: The dataclass rows to write.
         schema: The schema to write them under.
         path: The destination parquet file.
     """
-    if isinstance(data, Mapping):
-        columns = dict(data)
-    else:
-        columns = {name: [] for name in schema.names}
-        for row in data:
-            for field in fields(row):
-                held = getattr(row, field.name)
-                # A nested row is read as its own fields are
-                if is_dataclass(held):
-                    for one in fields(held):
-                        columns[one.name].append(getattr(held, one.name))
-                else:
-                    columns[field.name].append(held)
+    columns = {name: [] for name in schema.names}
+    for row in data:
+        for field in fields(row):
+            held = getattr(row, field.name)
+            # A nested row is read as its own fields are
+            if is_dataclass(held):
+                for one in fields(held):
+                    columns[one.name].append(getattr(held, one.name))
+            else:
+                columns[field.name].append(held)
     table = pa.Table.from_pydict(columns, schema=schema)
     with atomic_path(path) as tmp:
         pq.write_table(table, tmp, compression="zstd")

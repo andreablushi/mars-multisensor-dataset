@@ -7,6 +7,7 @@ import tarfile
 import warnings
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
+from itertools import repeat
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -110,19 +111,20 @@ def published_folder(
     told = f"{len(files) + len(last):,} files, {going / 1e6:.0f} MB"
     print(f"uploading {name}, {told}", flush=True)
 
-    def send(path: Path) -> None:
-        """Send one file to the key its path inside the tree names.
-
-        Args:
-            path: The file to send.
-        """
-        key = prefix + path.relative_to(root).as_posix()
-        client.upload_file(Filename=str(path), Bucket=bucket, Key=key)
-
+    keys = {
+        path: prefix + path.relative_to(root).as_posix() for path in [*files, *last]
+    }
     with ThreadPoolExecutor(max_workers=uploads) as sending:
-        list(sending.map(send, files))
+        list(
+            sending.map(
+                client.upload_file,
+                map(str, files),
+                repeat(bucket),
+                map(keys.get, files),
+            )
+        )
     for path in last:
-        send(path)
+        client.upload_file(str(path), bucket, keys[path])
     return project.new_artifact(
         name=name, kind="artifact", path=published_at(project, name, "")
     )
@@ -163,18 +165,12 @@ def download_objects(
         downloads: How many objects are brought down at once.
     """
     client, bucket, prefix = stored_folder(project, name)
-
-    def fetch(one: str) -> None:
-        """Bring one object down to its path under the directory.
-
-        Args:
-            one: The object's path inside the folder.
-        """
+    for one in names:
         (into / one).parent.mkdir(parents=True, exist_ok=True)
-        client.download_file(Bucket=bucket, Key=prefix + one, Filename=str(into / one))
-
+    keys = [prefix + one for one in names]
+    files = [str(into / one) for one in names]
     with ThreadPoolExecutor(max_workers=downloads) as fetching:
-        list(fetching.map(fetch, names))
+        list(fetching.map(client.download_file, repeat(bucket), keys, files))
 
 
 def download_artifact(project, artifact: Artifact) -> None:

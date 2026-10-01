@@ -6,6 +6,7 @@ import os
 from collections.abc import Sequence
 
 from rich.console import Console
+from rich.progress import BarColumn, MofNCompleteColumn, Progress
 
 # Set by a platform run, whose log takes plain flushed lines rather than a bar.
 PLAIN_LOG_ENV = "PIPELINE_PLAIN_LOG"
@@ -26,8 +27,19 @@ def plain_log() -> bool:
     return bool(os.environ.get(PLAIN_LOG_ENV))
 
 
+def progress_bar(console: Console) -> Progress:
+    """Return a stage's bar, left undrawn on a plain log."""
+    return Progress(
+        BarColumn(bar_width=None),
+        MofNCompleteColumn(),
+        console=console,
+        # A platform log takes plain flushed lines, since no cursor can move there
+        disable=plain_log(),
+    )
+
+
 def print_progress_line(
-    description: str, completed: int, total: int, label: str = ""
+    description: str, completed: int, total: int, label: str, lines: int
 ) -> None:
     """Print how far a stage has got, in the plain form a platform log takes.
 
@@ -36,7 +48,10 @@ def print_progress_line(
         completed: How many units are finished.
         total: How many there are.
         label: What just finished, where the stage names its units.
+        lines: About how many lines the whole stage prints.
     """
+    if completed % max(1, total // lines) and completed != total:
+        return
     share = completed / total
     print(
         f"{description} {completed}/{total} ({share:.0%}) {label}".rstrip(), flush=True
@@ -73,15 +88,3 @@ def print_listed(lines: Sequence[str], console: Console) -> None:
         console.print(f"[yellow]  {line}[/yellow]")
     if len(lines) > LISTED:
         console.print(f"[yellow]  and {len(lines) - LISTED} more[/yellow]")
-
-
-def print_interrupted(kept: str) -> None:
-    """Print the notice shown when a run is stopped with Ctrl-C.
-
-    Args:
-        kept: What a stopped run leaves behind, which each half names its own.
-    """
-    Console().print(
-        f"[yellow]interrupted: pending jobs cancelled, {kept} kept. "
-        "Re-run to resume.[/yellow]"
-    )

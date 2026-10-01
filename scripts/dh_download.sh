@@ -64,19 +64,12 @@ if [[ ${1-} == -h || ${1-} == --help ]]; then
     exit 0
 fi
 
-names=("$@")
-if [[ ${#names[@]} -eq 0 ]]; then
-    names=(coverage metadata selection stats summary labels verdicts)
-fi
+(($#)) || set -- coverage metadata selection stats summary labels verdicts
 
-for name in "${names[@]}"; do
+for name in "$@"; do
     case "$name" in
-        coverage) download_one coverage data/analysis/coverage ;;
-        metadata) download_one metadata data/analysis/metadata ;;
-        selection) download_one selection data/analysis/selection ;;
-        stats) download_one stats data/analysis/stats ;;
+        coverage | metadata | selection | stats | labels) download_one "$name" "data/analysis/$name" ;;
         summary) download_one summary data/analysis/coverage shares ;;
-        labels) download_one labels data/analysis/labels ;;
         verdicts) download_one verdicts data/analysis shares ;;
         *)
             echo "nothing is published under \`$name\`" >&2

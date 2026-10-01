@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from analysis.models.tile_group import TileGroup
 from common.config import analysis_settings
-from common.maths.geodesy import HALF_TURN, TURN, longitude_span
+from common.maths.geodesy import HALF_TURN, TURN
 from common.maths.tessellate import Tessellate
 from common.models.tile import Tile
 
@@ -22,8 +22,7 @@ def group_name(bands: int, tile: Tile, tile_group_deg: float) -> str:
     """
     rows = max(1, round(tile_group_deg / (HALF_TURN / bands)))
     sectors = max(1, round(TURN / tile_group_deg))
-    span = longitude_span(tile.west_lon, tile.east_lon)
-    centre = (tile.west_lon + span / 2.0) % TURN
+    centre = (tile.west_lon + tile.span / 2.0) % TURN
     sector = min(int(centre / TURN * sectors), sectors - 1)
     return f"r{tile.band // rows:02d}_s{sector:02d}"
 
@@ -38,6 +37,11 @@ def group_of(tile: Tile) -> str:
     return group_name(
         len(tile_grid().columns), tile, analysis_settings().tile_group_deg
     )
+
+
+def group_of_tile_named(name: str) -> str:
+    """Return the group the analysis config puts the tile of one name in."""
+    return group_of(tile_grid().tile_named(name))
 
 
 def every_tile_group(grid: Tessellate, tile_group_deg: float) -> list[TileGroup]:

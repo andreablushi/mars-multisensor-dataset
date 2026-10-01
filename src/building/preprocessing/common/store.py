@@ -9,7 +9,6 @@ import numpy as np
 
 from building import paths
 from building.common.layout import Axis, Layout
-from building.preprocessing.common import relative_positioning
 from building.preprocessing.common.models.sample import Sample
 from common.disk.files import atomic_path
 from common.disk.slugify import slugify
@@ -29,6 +28,9 @@ METRES = "metres"
 
 # What the crop is described by: its axes, its tile, its units and its label.
 META = "meta"
+
+# What the offsets are stored as, which holds a centimetre over any tile.
+STORED = np.float32
 
 
 def sample_path(frame: Tile, instrument: str, identifier: str) -> Path:
@@ -59,8 +61,7 @@ def native(values: np.ndarray) -> np.ndarray:
     Returns:
         values: The same values in the machine's own order, ready to hand to a tensor.
     """
-    held = np.asarray(values)
-    return held.astype(held.dtype.newbyteorder("="), copy=False)
+    return values.astype(values.dtype.newbyteorder("="), copy=False)
 
 
 def write_sample(
@@ -102,8 +103,8 @@ def write_sample(
     arrays[layout.measurement] = values.astype(
         layout.stored or values.dtype, copy=False
     )
-    arrays[NORTH] = np.asarray(position.north, dtype=relative_positioning.STORED)
-    arrays[EAST] = np.asarray(position.east, dtype=relative_positioning.STORED)
+    arrays[NORTH] = np.asarray(position.north, dtype=STORED)
+    arrays[EAST] = np.asarray(position.east, dtype=STORED)
     arrays[MEASURED] = held.measured_ground
     for name, mask in ((INSIDE, held.inside), (VALID, held.valid)):
         # The two the rooted mask is made of, kept for whoever wants them apart.
@@ -124,10 +125,8 @@ def write_sample(
         "centre_lon": frame.centre_lon,
         "centre_lat": frame.centre_lat,
         "box": {
-            "min_lat": frame.min_lat,
-            "max_lat": frame.max_lat,
-            "west_lon": frame.west_lon,
-            "east_lon": frame.east_lon,
+            edge: getattr(frame, edge)
+            for edge in ("min_lat", "max_lat", "west_lon", "east_lon")
         },
         "position_units": DEGREES if grid is None else METRES,
         "radii_m": [physics.EQUATORIAL_RADIUS_M, physics.POLAR_RADIUS_M],

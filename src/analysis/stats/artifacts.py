@@ -15,15 +15,12 @@ from analysis.stats.models import DatasetStats, Spread
 from common.disk.files import atomic_path
 
 
-def write_stats(stats: DatasetStats, root: Path = paths.STATS_ROOT) -> Path:
+def write_stats(stats: DatasetStats, root: Path = paths.STATS_ROOT) -> None:
     """Write out what the filter left of the dataset.
 
     Args:
         stats: The stats read over every tile searched.
         root: The directory to write it in, made when it is missing.
-
-    Returns:
-        path: The file written.
     """
     laid_out = {
         "searched": stats.searched,
@@ -37,10 +34,8 @@ def write_stats(stats: DatasetStats, root: Path = paths.STATS_ROOT) -> Path:
         "overlap": astuple(stats.overlap),
         "iids": stats.iids,
     }
-    path = root / paths.STATS_NAME
-    with atomic_path(path) as tmp:
+    with atomic_path(root / paths.STATS_NAME) as tmp:
         tmp.write_text(json.dumps(laid_out, indent=1) + "\n", encoding="utf-8")
-    return path
 
 
 def read_stats(root: Path = paths.STATS_ROOT) -> DatasetStats:

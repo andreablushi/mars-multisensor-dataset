@@ -77,9 +77,7 @@ def download_sparse_image(
         return
     if not url:
         raise FileNotFoundError(f"No .img offered for {path.stem}.")
-    ranges.patched(
-        url, path, spans, size, archive.TIMEOUT, client=client, origin=origin
-    )
+    ranges.patched(url, path, spans, size, client=client, origin=origin)
 
 
 def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:

@@ -45,15 +45,14 @@ def compute_coverage(force: bool = False, workers: int | None = None) -> int:
     downloaded, measured = runner.pipeline_outcomes(settings, console, force, workers)
     elapsed = time.monotonic() - started_at
     coverage_artifacts.reindex()
-    unmeasured = planner.unmeasured_sources(paths.metadata_files())
-    print_summary(downloaded, measured, elapsed, unmeasured, console)
+    print_summary(downloaded, measured, elapsed, planner.unmeasured_sources(), console)
     unread = summarise_ancillary(settings, force)
     console.print(f"ancillary: {unread} tables left unread")
     failed = any(outcome.failed for outcome in [*downloaded, *measured])
     return 1 if failed or unread else 0
 
 
-def compute_labels(force: bool = False) -> list[Label]:
+def compute_labels(force: bool) -> list[Label]:
     """Label every kept tile, draw the balanced set held out of training, and write it.
 
     Args:

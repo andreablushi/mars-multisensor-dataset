@@ -41,13 +41,7 @@ def classes_map(
     figure, axis = mosaic.mars_board(image, f"{len(drawn):,} tiles drawn")
     for name, colour in colours.items():
         lon, lat = zip(
-            *(
-                geodesy.bbox_centre(
-                    label.min_lat, label.max_lat, label.west_lon, label.east_lon
-                )
-                for label in drawn
-                if label.label == name
-            ),
+            *(geodesy.bbox_centre(label) for label in drawn if label.label == name),
             strict=True,
         )
         axis.scatter(

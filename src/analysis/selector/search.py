@@ -36,13 +36,9 @@ def best_survey(track: Track, criteria: Filter) -> Survey | None:
     last_seen_before: list[list[int]] = []
     last_seen: list[dict[int, int]] = [{} for _ in track.iids]
     for index, owner in enumerate(track.owners):
-        seen_by_owner = last_seen[owner]
-        before: list[int] = []
-        for cell in track.cells[index].tolist():
-            before.append(seen_by_owner.get(cell, -1))
-            seen_by_owner[cell] = index
-        before.sort()
-        last_seen_before.append(before)
+        seen_by_owner, cells = last_seen[owner], track.cells[index].tolist()
+        last_seen_before.append(sorted(seen_by_owner.get(cell, -1) for cell in cells))
+        seen_by_owner.update(dict.fromkeys(cells, index))
     # Take the best window
     best: tuple[int, int] | None = None
     best_score = float("-inf")

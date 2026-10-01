@@ -55,14 +55,7 @@ def counted(number: float, noun: str) -> str:
 
 
 def pixels(count: float) -> str:
-    """Write a pixel count.
-
-    Args:
-        count: The pixel count.
-
-    Returns:
-        written: The count in pixels.
-    """
+    """Write a pixel count."""
     return f"{compact(count)} px"
 
 

@@ -17,6 +17,22 @@ Box = tuple[
 ]
 
 
+class Boxed:
+    """Anything bounded by two latitudes and two longitudes."""
+
+    __slots__ = ()
+
+    @property
+    def span(self) -> float:
+        """Return how many degrees of longitude the box spans eastward."""
+        return longitude_span(self.west_lon, self.east_lon)
+
+    @property
+    def circles_a_pole(self) -> bool:
+        """Return whether the box runs through every longitude."""
+        return self.west_lon == self.east_lon
+
+
 def bounds_box(bounded) -> Box:
     """Return the box one tile or one feature is bounded by.
 

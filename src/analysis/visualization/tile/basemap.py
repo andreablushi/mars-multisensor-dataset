@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import partial
 from html import escape
 
 import ipywidgets as widgets
@@ -67,7 +68,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
     return widgets.HBox(
         [
             report,
-            mosaic.fetched(box, lambda image: tile_map(placed, image, title)),
+            mosaic.fetched(box, partial(tile_map, placed, title)),
         ],
         layout=widgets.Layout(
             align_items="flex-start", flex_flow="row nowrap", grid_gap="24px"
@@ -75,13 +76,13 @@ def plot(coverage: Coverage) -> widgets.Widget:
     )
 
 
-def tile_map(placed: PlacedTile, image: bytes, title: str) -> widgets.Image:
+def tile_map(placed: PlacedTile, title: str, image: bytes) -> widgets.Image:
     """Draw the tile's crop of the mosaic, with the ground it covers outlined.
 
     Args:
         placed: Where the tile falls in lon and lat.
-        image: The tile's crop, as the mosaic fetched it.
         title: What the map is titled.
+        image: The tile's crop, as the mosaic fetched it.
 
     Returns:
         map: The map, rendered.

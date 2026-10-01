@@ -69,7 +69,7 @@ class TilePicker:
         """Draw one panel for the confirmed tile, or a stand-in where it has none."""
         return render(self.coverage) if self.coverage else panels.unavailable()
 
-    def _confirmed(self, _button=None) -> None:
+    def _confirmed(self, _button) -> None:
         """Load the tile holding the confirmed point and refill every claimed area."""
         grid = tile_grid()
         band, column = grid.tile_indices(self._lat.value, self._lon.value)

@@ -6,7 +6,6 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from rich.console import Console
-from rich.progress import BarColumn, MofNCompleteColumn, Progress
 
 from analysis.models.job import Outcome, Plan
 from common import console as printing
@@ -28,16 +27,8 @@ def describe(download: Plan, coverage: Plan, console: Console) -> None:
 
 
 def print_progress(stage: str, done: int, total: int, label: str = "") -> None:
-    """Print how far a stage has got, once every fiftieth of it.
-
-    Args:
-        stage: The stage, carried on every line printed.
-        done: How many units are finished.
-        total: How many there are.
-        label: What just finished, where the stage names its units.
-    """
-    if done % max(1, total // LOGGED_LINES) == 0 or done == total:
-        printing.print_progress_line(stage, done, total, label)
+    """Print how far a stage has got, once every fiftieth of it."""
+    printing.print_progress_line(stage, done, total, label, LOGGED_LINES)
 
 
 class Tracker:
@@ -53,13 +44,7 @@ class Tracker:
         """
         self.stage, self.total, self.console = stage, total, console
         self.done = self.failed = 0
-        self.bar = Progress(
-            BarColumn(bar_width=None),
-            MofNCompleteColumn(),
-            console=console,
-            # A platform log takes plain flushed lines, since no cursor can move there
-            disable=printing.plain_log(),
-        )
+        self.bar = printing.progress_bar(console)
         self.task = self.bar.add_task(stage, total=total)
 
     def __enter__(self) -> Tracker:
@@ -81,11 +66,11 @@ class Tracker:
         if outcome.failed:
             self.failed += 1
             printing.print_failure(
-                outcome.label, outcome.error, self.failed, self.console
+                outcome.job.label, outcome.error, self.failed, self.console
             )
         self.bar.update(self.task, completed=self.done)
         if self.bar.disable:
-            print_progress(self.stage, self.done, self.total, outcome.label)
+            print_progress(self.stage, self.done, self.total, outcome.job.label)
 
 
 def print_summary(

@@ -55,16 +55,10 @@ class Grid:
         """
         step_x = (self.east - self.west) / self.side
         step_y = (self.north - self.south) / self.side
-        return np.asarray(
-            [
-                box(
-                    self.west + column * step_x,
-                    self.south + row * step_y,
-                    self.west + (column + 1) * step_x,
-                    self.south + (row + 1) * step_y,
-                )
-                for row in range(self.side)
-                for column in range(self.side)
-            ],
-            dtype=object,
+        rows, columns = np.divmod(np.arange(self.side**2), self.side)
+        return box(
+            self.west + columns * step_x,
+            self.south + rows * step_y,
+            self.west + (columns + 1) * step_x,
+            self.south + (rows + 1) * step_y,
         )

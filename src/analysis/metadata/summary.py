@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import functools
 
-import pyarrow.parquet as pq
-
 from analysis import paths
 from analysis.metadata.fetchers.ancillary import fetch_distortions
 from analysis.models.ancillary import Distortion
@@ -19,7 +17,7 @@ from common.disk.files import read_jsonl
 DISTORTIONS = parquet.schema_of(Distortion)
 
 
-def summarise_ancillary(settings: Settings, force: bool = False) -> int:
+def summarise_ancillary(settings: Settings, force: bool) -> int:
     """Read every look not yet read, and write its distortion into the summary.
 
     Args:
@@ -70,5 +68,6 @@ def read_distortions(group: str | None = None) -> tuple[Distortion, ...]:
     if not paths.DISTORTIONS_PATH.exists():
         return ()
     filters = None if group is None else [("group", "==", group)]
-    rows = pq.read_table(paths.DISTORTIONS_PATH, schema=DISTORTIONS, filters=filters)
-    return tuple(Distortion(**row) for row in rows.to_pylist())
+    return tuple(
+        parquet.read_rows(Distortion, DISTORTIONS, paths.DISTORTIONS_PATH, filters)
+    )

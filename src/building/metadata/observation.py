@@ -155,7 +155,12 @@ def measured_statistics(
         fields: The count, min, max, mean and std, and each band's where it has one.
     """
     ground = layout.axis_indices(Axis.GROUND)
-    value_min, value_max, value_mean, value_std = value_statistics(values, measured)
+    # An integer holds no infinite identity, so the reduction starts at its type's edge.
+    limits = (
+        np.iinfo(values.dtype)
+        if np.issubdtype(values.dtype, np.integer)
+        else np.finfo(values.dtype)
+    )
     band_mean = band_std = band_valid_count = None
     # A band is the one axis a reader normalises against, so it survives the reduction.
     if Axis.WAVELENGTH in layout.axes:
@@ -175,40 +180,14 @@ def measured_statistics(
         )
     return {
         "valid_count": int(measured.sum()),
-        "value_min": value_min,
-        "value_max": value_max,
-        "value_mean": value_mean,
-        "value_std": value_std,
+        "value_min": float(np.min(values, where=measured, initial=limits.max)),
+        "value_max": float(np.max(values, where=measured, initial=limits.min)),
+        "value_mean": float(np.mean(values, where=measured)),
+        "value_std": float(np.std(values, where=measured)),
         "band_mean": band_mean,
         "band_std": band_std,
         "band_valid_count": band_valid_count,
     }
-
-
-def value_statistics(
-    values: np.ndarray, measured: np.ndarray
-) -> tuple[float, float, float, float]:
-    """Return the min, max, mean and standard deviation of the measured values.
-
-    Args:
-        values: The value array.
-        measured: Where it holds a measurement, on its own shape, somewhere True.
-
-    Returns:
-        statistics: The four.
-    """
-    # An integer holds no infinite identity, so the reduction starts at its type's edge.
-    limits = (
-        np.iinfo(values.dtype)
-        if np.issubdtype(values.dtype, np.integer)
-        else np.finfo(values.dtype)
-    )
-    return (
-        float(np.min(values, where=measured, initial=limits.max)),
-        float(np.max(values, where=measured, initial=limits.min)),
-        float(np.mean(values, where=measured)),
-        float(np.std(values, where=measured)),
-    )
 
 
 def _spread_mask(

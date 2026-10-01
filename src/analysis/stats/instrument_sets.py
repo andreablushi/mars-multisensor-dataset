@@ -25,14 +25,10 @@ def landings_per_set(tile_track: TileTrack) -> list[Landing]:
         counted[owner].append(
             landed_pixels(observation, len(cells), track.grid.cell_km2)
         )
+    sets = zip(track.labels, track.iids, counted, track.min_pixels, strict=True)
     return [
-        Landing(
-            label=track.labels[owner],
-            iid=track.iids[owner],
-            counts=sorted(counted[owner]),
-            bar=track.min_pixels[owner],
-        )
-        for owner in range(len(track.labels))
+        Landing(label=label, iid=iid, counts=sorted(counts), bar=bar)
+        for label, iid, counts, bar in sets
     ]
 
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import digitalhub as dh
 
 from building.preprocessing.ctx import isis
-from dhub import configs, credentials
+from dhub import configs
 from dhub.paths import Function
 
 
@@ -54,7 +54,7 @@ def submitted(stage: Function, ref: str, **parameters) -> int:
         action="job",
         profile=asked.profile,
         resources={"cpu": str(asked.cpu), "mem": asked.memory, "disk": asked.disk},
-        secrets=[credentials.TOKEN],
+        secrets=["DHCORE_PERSONAL_ACCESS_TOKEN"],
         envs=[
             {"name": "PYTHONPATH", "value": f"{root}:{root}/src:{root}/scripts"},
             *(isis.ENVS if asked.isis else []),

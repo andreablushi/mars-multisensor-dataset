@@ -11,9 +11,7 @@ from analysis.visualization import panels
 from analysis.visualization.panels import Coverage
 from common.config import analysis_settings
 
-SURVEY_LINE = "#1a1a1a"
-SURVEY_STYLE = (0, (6, 3))
-SURVEY_WIDTH = 0.8
+SURVEY = dict(color="#1a1a1a", linestyle=(0, (6, 3)), linewidth=0.8)
 
 
 def plot(coverage: Coverage) -> widgets.Widget:
@@ -36,22 +34,9 @@ def plot(coverage: Coverage) -> widgets.Widget:
             continue
         axis.axvspan(window.start, window.end, color="#9e9e9e", alpha=0.18, zorder=0)
         for edge in (window.start, window.end):
-            axis.axvline(
-                edge,
-                color=SURVEY_LINE,
-                linestyle=SURVEY_STYLE,
-                linewidth=SURVEY_WIDTH,
-                zorder=4,
-            )
+            axis.axvline(edge, zorder=4, **SURVEY)
     if window and any(timeline.iid not in timeless for timeline in timelines):
-        marker = Line2D(
-            [],
-            [],
-            color=SURVEY_LINE,
-            linestyle=SURVEY_STYLE,
-            linewidth=SURVEY_WIDTH,
-            label="the window the tile earned",
-        )
+        marker = Line2D([], [], label="the window the tile earned", **SURVEY)
         axes[0].legend(handles=[marker], fontsize=8, loc="upper right", frameon=False)
     if not any(timeline.observed for timeline in timelines):
         axes[0].set_xlim(

@@ -62,8 +62,7 @@ def stacked(count: int, height: float, **shared) -> tuple[Figure, list[Axes]]:
         axes: Its panels, top to bottom.
     """
     figure = Figure(figsize=(11, height))
-    axes = figure.subplots(count, 1, squeeze=False, **shared)
-    return figure, [axis for row in axes for axis in row]
+    return figure, list(figure.subplots(count, 1, squeeze=False, **shared)[:, 0])
 
 
 def stems(axis: Axes, at: Sequence, heights: Sequence, colour: Colour) -> None:
