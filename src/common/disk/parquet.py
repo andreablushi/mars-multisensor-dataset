@@ -1,10 +1,11 @@
-"""Writing the parquet artifacts, under a schema derived from the rows."""
+"""The parquet artifacts, written under a schema derived from the rows and read back."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import fields, is_dataclass
 from datetime import datetime
+from functools import cache
 from pathlib import Path
 from types import NoneType, UnionType
 from typing import Any, get_args, get_origin, get_type_hints
@@ -22,6 +23,8 @@ _ARROW = {
     bytes: pa.binary(),
     datetime: pa.timestamp("us", tz="UTC"),
 }
+
+type_hints = cache(get_type_hints)
 
 
 def set_type(kind: Any) -> Any:
@@ -41,7 +44,7 @@ def schema_of(model: type) -> pa.Schema:
     Returns:
         schema: The schema, every column nullable as parquet writes them.
     """
-    hints = get_type_hints(model)
+    hints = type_hints(model)
     columns = []
     for field in fields(model):
         kind = set_type(hints[field.name])
@@ -67,7 +70,7 @@ def build[Row](model: type[Row], row: Mapping[str, Any]) -> Row:
     Returns:
         model: The model, the rows it composes built from the same flat columns.
     """
-    hints = get_type_hints(model)
+    hints = type_hints(model)
     held: dict[str, Any] = {}
     for field in fields(model):
         kind = set_type(hints[field.name])
