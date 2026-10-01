@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import math
 from collections.abc import Callable, Sequence
 from concurrent.futures import ProcessPoolExecutor
@@ -18,23 +17,24 @@ from building.common.layout import Axis
 from building.configs import mola as mola_configs
 from building.dispatcher import INSTRUMENTS
 from building.metadata import observation
-from building.metadata.dataset import read_normalization
+from building.metadata.dataset import read_manifest, read_normalization, write_manifest
 from building.metadata.index import read_observation_metadata
 from building.metadata.observation import (
     ObservationMetadata,
     measured_mask,
     measured_statistics,
 )
-from building.models.settings import Settings
+from building.models.settings import BuildSettings
 from building.preprocessing.common.store import MEASURED
 from common.disk import parquet
-from common.disk.files import atomic_path
+from common.disk.files import write_npz
+from common.pool import cancellable_pool
 
 UNSCALED = (mola_configs.LAYOUT.instrument,)
 
 
 def normalize_dataset(
-    settings: Settings,
+    settings: BuildSettings,
     root: Path,
     budget: int,
     fetch: Callable[[str, Path, Sequence[str]], None] | None,
@@ -73,13 +73,9 @@ def normalize_dataset(
             for name in {records[at].instrument for at in pending}
         }
         # Frozen before any crop changes, so a resumed build applies the same ones
-        manifest = root / paths.DATASET_MANIFEST_NAME
-        described = json.loads(manifest.read_text())
-        manifest.write_text(
-            json.dumps(described | {"normalization": constants}, indent=2)
-        )
+        write_manifest(replace(read_manifest(root), normalization=constants), root)
     print(f"normalizing {len(pending):,} crops", flush=True)
-    with ProcessPoolExecutor(max_workers=settings.workers) as pool:
+    with cancellable_pool(ProcessPoolExecutor(settings.workers)) as pool:
         for batch in _batches(pending, records, budget if checkpoint else math.inf):
             rows = [records[at] for at in batch]
             missing = [one.path for one in rows if not (root / one.path).exists()]
@@ -92,7 +88,7 @@ def normalize_dataset(
             )
             for at, one in zip(batch, scaled, strict=True):
                 records[at] = one
-            parquet.write(
+            parquet.write_rows(
                 records, observation.SCHEMA, root / paths.OBSERVATION_METADATA_NAME
             )
             if checkpoint:
@@ -100,7 +96,7 @@ def normalize_dataset(
 
 
 def _reference_normalization(
-    settings: Settings, fetch: Callable[[str, Path, Sequence[str]], None] | None
+    settings: BuildSettings, fetch: Callable[[str, Path, Sequence[str]], None] | None
 ) -> dict[str, dict[str, Any]] | None:
     """Return the constants of the build this one is standardised like, if any.
 
@@ -224,8 +220,7 @@ def normalized_crop(
         0.0,
     ).astype(values.dtype)
     arrays[layout.measurement] = scaled
-    with atomic_path(path) as tmp, tmp.open("wb") as handle:
-        np.savez_compressed(handle, **arrays)
+    write_npz(path, arrays)
     # Half floats overflow a sum of squares, so the stored values are measured wider
     described = measured_statistics(scaled.astype(np.float32), measured, layout)
     return replace(record, normalized=True, **described)

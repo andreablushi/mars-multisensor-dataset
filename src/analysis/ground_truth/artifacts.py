@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Sequence
 from pathlib import Path
 
 from analysis import paths
 from analysis.ground_truth.models.label import Label
 from common.disk import parquet
+from common.disk.files import read_json
 
 LABELS = parquet.schema_of(Label)
 
@@ -20,7 +20,7 @@ def write_labels(labels: Sequence[Label], root: Path = paths.LABELS_ROOT) -> Non
         labels: Every labelled tile.
         root: The directory the file is written in, made when it is missing.
     """
-    parquet.write(labels, LABELS, root / paths.LABELS_NAME)
+    parquet.write_rows(labels, LABELS, root / paths.LABELS_NAME)
 
 
 def read_labels() -> list[Label]:
@@ -43,5 +43,5 @@ def read_refused() -> set[str]:
     """
     if not paths.VERDICTS_PATH.is_file():
         return set()
-    verdicts = json.loads(paths.VERDICTS_PATH.read_text(encoding="utf-8"))
+    verdicts = read_json(paths.VERDICTS_PATH)
     return {tile for tile, accepted in verdicts.items() if not accepted}

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import csv
-import json
 from collections.abc import Sequence
 
 import numpy as np
@@ -12,6 +11,7 @@ from building.configs import ctx as configs
 from building.preprocessing.ctx.isis import read_cube_label, run_isis
 from building.preprocessing.ctx.models.observation import CtxObservation
 from building.preprocessing.ctx.normalize import scan_statistics
+from common.disk.files import read_json
 
 
 def read_observation(
@@ -63,9 +63,8 @@ def read_observation(
     )
     with table.open() as held:
         rows = [row for row in csv.DictReader(held) if row["PlanetocentricLatitude"]]
-    said = files[configs.METADATA_SUFFIX]
     return CtxObservation(
-        json.loads(said.read_text()) if said.exists() else {},
+        read_json(files[configs.METADATA_SUFFIX]),
         cube,
         lines,
         np.array([float(row["Line"]) for row in rows]),

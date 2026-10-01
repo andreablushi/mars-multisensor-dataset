@@ -12,6 +12,7 @@ from shapely.geometry.base import BaseGeometry
 
 from analysis.coverage.measurement.accumulation import coarse_split
 from analysis.coverage.models.region import TileRegion
+from common.pool import cancellable_pool
 
 # How many observations a cell folds in before its union is rebuilt in one
 UNION_CHUNK = 64
@@ -39,7 +40,7 @@ def new_ground(
     footprints = np.asarray(shapes, dtype=object)
     grid = coarse_split.grid_over(region, footprints)
     ground = np.zeros(len(shapes), dtype=float)
-    with ThreadPoolExecutor(max_workers=threads) as pool:
+    with cancellable_pool(ThreadPoolExecutor(threads)) as pool:
         for contributions in pool.map(
             lambda cell: new_ground_in_cell(footprints, *cell),
             coarse_split.reached_cells(grid, region, footprints),

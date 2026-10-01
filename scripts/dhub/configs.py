@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 from common.config import load_config
 
@@ -49,17 +49,6 @@ class Platform:
     resources: dict[str, Resources]
 
 
-def load() -> Platform:
-    """Settle what a platform run is given, reading the config file once.
-
-    Returns:
-        platform: The settled choices, each profile marked for its pool.
-    """
-    platform = load_config("digitalhub", Platform)
-    return replace(
-        platform,
-        resources={
-            stage: replace(one, profile=one.profile + ("-shared" if one.shared else ""))
-            for stage, one in platform.resources.items()
-        },
-    )
+def load_platform() -> Platform:
+    """Settle what a platform run is given, reading the config file once."""
+    return load_config("digitalhub", Platform)

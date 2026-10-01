@@ -18,7 +18,7 @@ from building.dispatcher import INSTRUMENTS, Archive
 from building.metadata.observation import ObservationMetadata, observation_metadata
 from building.models.job import Job, Outcome
 from building.models.progress import Progress, Stage
-from building.models.settings import Settings
+from building.models.settings import BuildSettings
 from building.preprocessing.common import store
 
 
@@ -31,7 +31,7 @@ class Scheduler:
         fetching: dict[str, ThreadPoolExecutor],
         building: ProcessPoolExecutor,
         root: Path,
-        settings: Settings,
+        settings: BuildSettings,
         progress: Progress,
     ) -> None:
         """Open a schedule over the pools a build runs on.

@@ -45,14 +45,7 @@ TLS_CONTEXT.verify_flags &= ~ssl.VERIFY_X509_STRICT
 
 @functools.cache
 def throttle(host: str) -> Throttle:
-    """Return the pause every request to one host waits out.
-
-    Args:
-        host: The host asked, whose refusals hold back its requests alone.
-
-    Returns:
-        throttle: The one throttle that host shares across threads.
-    """
+    """Return the throttle one host's requests share, held back by its refusals."""
     return Throttle()
 
 
@@ -101,6 +94,31 @@ def transport_failure(
     if isinstance(error, CONNECT_ERRORS):
         archive.refused()
     return error
+
+
+def retry_error(status: int, url: str, archive: Throttle) -> FetchError | None:
+    """Return the error to ask again on, or None once the server has answered.
+
+    Args:
+        status: The HTTP status the server replied with.
+        url: Where it was asked.
+        archive: The throttle of its host, eased by an answer and held by a crowd.
+
+    Returns:
+        retry: The error to ask again on, or None for a reply worth reading.
+
+    Raises:
+        FetchError: When the server refuses the request outright.
+    """
+    if status in RETRYABLE_STATUS:
+        # One refusal slows every thread on that host, so a run stops being blocked.
+        if status in CROWDED_STATUS:
+            archive.refused()
+        return FetchError(f"HTTP {status}")
+    archive.answered()
+    if status >= 400:
+        raise FetchError(f"{url} refused the request: HTTP {status}")
+    return None
 
 
 def attempts(archive: Throttle, give_up_at: float, retries: int) -> Iterator[None]:
@@ -161,15 +179,9 @@ def fetched_json(
         except httpx.HTTPError as error:
             last = transport_failure(error, host, archive)
             continue
-        if reply.status_code in RETRYABLE_STATUS:
-            # One refusal slows every thread on that host, so a run stops being blocked.
-            if reply.status_code in CROWDED_STATUS:
-                archive.refused()
-            last = FetchError(f"HTTP {reply.status_code}")
+        if retry := retry_error(reply.status_code, url, archive):
+            last = retry
             continue
-        archive.answered()
-        if reply.status_code >= 400:
-            raise FetchError(f"{url} refused the request: HTTP {reply.status_code}")
         try:
             payload = reply.json()
         except ValueError as error:
@@ -215,18 +227,11 @@ def streamed(
                 timeout=httpx.Timeout(STREAM_TIMEOUT, connect=CONNECT_TIMEOUT),
                 headers=headers,
             ) as reply:
-                if reply.status_code in RETRYABLE_STATUS:
-                    if reply.status_code in CROWDED_STATUS:
-                        archive.refused()
-                    last = FetchError(f"HTTP {reply.status_code}")
+                if retry := retry_error(reply.status_code, url, archive):
+                    last = retry
                     continue
-                if reply.status_code >= 400:
-                    raise FetchError(
-                        f"{url} refused the request: HTTP {reply.status_code}"
-                    )
                 if spans and reply.status_code != httpx.codes.PARTIAL_CONTENT:
                     raise FetchError(f"{url} ignored the byte range it was asked for")
-                archive.answered()
                 # Nothing is left behind when a transfer fails part way through.
                 with atomic_path(path) as tmp, tmp.open("wb") as handle:
                     for chunk in reply.iter_bytes():

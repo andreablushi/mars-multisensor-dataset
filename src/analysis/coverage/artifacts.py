@@ -32,26 +32,26 @@ def write_coverage(
         events: The set's observation rows, tile by tile in chronological order.
         summaries: One row per tile the set reached, describing it as a whole.
     """
-    parquet.write(events, EVENTS, job.events_path)
-    parquet.write(summaries, SUMMARY, job.summary_path)
+    parquet.write_rows(events, EVENTS, job.events_path)
+    parquet.write_rows(summaries, SUMMARY, job.summary_path)
 
 
-def reindex() -> None:
-    """Rebuild the grid-wide summary from every group's summaries on disk."""
+def write_index() -> None:
+    """Rebuild the grid-wide index from every group's summaries on disk."""
     summary_paths = sorted(paths.GROUPS_ROOT.glob(f"*/*{paths.SET_SUMMARY_SUFFIX}"))
     tables = [pq.read_table(path, schema=SUMMARY) for path in summary_paths]
     combined = pa.concat_tables(tables) if tables else SUMMARY.empty_table()
-    with atomic_path(paths.COVERAGE_SUMMARY_PATH) as tmp:
+    with atomic_path(paths.COVERAGE_INDEX_PATH) as tmp:
         pq.write_table(combined, tmp, compression="zstd")
 
 
 def read_index() -> list[Summary]:
-    """Read every row of the grid-wide summary.
+    """Read every row of the grid-wide index.
 
     Returns:
         rows: One row per tile and instrument set measured, in index order.
     """
-    path = paths.COVERAGE_SUMMARY_PATH
+    path = paths.COVERAGE_INDEX_PATH
     if not path.exists():
         return []
     return parquet.read_rows(Summary, SUMMARY, path)

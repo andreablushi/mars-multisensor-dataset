@@ -22,10 +22,10 @@ def write_selection(selections: Sequence[Selection]) -> None:
     Args:
         selections: What the search left of each tile, in the order to write them.
     """
-    parquet.write(
+    parquet.write_rows(
         [selection.tile for selection in selections], TILES, paths.SELECTED_TILES_PATH
     )
-    parquet.write(
+    parquet.write_rows(
         [
             observation
             for selection in selections

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from rich.console import Console
-from rich.progress import BarColumn, MofNCompleteColumn, Progress
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
 # Set by a platform run, whose log takes plain flushed lines rather than a bar.
 PLAIN_LOG_ENV = "PIPELINE_PLAIN_LOG"
@@ -19,23 +19,8 @@ LOGGED_ERRORS = 50
 
 
 def plain_log() -> bool:
-    """Say whether a run prints flushed lines rather than drawing a bar.
-
-    Returns:
-        plain: True on a platform, whose log has no cursor to move.
-    """
+    """Say whether a run prints flushed lines, as on a platform, rather than a bar."""
     return bool(os.environ.get(PLAIN_LOG_ENV))
-
-
-def progress_bar(console: Console) -> Progress:
-    """Return a stage's bar, left undrawn on a plain log."""
-    return Progress(
-        BarColumn(bar_width=None),
-        MofNCompleteColumn(),
-        console=console,
-        # A platform log takes plain flushed lines, since no cursor can move there
-        disable=plain_log(),
-    )
 
 
 def print_progress_line(
@@ -88,3 +73,63 @@ def print_listed(lines: Sequence[str], console: Console) -> None:
         console.print(f"[yellow]  {line}[/yellow]")
     if len(lines) > LISTED:
         console.print(f"[yellow]  and {len(lines) - LISTED} more[/yellow]")
+
+
+class Tracker:
+    """One stage's progress, drawn as a bar or logged where no cursor can move."""
+
+    def __init__(
+        self,
+        stage: str,
+        total: int,
+        console: Console,
+        lines: int,
+        logged: Callable[[str], str] = str,
+    ) -> None:
+        """Set up the stage's bar, left undrawn on a plain log.
+
+        Args:
+            stage: The stage, labelling the bar or every line.
+            total: How many jobs it runs.
+            console: The console to draw on.
+            lines: About how many lines the stage logs where no cursor can move.
+            logged: What a logged line names a finished job by, given its label.
+        """
+        self.stage, self.total, self.console = stage, total, console
+        self.lines, self.logged = lines, logged
+        self.done = self.failed = 0
+        self.bar = Progress(
+            TextColumn("{task.description}"),
+            BarColumn(bar_width=None),
+            MofNCompleteColumn(),
+            console=console,
+            # A platform log takes plain flushed lines, since no cursor can move there
+            disable=plain_log(),
+        )
+        self.task = self.bar.add_task(stage, total=total)
+
+    def __enter__(self) -> Tracker:
+        """Start drawing the bar."""
+        self.bar.start()
+        return self
+
+    def __exit__(self, *raised: object) -> None:
+        """Stop drawing the bar."""
+        self.bar.stop()
+
+    def advance(self, label: str, error: BaseException | None) -> None:
+        """Count one finished job, naming it when it failed.
+
+        Args:
+            label: What the job was.
+            error: What it raised, or None where it succeeded.
+        """
+        self.done += 1
+        if error is not None:
+            self.failed += 1
+            print_failure(label, error, self.failed, self.console)
+        self.bar.update(self.task, completed=self.done)
+        if self.bar.disable:
+            print_progress_line(
+                self.stage, self.done, self.total, self.logged(label), self.lines
+            )

@@ -5,19 +5,19 @@ from __future__ import annotations
 import numpy as np
 
 
-def window_size(centre: np.ndarray, width: float) -> int:
+def window_size(centres: np.ndarray, width: float) -> int:
     """Return how many bands a window of a given width covers.
 
     Args:
-        centre: The centre wavelength of every kept band, in order.
+        centres: The centre wavelength of every kept band, in order.
         width: How far the window should reach, in nm.
 
     Returns:
         size: An odd band count whose span fits inside the width, never below three.
     """
-    if centre.size < 2:
+    if centres.size < 2:
         return 3
-    step = np.abs(np.diff(centre)).mean()
+    step = np.abs(np.diff(centres)).mean()
     size = int(width // step) + 1
     return max(size - 1 + size % 2, 3)
 

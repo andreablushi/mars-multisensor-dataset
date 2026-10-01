@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from common.maths.box import Boxed
+
 
 @dataclass(frozen=True, slots=True)
-class Label:
+class Label(Boxed):
     """One kept tile, and the class the feature catalogue gives it.
 
     Attributes:
@@ -18,7 +20,8 @@ class Label:
         min_lat: The southernmost latitude of the box its crop is cut to, in degrees.
         max_lat: The northernmost latitude of that box in degrees.
         west_lon: The westernmost longitude of that box in degrees, 0 to 360.
-        east_lon: The easternmost longitude of that box in degrees, 0 to 360.
+        east_lon: The easternmost longitude of that box, 0 to 360, the westernmost
+            at a pole.
         drawn: Whether the balanced draw took it into the evaluation set.
     """
 

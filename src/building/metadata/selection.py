@@ -9,11 +9,7 @@ from analysis.selector.artifacts import read_selection, write_selection
 
 
 def exclude_tiles(dropped: Collection[str]) -> None:
-    """Rewrite the selection with every dropped tile no longer kept.
-
-    Args:
-        dropped: The names of the tiles a build dropped.
-    """
+    """Rewrite the selection with every tile named as dropped no longer kept."""
     write_selection(
         [
             replace(

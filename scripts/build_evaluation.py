@@ -10,12 +10,12 @@ from analysis.ground_truth import artifacts
 from analysis.selector.artifacts import read_selection
 from analysis.selector.models.selection import Selection
 from building import draw, paths
-from building.models.settings import Settings
+from building.models.settings import BuildSettings
 from building.runner import build_dataset
 from common.config import evaluation_settings
 
 
-def evaluation_selections(settings: Settings) -> list[Selection]:
+def evaluation_selections(settings: BuildSettings) -> list[Selection]:
     """Write the drawn labels beside the evaluation build, and read what it covers.
 
     Args:

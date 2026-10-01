@@ -17,7 +17,7 @@ download_one() {
 
     dhcli download -p "$project" artifact -n "$name" -d "$staged"
 
-    # An archive comes down packed, the summary as the one file it is
+    # An archive comes down packed, the verdicts as the one file they are
     local packed
     packed="$(find "$staged" -maxdepth 1 -name '*.tar.gz' -print -quit)"
     if [[ -n $packed ]]; then
@@ -32,7 +32,7 @@ download_one() {
         return 1
     fi
 
-    # An archive owns the directory it fills, though the summary shares one
+    # An archive owns the directory it fills, though the verdicts share one
     [[ -n $shares ]] || rm -rf "$dest"
     mkdir -p "$dest"
     cp -a "$staged"/. "$dest"/
@@ -53,7 +53,6 @@ With no name, every one of them comes down.
   metadata     the ODE records behind them     -> data/analysis/metadata
   selection    the tiles and looks kept       -> data/analysis/selection
   stats        what the filter left of it     -> data/analysis/stats
-  summary      one row per tile and set        -> data/analysis/coverage
   labels       the evaluation labels           -> data/analysis/labels
   verdicts     the review of the drawn tiles   -> data/analysis
 EOF
@@ -64,12 +63,11 @@ if [[ ${1-} == -h || ${1-} == --help ]]; then
     exit 0
 fi
 
-(($#)) || set -- coverage metadata selection stats summary labels verdicts
+(($#)) || set -- coverage metadata selection stats labels verdicts
 
 for name in "$@"; do
     case "$name" in
         coverage | metadata | selection | stats | labels) download_one "$name" "data/analysis/$name" ;;
-        summary) download_one summary data/analysis/coverage shares ;;
         verdicts) download_one verdicts data/analysis shares ;;
         *)
             echo "nothing is published under \`$name\`" >&2

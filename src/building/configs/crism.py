@@ -119,6 +119,15 @@ LAYOUT = Layout(
     band_centres_nm=BANDS_NM,
 )
 
+# What ODE publishes CRISM under.
+ODE = {"ihid": "MRO", "iid": LAYOUT.instrument}
+
+# The ODE product types an observation and its geometry are published under.
+PRODUCT_TYPES = {Kind.OBSERVATION: "TRDR", Kind.GEOMETRY: "DDR"}
+
+# The ODE product type a wavelength file is published under.
+WAVELENGTH_PRODUCT_TYPE = "CDR"
+
 # Where each product is kept, the geometry in a subdirectory beside its own scan.
 CACHE = ProductCache(
     paths.CRISM_ROOT, NAMING, {None: (".lbl", ".img")}, {Kind.GEOMETRY: "ddr"}

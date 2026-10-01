@@ -8,7 +8,7 @@ from analysis.ground_truth.models.rule import Rule
 
 
 @dataclass(slots=True)
-class Settings:
+class GroundTruthSettings:
     """The settled choices for labelling the tiles the selection kept.
 
     Attributes:

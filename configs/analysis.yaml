@@ -18,21 +18,14 @@ instruments:
   - MRO/CRISM/TRDR:*sp*_if*_trr3
   - MRO/SHARAD/USRDRV2
 
-# The table published beside a set's products, read into the least signal phase distortion of a look over each tile, and of its night side.
-ancillary:
-  MRO/SHARAD/USRDRV2:
-    pt: USGEOMV2
-    latitude: LATITUDE
-    longitude: LONGITUDE
-    solar_zenith_column: SZA
-    solar_zenith: 100.0
-    distortion: PHASE/1.0E16
+# The column of the geometry table published beside each SHARAD track read into the least signal phase distortion of a look over each tile, and of its night side.
+sharad_distortion: PHASE/1.0E16
 
 # Which products a box returns: b box overlap, f footprint overlap, o inside, i containing.
 loc: f
 
 # What a window has to hold before a tile earns a place in the dataset.
-window:
+criteria:
   # The coverage each instrument is asked of a tile, as a share of its area.
   constraints:
     - {CTX: 0.60}
@@ -42,8 +35,8 @@ window:
   # The pixels an instrument has to land on a tile to count, powers of two preferred
   admits: {CTX: 2097152, CRISM: 4096, SHARAD: 64}
 
-  # The solar zenith angle past which an instrument's look is taken at night and refused, in degrees
-  solar_zenith: {CTX: 90.0, CRISM: 90.0}
+  # The solar zenith angle past which an instrument's look is taken at night, in degrees: refused for CTX and CRISM, preferred for SHARAD
+  solar_zenith: {CTX: 90.0, CRISM: 90.0, SHARAD: 100.0}
 
   # How far Mars may turn inside a window, in degrees of Ls; 90 is one season
   span_ls: 90.0

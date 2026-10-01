@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from analysis.selector.models.filter import Constraints
+from analysis.selector.models.criteria import Constraints
 
 
 def cells_per_constraint(

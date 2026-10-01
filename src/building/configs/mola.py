@@ -13,7 +13,7 @@ from building.common.product_cache import ProductCache
 
 
 class Kind(StrEnum):
-    """The one plane of a sheet that is read, the height of its ground."""
+    """The one plane of a sheet that is read, the elevation of its ground."""
 
     TOPOGRAPHY = "topography"
 
@@ -38,6 +38,15 @@ LAYOUT = Layout(
     beside={"delay": ("line", "sample"), "delay_inside": ("line", "sample")},
     stored="int16",
 )
+
+# What ODE publishes MOLA under.
+ODE = {"ihid": "MGS", "iid": LAYOUT.instrument}
+
+# The ODE product type the gridded record is published under.
+PRODUCT_TYPE = "MEGDR"
+
+# Each sheet's extent beside its files, so no tile is queried for on its own.
+ODE_RESULTS = "opmf"
 
 # Where a sheet is kept, in the one directory of the sheet.
 CACHE = ProductCache(paths.MOLA_ROOT, NAMING, {None: (".lbl", ".img")})

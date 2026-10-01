@@ -7,6 +7,7 @@ from datetime import datetime
 
 from analysis.selector.models.selection import SelectedTile
 from common.disk import parquet
+from common.maths import box
 from common.models.tile import Tile
 
 
@@ -53,14 +54,7 @@ def tile_metadata(tile: SelectedTile) -> TileMetadata:
     Returns:
         metadata: The metadata, its frame carrying the tile's box.
     """
-    frame = Tile(
-        band=tile.band,
-        column=tile.column,
-        min_lat=tile.min_lat,
-        max_lat=tile.max_lat,
-        west_lon=tile.west_lon,
-        east_lon=tile.east_lon,
-    )
+    frame = Tile(band=tile.band, column=tile.column, **box.box_edges(tile))
     return TileMetadata(
         frame=frame,
         centre_lon=frame.centre_lon,

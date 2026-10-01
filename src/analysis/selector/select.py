@@ -1,4 +1,4 @@
-"""The dataset selection: every measured tile searched, and the rows each leaves."""
+"""The dataset selection: every measured tile searched, its rows, and its stats."""
 
 from __future__ import annotations
 
@@ -16,30 +16,38 @@ from analysis.selector.models.selection import (
 from analysis.selector.models.survey import Survey
 from analysis.selector.models.track import Track
 from analysis.selector.search import best_survey
+from analysis.stats.models import TileStats, TileTrack
+from analysis.stats.tile import measure_tile
 from analysis.utils.tile_group import tile_grid
 from common.config import analysis_settings
+from common.maths import box
 from common.models.tile import Tile
+from common.pool import cancellable_pool
 
 
-def select_dataset(workers: int) -> list[Selection]:
-    """Search every measured tile under the filter, and write the selection out.
+def select_dataset(workers: int) -> tuple[list[Selection], list[TileStats]]:
+    """Search every measured tile under the criteria, and write the selection out.
 
     Args:
         workers: How many processes to search on at once, as the run is configured.
 
     Returns:
         selections: What the search left of each tile, band by band, west to east.
+        measured: What the observations each tile keeps left on it, a group at a
+            time, for every tile with something to measure.
     """
     groups = coverage_artifacts.measured_groups()
     selections: list[Selection] = []
-    with ProcessPoolExecutor(max_workers=workers) as pool:
-        searched = pool.map(_group_selections, groups, chunksize=1)
-        for done, group_selections in enumerate(searched, 1):
+    measured: list[TileStats] = []
+    with cancellable_pool(ProcessPoolExecutor(workers)) as pool:
+        searched = pool.map(_group_selections_and_stats, groups, chunksize=1)
+        for done, (group_selections, group_stats) in enumerate(searched, 1):
             selections.extend(group_selections)
+            measured.extend(group_stats)
             console.print_progress("selection", done, len(groups))
     selections.sort(key=lambda selection: (selection.tile.band, selection.tile.column))
     write_selection(selections)
-    return selections
+    return selections, measured
 
 
 def tile_selection(survey: Survey | None, track: Track | None, tile: Tile) -> Selection:
@@ -57,10 +65,7 @@ def tile_selection(survey: Survey | None, track: Track | None, tile: Tile) -> Se
         tile=tile.name,
         band=tile.band,
         column=tile.column,
-        min_lat=tile.min_lat,
-        max_lat=tile.max_lat,
-        west_lon=tile.west_lon,
-        east_lon=tile.east_lon,
+        **box.box_edges(tile),
         kept=survey is not None,
         area_km2=track.grid.area_km2 if track else 0.0,
         start=survey.start if survey else None,
@@ -88,20 +93,28 @@ def tile_selection(survey: Survey | None, track: Track | None, tile: Tile) -> Se
     return Selection(tile=row, observations=observations)
 
 
-def _group_selections(group: str) -> list[Selection]:
-    """Search every tile one group measured and read each as the rows it is written as.
+def _group_selections_and_stats(
+    group: str,
+) -> tuple[list[Selection], list[TileStats]]:
+    """Search every tile one group measured, and measure what each keeps.
 
     Args:
         group: The name of the tile group.
 
     Returns:
         selections: The rows of every tile a measured set reached, in the order read.
+        measured: What the observations each tile keeps left on it, for every tile
+            with something to measure.
     """
-    window = analysis_settings().window
+    criteria = analysis_settings().criteria
     grid = tile_grid()
-    selections = []
+    selections, measured = [], []
     for name, coverage in coverage_artifacts.read_group_coverage(group).items():
-        track = merge_track(coverage, window)
-        survey = best_survey(track, window) if track else None
-        selections.append(tile_selection(survey, track, grid.tile_named(name)))
-    return selections
+        track = merge_track(coverage, criteria)
+        survey = best_survey(track, criteria) if track else None
+        selection = tile_selection(survey, track, grid.tile_named(name))
+        selections.append(selection)
+        if track:
+            taken = survey.taken if survey else ()
+            measured.append(measure_tile(TileTrack(track, selection.tile, taken)))
+    return selections, measured

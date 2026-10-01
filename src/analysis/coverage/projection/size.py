@@ -8,6 +8,7 @@ from collections.abc import Sequence
 import numpy as np
 
 from analysis.coverage.projection import footprints
+from analysis.models.instrument import InstrumentSet
 from analysis.models.observation import Observation
 from common.maths import geodesy, physics
 
@@ -19,7 +20,7 @@ SHARAD_WAVELENGTH_M = physics.SPEED_OF_LIGHT_M_S / SHARAD_CENTRE_FREQUENCY_HZ
 SHARAD_ALONG_TRACK_M = 460.0
 
 # Ground pixel size in metres for the sets ODE publishes no map scale for
-FALLBACK_PIXEL_M = {"MRO/CRISM/TRDR:*sp*_if*_trr3": 180.0, "MRO/CTX/EDR": 5.4}
+FALLBACK_PIXEL_M = {"CRISM": 180.0, "CTX": 5.4}
 
 
 def track_widths(
@@ -69,10 +70,8 @@ def ground_pixel_km2(
     """
     if width_km is not None:
         return width_km * SHARAD_ALONG_TRACK_M / physics.METRES_PER_KM
-    scale = map_scale_m or FALLBACK_PIXEL_M.get(set_key)
+    iid = InstrumentSet.from_key(set_key).iid
+    scale = map_scale_m or FALLBACK_PIXEL_M.get(iid)
     if scale is None:
-        raise KeyError(
-            f"{set_key} publishes no map scale and none is configured for it, "
-            f"so it needs an entry in FALLBACK_PIXEL_M spelled exactly this way"
-        )
+        raise KeyError(f"{iid} publishes no map scale and none is in FALLBACK_PIXEL_M")
     return (scale / physics.METRES_PER_KM) ** 2

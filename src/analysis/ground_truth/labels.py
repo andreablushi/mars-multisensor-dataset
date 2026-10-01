@@ -13,7 +13,7 @@ import numpy as np
 from analysis.ground_truth.models.feature import Feature
 from analysis.ground_truth.models.label import Label
 from analysis.ground_truth.models.rule import Rule
-from analysis.ground_truth.models.settings import Settings
+from analysis.ground_truth.models.settings import GroundTruthSettings
 from analysis.selector.models.selection import SelectedTile
 from common.maths import box
 from common.maths.geodesy import bbox_centre, northward_m
@@ -21,7 +21,9 @@ from common.maths.physics import METRES_PER_KM
 
 
 def label_tiles(
-    searched: Sequence[SelectedTile], features: Sequence[Feature], settings: Settings
+    searched: Sequence[SelectedTile],
+    features: Sequence[Feature],
+    settings: GroundTruthSettings,
 ) -> list[Label]:
     """Label every kept tile a single class claims, and leave out every other.
 
@@ -97,10 +99,7 @@ def label_tiles(
                     for other in touched
                 ),
                 offset=offset,
-                min_lat=kept_tile.min_lat,
-                max_lat=kept_tile.max_lat,
-                west_lon=kept_tile.west_lon,
-                east_lon=kept_tile.east_lon,
+                **box.box_edges(kept_tile),
             )
         )
     return labels
@@ -166,10 +165,7 @@ def label_craters(
             feature=crater.name,
             foreign=sum(features[other].name != crater.name for other in touched),
             offset=0.0,
-            min_lat=crater.min_lat,
-            max_lat=crater.max_lat,
-            west_lon=crater.west_lon,
-            east_lon=crater.east_lon,
+            **box.box_edges(crater),
         )
     return labels
 
@@ -191,7 +187,7 @@ def claimed_box(feature: Feature, latitudes: list[float] | None) -> box.Box | No
 
 
 def draw_labels(
-    labels: Sequence[Label], settings: Settings, refused: Collection[str]
+    labels: Sequence[Label], settings: GroundTruthSettings, refused: Collection[str]
 ) -> list[Label]:
     """Mark the tiles the balanced draw takes of every class, the clearest first.
 

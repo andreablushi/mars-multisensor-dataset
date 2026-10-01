@@ -60,7 +60,7 @@ def schema_of(model: type) -> pa.Schema:
     return pa.schema(columns)
 
 
-def build[Row](model: type[Row], row: Mapping[str, Any]) -> Row:
+def built_row[Row](model: type[Row], row: Mapping[str, Any]) -> Row:
     """Return one row model built back from the flat columns it was written as.
 
     Args:
@@ -75,7 +75,7 @@ def build[Row](model: type[Row], row: Mapping[str, Any]) -> Row:
     for field in fields(model):
         kind = set_type(hints[field.name])
         if is_dataclass(kind):
-            held[field.name] = build(kind, row)
+            held[field.name] = built_row(kind, row)
         elif get_origin(kind) is tuple:
             # A field the model holds as a tuple is written as a list, unset as a null.
             written = row[field.name]
@@ -90,12 +90,12 @@ def read_rows[Row](
 ) -> list[Row]:
     """Read back every row of one parquet file, as the model it was written from."""
     return [
-        build(model, row)
+        built_row(model, row)
         for row in pq.read_table(path, schema=schema, filters=filters).to_pylist()
     ]
 
 
-def write(data: Sequence[Any], schema: pa.Schema, path: Path) -> None:
+def write_rows(data: Sequence[Any], schema: pa.Schema, path: Path) -> None:
     """Write dataclass rows to a parquet file atomically.
 
     Args:

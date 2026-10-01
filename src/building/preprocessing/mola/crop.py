@@ -17,26 +17,26 @@ from common.pds import images, labels
 def mola_sample(
     position: Position,
     label: dict[str, str],
-    height: np.ndarray,
+    elevation: np.ndarray,
     inside: np.ndarray | None = None,
 ) -> MolaSample:
-    """Return the height one grid holds over a tile, with the delay rows it sets.
+    """Return the elevation one grid holds over a tile, with the delay rows it sets.
 
     Args:
         position: Where every bin sits relative to the tile centre.
         label: What the products it was read from say about it, merged.
-        height: The height above the areoid in metres, lines by samples.
+        elevation: The elevation above the areoid in metres, lines by samples.
         inside: Which bins truly fall in the tile's box, or None for all.
 
     Returns:
-        sample: The crop, its heights placed on the radargram's delay rows.
+        sample: The crop, its elevations placed on the radargram's delay rows.
     """
-    rows, reached = delay.radargram_rows(height)
+    rows, reached = delay.radargram_rows(elevation)
     return MolaSample(
         position=position,
         label=label,
         inside=inside,
-        elevation=height,
+        elevation=elevation,
         delay=rows,
         delay_inside=reached,
     )
@@ -63,13 +63,13 @@ def crop_polar(observation: MolaObservation, frame: Tile) -> MolaSample | None:
     if held is None:
         return None
     lines, samples = held.bounds
-    height = images.load_window(
+    elevation = images.load_window(
         image,
         label,
         (int(lines[0]), int(lines[-1]) + 1),
         (int(samples[0]), int(samples[-1]) + 1),
     )
-    return mola_sample(held.position, labels.merge(label), height, held.inside)
+    return mola_sample(held.position, labels.merge(label), elevation, held.inside)
 
 
 def crop(observation: MolaObservation, frame: Tile) -> MolaSample | None:
@@ -87,5 +87,5 @@ def crop(observation: MolaObservation, frame: Tile) -> MolaSample | None:
     """
     if observation.grid.polar:
         return crop_polar(observation, frame)
-    label, height, samples = merge_sheets(observation, frame)
-    return mola_sample(cut.placed(samples, frame), label, height)
+    label, elevation, samples = merge_sheets(observation, frame)
+    return mola_sample(cut.placed(samples, frame), label, elevation)

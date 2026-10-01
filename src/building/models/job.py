@@ -48,6 +48,11 @@ class Outcome:
     emptied: tuple[str, ...] = ()
     error: Exception | None = None
 
+    @property
+    def failed(self) -> bool:
+        """Return whether the job raised an error."""
+        return self.error is not None
+
 
 @dataclass(frozen=True, slots=True)
 class Plan:
@@ -56,11 +61,11 @@ class Plan:
     Attributes:
         jobs: The products that still need building.
         tiles: What the dataset holds about every tile the build covers.
-        skipped_existing: Crops already written, which were left out of the jobs.
+        skipped: Crops already written, which were left out of the jobs.
         unread: Kept observations no instrument here could read, never planned.
     """
 
     jobs: tuple[Job, ...]
     tiles: tuple[TileMetadata, ...]
-    skipped_existing: int
+    skipped: int
     unread: int

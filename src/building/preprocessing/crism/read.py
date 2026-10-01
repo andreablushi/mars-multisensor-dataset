@@ -58,7 +58,7 @@ def read_detectors(
         found: The detectors that landed whole.
 
     Returns:
-        detectors: Each detector's cube and wavelengths, bands ascending.
+        detectors: Each detector's cube and wavelength table, bands ascending.
         held: Each detector's observation label, in the order found.
 
     Raises:
@@ -100,14 +100,14 @@ def read_observation(identifier: str) -> CrismObservation:
     found = cached_detectors(identifier)
     detectors, held = read_detectors(identifier, found)
     cleaned = clean.clean_detectors(detectors)
-    geometry, placing = images.load_cube(
+    geometry, geometry_label = images.load_cube(
         configs.CACHE.product_files(
             identifier, configs.Kind.GEOMETRY, detector=found[0]
         )[".img"]
     )
     label = {
         key: value
-        for key, value in labels.merge(*held, placing).items()
+        for key, value in labels.merge(*held, geometry_label).items()
         if not key.startswith(GROUND_SOFTWARE)
     }
     return merge.merge_detectors(cleaned, geometry, label)

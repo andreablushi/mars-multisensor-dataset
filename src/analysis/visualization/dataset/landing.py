@@ -21,15 +21,14 @@ _LANDED = (
 def landed(dataset: DatasetStats) -> widgets.Widget:
     """Tabulate what each instrument lands on a tile and how far it reaches."""
     rows: list[Row] = []
-    admits = analysis_settings().window.admits
+    admits = analysis_settings().criteria.admits
     percent = "{:.1%}".format
     for iid in dataset.iids:
-        # A sounder counts traces, not picture elements, so its pixels go unmarked
-        unit = "" if iid == wording.SOUNDER else " px"
         pixels = dataset.pixels_per_look[iid]
         if pixels.counted:
+            # A sounder counts traces, not picture elements
             pixels_landed = wording.spread(
-                pixels, lambda count: f"{wording.compact(count)}{unit}"
+                pixels, lambda count: wording.pixels(count, iid)
             )
         else:
             pixels_landed = wording.UNCOUNTED
@@ -41,7 +40,7 @@ def landed(dataset: DatasetStats) -> widgets.Widget:
                     dataset.selected[iid], "{:,.1f}".format, "{:,.0f}".format
                 ),
                 pixels_landed,
-                f"{asked:,.0f}" if asked else wording.NOTHING,
+                wording.pixels(asked, iid) if asked else wording.NOTHING,
                 wording.spread(dataset.reached[iid], percent),
             )
         )

@@ -9,7 +9,7 @@ import numpy as np
 from analysis.coverage.models.coverage import SetCoverage
 from analysis.selector.filters.admit import admitted_observations
 from analysis.selector.filters.tile_floors import tile_floors
-from analysis.selector.models.filter import Filter
+from analysis.selector.models.criteria import Criteria
 from analysis.selector.models.search_grid import SearchGrid
 from analysis.selector.models.track import Track
 from analysis.selector.solar_longitude import solar_longitude
@@ -19,8 +19,8 @@ from analysis.utils import mask as packing
 DAY_SECONDS = 86400.0
 
 
-def merge_track(coverage: Sequence[SetCoverage], criteria: Filter) -> Track | None:
-    """Merge a tile's instrument sets onto one timeline, under what the filter asks.
+def merge_track(coverage: Sequence[SetCoverage], criteria: Criteria) -> Track | None:
+    """Merge a tile's instrument sets onto one timeline, under what the criteria ask.
 
     Args:
         coverage: The tile's instrument sets, in any order.

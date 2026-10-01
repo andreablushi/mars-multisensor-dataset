@@ -12,7 +12,7 @@ from building.preprocessing.crism.models.mask import Mask
 FILL = 0.0
 
 
-def ratio_by_column_median(cube: np.ndarray, mask: Mask) -> Mask:
+def ratioed_mask(cube: np.ndarray, mask: Mask) -> Mask:
     """Use the median of a column for ratioing, as crism_ml's ColMed does.
 
     Args:

@@ -7,9 +7,8 @@ from functools import cache
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
-from analysis.models.settings import Settings as AnalysisSettings
-from building.models.settings import Settings as BuildSettings
-from building.models.settings import TrainingSettings
+from analysis.models.settings import AnalysisSettings
+from building.models.settings import BuildSettings, TrainingSettings
 from common.paths import CONFIGS_ROOT
 
 

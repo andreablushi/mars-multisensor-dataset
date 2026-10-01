@@ -16,17 +16,7 @@ from common.config import training_settings
 
 
 def training_selections(settings: TrainingSettings) -> list[Selection]:
-    """Read the selection and draw the tiles the training build covers.
-
-    Args:
-        settings: The settled choices for the build, which size the draw.
-
-    Returns:
-        picked: The tiles to build with their windows, none held out or refused.
-
-    Raises:
-        FileNotFoundError: When no labels were written, so none can be held out.
-    """
+    """Draw the training tiles, none held out or refused, failing without labels."""
     return draw.draw_training(
         read_selection(),
         settings,

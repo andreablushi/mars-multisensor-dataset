@@ -5,10 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from analysis.stats.models import Spread
+from building.configs import sharad
 
 NOTHING = "none"
 UNCOUNTED = "not counted"
-SOUNDER = "SHARAD"
 
 _STEPS = ((1e12, "T"), (1e9, "G"), (1e6, "M"), (1e3, "k"))
 
@@ -54,9 +54,9 @@ def counted(number: float, noun: str) -> str:
     return f"{number:,.0f} {noun}" + ("" if number == 1 else "s")
 
 
-def pixels(count: float) -> str:
-    """Write a pixel count."""
-    return f"{compact(count)} px"
+def pixels(count: float, iid: str) -> str:
+    """Write a pixel count, in traces for SHARAD."""
+    return f"{compact(count)} {'traces' if iid == sharad.LAYOUT.instrument else 'px'}"
 
 
 def spread(

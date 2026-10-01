@@ -18,7 +18,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
     """Draw one stacked panel per instrument set, over the whole tile."""
     tile_track = read_tile_track(coverage)
     window = tile_track.window if tile_track and tile_track.window.kept else None
-    timeless = analysis_settings().window.timeless
+    timeless = analysis_settings().criteria.timeless
     timelines = timelines_per_set(coverage)
     colours = panels.colours([timeline.label for timeline in timelines])
     figure, axes = panels.stacked(
@@ -39,13 +39,10 @@ def plot(coverage: Coverage) -> widgets.Widget:
         marker = Line2D([], [], label="the window the tile earned", **SURVEY)
         axes[0].legend(handles=[marker], fontsize=8, loc="upper right", frameon=False)
     if not any(timeline.observed for timeline in timelines):
-        axes[0].set_xlim(
-            min(timeline.first for timeline in timelines),
-            max(timeline.last for timeline in timelines),
-        )
+        axes[0].set_xlim(timelines[0].first, timelines[0].last)
     axes[0].set_ylim(-0.05, 1.05)
     title = f"{panels.title(coverage)}  -  coverage per observation"
-    axes[0].set_title(title, fontsize=12, loc="left")
+    panels.titled(axes[0], title)
     axes[-1].set_xlabel("Observation start time")
     figure.supylabel("Share of the tile covered by one observation", fontsize=10)
     figure.tight_layout()

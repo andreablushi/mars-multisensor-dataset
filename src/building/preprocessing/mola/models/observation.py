@@ -15,7 +15,7 @@ class MolaObservation:
     Attributes:
         identifier: The grid as `configs.GRIDS` names it.
         grid: How fine it is, and whether it is projected onto a pole.
-        files: The image and label of every product that landed, by sheet.
+        files: The image of every product that landed, by sheet or polar product.
     """
 
     identifier: str

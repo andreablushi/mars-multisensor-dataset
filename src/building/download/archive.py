@@ -7,7 +7,7 @@ from pathlib import Path
 
 import httpx
 
-from common.fetch import http, ode
+from common.fetch import http, ode, ranges
 
 
 def query_products(client: httpx.Client, **params: str) -> list[dict]:
@@ -103,6 +103,8 @@ def download_files(
     *,
     client: httpx.Client,
     spans: tuple[tuple[int, int], ...] = (),
+    size: int | None = None,
+    origin: int = 0,
 ) -> None:
     """Download each file from the URL of its suffix, skipping those already on disk.
 
@@ -111,6 +113,8 @@ def download_files(
         urls: Where each file is served from, keyed by the same suffix.
         client: The client the downloads go over.
         spans: The first and past-the-last byte of each part to keep, or none for all.
+        size: How many bytes a sparse copy holds, or None for a plain download.
+        origin: Which byte of the served file a sparse copy starts at.
 
     Raises:
         FileNotFoundError: When a missing file has no URL.
@@ -120,4 +124,9 @@ def download_files(
             continue
         if not urls.get(suffix):
             raise FileNotFoundError(f"No {suffix} offered for {path.stem}.")
-        http.streamed(urls[suffix], path, client=client, spans=spans)
+        if size is None:
+            http.streamed(urls[suffix], path, client=client, spans=spans)
+        else:
+            ranges.patched(
+                urls[suffix], path, spans, size, client=client, origin=origin
+            )

@@ -9,6 +9,7 @@ import ipywidgets as widgets
 from analysis.stats.models import CatalogueStats, DatasetStats
 from analysis.visualization import panels, wording
 from analysis.visualization.panels import Row
+from common.maths.physics import METRES_PER_KM
 
 _INSTRUMENTS = (
     "Instrument",
@@ -43,15 +44,15 @@ def instruments(catalogue: CatalogueStats, dataset: DatasetStats) -> widgets.Wid
         if pixel_km2 is None or not pixel_km2.counted:
             resolution = wording.UNCOUNTED
         else:
-            resolution = f"{math.sqrt(pixel_km2.middle) * 1000.0:,.1f} m"
+            resolution = f"{math.sqrt(pixel_km2.middle) * METRES_PER_KM:,.1f} m"
         rows.append(
             (
                 instrument.iid,
                 f"{instrument.tiles:,}",
                 f"{instrument.observations:,}",
                 resolution,
-                instrument.first.date().isoformat(),
-                instrument.last.date().isoformat(),
+                f"{instrument.first:%Y-%m-%d}",
+                f"{instrument.last:%Y-%m-%d}",
             )
         )
     return panels.written("Global instrument coverage", _INSTRUMENTS, rows)

@@ -15,10 +15,10 @@ class DetectorCube:
 
     Attributes:
         cube: The values as lines by samples by bands, bands ascending.
-        wavelengths: The centre wavelength in nm per column and band.
+        table: The centre wavelength in nm per column and band.
         mask: Where the cleaning filled the cube rather than kept a measurement.
     """
 
     cube: np.ndarray
-    wavelengths: np.ndarray
+    table: np.ndarray
     mask: Mask

@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
+import httpx
+
 from analysis import paths
 from analysis.ground_truth.models.feature import Feature
 from common.disk.files import read_jsonl, write_jsonl
-from common.fetch.ode import ODE_TARGET, ODEClient
+from common.fetch.http import TLS_CONTEXT
+from common.fetch.ode import ODE_TARGET, fetch_results
 
 
 def read_features(refresh: bool) -> list[Feature]:
@@ -24,8 +27,10 @@ def read_features(refresh: bool) -> list[Feature]:
     """
     if paths.FEATURES_PATH.exists() and not refresh:
         return [Feature(**row) for row in read_jsonl(paths.FEATURES_PATH)]
-    with ODEClient() as client:
-        results = client.query({"query": "featuredata", "odemetadb": ODE_TARGET})
+    with httpx.Client(verify=TLS_CONTEXT) as client:
+        results = fetch_results(
+            {"query": "featuredata", "odemetadb": ODE_TARGET}, client
+        )
     # ODE publishes some features twice, so the first of each is kept
     features = list(
         dict.fromkeys(

@@ -11,7 +11,7 @@ from digitalhub_runtime_python import handler
 
 from analysis.selector.models.selection import Selection
 from building import paths, runner
-from building.models.settings import Settings
+from building.models.settings import BuildSettings
 from building.preprocessing.ctx.isis import install_isis
 from common.console import PLAIN_LOG_ENV
 from dhub import archives
@@ -43,21 +43,13 @@ def checkpoint(project, root: Path, name: str, uploads: int):
 def fetch_build(
     project, workers: int, build: str, into: Path, names: Sequence[str]
 ) -> None:
-    """Bring objects of one published build back to disk.
-
-    Args:
-        project: The DigitalHub project the build was logged into.
-        workers: How many objects are brought down at once.
-        build: The build's name, as its settings give it.
-        into: The directory they land in.
-        names: The objects, as paths inside the build.
-    """
+    """Bring the named objects of one published build back into a directory."""
     archives.download_objects(
         project, f"{Artifact.DATASET.published}-{build}", into, names, workers
     )
 
 
-def build_handler[T: Settings](
+def build_handler[T: BuildSettings](
     settled: Callable[[int | None], T],
     selections: Callable[[T], list[Selection]],
     fetched: Sequence[Artifact],

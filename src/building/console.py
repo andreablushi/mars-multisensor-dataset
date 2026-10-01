@@ -12,7 +12,7 @@ from rich.console import Console
 
 from building.models.job import Outcome, Plan
 from building.models.progress import Progress
-from building.models.settings import Settings
+from building.models.settings import BuildSettings
 from common import console as printing
 
 # Progress lines where no cursor moves; the platform keeps a run's first 100 kB
@@ -30,7 +30,7 @@ CGROUP_PEAKS = (
 )
 
 
-def print_plan(plan: Plan, settings: Settings, console: Console) -> None:
+def print_plan(plan: Plan, settings: BuildSettings, console: Console) -> None:
     """Print what a build has to do before it starts.
 
     Args:
@@ -41,7 +41,7 @@ def print_plan(plan: Plan, settings: Settings, console: Console) -> None:
     crops = sum(len(job.frames) for job in plan.jobs)
     console.print(
         f"building {len(plan.tiles)} tiles from {len(plan.jobs)} products, "
-        f"{crops} crops to write, {plan.skipped_existing} already written, "
+        f"{crops} crops to write, {plan.skipped} already written, "
         f"{plan.unread} kept observations no instrument here reads"
     )
     console.print(
@@ -87,6 +87,12 @@ def _print_standing(progress: Progress, done: threading.Event) -> None:
         print(progress.standing, flush=True)
 
 
+def _finished_label(label: str) -> str:
+    """Return what a logged line names a finished product by, with the memory peak."""
+    # The one named is the one just finished, never the one under way
+    return f"{label} done{_memory_peak()}"
+
+
 def _memory_peak() -> str:
     """Return the most memory the box has held, to read against what it was given.
 
@@ -122,53 +128,43 @@ def collect_outcomes(
         collected: Every outcome collected, in completion order.
     """
     collected: list[Outcome] = []
-    failed = 0
     # A platform log takes plain flushed lines, since no cursor can be moved there
-    with printing.progress_bar(console) as progress:
-        task = progress.add_task(DESCRIPTION, total=total)
+    with printing.Tracker(
+        DESCRIPTION, total, console, LOGGED_LINES, _finished_label
+    ) as tracker:
         for outcome in outcomes:
             collected.append(outcome)
-            if outcome.error:
-                failed += 1
-                printing.print_failure(
-                    outcome.job.label, outcome.error, failed, console
-                )
-            progress.update(task, completed=len(collected))
-            if progress.disable:
-                # The one named is the one just finished, never the one under way
-                printing.print_progress_line(
-                    DESCRIPTION,
-                    len(collected),
-                    total,
-                    f"{outcome.job.label} done{_memory_peak()}",
-                    LOGGED_LINES,
-                )
+            tracker.advance(outcome.job.label, outcome.error)
     return collected
 
 
 def print_summary(
-    plan: Plan, outcomes: Sequence[Outcome], elapsed: float, console: Console
+    plan: Plan,
+    outcomes: Sequence[Outcome],
+    dropped: set[str],
+    elapsed: float,
+    console: Console,
 ) -> None:
     """Print the totals for a finished build.
 
     Args:
         plan: What the build set out to do, whose tiles the index covers.
         outcomes: What every job left.
+        dropped: The tiles dropped for an empty crop.
         elapsed: How long the build took, in seconds.
         console: The console to print on.
     """
     written = sum(len(one.records) for one in outcomes)
-    failed = [one for one in outcomes if one.error]
-    emptied = {name for one in outcomes for name in one.emptied}
+    failed = [one for one in outcomes if one.failed]
     console.print(
         f"built {len(outcomes) - len(failed)} products into {written:,} crops, "
         f"{len(failed)} failed, in {elapsed:.1f}s"
     )
-    if emptied:
+    if dropped:
         console.print(
-            f"[yellow]{len(emptied):,} tiles dropped for an empty crop[/yellow]"
+            f"[yellow]{len(dropped):,} tiles dropped for an empty crop[/yellow]"
         )
-    built = sum(1 for one in plan.tiles if one.identity not in emptied)
+    built = sum(1 for one in plan.tiles if one.identity not in dropped)
     console.print(f"{built:,} tiles built")
     if not failed:
         return

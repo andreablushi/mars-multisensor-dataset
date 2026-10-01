@@ -10,9 +10,9 @@ from building.preprocessing.crism.correction import (
     bands_calibration,
     despike,
     destripe,
-    masking,
     ratio,
 )
+from building.preprocessing.crism.correction.mask import NoMeasurement, refused_mask
 from building.preprocessing.crism.models.detector_cube import DetectorCube
 
 
@@ -22,7 +22,7 @@ def clean_detectors(
     """Refuse everything each detector holds that is not measured, dropping empty ones.
 
     Args:
-        detectors: Each detector's cube and wavelengths, as read off disk.
+        detectors: Each detector's cube and wavelength table, as read off disk.
 
     Returns:
         detectors: Every detector that measured, its cube filled and with its mask.
@@ -32,18 +32,18 @@ def clean_detectors(
     """
     cleaned = {}
     for name, (cube, table) in detectors.items():
-        centre = bands_calibration.band_centres(table)
+        centres = bands_calibration.band_centres(table)
         try:
-            mask = masking.refused_mask(cube, table, centre, name)
-        except masking.NoMeasurement:
+            mask = refused_mask(cube, table, centres, name)
+        except NoMeasurement:
             continue
-        mask = atmospheric.remove_atmospheric_bands(cube, mask, centre, name)
-        destripe.remove_spike_columns(cube, mask, centre, name)
-        mask = ratio.ratio_by_column_median(cube, mask)
+        mask = atmospheric.atmospheric_mask(cube, mask, centres, name)
+        destripe.remove_spike_columns(cube, mask, centres, name)
+        mask = ratio.ratioed_mask(cube, mask)
         # Despike only the bands in play, so filled ones cannot pull the median about.
         kept = ~mask.bands
         block = np.ascontiguousarray(cube[:, :, kept])
-        despike.remove_spikes(block, centre[kept], mask.pixels)
+        despike.remove_spikes(block, centres[kept], mask.pixels)
         cube[:, :, kept] = block
         cleaned[name] = DetectorCube(cube, table, mask)
     return cleaned

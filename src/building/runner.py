@@ -19,16 +19,17 @@ from building.metadata.index import read_observation_metadata, write_index
 from building.metadata.selection import exclude_tiles
 from building.models.job import Outcome, Plan
 from building.models.progress import Progress
-from building.models.settings import Settings, TrainingSettings
+from building.models.settings import BuildSettings, TrainingSettings
 from building.scheduler import Scheduler
 from common.console import print_failure
 from common.fetch.http import TLS_CONTEXT
+from common.pool import cancellable_pool
 
 CHECKPOINT_BYTES = 100 * 1024**3
 
 
 def build_dataset(
-    settings: Settings,
+    settings: BuildSettings,
     picked: Sequence[Selection],
     force: bool,
     checkpoint: Callable[[], None] | None = None,
@@ -62,15 +63,16 @@ def build_dataset(
         outcomes = build_outcomes(plan, settings, root, ode, console, checkpoint)
     write_index(plan, outcomes, root, on_disk=checkpoint is None)
     normalize_dataset(settings, root, CHECKPOINT_BYTES, fetch, checkpoint)
-    printing.print_summary(plan, outcomes, time.monotonic() - started_at, console)
     dropped = {name for one in outcomes for name in one.emptied}
+    elapsed = time.monotonic() - started_at
+    printing.print_summary(plan, outcomes, dropped, elapsed, console)
     if dropped:
         exclude_tiles(dropped)
     # A drawn tile is labelled, so the evaluation cannot do without one
     if dropped and not isinstance(settings, TrainingSettings):
         console.print(f"[red]error: drawn tiles dropped {sorted(dropped)}[/red]")
         return 1
-    return 1 if any(one.error for one in outcomes) else 0
+    return 1 if any(one.failed for one in outcomes) else 0
 
 
 def indexed_crops(root: Path, console: Console, *, force: bool) -> frozenset[str]:
@@ -100,7 +102,7 @@ def indexed_crops(root: Path, console: Console, *, force: bool) -> frozenset[str
 
 def build_outcomes(
     plan: Plan,
-    settings: Settings,
+    settings: BuildSettings,
     root: Path,
     ode: httpx.Client,
     console: Console,
@@ -122,12 +124,14 @@ def build_outcomes(
     progress = Progress(len(plan.jobs))
     # A download waits on the network and a build on the cores, so the pools differ.
     with (
-        ProcessPoolExecutor(max_workers=settings.workers) as building,
+        cancellable_pool(ProcessPoolExecutor(settings.workers)) as building,
         ExitStack() as pools,
         printing.watch(progress),
     ):
         fetching = {
-            archive: pools.enter_context(ThreadPoolExecutor(max_workers=downloads))
+            archive: pools.enter_context(
+                cancellable_pool(ThreadPoolExecutor(downloads))
+            )
             for archive, downloads in settings.downloads.items()
         }
         scheduler = Scheduler(ode, fetching, building, root, settings, progress)

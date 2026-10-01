@@ -9,17 +9,17 @@ from collections.abc import Sequence
 from analysis.selector.filters import redundancy
 from analysis.selector.filters.coverage_constraints import cells_per_constraint
 from analysis.selector.models.counter import Counter
-from analysis.selector.models.filter import Filter
+from analysis.selector.models.criteria import Criteria
 from analysis.selector.models.survey import Survey
 from analysis.selector.models.track import Track
 
 
-def best_survey(track: Track, criteria: Filter) -> Survey | None:
+def best_survey(track: Track, criteria: Criteria) -> Survey | None:
     """Search a timeline for the window the ground is best studied over.
 
     Args:
         track: The admissible observations on one time axis.
-        criteria: The filter the tile is searched under.
+        criteria: The criteria the tile is searched under.
 
     Returns:
         survey: The chosen window, or None when no window is worth keeping.

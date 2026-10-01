@@ -1,4 +1,4 @@
-"""The floors the written filter sets one tile: its pixels per set, its constraints."""
+"""The floors the written criteria set one tile: its pixels per set, its constraints."""
 
 from __future__ import annotations
 
@@ -6,14 +6,15 @@ import math
 from collections.abc import Sequence
 
 from analysis.coverage.models.coverage import SetCoverage
-from analysis.selector.models.filter import Constraints, Filter
+from analysis.selector.models.criteria import Constraints, Criteria
 from analysis.selector.models.search_grid import SearchGrid
+from building.configs import sharad
 
 
 def tile_floors(
-    criteria: Filter, coverage: Sequence[SetCoverage], grid: SearchGrid
+    criteria: Criteria, coverage: Sequence[SetCoverage], grid: SearchGrid
 ) -> tuple[list[float], Constraints, Constraints]:
-    """Settle everything the written filter asks of one tile.
+    """Settle everything the written criteria ask of one tile.
 
     Args:
         criteria: What the instruments are asked for, and which of them are timeless.
@@ -46,11 +47,9 @@ def tile_floors(
     min_pixels = [
         criteria.admits.get(iid, 0.0)
         * (
-            # A set publishing a swath width is a sounder, its pixels on a line
-            math.sqrt(inside_share)
-            if any(event.width_km is not None for event in instrument.events)
-            else inside_share
+            # SHARAD is a sounder, its pixels on a line
+            math.sqrt(inside_share) if iid == sharad.LAYOUT.instrument else inside_share
         )
-        for iid, instrument in zip(iids, coverage, strict=True)
+        for iid in iids
     ]
     return min_pixels, windowed, standing

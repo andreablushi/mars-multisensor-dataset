@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import subprocess
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -14,6 +13,7 @@ from analysis import paths as analysis_paths
 from building import paths as built
 from building.dispatcher import INSTRUMENTS
 from common import paths
+from common.disk.files import read_json, write_json
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,7 +35,7 @@ class DatasetManifest:
     selection: str
     revision: str | None
     band_centres_nm: dict[str, tuple[float, ...]]
-    normalization: dict[str, dict[str, Any]] | None
+    normalization: dict[str, dict[str, Any]] | None = None
 
 
 def dataset_manifest(
@@ -84,7 +84,28 @@ def read_normalization(root: Path) -> dict[str, dict[str, Any]] | None:
     Returns:
         normalization: The mean and std of each instrument, or None.
     """
-    manifest = root / built.DATASET_MANIFEST_NAME
-    if not manifest.exists():
-        return None
-    return json.loads(manifest.read_text()).get("normalization")
+    manifest = read_manifest(root)
+    return None if manifest is None else manifest.normalization
+
+
+def read_manifest(root: Path) -> DatasetManifest | None:
+    """Return the manifest one build wrote, or None where it wrote none.
+
+    Args:
+        root: The directory the build was written in.
+
+    Returns:
+        manifest: The manifest as written, or None.
+    """
+    path = root / built.DATASET_MANIFEST_NAME
+    return DatasetManifest(**read_json(path)) if path.exists() else None
+
+
+def write_manifest(manifest: DatasetManifest, root: Path) -> None:
+    """Write a build's manifest beside its index, atomically.
+
+    Args:
+        manifest: What the dataset is.
+        root: The directory the build is written in.
+    """
+    write_json(root / built.DATASET_MANIFEST_NAME, asdict(manifest), indent=2)

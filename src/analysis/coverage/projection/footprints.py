@@ -24,8 +24,7 @@ from shapely.geometry.base import BaseGeometry
 from analysis.coverage.models.region import TileRegion
 from analysis.coverage.projection import frame
 from common.maths import geodesy
-from common.maths.box import POLE
-from common.maths.geodesy import HALF_TURN, TURN
+from common.maths.geodesy import HALF_TURN, POLE, TURN
 from common.models.tile import Tile
 
 _EMPTY = Polygon()
@@ -112,10 +111,9 @@ def clip_region(tile: Tile, margin_deg: float) -> BaseGeometry:
     Returns:
         region: The clipping region, as one rectangle or the union of two.
     """
-    stretch_lat = min(
-        max(abs(tile.min_lat), abs(tile.max_lat)), frame.MAX_STRETCH_LAT_DEG
+    lon_margin = margin_deg / geodesy.longitude_stretch(
+        max(abs(tile.min_lat), abs(tile.max_lat))
     )
-    lon_margin = margin_deg / geodesy.longitude_stretch(stretch_lat)
     lat_lo = max(-POLE, tile.min_lat - margin_deg)
     lat_hi = min(POLE, tile.max_lat + margin_deg)
     span = tile.span + 2.0 * lon_margin

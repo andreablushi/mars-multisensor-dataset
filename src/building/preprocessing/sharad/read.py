@@ -34,7 +34,7 @@ def read_observation(identifier: str) -> SharadObservation:
     # The echoes themselves, then the places they were sounded at.
     power, sounding = images.load_cube(held[configs.Kind.OBSERVATION][".img"])
     power = power[:, :, 0]
-    geometry, placing = tables.load_table(held[configs.Kind.GEOMETRY][".tab"])
+    geometry, geometry_label = tables.load_table(held[configs.Kind.GEOMETRY][".tab"])
     traces = radargram_columns(geometry)
     simulated = held[configs.Kind.CLUTTER][".img"]
     if simulated.stat().st_size != power.size * np.dtype(configs.CLUTTER_TYPE).itemsize:
@@ -43,7 +43,7 @@ def read_observation(identifier: str) -> SharadObservation:
         simulated, dtype=configs.CLUTTER_TYPE, mode="r", shape=power.shape
     )
     return SharadObservation(
-        labels.merge(sounding, placing),
+        labels.merge(sounding, geometry_label),
         normalized_power(power[:, traces], clutter[:, traces]),
         clutter,
         geometry,

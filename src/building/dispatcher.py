@@ -97,7 +97,7 @@ INSTRUMENTS = {
         mola_read.read_observation,
         mola_crop.crop,
         Archive.WUSTL,
-        grid_of=mola_download.tile_grid,
+        grid_of=mola_download.mola_grid,
         # The whole gridded record is 2 GB, so a sheet is held for the run.
         worker_bytes=256 * 1024**2,
     ),

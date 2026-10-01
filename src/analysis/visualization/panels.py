@@ -15,6 +15,8 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import PercentFormatter
 
 from analysis.coverage.models.coverage import SetCoverage
+from analysis.selector.models.selection import Selection
+from common.models.tile import Tile
 
 # The colour one instrument set is drawn in
 Colour = tuple[float, float, float]
@@ -27,11 +29,17 @@ Row = Sequence[str]
 
 GREY = "#8a8a8a"
 STATISTIC_VALUE = ("Statistic", "Value")
+NO_TRACK = "The selection holds nothing to measure on this tile."
 
 
 def colours(labels: Sequence[str]) -> dict[str, Colour]:
-    """Assign a colour to each instrument set."""
+    """Assign a colour to each label."""
     return dict(zip(labels, cycle(plt.cm.tab10.colors), strict=False))
+
+
+def titled(axis: Axes, text: str) -> None:
+    """Title a panel the way every panel is titled."""
+    axis.set_title(text, fontsize=12, loc="left")
 
 
 def board(size: tuple[float, float], projection: object = None) -> tuple[Figure, Axes]:
@@ -178,3 +186,17 @@ def unavailable(
 def title(coverage: Coverage) -> str:
     """Return the tile a loaded coverage belongs to."""
     return f"Tile {coverage[0].summary.tile}"
+
+
+def tile_report(tile: Tile, selection: Selection | None) -> str:
+    """Write a tile's bounds and what the selection made of it."""
+    if selection is None:
+        verdict = "not in the selection"
+    elif selection.tile.kept:
+        verdict = "kept by the selection"
+    else:
+        verdict = "refused, no window meets the filter"
+    return (
+        f"{tile.min_lat:.3f} to {tile.max_lat:.3f} lat, "
+        f"{tile.west_lon:.3f} to {tile.east_lon:.3f} lon, {verdict}"
+    )

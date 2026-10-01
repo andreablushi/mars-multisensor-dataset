@@ -14,7 +14,7 @@ from common import console as printing
 LOGGED_LINES = 50
 
 
-def describe(download: Plan, coverage: Plan, console: Console) -> None:
+def print_plans(download: Plan, coverage: Plan, console: Console) -> None:
     """Print what each half of the run has to do before it starts.
 
     Args:
@@ -29,48 +29,6 @@ def describe(download: Plan, coverage: Plan, console: Console) -> None:
 def print_progress(stage: str, done: int, total: int, label: str = "") -> None:
     """Print how far a stage has got, once every fiftieth of it."""
     printing.print_progress_line(stage, done, total, label, LOGGED_LINES)
-
-
-class Tracker:
-    """One stage's progress, drawn as a bar or logged where no cursor can move."""
-
-    def __init__(self, stage: str, total: int, console: Console) -> None:
-        """Set up the stage's bar, left undrawn on a plain log.
-
-        Args:
-            stage: The stage, labelling the bar or every line.
-            total: How many jobs it runs.
-            console: The console to draw on.
-        """
-        self.stage, self.total, self.console = stage, total, console
-        self.done = self.failed = 0
-        self.bar = printing.progress_bar(console)
-        self.task = self.bar.add_task(stage, total=total)
-
-    def __enter__(self) -> Tracker:
-        """Start drawing the bar."""
-        self.bar.start()
-        return self
-
-    def __exit__(self, *raised: object) -> None:
-        """Stop drawing the bar."""
-        self.bar.stop()
-
-    def advance(self, outcome: Outcome) -> None:
-        """Count one finished job, naming it when it failed.
-
-        Args:
-            outcome: The job that just finished.
-        """
-        self.done += 1
-        if outcome.failed:
-            self.failed += 1
-            printing.print_failure(
-                outcome.job.label, outcome.error, self.failed, self.console
-            )
-        self.bar.update(self.task, completed=self.done)
-        if self.bar.disable:
-            print_progress(self.stage, self.done, self.total, outcome.job.label)
 
 
 def print_summary(

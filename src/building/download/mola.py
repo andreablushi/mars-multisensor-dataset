@@ -11,51 +11,37 @@ from building.configs import mola as configs
 from building.download import archive
 from common.models.tile import Tile
 
-# What ODE publishes MOLA under.
-ODE = {"ihid": "MGS", "iid": "MOLA"}
-
-# The ODE product type the gridded record is published under.
-PRODUCT_TYPE = "MEGDR"
-
 # ODE names a gridded product by its image file, suffix included.
 ODE_SUFFIX = ".img"
-
-# Each sheet's extent beside its files, so no tile is queried for on its own.
-FIELDS = "opmf"
 
 # How many to ask at once. The record is under a hundred, so one page holds it all.
 PAGE = 500
 
-Box = tuple[float, float, float, float]
-
 # The whole record, under a hundred and unchanging, so it is read once for a run.
-_RECORD: dict[str, tuple[str, Box]] = {}
+_RECORD: dict[str, str] = {}
 
 _PRODUCT_LOCKS: dict[str, threading.Lock] = {}
 _PRODUCT_LOCKS_GUARD = threading.Lock()
 
 
-def record_files(client: httpx.Client) -> dict[str, tuple[str, Box]]:
+def record_files(client: httpx.Client) -> dict[str, str]:
     """Read every file of the gridded record, asking ODE only on the first call.
 
     Args:
         client: The client the query goes over.
 
     Returns:
-        files: Each file's URL and the ground it covers, keyed by lowercase name.
+        files: Each file's URL, keyed by lowercase name.
     """
     if not _RECORD:
         for entry in archive.query_products(
-            client, pt=PRODUCT_TYPE, limit=str(PAGE), results=FIELDS, **ODE
+            client,
+            pt=configs.PRODUCT_TYPE,
+            limit=str(PAGE),
+            results=configs.ODE_RESULTS,
+            **configs.ODE,
         ):
-            covers = (
-                float(entry["Minimum_latitude"]),
-                float(entry["Maximum_latitude"]),
-                float(entry["Westernmost_longitude"]),
-                float(entry["Easternmost_longitude"]),
-            )
-            for name, url in archive.file_fields(entry).items():
-                _RECORD[name] = (url, covers)
+            _RECORD.update(archive.file_fields(entry))
     return _RECORD
 
 
@@ -114,14 +100,14 @@ def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> No
                 files,
                 {
                     Path(name).suffix: url
-                    for name, (url, _) in record_files(client).items()
+                    for name, url in record_files(client).items()
                     if Path(name).stem == product
                 },
                 client=client,
             )
 
 
-def tile_grid(tile: Tile) -> str:
+def mola_grid(tile: Tile) -> str:
     """Read which grid one tile's ground is mosaicked from.
 
     Args:

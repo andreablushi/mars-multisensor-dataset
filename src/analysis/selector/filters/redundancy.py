@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from analysis.metadata import summary
+from analysis.metadata.distortions import read_distortions
 from analysis.models.ancillary import Distortion
 from analysis.selector.filters.coverage_constraints import cells_per_constraint
 from analysis.selector.models.counter import Counter
-from analysis.selector.models.filter import Filter
+from analysis.selector.models.criteria import Criteria
 from analysis.selector.models.track import Track
 from analysis.utils.tile_group import group_of_tile_named
 
@@ -16,7 +16,7 @@ HYPERSPECTRAL = "hsp"
 
 
 def trimmed_window(
-    track: Track, first: int, last: int, criteria: Filter
+    track: Track, first: int, last: int, criteria: Criteria
 ) -> tuple[list[int], list[int], list[int]]:
     """Drop the observations a tile does not need, keeping the most recent or the best.
 
@@ -24,7 +24,7 @@ def trimmed_window(
         track: The tile's observations on one time axis.
         first: The index of the earliest observation the window holds.
         last: The index of the latest one.
-        criteria: The filter, holding the timeless instruments and redundant shares.
+        criteria: The criteria, holding the timeless instruments and redundant shares.
 
     Returns:
         kept: The window's observations worth keeping, oldest first.
@@ -40,7 +40,7 @@ def trimmed_window(
         for index in range(first, last + 1)
         if track.owners[index] not in timeless_owners
     ]
-    standing = sharad_drop_order(
+    standing = sharad_dropped_first(
         track,
         [index for index, owner in enumerate(track.owners) if owner in timeless_owners],
     )
@@ -68,14 +68,14 @@ def trimmed_window(
 
 
 def redundant_groups(
-    track: Track, indices: list[int], criteria: Filter
+    track: Track, indices: list[int], criteria: Criteria
 ) -> list[list[int]]:
     """Gather the looks redundant with each other, directly or through another look.
 
     Args:
         track: The tile's observations on one time axis.
         indices: The looks to gather, as indices into the track, worst first.
-        criteria: The filter holding the share past which two looks are redundant.
+        criteria: The criteria holding the share past which two looks are redundant.
 
     Returns:
         groups: Each group of one instrument's redundant looks, worst first and
@@ -118,7 +118,7 @@ def redundant_groups(
     return groups
 
 
-def sharad_drop_order(track: Track, indices: list[int]) -> list[int]:
+def sharad_dropped_first(track: Track, indices: list[int]) -> list[int]:
     """Order the SHARAD looks worst first, so the best over the same ground is kept.
 
     Args:
@@ -132,17 +132,17 @@ def sharad_drop_order(track: Track, indices: list[int]) -> list[int]:
     tile = track.observations[0].tile
     distortions = {
         distortion.pdsid: distortion
-        for distortion in summary.read_distortions(group_of_tile_named(tile))
+        for distortion in read_distortions(group_of_tile_named(tile))
         if distortion.tile == tile
     }
     return sorted(
         indices,
-        key=lambda index: sharad_drop_rank(track, distortions, index),
+        key=lambda index: sharad_rank(track, distortions, index),
         reverse=True,
     )
 
 
-def sharad_drop_rank(
+def sharad_rank(
     track: Track, distortions: dict[str, Distortion], index: int
 ) -> tuple[int, float, int]:
     """Rank how bad one SHARAD look is.

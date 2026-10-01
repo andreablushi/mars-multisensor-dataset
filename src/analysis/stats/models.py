@@ -83,7 +83,7 @@ class CatalogueStats:
         tile_km: The side every tile is sized to, in kilometres.
         measured: How many of them any instrument reached.
         tile_km2: How much ground a measured tile holds, tile by tile.
-        instruments: What each instrument holds, most observations first.
+        instruments: What each instrument holds, in the order they are drawn.
     """
 
     tiles: int

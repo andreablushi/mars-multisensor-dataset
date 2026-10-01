@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from analysis.coverage.models.coverage import Event
-from analysis.selector.models.filter import Constraints
+from analysis.selector.models.criteria import Constraints
 from analysis.selector.models.search_grid import SearchGrid
 
 # The observations offered to a tile, the set each belongs to, and the cells each fills

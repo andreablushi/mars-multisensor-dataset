@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from analysis.coverage import artifacts as index
+from analysis.coverage import artifacts as coverage_artifacts
 from analysis.coverage.models.summary import Summary
 from analysis.stats.models import CatalogueStats, InstrumentStats, Spread
+from analysis.stats.order import config_rank
 from common.config import analysis_settings
 from common.maths.tessellate import split_bands_columns
 
@@ -19,7 +20,7 @@ def read_catalogue() -> CatalogueStats:
     # One row per tile carries its area, which every set of it shares
     by_tile: dict[str, Summary] = {}
     by_instrument: dict[str, list[Summary]] = {}
-    for row in index.read_index():
+    for row in coverage_artifacts.read_index():
         by_tile.setdefault(row.tile, row)
         by_instrument.setdefault(row.iid, []).append(row)
     return CatalogueStats(
@@ -38,6 +39,6 @@ def read_catalogue() -> CatalogueStats:
                 )
                 for iid, rows in by_instrument.items()
             ),
-            key=lambda instrument: -instrument.observations,
+            key=lambda instrument: config_rank(instrument.iid),
         ),
     )

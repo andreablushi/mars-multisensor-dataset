@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping, Sequence
-from dataclasses import astuple
+from dataclasses import astuple, fields
 from functools import cache
 from pathlib import Path
 
@@ -12,7 +11,7 @@ from analysis import paths
 from analysis.selector.artifacts import read_selection
 from analysis.selector.models.selection import Selection
 from analysis.stats.models import DatasetStats, Spread
-from common.disk.files import atomic_path
+from common.disk.files import read_json, write_json
 
 
 def write_stats(stats: DatasetStats, root: Path = paths.STATS_ROOT) -> None:
@@ -22,24 +21,12 @@ def write_stats(stats: DatasetStats, root: Path = paths.STATS_ROOT) -> None:
         stats: The stats read over every tile searched.
         root: The directory to write it in, made when it is missing.
     """
-    laid_out = {
-        "searched": stats.searched,
-        "kept": stats.kept,
-        "days": astuple(stats.days),
-        "reached": _numbers_by_iid(stats.reached),
-        "pixels_per_look": _numbers_by_iid(stats.pixels_per_look),
-        "pixel_km2": _numbers_by_iid(stats.pixel_km2),
-        "selected": _numbers_by_iid(stats.selected),
-        "downloads": stats.downloads,
-        "overlap": astuple(stats.overlap),
-        "iids": stats.iids,
-    }
-    with atomic_path(root / paths.STATS_NAME) as tmp:
-        tmp.write_text(json.dumps(laid_out, indent=1) + "\n", encoding="utf-8")
+    laid_out = {field.name: getattr(stats, field.name) for field in fields(stats)}
+    write_json(root / paths.STATS_NAME, laid_out, end="\n", indent=1, default=astuple)
 
 
 def read_stats(root: Path = paths.STATS_ROOT) -> DatasetStats:
-    """Read back what the stats pipeline published.
+    """Read back what the analysis pipeline published.
 
     Args:
         root: The directory it was written in.
@@ -47,7 +34,7 @@ def read_stats(root: Path = paths.STATS_ROOT) -> DatasetStats:
     Returns:
         stats: The stats the run left.
     """
-    saved = json.loads((root / paths.STATS_NAME).read_text(encoding="utf-8"))
+    saved = read_json(root / paths.STATS_NAME)
     return DatasetStats(
         searched=saved["searched"],
         kept=saved["kept"],
@@ -62,10 +49,7 @@ def read_stats(root: Path = paths.STATS_ROOT) -> DatasetStats:
     )
 
 
-@cache
-def cached_selection() -> list[Selection]:
-    """Read what the selection left of every tile it searched, once."""
-    return read_selection()
+cached_selection = cache(read_selection)
 
 
 @cache
@@ -74,9 +58,12 @@ def selection_by_tile() -> dict[str, Selection]:
     return {selection.tile.tile: selection for selection in cached_selection()}
 
 
-def _numbers_by_iid(spreads: Mapping[str, Spread]) -> dict[str, tuple[float, ...]]:
-    """Write out one measurement per instrument as the numbers it holds."""
-    return {iid: astuple(spread) for iid, spread in spreads.items()}
+def read_tile_selection(tile: str) -> Selection | None:
+    """Read what the selection left of one tile, or None where it holds none."""
+    try:
+        return selection_by_tile().get(tile)
+    except FileNotFoundError:
+        return None
 
 
 def _spreads_by_iid(saved: Mapping[str, Sequence[float]]) -> dict[str, Spread]:

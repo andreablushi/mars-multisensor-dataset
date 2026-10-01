@@ -36,7 +36,7 @@ def merge_detectors(
     measured = np.zeros(len(configs.BANDS_NM), dtype=bool)
     for name, held in detectors.items():
         grid = np.asarray(configs.DETECTOR_BANDS_NM[name])
-        table = held.wavelengths[columns]
+        table = held.table[columns]
         live = resample.measured_bands(held.mask, table, grid)
         chosen = np.asarray(configs.DETECTOR_SLOTS[name])[live]
         measured[chosen] = True

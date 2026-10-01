@@ -16,6 +16,7 @@ from digitalhub.stores.data.api import get_default_store
 
 from analysis.paths import ANALYSIS_ROOT
 from common.paths import DATA_ROOT
+from common.pool import cancellable_pool
 from dhub.paths import Artifact
 
 # The platform says twice per publish that 0.16 renames what it is called by.
@@ -114,7 +115,7 @@ def published_folder(
     keys = {
         path: prefix + path.relative_to(root).as_posix() for path in [*files, *last]
     }
-    with ThreadPoolExecutor(max_workers=uploads) as sending:
+    with cancellable_pool(ThreadPoolExecutor(uploads)) as sending:
         list(
             sending.map(
                 client.upload_file,
@@ -169,7 +170,7 @@ def download_objects(
         (into / one).parent.mkdir(parents=True, exist_ok=True)
     keys = [prefix + one for one in names]
     files = [str(into / one) for one in names]
-    with ThreadPoolExecutor(max_workers=downloads) as fetching:
+    with cancellable_pool(ThreadPoolExecutor(downloads)) as fetching:
         list(fetching.map(client.download_file, repeat(bucket), keys, files))
 
 

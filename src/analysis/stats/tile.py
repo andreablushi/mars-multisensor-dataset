@@ -9,7 +9,7 @@ from analysis.coverage.models.coverage import SetCoverage
 from analysis.selector.filters.admit import landed_pixels
 from analysis.selector.merge import merge_track
 from analysis.selector.models.selection import Selection
-from analysis.stats.artifacts import selection_by_tile
+from analysis.stats.artifacts import read_tile_selection
 from analysis.stats.models import InstrumentReach, TileStats, TileTrack
 from common.config import analysis_settings
 
@@ -27,16 +27,14 @@ def read_tile_track(coverage: Sequence[SetCoverage]) -> TileTrack | None:
         coverage: The tile's instrument sets, in the order they are drawn.
 
     Returns:
-        tile_track: Its track and kept observations, or None if nothing is measurable.
-
-    Raises:
-        FileNotFoundError: When no selection has been written to read it off.
+        tile_track: Its track and kept observations, or None if the selection holds
+            nothing to measure on it.
     """
     key = coverage[0].summary.tile
     if key not in _tracks_read:
         if len(_tracks_read) >= TILE_CACHE:
             _tracks_read.clear()
-        selection = selection_by_tile().get(key)
+        selection = read_tile_selection(key)
         _tracks_read[key] = (
             None if selection is None else track_tile(coverage, selection)
         )
@@ -56,7 +54,7 @@ def track_tile(
         tile_track: Its track and where its kept observations sit, or None if
             nothing is measurable.
     """
-    track = merge_track(coverage, analysis_settings().window)
+    track = merge_track(coverage, analysis_settings().criteria)
     if track is None:
         return None
     index_of = {

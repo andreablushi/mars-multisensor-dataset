@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from math import inf
 
 from analysis.coverage.models.coverage import Event, SetCoverage
 from analysis.metadata.loaders.observations import read_incidences
@@ -10,6 +11,7 @@ from analysis.selector.models.search_grid import SearchGrid
 from analysis.selector.models.track import Offered
 from analysis.utils import mask as packing
 from analysis.utils.tile_group import group_of_tile_named
+from building.configs import sharad
 
 
 def admitted_observations(
@@ -24,7 +26,7 @@ def admitted_observations(
         coverage: The tile's instrument sets, in any order.
         grid: The grid the tile is searched over.
         min_pixels: The pixels each set has to land on the tile, by set.
-        solar_zenith: The solar zenith angle past which a look is refused, by iid.
+        solar_zenith: The solar zenith angle past which a look is at night, by iid.
 
     Returns:
         admitted: What the tile keeps, with each set and the cells it fills.
@@ -34,7 +36,8 @@ def admitted_observations(
     refused: Offered = []
     incidences = read_incidences(group_of_tile_named(coverage[0].summary.tile))
     for owner, instrument in enumerate(coverage):
-        limit = solar_zenith.get(instrument.summary.iid, float("inf"))
+        iid = instrument.summary.iid
+        limit = inf if iid == sharad.LAYOUT.instrument else solar_zenith.get(iid, inf)
         for observation in instrument.events:
             cells = [
                 cell

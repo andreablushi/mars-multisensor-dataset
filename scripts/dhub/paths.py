@@ -17,35 +17,22 @@ class Artifact(Enum):
     SELECTION = analysis_paths.SELECTION_ROOT
     STATS = analysis_paths.STATS_ROOT
     LABELS = analysis_paths.LABELS_ROOT
-    SUMMARY = analysis_paths.COVERAGE_SUMMARY_PATH
     VERDICTS = analysis_paths.VERDICTS_PATH
     DATASET = building_paths.DATASETS_ROOT
 
     @property
     def published(self) -> str:
-        """Return the name it is published under.
-
-        Returns:
-            name: Its member's name, in lower case.
-        """
+        """Return the name it is published under, its member's name in lower case."""
         return self.name.lower()
 
     @property
     def path(self) -> Path:
-        """Return where it lands on disk.
-
-        Returns:
-            path: A directory for an archive, or the file itself.
-        """
+        """Return where it lands, a directory for an archive or the file itself."""
         return self.value
 
     @property
     def packed(self) -> bool:
-        """Say whether it goes up as one archive of a directory.
-
-        Returns:
-            packed: True for a directory, False for a file published as it is.
-        """
+        """Say whether it goes up as one archive of a directory, not a bare file."""
         return not self.path.suffix
 
 
@@ -59,9 +46,5 @@ class Function(Enum):
 
     @property
     def registered(self) -> str:
-        """Return the name the function is registered under.
-
-        Returns:
-            name: Its member's name, in lower kebab case.
-        """
+        """Return the name it is registered under, its member's in lower kebab case."""
         return self.name.lower().replace("_", "-")

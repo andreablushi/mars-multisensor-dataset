@@ -20,9 +20,7 @@ def placed(position: Position, frame: Tile) -> Position:
     Returns:
         position: The offsets from that centre, in polar metres or degrees.
     """
-    if frame.grid is None:
-        return equatorial.placed(position, frame)
-    return polar.placed(position, frame)
+    return (equatorial if frame.grid is None else polar).placed(position, frame)
 
 
 def overlap(position: Position, frame: Tile) -> Overlap | None:
@@ -36,11 +34,7 @@ def overlap(position: Position, frame: Tile) -> Overlap | None:
         held: What the box keeps, or None where the observation reaches none of it.
     """
     # A cut is made where the samples sit; a placement is made where the tile is.
-    held = (
-        polar.cut(position, frame, frame.span)
-        if position.grid is not None
-        else equatorial.cut(position, frame, frame.span)
-    )
+    held = (polar if position.grid is not None else equatorial).cut(position, frame)
     if held is None:
         return None
     bounds, inside = held

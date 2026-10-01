@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import NamedTuple
 
 import numpy as np
 from pyproj import Geod
@@ -14,40 +15,39 @@ TURN = 360.0
 
 HALF_TURN = 180.0
 
+POLE = 90.0
+
 # A degree of longitude vanishes at a pole, so the correction is floored
 MIN_COSINE = 0.05
 
 # How near the antipode the projection is allowed to divide by
 LAEA_MIN_DENOMINATOR = 1e-12
 
-# A polar grid: its centre longitude, whether north, and the sphere it is built on.
-PolarGrid = tuple[float, bool, float]
-
 # The spheroid every ground distance is walked on, which no sphere stands in for.
 SPHEROID = Geod(a=EQUATORIAL_RADIUS_M, b=POLAR_RADIUS_M)
 
 
-def normalise_longitude(lon: np.ndarray | float) -> np.ndarray:
-    """Wrap longitudes into the -180 to 180 degree range.
+class PolarGrid(NamedTuple):
+    """One polar stereographic grid, by its centre, its pole and its sphere.
 
-    Args:
-        lon: One longitude in degrees, or an array of them.
-
-    Returns:
-        longitudes: The wrapped longitudes as a float array.
+    Attributes:
+        centre_lon: The longitude the projection is centred on, in degrees.
+        north: Whether it is centred on the north pole rather than the south.
+        radius_m: The sphere the projection is built on, in metres.
     """
-    return (np.asarray(lon, dtype=float) + 180.0) % 360.0 - 180.0
+
+    centre_lon: float
+    north: bool
+    radius_m: float
+
+
+def normalise_longitude(lon: np.ndarray | float) -> np.ndarray:
+    """Wrap one longitude or an array of them into -180 to 180 degrees, as floats."""
+    return (np.asarray(lon, dtype=float) + HALF_TURN) % TURN - HALF_TURN
 
 
 def longitude_stretch(lat: float) -> float:
-    """Return how much a degree of longitude shrinks at one latitude.
-
-    Args:
-        lat: The latitude in degrees.
-
-    Returns:
-        cosine: The cosine of the latitude, never below MIN_COSINE.
-    """
+    """Return how a degree of longitude shrinks at a latitude, at least MIN_COSINE."""
     return max(math.cos(math.radians(lat)), MIN_COSINE)
 
 
@@ -157,27 +157,12 @@ def geodesic_steps(lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
 
 
 def geodesic_length(lon: np.ndarray, lat: np.ndarray) -> float:
-    """Return the geodesic length along a sequence of lon/lat points.
-
-    Args:
-        lon: The point longitudes in degrees.
-        lat: The point latitudes in degrees.
-
-    Returns:
-        length: The summed length in metres, or 0.0 for fewer than two points.
-    """
+    """Return the geodesic metres along lon/lat points, 0.0 for fewer than two."""
     return float(geodesic_steps(lon, lat).sum())
 
 
 def northward_m(degrees: float) -> float:
-    """Return how far north a span of latitude reaches, in metres.
-
-    Args:
-        degrees: The span of latitude in degrees.
-
-    Returns:
-        metres: The distance in metres along a meridian.
-    """
+    """Return how far north a span of latitude in degrees reaches, in metres."""
     return math.radians(degrees) * RADIUS_M
 
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import time
 
 import httpx
@@ -10,18 +9,9 @@ import httpx
 from building.configs import ctx as configs
 from building.download import archive
 from building.preprocessing.ctx.isis import run_isis
-from common.disk.files import atomic_path
+from common.disk.files import write_json
 from common.fetch.gate import Gate
 from common.models.tile import Tile
-
-# What ODE publishes CTX under.
-ODE = {"ihid": "MRO", "iid": "CTX"}
-
-# The ODE product type the raw scan is published under, the only one fetched.
-PRODUCT_TYPE = "EDR"
-
-# The scan's files and metadata, which carries the geometry it was taken at.
-FIELDS = "fopm"
 
 SPICE_DEADLINE = 1800.0
 
@@ -47,7 +37,11 @@ def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> No
     if (cube.exists() or raw.exists()) and metadata.exists():
         return
     entries = archive.query_products(
-        client, productid=identifier, pt=PRODUCT_TYPE, results=FIELDS, **ODE
+        client,
+        productid=identifier,
+        pt=configs.PRODUCT_TYPE,
+        results=configs.ODE_RESULTS,
+        **configs.ODE,
     )
     if not entries:
         raise FileNotFoundError(f"ODE carries no raw scan for {identifier}.")
@@ -56,8 +50,7 @@ def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> No
         for key in configs.ODE_ACQUISITION
         if entries[0].get(key)
     }
-    with atomic_path(metadata) as tmp:
-        tmp.write_text(json.dumps(acquisition))
+    write_json(metadata, acquisition)
     offered = archive.file_fields(entries[0])
     archive.download_files(
         {configs.IMAGE_SUFFIX: raw},

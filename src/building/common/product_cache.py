@@ -62,10 +62,6 @@ class ProductCache:
         return self.files(identifier, product, kind)
 
     def discard(self, directory: str) -> None:
-        """Delete everything one product was downloaded as.
-
-        Args:
-            directory: The observation or sheet directory the product was kept in.
-        """
+        """Delete the observation or sheet directory one product was downloaded into."""
         # Only its own directory, so what every observation shares is left alone.
         shutil.rmtree(self.root / directory, ignore_errors=True)

@@ -28,7 +28,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
         return panels.unavailable(mosaic.NO_BOX)
     tile_track = read_tile_track(coverage)
     return mosaic.fetched(
-        placed.box(), partial(footprints_map, placed, coverage, tile_track)
+        placed.crop(), partial(footprints_map, placed, coverage, tile_track)
     )
 
 
@@ -69,7 +69,7 @@ def footprints_map(
                 traced_colours[label] = colours[label]
     if not traced_colours:
         panels.note(axis, "No footprints available", colour="#ffffff", size=11)
-    axis.set_title(panels.title(coverage), fontsize=12, loc="left")
+    panels.titled(axis, panels.title(coverage))
     panels.key_beside(
         drawn,
         [

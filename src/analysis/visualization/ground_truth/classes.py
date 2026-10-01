@@ -9,46 +9,44 @@ import ipywidgets as widgets
 from matplotlib.lines import Line2D
 
 from analysis.ground_truth.models.label import Label
+from analysis.ground_truth.models.settings import GroundTruthSettings
 from analysis.visualization import mosaic, panels
-from analysis.visualization.panels import Colour
+from analysis.visualization.ground_truth.drawn import NOTHING_DRAWN, drawn_by_class
 from common.maths import geodesy
 
 MARKER_SIZE = 18
 
 
-def plot(labels: Sequence[Label]) -> widgets.Widget:
+def plot(labels: Sequence[Label], settings: GroundTruthSettings) -> widgets.Widget:
     """Map every drawn tile at its centre, one colour per class."""
-    drawn = [label for label in labels if label.drawn]
-    colours = panels.colours(list(dict.fromkeys(label.label for label in drawn)))
+    grouped = drawn_by_class(labels, settings)
+    if not grouped:
+        return panels.unavailable(NOTHING_DRAWN)
     return mosaic.fetched(
-        mosaic.MARS, partial(classes_map, drawn, colours), mosaic.MARS_PIXELS
+        mosaic.MARS, partial(classes_map, grouped), mosaic.MARS_PIXELS
     )
 
 
-def classes_map(
-    drawn: Sequence[Label], colours: dict[str, Colour], image: bytes
-) -> widgets.Image:
+def classes_map(grouped: dict[str, list[Label]], image: bytes) -> widgets.Image:
     """Draw the drawn tiles over the mosaic of Mars, one colour per class.
 
     Args:
-        drawn: The tiles the balanced draw took.
-        colours: The colour each class is drawn in.
+        grouped: The tiles the balanced draw took, by class in config order.
         image: The mosaic of the whole planet, as fetched.
 
     Returns:
         map: The map, rendered.
     """
-    figure, axis = mosaic.mars_board(image, f"{len(drawn):,} tiles drawn")
-    for name, colour in colours.items():
-        lon, lat = zip(
-            *(geodesy.bbox_centre(label) for label in drawn if label.label == name),
-            strict=True,
-        )
+    drawn = sum(len(tiles) for tiles in grouped.values())
+    figure, axis = mosaic.mars_board(image, f"{drawn:,} tiles drawn")
+    colours = panels.colours(list(grouped))
+    for name, tiles in grouped.items():
+        lon, lat = zip(*(geodesy.bbox_centre(label) for label in tiles), strict=True)
         axis.scatter(
             lon,
             lat,
             s=MARKER_SIZE,
-            color=colour,
+            color=colours[name],
             edgecolor="black",
             linewidth=0.4,
             transform=mosaic.LONLAT,

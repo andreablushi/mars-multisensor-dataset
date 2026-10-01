@@ -10,6 +10,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 
 @contextmanager
 def atomic_path(path: Path) -> Iterator[Path]:
@@ -57,3 +59,32 @@ def read_jsonl(path: Path) -> Iterator[dict[str, Any]]:
         for line in handle:
             if stripped := line.strip():
                 yield json.loads(stripped)
+
+
+def write_json(path: Path, held: Any, end: str = "", **layout: Any) -> None:
+    """Write one JSON value, atomically via a temp file and rename.
+
+    Args:
+        path: Destination file path.
+        held: A JSON serialisable value.
+        end: What follows the value, such as a closing newline.
+        **layout: What `json.dumps` is handed, such as indent or default.
+    """
+    with atomic_path(path) as tmp:
+        tmp.write_text(json.dumps(held, **layout) + end, encoding="utf-8")
+
+
+def read_json(path: Path) -> Any:
+    """Return the JSON value one file holds."""
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_npz(path: Path, arrays: Mapping[str, np.ndarray]) -> None:
+    """Write named arrays compressed, atomically via a temp file and rename.
+
+    Args:
+        path: Destination file path.
+        arrays: The arrays to store, by the name each is stored under.
+    """
+    with atomic_path(path) as tmp, tmp.open("wb") as handle:
+        np.savez_compressed(handle, **arrays)

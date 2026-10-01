@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from common.maths.box import Boxed
+
 
 @dataclass(frozen=True, slots=True)
-class Feature:
+class Feature(Boxed):
     """One feature of the IAU nomenclature, bounded by the box ODE gives it.
 
     Attributes:

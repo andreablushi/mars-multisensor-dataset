@@ -10,9 +10,9 @@ import numpy as np
 from building import paths
 from building.common.layout import Axis, Layout
 from building.preprocessing.common.models.sample import Sample
-from common.disk.files import atomic_path
+from common.disk.files import write_npz
 from common.disk.slugify import slugify
-from common.maths import physics
+from common.maths import box, physics
 from common.models.tile import Tile
 
 # What the arrays placing a crop are called, and what the masks beside them are.
@@ -34,16 +34,7 @@ STORED = np.float32
 
 
 def sample_path(frame: Tile, instrument: str, identifier: str) -> Path:
-    """Return where one cropped observation's arrays belong.
-
-    Args:
-        frame: The tile it was cut to.
-        instrument: The instrument that took it, as ODE names it.
-        identifier: What that instrument was asked for.
-
-    Returns:
-        path: The file it is written as under the dataset's root, which need not exist.
-    """
+    """Return where one cropped observation's file belongs under the dataset's root."""
     return (
         Path(frame.band_name)
         / frame.column_name
@@ -53,14 +44,7 @@ def sample_path(frame: Tile, instrument: str, identifier: str) -> Path:
 
 
 def native(values: np.ndarray) -> np.ndarray:
-    """Return one array in the byte order the machine reads.
-
-    Args:
-        values: The values to store, big-endian as PDS publishes them.
-
-    Returns:
-        values: The same values in the machine's own order, ready to hand to a tensor.
-    """
+    """Return one big-endian PDS array in the byte order the machine reads."""
     return values.astype(values.dtype.newbyteorder("="), copy=False)
 
 
@@ -124,10 +108,7 @@ def write_sample(
         "separable": position.separable,
         "centre_lon": frame.centre_lon,
         "centre_lat": frame.centre_lat,
-        "box": {
-            edge: getattr(frame, edge)
-            for edge in ("min_lat", "max_lat", "west_lon", "east_lon")
-        },
+        "box": box.box_edges(frame),
         "position_units": DEGREES if grid is None else METRES,
         "radii_m": [physics.EQUATORIAL_RADIUS_M, physics.POLAR_RADIUS_M],
         "polar": None if grid is None else list(grid),
@@ -137,6 +118,5 @@ def write_sample(
         "label": held.label,
     }
     # Compressed, and written whole then moved, so a crop a reader finds was finished.
-    with atomic_path(root / path) as tmp, tmp.open("wb") as handle:
-        np.savez_compressed(handle, **arrays, **{META: np.array(json.dumps(described))})
+    write_npz(root / path, arrays | {META: np.array(json.dumps(described))})
     return path

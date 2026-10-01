@@ -49,7 +49,7 @@ def kept_map(kept: np.ndarray, grid: Tessellate, image: bytes) -> widgets.Image:
     """
     lat = np.arange(MARS.north - RASTER_DEG / 2.0, MARS.south, -RASTER_DEG)
     lon = np.arange(MARS.west + RASTER_DEG / 2.0, MARS.east, RASTER_DEG)
-    bands, columns = grid.tile_indices(*np.meshgrid(lat, lon, indexing="ij"))
+    bands, columns = grid.tile_indices(*np.meshgrid(lon, lat))
     painted = np.where(
         kept[grid.flat_tile_indices(bands, columns)][..., None],
         to_rgba(KEPT, TILE_ALPHA),

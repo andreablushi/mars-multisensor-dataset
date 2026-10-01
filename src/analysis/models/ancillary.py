@@ -1,34 +1,13 @@
-"""A table published beside every product of a set, and the distortion of each look."""
+"""The signal phase distortion of each SHARAD look, read off its geometry table."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 
-@dataclass(slots=True)
-class Ancillary:
-    """What a set's ancillary product is, and which of its columns are read.
-
-    Attributes:
-        pt: The ODE product type the ancillary is published under.
-        latitude: The column placing each row, in planetocentric degrees.
-        longitude: The column placing each row, in degrees east.
-        solar_zenith_column: The column holding each row's solar zenith angle.
-        solar_zenith: The solar zenith angle past which a row is on the night side.
-        distortion: The column holding each row's signal phase distortion.
-    """
-
-    pt: str
-    latitude: str
-    longitude: str
-    solar_zenith_column: str
-    solar_zenith: float
-    distortion: str
-
-
 @dataclass(frozen=True, slots=True)
 class Distortion:
-    """The least signal phase distortion of one look's rows over one tile.
+    """The least signal phase distortion of one SHARAD look's rows over one tile.
 
     Attributes:
         group: The tile group the look was listed in.

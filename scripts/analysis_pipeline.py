@@ -18,11 +18,11 @@ from analysis.coverage import artifacts as coverage_artifacts
 from analysis.ground_truth import artifacts, fetch
 from analysis.ground_truth.labels import draw_labels, label_tiles
 from analysis.ground_truth.models.label import Label
-from analysis.metadata.summary import summarise_ancillary
+from analysis.metadata.distortions import write_distortions
 from analysis.selector import select
 from analysis.selector.artifacts import read_selected_tiles
 from analysis.stats.artifacts import write_stats
-from analysis.stats.dataset import dataset_stats, measure_every_tile
+from analysis.stats.dataset import dataset_stats
 from common.config import analysis_settings
 from common.console import PLAIN_LOG_ENV
 
@@ -44,9 +44,9 @@ def compute_coverage(force: bool = False, workers: int | None = None) -> int:
     started_at = time.monotonic()
     downloaded, measured = runner.pipeline_outcomes(settings, console, force, workers)
     elapsed = time.monotonic() - started_at
-    coverage_artifacts.reindex()
+    coverage_artifacts.write_index()
     print_summary(downloaded, measured, elapsed, planner.unmeasured_sources(), console)
-    unread = summarise_ancillary(settings, force)
+    unread = write_distortions(settings, force)
     console.print(f"ancillary: {unread} tables left unread")
     failed = any(outcome.failed for outcome in [*downloaded, *measured])
     return 1 if failed or unread else 0
@@ -82,19 +82,18 @@ def compute_labels(force: bool) -> list[Label]:
     return labels
 
 
-def compute_selection(workers: int | None = None, force: bool = False) -> None:
+def compute_selection(force: bool = False, workers: int | None = None) -> None:
     """Search every measured tile under the filter, label it, and read what both left.
 
     Args:
-        workers: How many processes to run on at once, or None for the config.
         force: Whether to fetch the feature catalogue again rather than read it.
+        workers: How many processes to run on at once, or None for the config.
     """
     workers = analysis_settings(workers).workers
-    selection = select.select_dataset(workers)
+    # Read off the selection just written, so they never stand for an old filter
+    selection, measured = select.select_dataset(workers)
     kept = sum(1 for selected in selection if selected.tile.kept)
     print(f"selection: {kept:,} of {len(selection):,} tiles kept", flush=True)
-    # Read off the selection just written, so they never stand for an old filter
-    measured = measure_every_tile(selection, workers)
     write_stats(dataset_stats(measured, selection))
     drawn = {labelled.tile for labelled in compute_labels(force) if labelled.drawn}
     write_stats(
@@ -109,7 +108,7 @@ def compute_selection(workers: int | None = None, force: bool = False) -> None:
 @handler(
     outputs=[
         artifact.published
-        for artifact in (Artifact.COVERAGE, Artifact.SUMMARY, *SELECTION_ARTIFACTS)
+        for artifact in (Artifact.COVERAGE, Artifact.METADATA, *SELECTION_ARTIFACTS)
     ]
 )
 def run_pipeline(project, force: bool = False, workers: int | None = None):
@@ -122,7 +121,7 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
 
     Returns:
         coverage: The archive of the coverage events and summaries.
-        summary: The table of one row per tile and instrument set.
+        metadata: The archive of the ODE records the coverage was measured from.
         selection: The archive of the tiles and observations kept.
         stats: The archive of what the filter left of the dataset.
         labels: The archive of every labelled tile.
@@ -134,17 +133,16 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
     print("measuring coverage", flush=True)
     failed = compute_coverage(force, workers)
     coverage = archives.published_artifact(project, Artifact.COVERAGE)
-    summary = archives.published_artifact(project, Artifact.SUMMARY)
-    archives.published_artifact(project, Artifact.METADATA)
+    metadata = archives.published_artifact(project, Artifact.METADATA)
     # Report a failure only once uploaded, and never select from short coverage
     if failed:
         raise RuntimeError("the run had failures; the archives hold what finished")
     archives.download_artifact(project, Artifact.VERDICTS)
-    compute_selection(workers, force)
+    compute_selection(force, workers)
     print("done", flush=True)
     return (
         coverage,
-        summary,
+        metadata,
         *(
             archives.published_artifact(project, artifact)
             for artifact in SELECTION_ARTIFACTS
@@ -168,10 +166,9 @@ def run_selection(project, force: bool = False, workers: int | None = None):
     """
     os.environ[PLAIN_LOG_ENV] = "1"
     archives.download_artifact(project, Artifact.COVERAGE)
-    if analysis_settings().ancillary:
-        archives.download_artifact(project, Artifact.METADATA)
+    archives.download_artifact(project, Artifact.METADATA)
     archives.download_artifact(project, Artifact.VERDICTS)
-    compute_selection(workers, force)
+    compute_selection(force, workers)
     print("done", flush=True)
     return tuple(
         archives.published_artifact(project, artifact)

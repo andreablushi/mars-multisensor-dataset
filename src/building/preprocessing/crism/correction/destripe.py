@@ -13,14 +13,14 @@ STRIPE_WIDTH = 80.0
 
 
 def remove_spike_columns(
-    cube: np.ndarray, mask: Mask, centre: np.ndarray, detector: Detector
+    cube: np.ndarray, mask: Mask, centres: np.ndarray, detector: Detector
 ) -> None:
     """Replace every band of a column that spikes away from its neighbours.
 
     Args:
         cube: The masked values as lines by samples by bands, levelled in place.
         mask: What that masking refused.
-        centre: The centre wavelength of every band.
+        centres: The centre wavelength of every band.
         detector: Which detector, `l` or `s`, which picks the threshold.
 
     Raises:
@@ -34,7 +34,7 @@ def remove_spike_columns(
     # Average each column down the scan, so the ground averages away.
     averaged = block.mean(axis=0)
     # How far each band sits from the median of its wavelength neighbours.
-    size = moving_median.window_size(centre[live_bands], STRIPE_WIDTH)
+    size = moving_median.window_size(centres[live_bands], STRIPE_WIDTH)
     apart = np.abs(averaged - moving_median.moving_median(averaged, size))
     # crism_ml judges each column against the spread of its own bands.
     sigma = STRIPE_SIGMA[detector]

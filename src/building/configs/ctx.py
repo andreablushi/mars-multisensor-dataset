@@ -33,6 +33,15 @@ LAYOUT = Layout(
     stored="f2",
 )
 
+# What ODE publishes CTX under.
+ODE = {"ihid": "MRO", "iid": LAYOUT.instrument}
+
+# The ODE product type the raw scan is published under, the only one fetched.
+PRODUCT_TYPE = "EDR"
+
+# The scan's files and metadata, which carries the geometry it was taken at.
+ODE_RESULTS = "fopm"
+
 CACHE = ProductCache(paths.CTX_ROOT, NAMING, {None: (CUBE_SUFFIX, METADATA_SUFFIX)})
 
 # What ODE says of a scan that its projected label does not, the geometry it was at

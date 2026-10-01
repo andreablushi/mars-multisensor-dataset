@@ -23,7 +23,7 @@ def submitted(stage: Function, ref: str, **parameters) -> int:
     Raises:
         RuntimeError: When an earlier run of the stage still holds a running pod.
     """
-    platform = configs.load()
+    platform = configs.load_platform()
     asked = platform.resources[stage.name.lower()]
     project = dh.get_or_create_project(platform.project)
     # A stopped run can keep its pod alive, so only a deleted one is surely gone
@@ -52,7 +52,7 @@ def submitted(stage: Function, ref: str, **parameters) -> int:
     root = platform.source_root
     run = function.run(
         action="job",
-        profile=asked.profile,
+        profile=asked.profile + ("-shared" if asked.shared else ""),
         resources={"cpu": str(asked.cpu), "mem": asked.memory, "disk": asked.disk},
         secrets=["DHCORE_PERSONAL_ACCESS_TOKEN"],
         envs=[

@@ -29,12 +29,5 @@ def dataset_root(name: str) -> Path:
 
 
 def crop_paths(root: Path) -> list[Path]:
-    """Return every crop one build of the dataset holds on disk.
-
-    Args:
-        root: The dataset's own root directory.
-
-    Returns:
-        crops: The file of each crop written there, in no particular order.
-    """
+    """Return every crop file the build under `root` holds, in no particular order."""
     return list(root.rglob(f"*{SAMPLE_SUFFIX}"))

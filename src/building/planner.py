@@ -80,4 +80,4 @@ def build_plan(
     jobs.sort(
         key=lambda job: (-INSTRUMENTS[job.instrument].worker_bytes, -len(job.frames))
     )
-    return Plan(tuple(jobs), tuple(tiles), skipped_existing=skipped, unread=unread)
+    return Plan(tuple(jobs), tuple(tiles), skipped=skipped, unread=unread)

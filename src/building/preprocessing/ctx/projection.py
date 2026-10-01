@@ -6,7 +6,7 @@ import numpy as np
 
 from building.configs import ctx as configs
 from building.preprocessing.common.models.position import Position
-from common.maths.geodesy import PolarGrid
+from common.maths.geodesy import HALF_TURN, POLE, PolarGrid
 
 # The two projections a scan is written in, the second on a polar tile.
 EQUATORIAL = "SimpleCylindrical"
@@ -29,9 +29,9 @@ def map_template(grid: PolarGrid | None) -> str:
         template: The map template, as cam2map reads it.
     """
     if grid is None:
-        return configs.MAP.format(name=EQUATORIAL, latitude=0.0, longitude=180.0)
+        return configs.MAP.format(name=EQUATORIAL, latitude=0.0, longitude=HALF_TURN)
     return configs.MAP.format(
-        name=POLAR, latitude=90.0 if grid[1] else -90.0, longitude=grid[0]
+        name=POLAR, latitude=POLE if grid.north else -POLE, longitude=grid.centre_lon
     )
 
 
@@ -66,7 +66,7 @@ def grid_position(label: dict[str, str]) -> Position:
             top - lines * resolution,
             left + samples * resolution,
             True,
-            (
+            PolarGrid(
                 float(label["CenterLongitude"]),
                 float(label["CenterLatitude"]) > 0.0,
                 radius,

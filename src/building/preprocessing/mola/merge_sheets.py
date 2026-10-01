@@ -9,7 +9,7 @@ import numpy as np
 from building.preprocessing.common.models.position import Position
 from building.preprocessing.mola import projection
 from building.preprocessing.mola.models.observation import MolaObservation
-from common.maths.geodesy import TURN
+from common.maths.geodesy import POLE, TURN
 from common.models.tile import Tile
 from common.pds import images, labels
 
@@ -25,7 +25,8 @@ def merge_sheets(
 
     Returns:
         label: What the sheets that write part of the box say about it, merged.
-        height: The height above the areoid in metres over the box, lines by samples.
+        elevation: The elevation above the areoid in metres over the box, lines by
+            samples.
         position: The latitude of every line, falling southward, and the longitude of
             every sample, rising eastward past a turn.
 
@@ -38,21 +39,21 @@ def merge_sheets(
     whole = round(TURN) * resolution
     # Which bins the box covers: lines south from the pole, samples east of it
     down = range(
-        math.ceil((90.0 - frame.max_lat) * resolution - 0.5),
-        math.floor((90.0 - frame.min_lat) * resolution - 0.5) + 1,
+        math.ceil((POLE - frame.max_lat) * resolution - 0.5),
+        math.floor((POLE - frame.min_lat) * resolution - 0.5) + 1,
     )
     across = range(
         math.ceil(frame.west_lon * resolution - 0.5),
         math.floor((frame.west_lon + frame.span) * resolution - 0.5) + 1,
     )
-    height: np.ndarray | None = None
+    elevation: np.ndarray | None = None
     written = np.zeros((len(down), len(across)), dtype=bool)
     read = []
     for _, image in sorted(observation.files.items()):
         label = labels.load(image.with_suffix(".lbl"))
         placed = projection.grid_position(label)
         # Where the sheet's own first bin sits on the grid every sheet shares.
-        line = round((90.0 - float(placed.north[0])) * resolution - 0.5)
+        line = round((POLE - float(placed.north[0])) * resolution - 0.5)
         sample = round(float(placed.east[0]) * resolution - 0.5) % whole
         lines, samples = placed.sizes
         top, bottom = max(down.start, line), min(down.stop, line + lines)
@@ -65,26 +66,26 @@ def merge_sheets(
             part = images.load_window(
                 image, label, (top - line, bottom - line), (left - west, right - west)
             )
-            if height is None:
-                height = np.zeros((len(down), len(across)), dtype=part.dtype)
+            if elevation is None:
+                elevation = np.zeros((len(down), len(across)), dtype=part.dtype)
             at = np.s_[
                 top - down.start : bottom - down.start,
                 left - across.start : right - across.start,
             ]
-            height[at] = part
+            elevation[at] = part
             written[at] = True
             touched = True
         if touched:
             read.append(label)
-    if height is None or not written.all():
+    if elevation is None or not written.all():
         raise ValueError(
             f"{frame.name} reaches ground no sheet of {observation.identifier} holds."
         )
     return (
         labels.merge(*read),
-        height,
+        elevation,
         Position(
-            90.0 - (np.arange(down.start, down.stop) + 0.5) / resolution,
+            POLE - (np.arange(down.start, down.stop) + 0.5) / resolution,
             (np.arange(across.start, across.stop) + 0.5) / resolution,
             True,
         ),

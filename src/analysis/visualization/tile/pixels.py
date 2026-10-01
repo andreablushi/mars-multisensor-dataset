@@ -20,7 +20,7 @@ def plot(coverage: Coverage) -> widgets.Widget:
     """Draw what each instrument lands on the tile, one observation at a time."""
     tile_track = read_tile_track(coverage)
     if tile_track is None:
-        return panels.unavailable(_NOTHING)
+        return panels.unavailable(panels.NO_TRACK)
     landings = landings_per_set(tile_track)
     colours = panels.colours([landing.label for landing in landings])
     tall = 1.4 * len(landings) + TITLE_BAND
@@ -45,12 +45,11 @@ def plot(coverage: Coverage) -> widgets.Widget:
                     linewidth=1.0,
                     zorder=3,
                 )
-            unit = "traces" if landing.iid == wording.SOUNDER else "px"
             axis.set_title(
                 f"{counts.size:,} observations  -  "
                 f"middle one lands "
-                f"{wording.compact(float(np.median(counts)))} {unit}"
-                f"  -  asked for {wording.compact(landing.bar)} {unit}",
+                f"{wording.pixels(float(np.median(counts)), landing.iid)}"
+                f"  -  asked for {wording.pixels(landing.bar, landing.iid)}",
                 fontsize=8,
                 color=panels.GREY,
                 loc="left",

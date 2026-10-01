@@ -1,28 +1,12 @@
 # What the training build holds, and how much of it to build.
 
+defaults: [building, _self_]
+
 # The directory it is written in and the name it is published under.
 name: training
-
-# Products built at once, one per core; a run on a platform is given its own.
-workers: 8
-
-# Downloads at once from each archive, which wait on it and not on the cores.
-# JPL answers 503 past about ten connections from one address, so it stays under that.
-downloads:
-  jpl: 8
-  wustl: 12
-  spice: 4
 
 # What share of the tiles the selection kept to build, above zero and up to one.
 share: 1
 
 # The number every draw is made with, so a smaller build is a reproducible subset.
 seed: 42
-
-# What each instrument's reader is handed, the same in every build so they match.
-preprocessing:
-  # The percentiles a CTX scan is clipped at, and how many lines and samples apart
-  # the counts its statistics are measured on sit.
-  CTX:
-    clip: [1, 99]
-    stride: 8

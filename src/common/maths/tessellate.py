@@ -8,7 +8,7 @@ from functools import lru_cache
 
 import numpy as np
 
-from common.maths.geodesy import HALF_TURN, TURN
+from common.maths.geodesy import HALF_TURN, POLE, TURN
 from common.maths.physics import RADIUS_KM
 from common.models.tile import Tile
 
@@ -25,7 +25,7 @@ def split_bands(tile_km: float) -> tuple[float, ...]:
     """
     bands = max(1, round(math.pi * RADIUS_KM / tile_km))
     # The latitudinal boundaries, of equal height from pole to pole.
-    return tuple(float(edge) for edge in np.linspace(-90.0, 90.0, bands + 1))
+    return tuple(float(edge) for edge in np.linspace(-POLE, POLE, bands + 1))
 
 
 @lru_cache(maxsize=4)
@@ -109,13 +109,13 @@ class Tessellate:
         return self.tile_of(int(band[1:]), int(column[1:]))
 
     def tile_indices(
-        self, lat: np.ndarray | float, lon: np.ndarray | float
+        self, lon: np.ndarray | float, lat: np.ndarray | float
     ) -> tuple[np.ndarray, np.ndarray]:
         """Return the tile every point falls in.
 
         Args:
-            lat: The latitudes in degrees.
             lon: The longitudes in degrees, any turn.
+            lat: The latitudes in degrees.
 
         Returns:
             bands: The band each point falls in.
@@ -123,7 +123,7 @@ class Tessellate:
         """
         counts = np.asarray(self.columns)
         bands = np.clip(
-            np.floor((np.asarray(lat, dtype=float) + 90.0) / HALF_TURN * counts.size),
+            np.floor((np.asarray(lat, dtype=float) + POLE) / HALF_TURN * counts.size),
             0,
             counts.size - 1,
         ).astype(np.int64)
@@ -134,13 +134,5 @@ class Tessellate:
     def flat_tile_indices(
         self, band: np.ndarray | int, column: np.ndarray | int
     ) -> np.ndarray:
-        """Return where each tile stands when every tile is counted in one run.
-
-        Args:
-            band: The latitude band of each tile, one or an array of them.
-            column: The place of each along its band, one or an array of them.
-
-        Returns:
-            indices: Each tile's place, south to north and west to east.
-        """
+        """Return each tile's place in one run, south to north and west to east."""
         return self.offsets[band] + np.asarray(column, dtype=np.int64)
