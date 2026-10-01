@@ -63,7 +63,6 @@ def submitted(stage: Function, ref: str, **parameters) -> int:
         secrets=[credentials.TOKEN],
         envs=[
             {"name": "PYTHONPATH", "value": f"{root}:{root}/src:{root}/scripts"},
-            *credentials.minting_envs(),
             *(isis.ENVS if asked.isis else []),
         ],
         parameters=parameters | {"workers": asked.cpu},

@@ -39,8 +39,6 @@ uv sync --group digitalhub
 dhcli register <your-digitalhub-core-endpoint>
 dhcli login                                    # opens a browser tab
 
-cp .env.example .env                           # once, then fill it in
-
 uv run --group digitalhub python scripts/analysis_pipeline.py --dh
 uv run --group digitalhub python scripts/build_training.py --dh
 uv run --group digitalhub python scripts/build_evaluation.py --dh
