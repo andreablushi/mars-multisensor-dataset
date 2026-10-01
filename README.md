@@ -60,7 +60,7 @@ chmod +x scripts/dh_download.sh   # once
 
 | Name | Where it lands |
 | --- | --- |
-| `coverage`, `summary` | `data/analysis/coverage/` |
+| `coverage` | `data/analysis/coverage/` |
 | `metadata` | `data/analysis/metadata/` |
 | `selection` | `data/analysis/selection/` |
 | `stats` | `data/analysis/stats/` |
