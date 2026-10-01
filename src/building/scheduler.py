@@ -195,7 +195,7 @@ def build_product(job: Job, root: Path) -> Outcome:
                 failed = failed or error
                 continue
             # Reaching or measuring none of a tile is no failure.
-            if sample is None or not sample.measured_ground.any():
+            if sample is None or not sample.measured:
                 missed += 1
                 continue
             path = store.write_sample(

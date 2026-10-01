@@ -7,19 +7,15 @@ project: mars-multisensor-features
 repository: https://github.com/andreablushi/mars-multisensor-dataset
 source_root: /shared
 
-# The image a job is built on, its extras what the platform itself asks for
+# The interpreter and the platform's own base image a job runs on, which installs
+# requirements.txt from its clone with uv.
 python_version: PYTHON3_13
-image_extras:
-  - digitalhub>=0.15.11,<0.16
-  - pandas
+base_image: python:3.13-slim
 
 # What each stage is scheduled on, its profile settling the limit it is killed at.
 # A stage marked shared queues on the shared pool, the rest on the reserved one.
-# A stage marked isis has ISIS installed in its image, which only the CTX builds need.
+# A stage marked isis installs ISIS when its job starts, which only the CTX builds need.
 resources:
-  image:
-    profile: cpu
-    shared: true
   pipeline:
     profile: cpu
     shared: true

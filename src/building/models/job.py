@@ -39,7 +39,7 @@ class Outcome:
     Attributes:
         job: The job that was run.
         records: What each crop it wrote is, for the index to be built from.
-        missed: How many tiles it reached none of, which is not a failure.
+        missed: How many tiles it reached or measured none of, which is not a failure.
         error: The error raised, or None on success.
     """
 

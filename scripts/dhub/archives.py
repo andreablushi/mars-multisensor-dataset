@@ -162,8 +162,9 @@ def download_artifact(project, artifact: Artifact) -> None:
     if not artifact.packed:
         published.download(destination=str(artifact.path), overwrite=True)
         return
-    downloaded = published.download(overwrite=True)
+    downloaded = Path(published.download(destination=str(DATA_ROOT), overwrite=True))
     shutil.rmtree(artifact.path, ignore_errors=True)
     artifact.path.parent.mkdir(parents=True, exist_ok=True)
     with tarfile.open(downloaded) as packed:
         packed.extractall(artifact.path.parent, filter="data")
+    downloaded.unlink()

@@ -184,7 +184,7 @@ def main() -> int:
     """Run the pipeline where it was asked for, over the stages it was asked for.
 
     Returns:
-        code: A process exit code, non zero when a stage or an image build failed.
+        code: A process exit code, non zero when a stage failed.
     """
     parsed = args.script_parser(__doc__, "redo finished work rather than skip it")
     parsed.add_argument(

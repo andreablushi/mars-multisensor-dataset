@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -33,13 +34,14 @@ class ObservationMetadata:
         shape: The value array's shape, in that same order.
         sample_spacing_m: The measured ground one sample spans per ground axis.
         separable: Whether its grid held one ground axis each.
-        valid_count: How many stored values are measurements.
-        value_min: The smallest of those values, or None.
-        value_max: The largest of them, or None for the same reason.
-        value_mean: Their mean, or None for the same reason.
-        value_std: Their standard deviation, or None for the same reason.
-        band_mean: The mean of each spectral band, or None without wavelength.
-        band_std: Each band's standard deviation, or None for the same reasons.
+        valid_count: How many stored values are measurements, at least one.
+        value_min: The smallest of those values.
+        value_max: The largest of them.
+        value_mean: Their mean.
+        value_std: Their standard deviation.
+        band_mean: The mean of each spectral band, None for a band it never
+            measured, or None without wavelength.
+        band_std: Each band's standard deviation, None likewise.
         band_valid_count: The measurements each band pools, or None.
         t_start: When the observation started, or None.
         t_end: When it ended, or None for the same reason.
@@ -55,12 +57,12 @@ class ObservationMetadata:
     sample_spacing_m: tuple[float, ...]
     separable: bool
     valid_count: int
-    value_min: float | None
-    value_max: float | None
-    value_mean: float | None
-    value_std: float | None
-    band_mean: tuple[float, ...] | None = None
-    band_std: tuple[float, ...] | None = None
+    value_min: float
+    value_max: float
+    value_mean: float
+    value_std: float
+    band_mean: tuple[float | None, ...] | None = None
+    band_std: tuple[float | None, ...] | None = None
     band_valid_count: tuple[int, ...] | None = None
     t_start: datetime | None = None
     t_end: datetime | None = None
@@ -83,7 +85,7 @@ def observation_metadata(
     """Return what one stored observation is read back through.
 
     Args:
-        held: The sample that was written.
+        held: The sample that was written, which measured something.
         frame: The local frame of the tile it was kept for.
         layout: What its instrument's arrays hold.
         identifier: What that instrument was asked for, its observation or sheet.
@@ -96,33 +98,30 @@ def observation_metadata(
     values = getattr(held, layout.measurement)
     # A ground mask reaches every value on it, so it spreads over the instrument's axes.
     ground = layout.axis_indices(Axis.GROUND)
-    on_ground = _spread_mask(held.measured_ground, ground, values)
-    measured = on_ground
+    measured = _spread_mask(held.measured_ground, ground, values)
     # A band the observation never measured holds nothing, whatever the ground says.
     if held.measured_bands is not None:
         wavelength = layout.axis_indices(Axis.WAVELENGTH)
-        bands = _spread_mask(held.measured_bands, wavelength, values)
-        measured = on_ground & bands
-    # An integer holds no infinite identity, so the reduction starts at its type's edge.
-    limits = (
-        np.iinfo(values.dtype)
-        if np.issubdtype(values.dtype, np.integer)
-        else np.finfo(values.dtype)
-    )
+        measured = measured & _spread_mask(held.measured_bands, wavelength, values)
     counted = int(measured.sum())
-    value_min = value_max = value_mean = value_std = None
-    # A crop can reach the box and measure nothing, and nothing says nothing
-    if counted:
-        value_min = float(np.min(values, where=measured, initial=limits.max))
-        value_max = float(np.max(values, where=measured, initial=limits.min))
-        value_mean = float(np.mean(values, where=measured))
-        value_std = float(np.std(values, where=measured))
+    value_min, value_max, value_mean, value_std = value_statistics(values, measured)
     band_mean = band_std = band_valid_count = None
     # A band is the one axis a reader normalises against, so it survives the reduction.
-    if counted and Axis.WAVELENGTH in layout.axes:
-        band_mean = tuple(np.mean(values, axis=ground, where=on_ground).tolist())
-        band_std = tuple(np.std(values, axis=ground, where=on_ground).tolist())
+    if Axis.WAVELENGTH in layout.axes:
         band_valid_count = tuple(measured.sum(axis=ground).tolist())
+        # An unmeasured band is an empty slice, whose statistics are None
+        with warnings.catch_warnings(action="ignore"):
+            reduced = [
+                np.mean(values, axis=ground, where=measured),
+                np.std(values, axis=ground, where=measured),
+            ]
+        band_mean, band_std = (
+            tuple(
+                one if pooled else None
+                for one, pooled in zip(each.tolist(), band_valid_count, strict=True)
+            )
+            for each in reduced
+        )
     return ObservationMetadata(
         tile=frame.name,
         instrument=layout.instrument,
@@ -143,6 +142,32 @@ def observation_metadata(
         t_start=_label_time(held.label, STARTED) or t_start,
         t_end=_label_time(held.label, STOPPED),
         acquisition=acquisition_info(held, frame),
+    )
+
+
+def value_statistics(
+    values: np.ndarray, measured: np.ndarray
+) -> tuple[float, float, float, float]:
+    """Return the min, max, mean and standard deviation of the measured values.
+
+    Args:
+        values: The value array.
+        measured: Where it holds a measurement, on its own shape, somewhere True.
+
+    Returns:
+        statistics: The four.
+    """
+    # An integer holds no infinite identity, so the reduction starts at its type's edge.
+    limits = (
+        np.iinfo(values.dtype)
+        if np.issubdtype(values.dtype, np.integer)
+        else np.finfo(values.dtype)
+    )
+    return (
+        float(np.min(values, where=measured, initial=limits.max)),
+        float(np.max(values, where=measured, initial=limits.min)),
+        float(np.mean(values, where=measured)),
+        float(np.std(values, where=measured)),
     )
 
 

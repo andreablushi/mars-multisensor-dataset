@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import numpy as np
+
+from building.configs import crism as configs
 from building.preprocessing.common import cut, geometry
 from building.preprocessing.common.models.position import Position
+from building.preprocessing.crism.correction import ratio
 from building.preprocessing.crism.models.observation import (
     ACQUISITION_PLANES,
     LATITUDE_PLANE,
@@ -22,7 +26,7 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
         frame: The local frame of the tile it was kept for.
 
     Returns:
-        sample: The observation cut to that tile, or None where it reaches none of it.
+        sample: The observation cut to that tile, or None where no valid pixel is left.
     """
     backplanes = observation.geometry
     # A pushbroom swath bends, so every pixel carries its own backplanes' pair.
@@ -32,15 +36,22 @@ def crop(observation: CrismObservation, frame: Tile) -> CrismSample | None:
     held = cut.overlap(position, frame)
     if held is None:
         return None
+    planes = {
+        name: geometry.kept_part(backplanes[:, :, at], held.bounds)
+        for name, at in ACQUISITION_PLANES.items()
+    }
+    lit = planes["incidence_deg"] < configs.MAX_INCIDENCE_DEG
+    valid = geometry.kept_part(observation.valid, held.bounds) & lit
+    if not valid.any():
+        return None
+    cube = np.array(geometry.kept_part(observation.cube, held.bounds))
+    ratio.divide_by_column_median(cube, valid)
     return CrismSample(
         position=held.position,
         label=observation.label,
         inside=held.inside,
-        valid=geometry.partial_mask(geometry.kept_part(observation.valid, held.bounds)),
-        cube=geometry.kept_part(observation.cube, held.bounds),
+        valid=geometry.partial_mask(valid),
+        cube=cube,
         measured_bands=observation.measured_bands,
-        **{
-            name: geometry.kept_part(backplanes[:, :, at], held.bounds)
-            for name, at in ACQUISITION_PLANES.items()
-        },
+        **planes,
     )

@@ -64,7 +64,7 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
         return None
     # The traces are the radargram's second axis, and the delay is left whole.
     (traces,) = held.bounds
-    power = observation.power[:, traces]
+    power = 10 * np.log10(observation.power[:, traces])
     columns = observation.traces[traces]
     placing = observation.geometry[traces]
     return SharadSample(

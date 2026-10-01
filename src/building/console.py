@@ -169,8 +169,8 @@ def print_summary(
     )
     if missed:
         console.print(
-            f"[yellow]{missed:,} crops came out empty, the product reaching "
-            f"none of the tile it was kept for[/yellow]"
+            f"[yellow]{missed:,} crops came out empty, the product reaching or "
+            f"measuring none of the tile it was kept for[/yellow]"
         )
     if not failed:
         return

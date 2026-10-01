@@ -22,13 +22,22 @@ def ratio_by_column_median(cube: np.ndarray, mask: Mask) -> Mask:
     Returns:
         mask: The same mask, in the units the ratio leaves the cube in.
     """
-    refused = mask.pixels
+    divide_by_column_median(cube, ~mask.pixels)
+    cube[mask.pixels] = FILL
+    return replace(mask, fill=FILL)
+
+
+def divide_by_column_median(cube: np.ndarray, valid: np.ndarray) -> None:
+    """Divide the valid pixels of every column by their own median spectrum.
+
+    Args:
+        cube: The values as lines by samples by bands, divided in place.
+        valid: Lines by samples, True where the pixel is a measurement.
+    """
     for at in range(cube.shape[1]):
-        live = ~refused[:, at]
+        live = valid[:, at]
         # A column with no measurement has nothing to ratio, and is refused anyway.
         if live.any():
             column = cube[:, at, :]
             held = column[live]
             column[live] = held / np.median(held, axis=0)
-    cube[refused] = FILL
-    return replace(mask, fill=FILL)

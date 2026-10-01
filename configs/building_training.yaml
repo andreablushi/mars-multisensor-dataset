@@ -1,7 +1,7 @@
 # What the training build holds, and how much of it to build.
 
 # The directory it is written in and the name it is published under.
-name: training-test
+name: training
 
 # Products built at once, one per core; a run on a platform is given its own.
 workers: 8

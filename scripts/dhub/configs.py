@@ -16,17 +16,17 @@ class Resources:
 
     Attributes:
         profile: The profile settling the cores and the memory of the box.
-        cpu: The cores the job is scheduled on, or None for a stage only built.
+        cpu: The cores the job is scheduled on.
         memory: The memory it is scheduled with, such as "32Gi".
         disk: The disk it is given.
         shared: Whether it queues on the shared pool rather than the reserved one.
-        isis: Whether its image installs ISIS and its job is told where.
+        isis: Whether its job installs ISIS at start and is told where.
     """
 
     profile: str
-    cpu: int | None = None
-    memory: str | None = None
-    disk: str | None = None
+    cpu: int
+    memory: str
+    disk: str
     shared: bool = False
     isis: bool = False
 
@@ -37,10 +37,10 @@ class Platform:
 
     Attributes:
         project: The project every run and every published archive belongs to.
-        repository: The repository the platform clones to build the image.
+        repository: The repository the platform clones when a job starts.
         source_root: Where that clone lands on the job.
-        python_version: The interpreter the image is built on.
-        image_extras: What the platform itself asks for, beyond the pipeline.
+        python_version: The interpreter a job runs on.
+        base_image: The platform's own base image a job runs on.
         resources: The profile, cores, memory and disk of each stage.
     """
 
@@ -48,7 +48,7 @@ class Platform:
     repository: str
     source_root: str
     python_version: str
-    image_extras: list[str]
+    base_image: str
     resources: dict[str, Resources]
 
 

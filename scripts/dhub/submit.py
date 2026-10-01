@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import tomllib
-
 import digitalhub as dh
 
 from building.preprocessing.ctx import isis
-from common import paths
 from dhub import configs, credentials
 from dhub.paths import Function
 
@@ -21,35 +18,20 @@ def submitted(stage: Function, ref: str, **parameters) -> int:
         **parameters: What the handler is called with on the platform.
 
     Returns:
-        code: A process exit code, non zero when the image did not build.
+        code: A process exit code, zero once the job is started.
     """
     platform = configs.load()
-    # The image is built from the repo's own dependencies, so it cannot drift
-    manifest = (paths.REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    needs = tomllib.loads(manifest)["project"]["dependencies"] + platform.image_extras
     asked = platform.resources[stage.name.lower()]
     project = dh.get_or_create_project(platform.project)
+    # The job installs the clone's requirements.txt at start, so no image is built
     function = project.new_function(
         name=stage.registered,
         kind="python",
         python_version=platform.python_version,
+        base_image=platform.base_image,
         code_src=f"git+{platform.repository}#{ref}",
         handler=stage.value,
-        requirements=needs,
     )
-
-    # Build the image first, since the job cannot install anything itself.
-    built = function.run(
-        action="build",
-        profile=platform.resources["image"].profile,
-        # Only the builds calibrate CTX, so only their image carries ISIS
-        instructions=isis.INSTRUCTIONS if asked.isis else [],
-        wait=True,
-    )
-    if built.status.state != "COMPLETED":
-        print(f"the image did not build: {built.status.state}")
-        return 1
-    function.refresh()
 
     # Start the job, told where the clone lands and what the box holds
     root = platform.source_root

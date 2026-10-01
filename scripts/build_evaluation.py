@@ -44,7 +44,7 @@ def main() -> int:
     """Run the build where it was asked for.
 
     Returns:
-        code: A process exit code, non zero when a product or an image build failed.
+        code: A process exit code, non zero when a product failed.
     """
     arguments = args.script_parser(__doc__).parse_args()
 

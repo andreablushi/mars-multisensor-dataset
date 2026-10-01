@@ -24,6 +24,14 @@ _ARROW = {
 }
 
 
+def set_type(kind: Any) -> Any:
+    """Return the type an optional hint holds when set, or the hint itself."""
+    # A value a row may leave unset is written as the type it holds when set
+    if isinstance(kind, UnionType):
+        return next(one for one in get_args(kind) if one is not NoneType)
+    return kind
+
+
 def schema_of(model: type) -> pa.Schema:
     """Derive the parquet schema a row model is written under.
 
@@ -36,17 +44,14 @@ def schema_of(model: type) -> pa.Schema:
     hints = get_type_hints(model)
     columns = []
     for field in fields(model):
-        kind = hints[field.name]
-        # A column a row may leave unset is written as the type it holds when set
-        if isinstance(kind, UnionType):
-            kind = next(one for one in get_args(kind) if one is not NoneType)
+        kind = set_type(hints[field.name])
         # A nested row is written as its own columns, so the file gains no level
         if is_dataclass(kind):
             columns.extend(zip(schema_of(kind).names, schema_of(kind).types))
             continue
         # A column holding many of one type is written as a list of it
         if get_origin(kind) is tuple:
-            held = get_args(kind)[0]
+            held = set_type(get_args(kind)[0])
             columns.append((field.name, pa.list_(_ARROW[held])))
             continue
         columns.append((field.name, _ARROW[kind]))
@@ -66,9 +71,7 @@ def build[Row](model: type[Row], row: Mapping[str, Any]) -> Row:
     hints = get_type_hints(model)
     held: dict[str, Any] = {}
     for field in fields(model):
-        kind = hints[field.name]
-        if isinstance(kind, UnionType):
-            kind = next(one for one in get_args(kind) if one is not NoneType)
+        kind = set_type(hints[field.name])
         if is_dataclass(kind):
             held[field.name] = build(kind, row)
         elif get_origin(kind) is tuple:

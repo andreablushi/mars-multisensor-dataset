@@ -49,3 +49,9 @@ class Sample:
             if mask is not None:
                 held = held & mask
         return held
+
+    @property
+    def measured(self) -> bool:
+        """Return whether the crop holds a measurement, on its ground and in a band."""
+        bands = self.measured_bands
+        return bool(self.measured_ground.any()) and (bands is None or bool(bands.any()))

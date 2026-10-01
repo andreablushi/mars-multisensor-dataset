@@ -12,6 +12,7 @@ from digitalhub_runtime_python import handler
 from analysis.selector.models.selection import Selection
 from building import paths, runner
 from building.models.settings import Settings
+from building.preprocessing.ctx.isis import install_isis
 from common.console import PLAIN_LOG_ENV
 from dhub import archives
 from dhub.paths import Artifact
@@ -71,6 +72,9 @@ def build_handler[T: Settings](
             RuntimeError: When a product failed.
         """
         os.environ[PLAIN_LOG_ENV] = "1"
+        # Only a stage marked isis is told ISISROOT, and its job starts without ISIS
+        if "ISISROOT" in os.environ:
+            install_isis()
         for one in fetched:
             archives.download_artifact(project, one)
         settings = settled(workers)

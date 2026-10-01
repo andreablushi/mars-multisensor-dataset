@@ -1,4 +1,4 @@
-"""USGS ISIS, which calibrates CTX: how an image installs it, and how it is run."""
+"""USGS ISIS, which calibrates CTX: how a job installs it, and how it is run."""
 
 from __future__ import annotations
 
@@ -8,9 +8,11 @@ from pathlib import Path
 
 from common.pds import labels
 
-ROOT = "/opt/isis"
+ROOT = "/shared/isis"
 
-DATA = "/opt/isisdata"
+DATA = "/shared/isisdata"
+
+PREFIX = "/shared/mamba"
 
 VERSION = "10.0.0"
 
@@ -41,17 +43,30 @@ HELD = {
 }
 
 INSTRUCTIONS = [
-    'python3 -c "import io,tarfile,urllib.request; tarfile.open(fileobj=io.BytesIO('
-    f"urllib.request.urlopen('{MAMBA}').read()),mode='r:bz2')"
-    ".extract('bin/micromamba','/usr/local')\"",
-    f"export MAMBA_ROOT_PREFIX=/opt/mamba && micromamba create -y -q -p {ROOT} "
-    f"-c conda-forge -c usgs-astrogeology isis={VERSION} && micromamba clean -a -y",
+    'python3 -c "import io,ssl,tarfile,urllib.request; '
+    "tls=ssl.create_default_context(); tls.verify_flags&=~ssl.VERIFY_X509_STRICT; "
+    "tarfile.open(fileobj=io.BytesIO("
+    f"urllib.request.urlopen('{MAMBA}',context=tls).read()),mode='r:bz2')"
+    f".extract('bin/micromamba','{PREFIX}')\"",
+    f"export MAMBA_ROOT_PREFIX={PREFIX} && {PREFIX}/bin/micromamba create -y -q "
+    f"-p {ROOT} -c conda-forge -c usgs-astrogeology isis={VERSION} "
+    f"&& {PREFIX}/bin/micromamba clean -a -y",
     *(
         f"PATH={ROOT}/bin:$PATH ISISROOT={ROOT} downloadIsisData {mission} {DATA} "
         f'--include="{{{",".join(held)}}}"'
         for mission, held in HELD.items()
     ),
 ]
+
+
+def install_isis() -> None:
+    """Install ISIS and the data CTX needs onto the job's own disk.
+
+    Raises:
+        CalledProcessError: When a step of the install fails.
+    """
+    for instruction in INSTRUCTIONS:
+        subprocess.run(instruction, shell=True, check=True)
 
 
 def run_isis(app: str, parameters: dict[str, object]) -> None:
