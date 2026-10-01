@@ -30,7 +30,7 @@ def read_labels() -> list[Label]:
         labels: Every labelled tile, in the order they were written.
 
     Raises:
-        FileNotFoundError: When no labels have been written there.
+        FileNotFoundError: When no labels have been written.
     """
     return parquet.read_rows(Label, LABELS, paths.LABELS_ROOT / paths.LABELS_NAME)
 

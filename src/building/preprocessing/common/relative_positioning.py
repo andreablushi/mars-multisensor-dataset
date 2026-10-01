@@ -1,4 +1,4 @@
-"""Turning the coordinates an observation carries into offsets from its tile."""
+"""Where the samples of one position sit in degrees, and the ground each one spans."""
 
 from __future__ import annotations
 

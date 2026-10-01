@@ -53,7 +53,7 @@ uv export --no-hashes --no-dev --group digitalhub --no-emit-project -o requireme
 ## Downloading what it published
 
 ```bash
-chmod +x scripts/dh_download.sh scripts/dh_dataset.sh   # once
+chmod +x scripts/dh_download.sh   # once
 ./scripts/dh_download.sh                 # every analysis archive
 ./scripts/dh_download.sh selection stats # only some of them
 ```
@@ -65,7 +65,7 @@ chmod +x scripts/dh_download.sh scripts/dh_dataset.sh   # once
 | `selection` | `data/analysis/selection/` |
 | `stats` | `data/analysis/stats/` |
 | `labels` | `data/analysis/labels/` |
-| a dataset | `data/building/dataset/<name>/` |
+| `verdicts` | `data/analysis/` |
 
 ## Notebooks
 
