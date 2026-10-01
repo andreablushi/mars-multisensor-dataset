@@ -39,6 +39,10 @@ QUERY_DEADLINE = 300.0
 # How long one transfer may run in all, so a trickling server is given up on
 STREAM_DEADLINE = 1800.0
 
+TRICKLE_BYTES_PER_SECOND = 150_000
+
+TRICKLE_WINDOW = 30.0
+
 TLS_CONTEXT = httpx.create_ssl_context()
 TLS_CONTEXT.verify_flags &= ~ssl.VERIFY_X509_STRICT
 
@@ -51,6 +55,10 @@ def throttle(host: str) -> Throttle:
 
 class FetchError(RuntimeError):
     """Raised when a server refuses a request, or keeps failing to answer one."""
+
+
+class Trickling(httpx.TransportError):
+    """Raised when a transfer crawls, for it to be asked again on a fresh request."""
 
 
 def gave_up(host: str, started: float, last: Exception) -> FetchError:
@@ -219,7 +227,7 @@ def streamed(
     started = time.monotonic()
     last: Exception = FetchError("no attempt was made")
     give_up_at = started + STREAM_DEADLINE
-    for _ in attempts(archive, give_up_at, STREAM_RETRIES):
+    for attempt, _ in enumerate(attempts(archive, give_up_at, STREAM_RETRIES)):
         try:
             with client.stream(
                 "GET",
@@ -234,13 +242,25 @@ def streamed(
                     raise FetchError(f"{url} ignored the byte range it was asked for")
                 # Nothing is left behind when a transfer fails part way through.
                 with atomic_path(path) as tmp, tmp.open("wb") as handle:
+                    paced_at, paced_bytes = time.monotonic(), 0
                     for chunk in reply.iter_bytes():
+                        now = time.monotonic()
                         # A timeout bounds one chunk, and this the whole transfer
-                        if time.monotonic() >= give_up_at:
+                        if now >= give_up_at:
                             raise FetchError(
                                 f"{url} was still sending after {STREAM_DEADLINE:.0f}s"
                             )
                         handle.write(chunk)
+                        if now - paced_at < TRICKLE_WINDOW:
+                            continue
+                        sent = handle.tell() - paced_bytes
+                        if attempt < STREAM_RETRIES and sent < (
+                            TRICKLE_BYTES_PER_SECOND * (now - paced_at)
+                        ):
+                            raise Trickling(
+                                f"{url} sent {sent:,} B in {now - paced_at:.0f}s"
+                            )
+                        paced_at, paced_bytes = now, handle.tell()
                 return
         except httpx.HTTPError as error:
             last = transport_failure(error, host, archive)
