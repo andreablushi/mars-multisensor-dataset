@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import signal
 import subprocess
+import tempfile
 from pathlib import Path
 
 from building.configs import ctx as configs
@@ -79,20 +80,34 @@ def install_isis() -> None:
     Raises:
         RuntimeError: When a step fails or stalls on every attempt.
     """
-    for instruction, seconds in INSTRUCTIONS:
-        for _ in range(ATTEMPTS):
-            # A session of its own, so a stalled step is killed with its children
-            with subprocess.Popen(
-                instruction, shell=True, start_new_session=True
-            ) as step:
-                try:
-                    if step.wait(timeout=seconds) == 0:
-                        break
-                except subprocess.TimeoutExpired:
-                    os.killpg(step.pid, signal.SIGKILL)
-                    step.wait()
-        else:
-            raise RuntimeError(f"ISIS failed {ATTEMPTS} times at: {instruction}")
+    for number, (instruction, seconds) in enumerate(INSTRUCTIONS, start=1):
+        print(f"installing ISIS: step {number}/{len(INSTRUCTIONS)}", flush=True)
+        with tempfile.TemporaryFile(mode="w+b") as output:
+            for _ in range(ATTEMPTS):
+                output.seek(0)
+                output.truncate()
+                # A session of its own, so a stalled step is killed with its children
+                with subprocess.Popen(
+                    instruction,
+                    shell=True,
+                    start_new_session=True,
+                    stdout=output,
+                    stderr=subprocess.STDOUT,
+                ) as step:
+                    try:
+                        if step.wait(timeout=seconds) == 0:
+                            break
+                    except subprocess.TimeoutExpired:
+                        os.killpg(step.pid, signal.SIGKILL)
+                        step.wait()
+            else:
+                output.seek(0, os.SEEK_END)
+                output.seek(max(0, output.tell() - 4000))
+                raise RuntimeError(
+                    f"ISIS failed {ATTEMPTS} times at: {instruction}\n"
+                    f"{output.read().decode(errors='replace')}"
+                )
+    print("ISIS installed", flush=True)
 
 
 def run_isis(app: str, parameters: dict[str, object]) -> None:
