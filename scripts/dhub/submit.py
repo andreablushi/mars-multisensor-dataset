@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
-import tempfile
-
 import digitalhub as dh
 
 from building.preprocessing.ctx import isis
@@ -13,11 +10,11 @@ from dhub.paths import Function
 
 
 def submitted(stage: Function, ref: str, **parameters) -> int:
-    """Register a version of one stage from a commit of this checkout, and run it.
+    """Register a version of one stage from a pushed commit, and run it.
 
     Args:
         stage: The stage to submit, naming its function, handler and resources.
-        ref: The branch, tag, or commit whose tracked files the job runs.
+        ref: The branch, tag, or commit the platform clones.
         **parameters: What the handler is called with on the platform.
 
     Returns:
@@ -41,20 +38,17 @@ def submitted(stage: Function, ref: str, **parameters) -> int:
     ]
     if alive:
         raise RuntimeError(f"{stage.registered} still runs as {alive}; delete them.")
-    # The code goes up zipped to the store, so the job clones nothing through the proxy
-    with tempfile.TemporaryDirectory() as tree:
-        subprocess.run(f"git archive {ref} | tar -x -C {tree}", shell=True, check=True)
-        # The job installs the code's requirements.txt at start, so no image is built
-        function = project.new_function(
-            name=stage.registered,
-            kind="python",
-            python_version=platform.python_version,
-            base_image=platform.base_image,
-            code_src=tree,
-            handler=stage.value,
-        )
+    # The job installs the clone's requirements.txt at start, so no image is built
+    function = project.new_function(
+        name=stage.registered,
+        kind="python",
+        python_version=platform.python_version,
+        base_image=platform.base_image,
+        code_src=f"git+{platform.repository}#{ref}",
+        handler=stage.value,
+    )
 
-    # Start the job, told where the code lands and what the box holds
+    # Start the job, told where the clone lands and what the box holds
     root = platform.source_root
     run = function.run(
         action="job",
