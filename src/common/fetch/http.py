@@ -221,28 +221,45 @@ def streamed(
         FetchError: When refused, when every attempt fails, or past the deadline.
     """
     ranges = ",".join(f"{first}-{last - 1}" for first, last in spans)
-    headers = {"Range": f"bytes={ranges}"} if spans else None
     host = httpx.URL(url).host
     archive = throttle(host)
     started = time.monotonic()
     last: Exception = FetchError("no attempt was made")
     give_up_at = started + STREAM_DEADLINE
-    for attempt, _ in enumerate(attempts(archive, give_up_at, STREAM_RETRIES)):
-        try:
-            with client.stream(
-                "GET",
-                url,
-                timeout=httpx.Timeout(STREAM_TIMEOUT, connect=CONNECT_TIMEOUT),
-                headers=headers,
-            ) as reply:
-                if retry := retry_error(reply.status_code, url, archive):
-                    last = retry
-                    continue
-                if spans and reply.status_code != httpx.codes.PARTIAL_CONTENT:
-                    raise FetchError(f"{url} ignored the byte range it was asked for")
-                # Nothing is left behind when a transfer fails part way through.
-                with atomic_path(path) as tmp, tmp.open("wb") as handle:
-                    paced_at, paced_bytes = time.monotonic(), 0
+    # Nothing is left behind when every attempt fails.
+    with atomic_path(path) as tmp, tmp.open("wb") as handle:
+        for attempt, _ in enumerate(attempts(archive, give_up_at, STREAM_RETRIES)):
+            # A whole file goes on from the bytes an earlier attempt already held
+            held = 0 if spans else handle.tell()
+            handle.seek(held)
+            handle.truncate()
+            asked = ranges or (held and f"{held}-")
+            try:
+                with client.stream(
+                    "GET",
+                    url,
+                    timeout=httpx.Timeout(STREAM_TIMEOUT, connect=CONNECT_TIMEOUT),
+                    headers={"Range": f"bytes={asked}"} if asked else None,
+                ) as reply:
+                    # Nothing lies past what an earlier attempt held, so it is whole
+                    if (
+                        held
+                        and reply.status_code
+                        == httpx.codes.REQUESTED_RANGE_NOT_SATISFIABLE
+                    ):
+                        return
+                    if retry := retry_error(reply.status_code, url, archive):
+                        last = retry
+                        continue
+                    if asked and reply.status_code != httpx.codes.PARTIAL_CONTENT:
+                        if spans:
+                            raise FetchError(
+                                f"{url} ignored the byte range it was asked for"
+                            )
+                        # The whole file came again, so it is written from the start
+                        handle.seek(0)
+                        handle.truncate()
+                    paced_at, paced_bytes = time.monotonic(), handle.tell()
                     for chunk in reply.iter_bytes():
                         now = time.monotonic()
                         # A timeout bounds one chunk, and this the whole transfer
@@ -261,7 +278,7 @@ def streamed(
                                 f"{url} sent {sent:,} B in {now - paced_at:.0f}s"
                             )
                         paced_at, paced_bytes = now, handle.tell()
-                return
-        except httpx.HTTPError as error:
-            last = transport_failure(error, host, archive)
-    raise gave_up(host, started, last)
+                    return
+            except httpx.HTTPError as error:
+                last = transport_failure(error, host, archive)
+        raise gave_up(host, started, last)

@@ -15,6 +15,8 @@ LONGEST_PAUSE = 60.0
 # What each answered request takes off the pause, so it is given back gradually.
 EASING = 0.9
 
+SPACING = 0.05
+
 
 class Throttle:
     """How hard every request to one archive is being held back."""
@@ -24,15 +26,20 @@ class Throttle:
         self._lock = threading.Lock()
         self._pause = 0.0
         self._until = 0.0
+        self._next_start = 0.0
 
     def wait(self) -> None:
-        """Wait out whatever pause the last refusal bought."""
+        """Wait out whatever pause the last refusal bought, and this request's slot."""
         with self._lock:
+            now = time.monotonic()
             until, pause = self._until, self._pause
-        left = until - time.monotonic()
-        if left > 0:
+            # Starts are spaced apart, since an archive refuses a burst of them
+            start = max(now, self._next_start)
+            self._next_start = start + SPACING
+        if until > now:
             # Every waiter is held to one moment, then leaves it spread out
-            time.sleep(left + random.uniform(0.0, pause))
+            start = max(start, until + random.uniform(0.0, pause))
+        time.sleep(max(0.0, start - time.monotonic()))
 
     def refused(self) -> None:
         """Hold every request back longer, one archive having refused this one."""

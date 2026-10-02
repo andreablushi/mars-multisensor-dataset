@@ -26,8 +26,8 @@ def cached_detectors(identifier: str) -> tuple[configs.Detector, ...]:
         identifier: The observation, its files already in the download cache.
 
     Returns:
-        detectors: The detectors whose observation and geometry both landed, the
-            first of them the one that places the observation.
+        detectors: The detectors whose observation landed, the first of them the one
+            whose geometry places the observation.
 
     Raises:
         FileNotFoundError: When neither detector landed whole.
@@ -37,9 +37,8 @@ def cached_detectors(identifier: str) -> tuple[configs.Detector, ...]:
         for name in configs.Detector
         if all(
             path.exists()
-            for kind in configs.Kind
             for path in configs.CACHE.product_files(
-                identifier, kind, detector=name
+                identifier, configs.Kind.OBSERVATION, detector=name
             ).values()
         )
     )

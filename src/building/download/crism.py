@@ -12,37 +12,31 @@ from common.models.tile import Tile
 from common.pds import labels
 
 
-def detector_published(
-    identifier: str, detector: configs.Detector, client: httpx.Client
-) -> bool:
-    """Download one detector's scan and geometry, telling whether ODE publishes it.
+def download_detector_product(
+    identifier: str,
+    detector: configs.Detector,
+    kind: configs.Kind,
+    client: httpx.Client,
+) -> None:
+    """Download one product one detector of an observation was published as.
 
     Args:
         identifier: The observation to fetch.
-        detector: The detector to download.
+        detector: The detector the product belongs to.
+        kind: Which of its products to download, its scan or its geometry.
         client: The client every query and download goes over.
 
-    Returns:
-        published: True once both landed, False when ODE publishes no such scan.
-
     Raises:
-        FileNotFoundError: When the scan is published but its geometry is not.
+        FileNotFoundError: When ODE publishes no such product.
     """
-    for kind, product_type in configs.PRODUCT_TYPES.items():
-        product_id = configs.NAMING.product(identifier, kind, detector=detector)
-        try:
-            archive.download_product(
-                client,
-                product_id,
-                configs.CACHE.files(identifier, product_id, kind),
-                pt=product_type,
-                **configs.ODE,
-            )
-        except FileNotFoundError:
-            if kind != configs.Kind.OBSERVATION:
-                raise
-            return False
-    return True
+    product_id = configs.NAMING.product(identifier, kind, detector=detector)
+    archive.download_product(
+        client,
+        product_id,
+        configs.CACHE.files(identifier, product_id, kind),
+        pt=configs.PRODUCT_TYPES[kind],
+        **configs.ODE,
+    )
 
 
 def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
@@ -54,18 +48,24 @@ def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> No
         frames: Unused, since the observation is fetched whole.
 
     Raises:
-        FileNotFoundError: When ODE publishes neither detector, or a geometry is
-            missing.
+        FileNotFoundError: When ODE publishes neither detector, or the geometry of
+            the first is missing.
         KeyError: When a label names no wavelength file.
     """
     # A small share of the survey was archived as one half alone
-    found = [
-        detector
-        for detector in configs.Detector
-        if detector_published(identifier, detector, client)
-    ]
+    found = []
+    for detector in configs.Detector:
+        try:
+            download_detector_product(
+                identifier, detector, configs.Kind.OBSERVATION, client
+            )
+        except FileNotFoundError:
+            continue
+        found.append(detector)
     if not found:
         raise FileNotFoundError(f"ODE publishes no detector of {identifier}.")
+    # Every half is placed by the first one's geometry, so no other is fetched
+    download_detector_product(identifier, found[0], configs.Kind.GEOMETRY, client)
     # Only now do the labels exist to be asked which file calibrated them.
     for detector in found:
         label = configs.CACHE.product_files(
