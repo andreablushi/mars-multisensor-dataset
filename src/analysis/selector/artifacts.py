@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from functools import cache
 
 from analysis import paths
 from analysis.selector.models.selection import (
@@ -59,3 +60,34 @@ def read_selection() -> list[Selection]:
         Selection(tile=tile, observations=observations_by_tile.get(tile.tile, []))
         for tile in read_selected_tiles()
     ]
+
+
+def read_refused_observations() -> list[SelectedObservation]:
+    """Read back every kept observation a build cropped empty, none before a build."""
+    if not paths.REFUSED_OBSERVATIONS_PATH.exists():
+        return []
+    return parquet.read_rows(
+        SelectedObservation, OBSERVATIONS, paths.REFUSED_OBSERVATIONS_PATH
+    )
+
+
+def write_refused_observations(refused: Sequence[SelectedObservation]) -> None:
+    """Add observations a build cropped empty to those refused before, once each.
+
+    Args:
+        refused: The kept observations whose crop of their tile measured nothing.
+    """
+    parquet.write_rows(
+        list(dict.fromkeys([*read_refused_observations(), *refused])),
+        OBSERVATIONS,
+        paths.REFUSED_OBSERVATIONS_PATH,
+    )
+
+
+@cache
+def refused_pdsids() -> dict[str, frozenset[str]]:
+    """Return the products a build cropped empty, by the tile they were kept for."""
+    by_tile: dict[str, set[str]] = {}
+    for observation in read_refused_observations():
+        by_tile.setdefault(observation.tile, set()).add(observation.pdsid)
+    return {tile: frozenset(pdsids) for tile, pdsids in by_tile.items()}

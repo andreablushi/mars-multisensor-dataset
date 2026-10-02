@@ -6,9 +6,6 @@ from dataclasses import dataclass
 
 import numpy as np
 
-# The field the geometry names each radargram column in, counted from one.
-COLUMN_FIELD = "RADARGRAM COLUMN"
-
 # Which geometry field places a trace.
 LATITUDE_FIELD = "LATITUDE"
 LONGITUDE_FIELD = "LONGITUDE"
@@ -21,24 +18,16 @@ SPACECRAFT_RADIUS_FIELD = "SPACECRAFT RADIUS"
 
 @dataclass(frozen=True, slots=True)
 class SharadObservation:
-    """One track holding only the traces its geometry places.
+    """One track with its geometry joined onto it, a row per trace.
 
     Attributes:
         label: What every product it was published as says about it, merged.
-        power: Normalized dB, delay samples by traces, only the placed traces.
+        power: Normalized dB, delay samples by traces.
         clutter: The simulated clutter power per column, zero without echo.
-        geometry: One row per kept trace, in the same order.
-        traces: Which original radargram columns these traces are, from zero.
+        geometry: One row per trace, in the same order.
     """
 
     label: dict[str, str]
     power: np.ndarray
     clutter: np.ndarray
     geometry: np.recarray
-    traces: np.ndarray
-
-
-def radargram_columns(geometry: np.recarray) -> np.ndarray:
-    """Return the radargram column each row of a track's geometry places."""
-    # The geometry counts columns from one, and the radargram from zero.
-    return geometry[COLUMN_FIELD].astype("i8") - 1

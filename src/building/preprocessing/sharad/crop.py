@@ -15,7 +15,6 @@ from building.preprocessing.sharad.models.observation import (
     SOLAR_ZENITH_FIELD,
     SPACECRAFT_RADIUS_FIELD,
     SharadObservation,
-    radargram_columns,
 )
 from building.preprocessing.sharad.models.sample import SharadSample
 from common.models.tile import Tile
@@ -39,12 +38,10 @@ def kept_columns(geometry: np.recarray, frames: Sequence[Tile]) -> np.ndarray:
     """
     # Cut as `crop` cuts, so exactly the columns it goes on to read are kept.
     position = trace_position(geometry)
-    traces = radargram_columns(geometry)
     held = [cut.overlap(position, frame) for frame in frames]
     return np.unique(
         np.concatenate(
-            [traces[one.bounds[0]] for one in held if one is not None]
-            + [np.empty(0, "i8")]
+            [one.bounds[0] for one in held if one is not None] + [np.empty(0, "i8")]
         )
     )
 
@@ -53,7 +50,7 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
     """Return one track holding only the traces its tile's box keeps.
 
     Args:
-        observation: The radargram holding only the traces its geometry places.
+        observation: The radargram with its geometry joined onto it.
         frame: The local frame of the tile it was kept for.
 
     Returns:
@@ -65,7 +62,6 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
     # The traces are the radargram's second axis, and the delay is left whole.
     (traces,) = held.bounds
     power = observation.power[:, traces]
-    columns = observation.traces[traces]
     geometry = observation.geometry[traces]
     return SharadSample(
         position=held.position,
@@ -74,8 +70,8 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
         # The archive sounds a trace or fills it whole, so one flag covers its delays.
         valid=np.isfinite(power).all(axis=0),
         power=power,
-        clutter=observation.clutter[:, columns],
-        traces=columns,
+        clutter=observation.clutter[:, traces],
+        traces=traces,
         incidence_deg=geometry[SOLAR_ZENITH_FIELD],
         spacecraft_altitude_km=(
             geometry[SPACECRAFT_RADIUS_FIELD] - geometry[MARS_RADIUS_FIELD]

@@ -14,8 +14,8 @@ from typing import Any
 
 import httpx
 
-from building.dispatcher import INSTRUMENTS, Archive
 from building.metadata.observation import ObservationMetadata, observation_metadata
+from building.models.instrument import INSTRUMENTS, Archive
 from building.models.job import Job, Outcome
 from building.models.progress import Progress, Stage
 from building.models.settings import BuildSettings

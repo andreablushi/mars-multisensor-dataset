@@ -1,4 +1,4 @@
-"""Handing each stage of a build to the instrument whose product it is."""
+"""How each instrument goes from an ODE product to a crop, and which a build has."""
 
 from __future__ import annotations
 
@@ -68,48 +68,66 @@ class Instrument:
 
 
 INSTRUMENTS = {
-    crism_configs.LAYOUT.instrument: Instrument(
-        crism_configs.LAYOUT,
-        crism_download.fetch,
-        crism_read.read_observation,
-        crism_crop.crop,
-        Archive.WUSTL,
-        discard=crism_configs.CACHE.discard,
-        observation_id=crism_configs.NAMING.observation_id,
-        # A hyperspectral observation takes 601 MB against 325 MB, so it goes first.
-        worker_bytes=1024**3,
-    ),
-    ctx_configs.LAYOUT.instrument: Instrument(
-        ctx_configs.LAYOUT,
-        ctx_download.fetch,
-        ctx_read.read_observation,
-        ctx_crop.crop,
-        Archive.JPL,
-        discard=ctx_configs.CACHE.discard,
-        place=ctx_download.place,
-        observation_id=ctx_configs.NAMING.observation_id,
-        # A tile's window, its crop and two masks, beside ISIS measured at 513 MB.
-        worker_bytes=2 * 1024**3,
-    ),
-    mola_configs.LAYOUT.instrument: Instrument(
-        mola_configs.LAYOUT,
-        mola_download.fetch,
-        mola_read.read_observation,
-        mola_crop.crop,
-        Archive.WUSTL,
-        grid_of=mola_download.mola_grid,
-        # The whole gridded record is 2 GB, so a sheet is held for the run.
-        worker_bytes=256 * 1024**2,
-    ),
-    sharad_configs.LAYOUT.instrument: Instrument(
-        sharad_configs.LAYOUT,
-        sharad_download.fetch,
-        sharad_read.read_observation,
-        sharad_crop.crop,
-        Archive.WUSTL,
-        discard=sharad_configs.CACHE.discard,
-        observation_id=sharad_configs.NAMING.observation_id,
-        # A radargram, its geometry and its clutter measured 222 MB at peak.
-        worker_bytes=256 * 1024**2,
-    ),
+    one.layout.instrument: one
+    for one in (
+        Instrument(
+            crism_configs.LAYOUT,
+            crism_download.fetch,
+            crism_read.read_observation,
+            crism_crop.crop,
+            Archive.WUSTL,
+            discard=crism_configs.CACHE.discard,
+            observation_id=crism_configs.NAMING.observation_id,
+            # A hyperspectral observation takes 601 MB against 325 MB, so it goes first.
+            worker_bytes=1024**3,
+        ),
+        Instrument(
+            ctx_configs.LAYOUT,
+            ctx_download.fetch,
+            ctx_read.read_observation,
+            ctx_crop.crop,
+            Archive.JPL,
+            discard=ctx_configs.CACHE.discard,
+            place=ctx_download.place,
+            observation_id=ctx_configs.NAMING.observation_id,
+            # A tile's window, its crop and two masks, beside ISIS measured at 513 MB.
+            worker_bytes=2 * 1024**3,
+        ),
+        Instrument(
+            mola_configs.LAYOUT,
+            mola_download.fetch,
+            mola_read.read_observation,
+            mola_crop.crop,
+            Archive.WUSTL,
+            grid_of=mola_download.mola_grid,
+            # The whole gridded record is 2 GB, so a sheet is held for the run.
+            worker_bytes=256 * 1024**2,
+        ),
+        Instrument(
+            sharad_configs.LAYOUT,
+            sharad_download.fetch,
+            sharad_read.read_observation,
+            sharad_crop.crop,
+            Archive.WUSTL,
+            discard=sharad_configs.CACHE.discard,
+            observation_id=sharad_configs.NAMING.observation_id,
+            # A radargram, its geometry and its clutter measured 222 MB at peak.
+            worker_bytes=256 * 1024**2,
+        ),
+    )
 }
+
+
+def observation_identifier(iid: str, pdsid: str) -> str | None:
+    """Return what the instrument building one product asks for, or None.
+
+    Args:
+        iid: The instrument the product was taken by.
+        pdsid: The product as the selection names it.
+
+    Returns:
+        identifier: Its observation, or None where no instrument here reads it.
+    """
+    named = INSTRUMENTS.get(iid)
+    parse = named.observation_id if named else None
+    return parse(pdsid) if parse else None

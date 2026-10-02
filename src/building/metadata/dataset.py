@@ -11,7 +11,7 @@ from typing import Any
 
 from analysis import paths as analysis_paths
 from building import paths as built
-from building.dispatcher import INSTRUMENTS
+from building.models.instrument import INSTRUMENTS
 from common import paths
 from common.disk.files import read_json, write_json
 

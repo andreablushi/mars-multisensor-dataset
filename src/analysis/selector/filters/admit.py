@@ -8,6 +8,7 @@ from math import inf
 from analysis.coverage.models.coverage import SetCoverage
 from analysis.metadata.loaders.observations import read_incidences
 from analysis.models.instrument import PIXEL_KM2
+from analysis.selector.artifacts import refused_pdsids
 from analysis.selector.models.criteria import Criteria
 from analysis.selector.models.search_grid import SearchGrid
 from analysis.selector.models.track import Offered
@@ -34,7 +35,9 @@ def admitted_observations(
     """
     admitted: Offered = []
     refused: Offered = []
-    incidences = read_incidences(group_of_tile_named(coverage[0].summary.tile))
+    tile = coverage[0].summary.tile
+    incidences = read_incidences(group_of_tile_named(tile))
+    emptied = refused_pdsids().get(tile, frozenset())
     for owner, instrument in enumerate(coverage):
         iid = instrument.summary.iid
         limit = (
@@ -53,7 +56,8 @@ def admitted_observations(
                 continue
             landed_km2 = len(cells) * grid.cell_km2
             lit = incidences.get(observation.pdsid, inf) <= limit
-            verdict = admitted if lit and landed_km2 >= floor else refused
+            measured = observation.pdsid not in emptied
+            verdict = admitted if lit and measured and landed_km2 >= floor else refused
             verdict.append((observation, owner, cells))
     return admitted, refused
 
