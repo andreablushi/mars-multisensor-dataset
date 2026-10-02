@@ -25,9 +25,9 @@ RETRYABLE_STATUS = frozenset({403, 429, 500, 502, 503, 504})
 # Which of those mean the caller is asking too often, and so hold the host back
 CROWDED_STATUS = frozenset({403, 429, 503})
 # Fewer tries for a transfer than a query, one running for minutes not seconds
-STREAM_RETRIES = 5
+STREAM_RETRIES = 10
 # How long to wait for the larger half of a product.
-STREAM_TIMEOUT = 60.0
+STREAM_TIMEOUT = 20.0
 
 CONNECT_TIMEOUT = 30.0
 
