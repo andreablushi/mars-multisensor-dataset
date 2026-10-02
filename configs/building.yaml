@@ -7,7 +7,7 @@ workers: 8
 # JPL answers 503 past about ten connections from one address, so it stays under that.
 downloads:
   jpl: 8
-  wustl: 12
+  wustl: 18
   spice: 4
 
 # What each instrument's reader is handed, the same in every build so they match.
