@@ -5,10 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from building.configs import sharad as configs
-from building.preprocessing.sharad.models.observation import (
-    SharadObservation,
-    radargram_columns,
-)
+from building.preprocessing.sharad.models.observation import SharadObservation
 from building.preprocessing.sharad.normalize import normalized_power
 from common.pds import images, labels, tables
 
@@ -20,13 +17,14 @@ def read_observation(identifier: str) -> SharadObservation:
         identifier: The observation, its files already in the download cache.
 
     Returns:
-        observation: The placed traces in order, normalized, with their clutter
+        observation: The traces normalized, with their geometry and clutter
             simulation.
 
     Raises:
         FileNotFoundError: When any product or a label is missing.
         KeyError: When a label names a sample type this cannot read.
-        ValueError: When the geometry is short or the clutter does not fit.
+        ValueError: When the geometry is not one row per trace, or the clutter does
+            not fit.
     """
     held = {
         kind: configs.CACHE.product_files(identifier, kind) for kind in configs.Kind
@@ -35,7 +33,10 @@ def read_observation(identifier: str) -> SharadObservation:
     power, sounding = images.load_cube(held[configs.Kind.OBSERVATION][".img"])
     power = power[:, :, 0]
     geometry, geometry_label = tables.load_table(held[configs.Kind.GEOMETRY][".tab"])
-    traces = radargram_columns(geometry)
+    if len(geometry) != power.shape[1]:
+        raise ValueError(
+            f"{identifier} places {len(geometry)} traces of {power.shape[1]}."
+        )
     simulated = held[configs.Kind.CLUTTER][".img"]
     if simulated.stat().st_size != power.size * np.dtype(configs.CLUTTER_TYPE).itemsize:
         raise ValueError(f"{simulated.name} is not one array the radargram's size.")
@@ -44,8 +45,7 @@ def read_observation(identifier: str) -> SharadObservation:
     )
     return SharadObservation(
         labels.merge(sounding, geometry_label),
-        normalized_power(power[:, traces], clutter[:, traces]),
+        normalized_power(power, clutter),
         clutter,
         geometry,
-        traces,
     )

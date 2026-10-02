@@ -22,6 +22,7 @@ COVERAGE_INDEX_PATH = COVERAGE_ROOT / "summary.parquet"
 DISTORTIONS_PATH = METADATA_ROOT / "summary.parquet"
 SELECTED_TILES_PATH = SELECTION_ROOT / "tiles.parquet"
 SELECTED_OBSERVATIONS_PATH = SELECTION_ROOT / "observations.parquet"
+REFUSED_OBSERVATIONS_PATH = SELECTION_ROOT / "refused.parquet"
 
 STATS_NAME = "stats.json"
 LABELS_NAME = "labels.parquet"

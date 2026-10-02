@@ -9,8 +9,8 @@ from datetime import datetime
 from pathlib import Path
 
 from analysis.selector.models.selection import Selection
-from building.dispatcher import INSTRUMENTS
 from building.metadata.tile import tile_metadata
+from building.models.instrument import INSTRUMENTS, observation_identifier
 from building.models.job import Job, Plan
 from building.preprocessing.common.store import sample_path
 from common.models.tile import Tile
@@ -41,9 +41,7 @@ def build_plan(
     for one, tile in zip(picked, tiles, strict=True):
         # A tile is built whole, every observation this build has an instrument for.
         for kept in one.observations:
-            named = INSTRUMENTS.get(kept.iid)
-            parse = named.observation_id if named else None
-            observation = parse(kept.pdsid) if parse else None
+            observation = observation_identifier(kept.iid, kept.pdsid)
             # Skip a product no instrument builds, and an id naming no observation.
             if not observation:
                 unread += 1

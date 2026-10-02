@@ -67,7 +67,7 @@ def build_dataset(
     elapsed = time.monotonic() - started_at
     printing.print_summary(plan, outcomes, dropped, elapsed, console)
     if dropped:
-        exclude_tiles(dropped)
+        exclude_tiles(outcomes)
     # A drawn tile is labelled, so the evaluation cannot do without one
     if dropped and not isinstance(settings, TrainingSettings):
         console.print(f"[red]error: drawn tiles dropped {sorted(dropped)}[/red]")

@@ -2,14 +2,44 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection
+from collections.abc import Sequence
 from dataclasses import replace
 
-from analysis.selector.artifacts import read_selection, write_selection
+from analysis.selector.artifacts import (
+    read_selection,
+    write_refused_observations,
+    write_selection,
+)
+from building.models.instrument import observation_identifier
+from building.models.job import Outcome
 
 
-def exclude_tiles(dropped: Collection[str]) -> None:
-    """Rewrite the selection with every tile named as dropped no longer kept."""
+def exclude_tiles(outcomes: Sequence[Outcome]) -> None:
+    """Drop every tile a build cropped empty, refusing the observations that emptied it.
+
+    Args:
+        outcomes: What every job of the build left.
+    """
+    emptied = {
+        (name, one.job.instrument, one.job.identifier)
+        for one in outcomes
+        for name in one.emptied
+    }
+    dropped = {name for name, _, _ in emptied}
+    selections = read_selection()
+    write_refused_observations(
+        [
+            observation
+            for one in selections
+            for observation in one.observations
+            if (
+                observation.tile,
+                observation.iid,
+                observation_identifier(observation.iid, observation.pdsid),
+            )
+            in emptied
+        ]
+    )
     write_selection(
         [
             replace(
@@ -27,6 +57,6 @@ def exclude_tiles(dropped: Collection[str]) -> None:
             )
             if one.tile.tile in dropped
             else one
-            for one in read_selection()
+            for one in selections
         ]
     )
