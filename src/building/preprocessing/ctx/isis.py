@@ -110,16 +110,20 @@ def install_isis() -> None:
     print("ISIS installed", flush=True)
 
 
-def run_isis(app: str, parameters: dict[str, object]) -> None:
+def run_isis(
+    app: str, parameters: dict[str, object], timeout: float | None = None
+) -> None:
     """Run one ISIS application beside its input, raising what it said on failure.
 
     Args:
         app: The application, as ISIS names it.
         parameters: Its parameters, keyed as ISIS spells them, its input under "from".
+        timeout: How many seconds it may run before it is killed, or None for ever.
 
     Raises:
         KeyError: When ISISROOT is unset, so no ISIS is installed here.
         RuntimeError: When the application fails.
+        subprocess.TimeoutExpired: When it outran its timeout and was killed.
     """
     done = subprocess.run(
         [
@@ -131,6 +135,7 @@ def run_isis(app: str, parameters: dict[str, object]) -> None:
         cwd=Path(str(parameters["from"])).parent,
         # An image's LC_ALL=C outranks LANG, and Qt warns on every run without UTF-8
         env={**os.environ, "LC_ALL": "C.UTF-8"},
+        timeout=timeout,
     )
     if done.returncode:
         raise RuntimeError(f"{app}: {(done.stderr or done.stdout).strip()}")

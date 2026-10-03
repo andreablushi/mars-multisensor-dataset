@@ -19,6 +19,8 @@ from building.preprocessing.sharad.models.observation import (
 from building.preprocessing.sharad.models.sample import SharadSample
 from common.models.tile import Tile
 
+FILL = 0.0
+
 
 def trace_position(geometry: np.recarray) -> Position:
     """Return where every trace of one track's geometry was sounded."""
@@ -62,14 +64,15 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
     # The traces are the radargram's second axis, and the delay is left whole.
     (traces,) = held.bounds
     power = observation.power[:, traces]
+    # The archive sounds a trace or fills it whole, so one flag covers its delays.
+    valid = np.isfinite(power).all(axis=0)
     geometry = observation.geometry[traces]
     return SharadSample(
         position=held.position,
         label=observation.label,
         inside=held.inside,
-        # The archive sounds a trace or fills it whole, so one flag covers its delays.
-        valid=np.isfinite(power).all(axis=0),
-        power=power,
+        valid=valid,
+        power=np.where(valid, power, FILL),
         clutter=observation.clutter[:, traces],
         traces=traces,
         incidence_deg=geometry[SOLAR_ZENITH_FIELD],

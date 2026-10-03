@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
 
 from building.configs import crism as configs
 from building.preprocessing.crism import clean
-from building.preprocessing.crism.correction import bands_calibration, merge
+from building.preprocessing.crism.correction import (
+    bands_calibration,
+    clamp,
+    merge,
+    shape,
+)
 from building.preprocessing.crism.models.observation import CrismObservation
 from common.pds import images, labels
 
@@ -109,4 +115,8 @@ def read_observation(identifier: str) -> CrismObservation:
         for key, value in labels.merge(*held, geometry_label).items()
         if not key.startswith(GROUND_SOFTWARE)
     }
-    return merge.merge_detectors(cleaned, geometry, label)
+    observation = merge.merge_detectors(cleaned, geometry, label)
+    cube, bands = observation.cube, observation.measured_bands
+    valid = clamp.bounded_valid(cube, observation.valid, bands)
+    valid = shape.shaped_valid(cube, valid, bands)
+    return replace(observation, valid=valid)

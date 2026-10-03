@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import threading
-from collections import defaultdict
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager, suppress
 from pathlib import Path
 
 from rich.console import Console
 
-from building.models.job import Outcome, Plan
+from building.models.job import Outcome, Plan, lacking_tiles
 from building.models.progress import Progress
 from building.models.settings import BuildSettings
 from common import console as printing
@@ -164,21 +163,16 @@ def print_summary(
         console.print(
             f"[yellow]{len(dropped):,} tiles dropped for an empty crop[/yellow]"
         )
-    built = sum(1 for one in plan.tiles if one.identity not in dropped)
+    lacking = lacking_tiles(outcomes)
+    incomplete = set().union(*lacking.values())
+    built = sum(1 for one in plan.tiles if one.identity not in dropped | incomplete)
     console.print(f"{built:,} tiles built")
     if not failed:
         return
     console.print(f"[yellow]{len(failed)} products failed:[/yellow]")
     printing.print_listed([f"{one.job.label}: {one.error}" for one in failed], console)
-    lacking: dict[str, set[str]] = defaultdict(set)
-    for one in failed:
-        covered = {record.tile for record in one.records}
-        lacking[one.job.instrument].update(
-            frame.name for frame in one.job.frames if frame.name not in covered
-        )
-    incomplete = set().union(*lacking.values())
     console.print(
-        f"[yellow]{len(incomplete):,} tiles lack a product, "
+        f"[yellow]{len(incomplete):,} tiles lack a product and are left out, "
         + ", ".join(
             f"{name} on {len(held):,}" for name, held in sorted(lacking.items())
         )

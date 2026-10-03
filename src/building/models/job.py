@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -52,6 +54,26 @@ class Outcome:
     def failed(self) -> bool:
         """Return whether the job raised an error."""
         return self.error is not None
+
+
+def lacking_tiles(outcomes: Iterable[Outcome]) -> dict[str, set[str]]:
+    """Return the tiles a failed job left without its crop, by instrument.
+
+    Args:
+        outcomes: What every job of the build left.
+
+    Returns:
+        lacking: The names of the tiles each instrument left incomplete.
+    """
+    lacking: dict[str, set[str]] = defaultdict(set)
+    for one in outcomes:
+        if not one.failed:
+            continue
+        covered = {record.tile for record in one.records} | set(one.emptied)
+        lacking[one.job.instrument].update(
+            frame.name for frame in one.job.frames if frame.name not in covered
+        )
+    return lacking
 
 
 @dataclass(frozen=True, slots=True)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 import time
 
 import httpx
@@ -14,6 +15,8 @@ from common.fetch.gate import Gate
 from common.models.tile import Tile
 
 SPICE_DEADLINE = 1800.0
+
+SPICEINIT_TIMEOUT = 300.0
 
 SPICE_REFUSED = "talking to the server"
 
@@ -80,7 +83,9 @@ def place(identifier: str) -> None:
         if not SPICE.wait(give_up_at):
             raise RuntimeError("spiceinit: the SPICE server refused past the deadline")
         try:
-            run_isis("spiceinit", {"from": staged, "web": "yes"})
+            run_isis("spiceinit", {"from": staged, "web": "yes"}, SPICEINIT_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            SPICE.refused()
         except RuntimeError as error:
             if SPICE_REFUSED not in str(error):
                 SPICE.answered()

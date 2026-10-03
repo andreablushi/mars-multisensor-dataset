@@ -13,6 +13,8 @@ from common.fetch import http
 
 BATCH = 600
 
+JOINED_GAP = 4096
+
 CONTENT_RANGE = re.compile(rb"content-range:\s*bytes\s+(\d+)-(\d+)", re.IGNORECASE)
 
 
@@ -67,10 +69,10 @@ def patched(
     Raises:
         FetchError: When refused, or answered with fewer bytes than were asked.
     """
-    # Touching ranges are asked as one, so no server joins them into a plain reply.
+    # Close ranges are asked as one, so no server joins them into a plain reply.
     joined: list[tuple[int, int]] = []
     for first, last in spans:
-        if joined and first <= joined[-1][1]:
+        if joined and first - joined[-1][1] <= JOINED_GAP:
             joined[-1] = (joined[-1][0], max(joined[-1][1], last))
         else:
             joined.append((first, last))
