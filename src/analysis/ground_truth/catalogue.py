@@ -1,4 +1,4 @@
-"""What the ground truth reads: ODE's features, the labels written, the refusals."""
+"""What the ground truth reads: ODE's features, the labels written, the verdicts."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from analysis.ground_truth.artifacts import LABELS
 from analysis.ground_truth.models.feature import Feature
 from analysis.ground_truth.models.label import Label
 from common.disk import parquet
-from common.disk.files import read_json, read_jsonl, write_jsonl
+from common.disk.files import read_json, read_jsonl, write_json, write_jsonl
 from common.fetch.http import TLS_CONTEXT
 from common.fetch.ode import ODE_TARGET, fetch_results
 
@@ -64,13 +64,26 @@ def read_labels() -> list[Label]:
     return parquet.read_rows(Label, LABELS, paths.LABELS_ROOT / paths.LABELS_NAME)
 
 
+def read_verdicts() -> dict[str, bool]:
+    """Read the review's verdict on every tile, from a file the pipeline never writes.
+
+    Returns:
+        verdicts: Whether each reviewed tile was accepted, by its name.
+    """
+    if not paths.VERDICTS_PATH.is_file():
+        return {}
+    return read_json(paths.VERDICTS_PATH)
+
+
+def write_verdicts(verdicts: dict[str, bool]) -> None:
+    """Write the review's verdict on every tile, sorted by tile."""
+    write_json(paths.VERDICTS_PATH, verdicts, indent=1, sort_keys=True)
+
+
 def read_refused() -> set[str]:
-    """Read the tiles the review refused, from a file the pipeline never writes.
+    """Read the tiles the review refused.
 
     Returns:
         refused: The names of the refused tiles, none when nothing was reviewed.
     """
-    if not paths.VERDICTS_PATH.is_file():
-        return set()
-    verdicts = read_json(paths.VERDICTS_PATH)
-    return {tile for tile, accepted in verdicts.items() if not accepted}
+    return {tile for tile, accepted in read_verdicts().items() if not accepted}
