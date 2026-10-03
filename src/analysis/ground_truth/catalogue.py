@@ -80,10 +80,15 @@ def write_verdicts(verdicts: dict[str, bool]) -> None:
     write_json(paths.VERDICTS_PATH, verdicts, indent=1, sort_keys=True)
 
 
+def refused_tiles(verdicts: dict[str, bool]) -> set[str]:
+    """Return the names of the tiles the verdicts refuse."""
+    return {tile for tile, accepted in verdicts.items() if not accepted}
+
+
 def read_refused() -> set[str]:
     """Read the tiles the review refused.
 
     Returns:
         refused: The names of the refused tiles, none when nothing was reviewed.
     """
-    return {tile for tile, accepted in read_verdicts().items() if not accepted}
+    return refused_tiles(read_verdicts())

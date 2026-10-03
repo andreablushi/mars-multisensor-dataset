@@ -24,20 +24,37 @@ def plot(labels: Sequence[Label], settings: GroundTruthSettings) -> widgets.Widg
     grouped = drawn_by_class(labels, settings)
     if not grouped:
         return panels.unavailable(NOTHING_DRAWN)
-    group = widgets.Dropdown(options=list(grouped), description="Class:")
-    tile = widgets.Dropdown(description="Tile:", layout=PICKER)
-    previous = widgets.Button(icon="arrow-left", layout=STEP)
-    following = widgets.Button(icon="arrow-right", layout=STEP)
+    group, tile, pickers = class_pickers(list(grouped))
     note = widgets.HTML()
     area = widgets.HBox(
         layout=widgets.Layout(align_items="flex-start", grid_gap="24px")
     )
     tile.observe(partial(show_tile, tile, note, area), names="value")
     group.observe(partial(offer_class, grouped, group, tile), names="value")
+    offer_class(grouped, group, tile)
+    return widgets.VBox([pickers, note, area])
+
+
+def class_pickers(
+    classes: Sequence[str],
+) -> tuple[widgets.Dropdown, widgets.Dropdown, widgets.HBox]:
+    """Build the class and tile pickers, beside the arrows stepping through tiles.
+
+    Args:
+        classes: The classes offered, in the order they are listed.
+
+    Returns:
+        group: The class picker.
+        tile: The tile picker, offered nothing yet.
+        row: Both pickers and the arrows, laid out in one row.
+    """
+    group = widgets.Dropdown(options=classes, description="Class:")
+    tile = widgets.Dropdown(description="Tile:", layout=PICKER)
+    previous = widgets.Button(icon="arrow-left", layout=STEP)
+    following = widgets.Button(icon="arrow-right", layout=STEP)
     previous.on_click(lambda _button: step_tile(tile, -1))
     following.on_click(lambda _button: step_tile(tile, 1))
-    offer_class(grouped, group, tile)
-    return widgets.VBox([widgets.HBox([group, tile, previous, following]), note, area])
+    return group, tile, widgets.HBox([group, tile, previous, following])
 
 
 def drawn_by_class(
@@ -73,13 +90,16 @@ def show_tile(
     if label is None:
         return
     note.value = escape(f"{tile.index + 1} of {len(tile.options)}, {label.feature}")
+    area.children = (label_map(label),)
+
+
+def label_map(label: Label) -> widgets.Widget:
+    """Draw one labelled tile's mosaic crop, cut to its box and titled by its class."""
     placed = placed_tile(label.tile, label)
     if placed is None:
-        shown = panels.unavailable(mosaic.NO_BOX)
-    else:
-        title = f"Tile {label.tile}, {label.label}"
-        shown = mosaic.fetched(placed.crop(), partial(basemap.tile_map, placed, title))
-    area.children = (shown,)
+        return panels.unavailable(mosaic.NO_BOX)
+    title = f"Tile {label.tile}, {label.label}"
+    return mosaic.fetched(placed.crop(), partial(basemap.tile_map, placed, title))
 
 
 def offer_class(
