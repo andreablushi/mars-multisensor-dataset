@@ -77,3 +77,13 @@ uv run --group notebook jupyter lab
 - `notebooks/training_qualitative.ipynb`: one tile at a time, picked by latitude and longitude.
 - `notebooks/training_quantitative.ipynb`: what the selection kept of every tile.
 - `notebooks/evaluation_quantitative.ipynb`: the evaluation classes, where they lie, and what the instruments land on them.
+- `notebooks/annotation.ipynb`: every labelled tile of the evaluation classes on the THEMIS mosaic, in draw order, to accept or reject.
+
+## Uploading the annotation
+
+The annotation notebook writes its verdicts to `data/analysis/verdicts.json`. Upload them, then select again so the draw skips the rejected tiles and training holds them out:
+
+```bash
+dhcli upload -p mars-multisensor-features artifact -n verdicts -f data/analysis/verdicts.json
+uv run --group digitalhub python scripts/analysis_pipeline.py --only-stats --dh
+```
