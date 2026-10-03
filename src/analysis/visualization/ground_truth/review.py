@@ -18,28 +18,22 @@ from analysis.visualization.ground_truth.drawn import class_pickers, label_map
 
 VERDICT = {True: "accepted", False: "rejected", None: "not reviewed"}
 NOTHING_LABELLED = "No tile has been labelled."
-NOTHING_ACCEPTED = "No tile has been accepted yet."
 
 
 def plot(
     labels: Sequence[Label],
     settings: GroundTruthSettings,
     verdicts: dict[str, bool],
-    accepted_only: bool = False,
 ) -> widgets.Widget:
     """Step through every labelled tile of a class in draw order, to judge it."""
     by_tile = {label.tile: label for label in labels}
     ranked = {
-        name: [
-            by_tile[tile] for tile in tiles if not accepted_only or verdicts.get(tile)
-        ]
+        name: [by_tile[tile] for tile in tiles]
         for name, tiles in ranked_tiles(labels, settings).items()
+        if tiles
     }
-    ranked = {name: tiles for name, tiles in ranked.items() if tiles}
     if not ranked:
-        return panels.unavailable(
-            NOTHING_ACCEPTED if accepted_only else NOTHING_LABELLED
-        )
+        return panels.unavailable(NOTHING_LABELLED)
     return TileReview(ranked, verdicts).box
 
 
