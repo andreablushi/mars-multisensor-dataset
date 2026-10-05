@@ -7,7 +7,7 @@ import numpy as np
 from building.configs import crism as configs
 from building.preprocessing.crism.correction.flat_field import FILL
 
-FLOOR = 0.02
+FLOOR = 0.01
 
 MULTISPECTRAL = np.isin(configs.BANDS_NM, configs.MULTISPECTRAL_BANDS_NM)
 
