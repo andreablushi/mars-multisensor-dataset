@@ -1,4 +1,4 @@
-"""crism_ml's spike removal, run on the ratioed spectra."""
+"""crism_ml's spike removal, run on the flat-fielded spectra."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ def remove_spikes(cube: np.ndarray, centres: np.ndarray, refused: np.ndarray) ->
     """Remove spikes with narrowing windows, as crism_ml does.
 
     Args:
-        cube: The ratioed values as lines by samples by bands, changed in place.
+        cube: The flat-fielded values as lines by samples by bands, changed in place.
         centres: The centre wavelength of every band it holds.
         refused: Lines by samples, True where the pixel is not a measurement.
     """

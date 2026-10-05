@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from pathlib import Path
 
@@ -9,12 +10,7 @@ import numpy as np
 
 from building.configs import crism as configs
 from building.preprocessing.crism import clean
-from building.preprocessing.crism.correction import (
-    bands_calibration,
-    clamp,
-    merge,
-    shape,
-)
+from building.preprocessing.crism.correction import bands_calibration, merge, shape
 from building.preprocessing.crism.models.observation import CrismObservation
 from common.pds import images, labels
 
@@ -53,9 +49,56 @@ def cached_detectors(identifier: str) -> tuple[configs.Detector, ...]:
     return found
 
 
+def detector_rows(image: Path, label: dict[str, str]) -> np.ndarray:
+    """Return the detector row every band of one image was read off.
+
+    Args:
+        image: The `.img` file, which holds the row table after its cube.
+        label: Its parsed label, which says where that table starts.
+
+    Returns:
+        rows: One detector row per band, in stored band order.
+    """
+    record = int(re.search(r"(\d+)\s*\)", label["^ROWNUM_TABLE"]).group(1))
+    size = int(label["RECORD_BYTES"].split()[0])
+    rows = np.fromfile(image, ">u2", int(label["BANDS"]), offset=(record - 1) * size)
+    # Only the low nine bits number the row.
+    return rows & 0x1FF
+
+
+def read_transmission(
+    label: dict[str, str], rows: np.ndarray, table: np.ndarray
+) -> np.ndarray:
+    """Read the atmosphere's transmission over the rows one infrared scan was read off.
+
+    Args:
+        label: The scan's label, which picks the record.
+        rows: The detector row of every band of the scan, in stored order.
+        table: The scan's centre wavelength of every column and band, stored order.
+
+    Returns:
+        transmission: Per column and band in wavelength order, NaN where unknown.
+
+    Raises:
+        ValueError: When the record lacks a row or does not fit the scan.
+    """
+    name = configs.transmission_record(label).lower()
+    record = configs.CACHE.files(configs.WAVELENGTH_DIR, name)[".img"]
+    values, held = images.load_cube(record)
+    measured = detector_rows(record, held)
+    at = np.searchsorted(measured, rows).clip(max=measured.size - 1)
+    if (measured[at] != rows).any():
+        raise ValueError(f"{name} holds no transmission for some rows of this scan.")
+    picked = np.where(values[:, :, at] >= UNCALIBRATED, np.nan, values[:, :, at])
+    return bands_calibration.calibrated_cube(picked, table)[0][0]
+
+
 def read_detectors(
     identifier: str, found: tuple[configs.Detector, ...]
-) -> tuple[dict[configs.Detector, tuple[np.ndarray, np.ndarray]], list[dict[str, str]]]:
+) -> tuple[
+    dict[configs.Detector, tuple[np.ndarray, np.ndarray, np.ndarray | None]],
+    list[dict[str, str]],
+]:
     """Read every image one observation was downloaded as, keyed by detector.
 
     Args:
@@ -63,29 +106,36 @@ def read_detectors(
         found: The detectors that landed whole.
 
     Returns:
-        detectors: Each detector's cube and wavelength table, bands ascending.
+        detectors: Each detector's cube, wavelength table and the atmosphere's
+            transmission, None off the infrared, bands ascending.
         held: Each detector's observation label, in the order found.
 
     Raises:
-        FileNotFoundError: When a wavelength file is missing.
-        ValueError: When the band order or wavelength file cannot be read.
+        FileNotFoundError: When a wavelength or transmission file is missing.
+        ValueError: When the band order, wavelength or transmission file cannot be read.
     """
     detectors = {}
     held = []
     for name in found:
-        cube, label = images.load_cube(
-            configs.CACHE.product_files(
-                identifier, configs.Kind.OBSERVATION, detector=name
-            )[".img"]
-        )
+        image = configs.CACHE.product_files(
+            identifier, configs.Kind.OBSERVATION, detector=name
+        )[".img"]
+        cube, label = images.load_cube(image)
         held.append(label)
         # The wavelength file this half was calibrated against, and no other.
         wavelength = Path(label[configs.WAVELENGTH_KEY]).stem.lower()
         record = configs.CACHE.files(configs.WAVELENGTH_DIR, wavelength)[".img"]
         written = images.load_cube(record)[0][0]
         table = np.where(written >= UNCALIBRATED, np.nan, written.astype("f8"))
+        transmission = None
+        if name == configs.Detector.INFRARED:
+            rows = detector_rows(image, label)
+            transmission = read_transmission(label, rows, table)
         # Order the bands by wavelength and mark what was never calibrated.
-        detectors[name] = bands_calibration.calibrated_cube(cube, table)
+        detectors[name] = (
+            *bands_calibration.calibrated_cube(cube, table),
+            transmission,
+        )
     return detectors, held
 
 
@@ -116,7 +166,7 @@ def read_observation(identifier: str) -> CrismObservation:
         if not key.startswith(GROUND_SOFTWARE)
     }
     observation = merge.merge_detectors(cleaned, geometry, label)
-    cube, bands = observation.cube, observation.measured_bands
-    valid = clamp.bounded_valid(cube, observation.valid, bands)
-    valid = shape.shaped_valid(cube, valid, bands)
+    valid = shape.shaped_valid(
+        observation.cube, observation.valid, observation.measured_bands
+    )
     return replace(observation, valid=valid)

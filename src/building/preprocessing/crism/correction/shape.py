@@ -5,9 +5,9 @@ from __future__ import annotations
 import numpy as np
 
 from building.configs import crism as configs
-from building.preprocessing.crism.correction.ratio import FILL
+from building.preprocessing.crism.correction.flat_field import FILL
 
-FLOOR = 0.2
+FLOOR = 0.02
 
 MULTISPECTRAL = np.isin(configs.BANDS_NM, configs.MULTISPECTRAL_BANDS_NM)
 
@@ -16,7 +16,7 @@ def shaped_valid(cube: np.ndarray, valid: np.ndarray, bands: np.ndarray) -> np.n
     """Divide every measured pixel by its multispectral mean, filling the too dim ones.
 
     Args:
-        cube: The ratioed values as lines by samples by bands, changed in place.
+        cube: The flat-fielded I/F as lines by samples by bands, changed in place.
         valid: Lines by samples, True where the pixel is a measurement.
         bands: One flag per band, True where the band is in play.
 

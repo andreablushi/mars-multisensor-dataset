@@ -151,3 +151,40 @@ WAVELENGTH_KEY = "MRO:WAVELENGTH_FILE_NAME"
 
 # The directory every wavelength file is kept in, shared by every observation.
 WAVELENGTH_DIR = "cdr"
+
+TRANSMISSION_RECORDS = (
+    "CDR420843667218_AT0300000L_7",
+    "CDR420845919018_AT0300000L_7",
+    "CDR420853786818_AT0300000L_7",
+    "CDR420858623419_AT0300000L_7",
+    "CDR420862848019_AT0300000L_7",
+    "CDR420865293319_AT0300000L_7",
+    "CDR420869443219_AT0300000L_7",
+    "CDR430873156619_AT0300000L_7",
+    "CDR430876940219_AT0300000L_7",
+    "CDR430880416919_AT0300000L_7",
+    "CDR430886781719_AT0300000L_7",
+    "CDR430887634919_AT0300000L_7",
+    "CDR440891104419_AT0300000L_7",
+    "CDR440895915820_AT0300000L_7",
+    "CDR440903304820_AT0300000L_7",
+    "CDR440914248820_AT0300000L_7",
+    "CDR450920541621_AT0300000L_7",
+    "CDR460929030422_AT0300000L_7",
+)
+
+CO2_BAND_NM = (2007.0, 1980.0)
+
+
+def transmission_record(label: dict[str, str]) -> str:
+    """Return the transmission record whose period holds one scan's start.
+
+    Args:
+        label: The scan's label, which says when it started.
+
+    Returns:
+        record: The record's product id, the first for a scan before any period.
+    """
+    clock = float(label["SPACECRAFT_CLOCK_START_COUNT"].split("/")[1])
+    started = [one for one in TRANSMISSION_RECORDS if int(one[5:15]) <= clock]
+    return started[-1] if started else TRANSMISSION_RECORDS[0]
