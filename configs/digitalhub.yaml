@@ -40,7 +40,7 @@ resources:
     profile: cpu
     shared: false
     isis: true
-    cpu: 16
+    cpu: 10
     memory: 56Gi
     disk: 120Gi
 

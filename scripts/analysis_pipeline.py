@@ -139,6 +139,7 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
     if failed:
         raise RuntimeError("the run had failures; the archives hold what finished")
     archives.download_artifact(project, Artifact.VERDICTS)
+    archives.download_artifact(project, Artifact.SELECTION)
     compute_selection(force, workers)
     print("done", flush=True)
     return (
@@ -169,6 +170,7 @@ def run_selection(project, force: bool = False, workers: int | None = None):
     archives.download_artifact(project, Artifact.COVERAGE)
     archives.download_artifact(project, Artifact.METADATA)
     archives.download_artifact(project, Artifact.VERDICTS)
+    archives.download_artifact(project, Artifact.SELECTION)
     compute_selection(force, workers)
     print("done", flush=True)
     return tuple(
