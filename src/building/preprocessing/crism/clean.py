@@ -9,7 +9,6 @@ from building.preprocessing.crism.correction import (
     atmospheric,
     bands_calibration,
     despike,
-    destripe,
     flat_field,
     volcano_scan,
 )
@@ -42,7 +41,6 @@ def clean_detectors(
         if transmission is not None:
             volcano_scan.remove_atmosphere(cube, mask, transmission, centres)
         mask = atmospheric.atmospheric_mask(cube, mask, centres, name)
-        destripe.remove_spike_columns(cube, mask, centres, name)
         mask = flat_field.flat_fielded_mask(cube, mask)
         # Despike only the bands in play, so filled ones cannot pull the median about.
         kept = ~mask.bands
