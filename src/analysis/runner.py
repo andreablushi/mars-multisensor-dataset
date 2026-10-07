@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from functools import partial
+from pathlib import Path
 
 import httpx
 from rich.console import Console
@@ -12,6 +14,7 @@ from analysis import paths, planner
 from analysis.console import LOGGED_LINES, print_plans
 from analysis.coverage.compute import compute_coverage
 from analysis.metadata.download import download_outcome
+from analysis.models.instrument import InstrumentSet
 from analysis.models.job import Outcome
 from analysis.models.settings import AnalysisSettings
 from analysis.utils.tile_group import every_tile_group, tile_grid
@@ -34,6 +37,9 @@ def pipeline_outcomes(
         downloaded: Every finished download outcome.
         measured: Every finished coverage outcome.
     """
+    dropped = dropped_set_files(settings.instrument_sets)
+    if dropped:
+        console.print(f"dropping {len(dropped):,} files of sets no longer configured")
     groups = every_tile_group(tile_grid(), settings.tile_group_deg)
     download_plan = planner.download_plan(groups, settings.instrument_sets, force=force)
     downloading = {job.output_path for job in download_plan.jobs}
@@ -75,3 +81,26 @@ def pipeline_outcomes(
                 outcome = future.result()
                 tracker.advance(outcome.job.label, outcome.error)
     return downloaded, [future.result() for future in coverage_futures]
+
+
+def dropped_set_files(instrument_sets: Sequence[InstrumentSet]) -> list[Path]:
+    """Delete the metadata and coverage of every set the config no longer names.
+
+    Args:
+        instrument_sets: The sets the run is configured with.
+
+    Returns:
+        dropped: Every file deleted.
+    """
+    configured = {one.slug for one in instrument_sets}
+    stale = [
+        path
+        for path in (
+            *paths.METADATA_ROOT.glob("*/*.jsonl"),
+            *paths.GROUPS_ROOT.glob("*/*.parquet"),
+        )
+        if path.name.split(".")[0] not in configured
+    ]
+    for path in stale:
+        path.unlink()
+    return stale

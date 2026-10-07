@@ -131,6 +131,9 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
         RuntimeError: When the measuring stage reported a failure.
     """
     os.environ[PLAIN_LOG_ENV] = "1"
+    if not force:
+        archives.download_artifact(project, Artifact.COVERAGE)
+        archives.download_artifact(project, Artifact.METADATA)
     print("measuring coverage", flush=True)
     failed = compute_coverage(force, workers)
     coverage = archives.published_artifact(project, Artifact.COVERAGE)
