@@ -47,7 +47,7 @@ def verdicts(
 ) -> widgets.Widget:
     """Tabulate every class's verdicts so far, and the draw they leave."""
     refused = catalogue.refused_tiles(judged)
-    drawn = [label for label in drawn_labels(labels, settings, refused) if label.drawn]
+    drawn = [label for label in drawn_labels(labels, settings, judged) if label.drawn]
     counts = [
         Counter(label.label for label in labels),
         Counter(label.label for label in labels if judged.get(label.tile)),
