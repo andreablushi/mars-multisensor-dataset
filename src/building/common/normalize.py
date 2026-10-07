@@ -10,13 +10,10 @@ from typing import Any
 import numpy as np
 
 from building import paths
-from building.configs import mola as mola_configs
 from building.metadata.dataset import read_manifest, read_normalization, write_manifest
 from building.metadata.index import read_observation_metadata
 from building.metadata.observation import ObservationMetadata
 from building.models.settings import BuildSettings
-
-UNSCALED = (mola_configs.LAYOUT.instrument,)
 
 
 def record_normalization(
@@ -34,9 +31,7 @@ def record_normalization(
     Raises:
         FileNotFoundError: When the reference build records no constants.
     """
-    records = [
-        one for one in read_observation_metadata(root) if one.instrument not in UNSCALED
-    ]
+    records = read_observation_metadata(root)
     constants = _reference_normalization(settings, fetch) or {
         name: dataset_constants([one for one in records if one.instrument == name])
         for name in {one.instrument for one in records}
