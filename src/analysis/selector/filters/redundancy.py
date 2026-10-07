@@ -12,8 +12,6 @@ from analysis.selector.models.criteria import Criteria
 from analysis.selector.models.track import Track
 from analysis.utils.tile_group import group_of_tile_named
 
-HYPERSPECTRAL = "hsp"
-
 
 def trimmed_window(
     track: Track, first: int, last: int, criteria: Criteria
@@ -47,18 +45,10 @@ def trimmed_window(
     # Count what the window and the SHARAD looks hold in cells
     counter = Counter.over(track, kept + standing)
     constraints = track.windowed + track.standing
-    # A hyperspectral look goes last, so it outlasts a multispectral one
-    windowed_order = sorted(
-        kept,
-        key=lambda index: (
-            track.observations[index].pdsid.startswith(HYPERSPECTRAL),
-            index,
-        ),
-    )
     # Keep the best first, then drop each later one matching a look already kept
     dropped: set[int] = set()
     retained: list[int] = []
-    for index in reversed(windowed_order + standing):
+    for index in reversed(kept + standing):
         owner, cells = track.owners[index], track.cells[index]
         share = criteria.redundant_share_threshold.get(track.iids[owner], 1.0)
         filled = np.zeros(track.grid.cell_count, dtype=bool)

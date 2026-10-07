@@ -10,8 +10,15 @@ import numpy as np
 
 from building.configs import crism as configs
 from building.preprocessing.crism import clean
-from building.preprocessing.crism.correction import bands_calibration, merge, shape
-from building.preprocessing.crism.models.observation import CrismObservation
+from building.preprocessing.crism.correction import (
+    bands_calibration,
+    merge,
+    photometric,
+)
+from building.preprocessing.crism.models.observation import (
+    ACQUISITION_PLANES,
+    CrismObservation,
+)
 from common.pds import images, labels
 
 # What a wavelength file writes where the detector was never calibrated.
@@ -166,7 +173,10 @@ def read_observation(identifier: str) -> CrismObservation:
         if not key.startswith(GROUND_SOFTWARE)
     }
     observation = merge.merge_detectors(cleaned, geometry, label)
-    valid = shape.shaped_valid(
-        observation.cube, observation.valid, observation.measured_bands
+    valid = photometric.photometric_valid(
+        observation.cube,
+        observation.geometry[:, :, ACQUISITION_PLANES["incidence_deg"]],
+        observation.valid,
+        observation.measured_bands,
     )
     return replace(observation, valid=valid)

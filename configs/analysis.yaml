@@ -15,7 +15,7 @@ cell_km: 0.5
 # What a run downloads and measures, as IHID/IID/PT narrowed by a colon and an ODE product id pattern.
 instruments:
   - MRO/CTX/EDR
-  - MRO/CRISM/TRDR:*sp*_if*_trr3
+  - MRO/CRISM/TRDR:msp*_if*_trr3
   - MRO/SHARAD/USRDRV2
 
 # The column of the geometry table published beside each SHARAD track read into the least signal phase distortion of a look over each tile, and of its night side.
@@ -36,7 +36,7 @@ criteria:
   admits: {CTX: 2097152, CRISM: 4096, SHARAD: 64}
 
   # The solar zenith angle past which an instrument's look is taken at night, in degrees: refused for CTX and CRISM, preferred for SHARAD
-  solar_zenith: {CTX: 90.0, CRISM: 90.0, SHARAD: 100.0}
+  solar_zenith: {CTX: 90.0, CRISM: 85.0, SHARAD: 100.0}
 
   # How far Mars may turn inside a window, in degrees of Ls; 90 is one season
   span_ls: 90.0
