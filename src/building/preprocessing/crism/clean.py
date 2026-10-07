@@ -45,7 +45,7 @@ def clean_detectors(
         # Despike only the bands in play, so filled ones cannot pull the median about.
         kept = ~mask.bands
         block = np.ascontiguousarray(cube[:, :, kept])
-        despike.remove_spikes(block, centres[kept], mask.pixels)
+        despike.remove_spikes(block, mask.pixels)
         cube[:, :, kept] = block
         cleaned[name] = DetectorCube(cube, table, mask)
     return cleaned
