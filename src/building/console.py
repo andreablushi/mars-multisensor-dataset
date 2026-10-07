@@ -169,8 +169,7 @@ def print_summary(
     console.print(f"{built:,} tiles built")
     if not failed:
         return
-    console.print(f"[yellow]{len(failed)} products failed:[/yellow]")
-    printing.print_listed([f"{one.job.label}: {one.error}" for one in failed], console)
+    console.print(f"[yellow]{len(failed)} products failed[/yellow]")
     console.print(
         f"[yellow]{len(incomplete):,} tiles lack a product and are left out, "
         + ", ".join(

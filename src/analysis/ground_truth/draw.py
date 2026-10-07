@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import random
 from collections import Counter
-from collections.abc import Collection, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from operator import attrgetter
 
+from analysis.ground_truth.catalogue import refused_tiles
 from analysis.ground_truth.models.label import Label
 from analysis.ground_truth.models.settings import GroundTruthSettings
 
@@ -54,14 +55,14 @@ def ranked_tiles(
 
 
 def drawn_labels(
-    labels: Sequence[Label], settings: GroundTruthSettings, refused: Collection[str]
+    labels: Sequence[Label], settings: GroundTruthSettings, verdicts: Mapping[str, bool]
 ) -> list[Label]:
-    """Mark the tiles the balanced draw takes of every class, the clearest first.
+    """Mark the tiles the balanced draw takes of every class, the accepted first.
 
     Args:
         labels: Every labelled tile.
         settings: The settled choices, which size the draw and seed it.
-        refused: The tiles the review refused, never taken.
+        verdicts: Whether each reviewed tile was accepted, a refused one never taken.
 
     Returns:
         labels: The same labels in the same order, the ones drawn marked so.
@@ -69,6 +70,7 @@ def drawn_labels(
     Raises:
         ValueError: When a class holds fewer tiles than every class is drawn for.
     """
+    refused = refused_tiles(verdicts)
     drawable = Counter(label.label for label in labels if label.tile not in refused)
     per_class = settings.per_class or min(drawable[name] for name in settings.classes)
     if short := {
@@ -80,6 +82,9 @@ def drawn_labels(
     drawn: set[str] = set()
     for ranked in ranked_tiles(labels, settings).values():
         # Skipped only once ranked, so a refusal never reshuffles what was accepted
-        accepted = [tile for tile in ranked if tile not in refused]
-        drawn.update(accepted[:per_class])
+        kept = sorted(
+            (tile for tile in ranked if tile not in refused),
+            key=lambda tile: not verdicts.get(tile, False),
+        )
+        drawn.update(kept[:per_class])
     return [replace(label, drawn=label.tile in drawn) for label in labels]

@@ -25,7 +25,7 @@ resources:
   selection:
     profile: cpu
     shared: true
-    cpu: 8
+    cpu: 16
     memory: 32Gi
     disk: 64Gi
   # A build's disk holds 100 GiB of crops before they go up, beside the products still being cut

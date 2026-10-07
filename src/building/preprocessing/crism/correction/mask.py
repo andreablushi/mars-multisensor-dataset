@@ -5,14 +5,14 @@ from __future__ import annotations
 import numpy as np
 
 from building.configs.crism import DETECTOR_WINDOWS_NM, Detector
-from building.preprocessing.crism.models.mask import Mask
+from building.preprocessing.crism.models.observation import Mask
 
 # The range a brightness can take, its floor below zero so noise there survives.
 BRIGHTNESS = (-0.05, 1.0)
 
 
 class NoMeasurement(ValueError):
-    """Raised when every cell of one detector's cube is refused."""
+    """Raised when every pixel of one detector's cube is refused."""
 
 
 def refused_mask(
@@ -31,7 +31,7 @@ def refused_mask(
 
     Raises:
         ValueError: When the window keeps no band of the cube.
-        NoMeasurement: When no cell of the cube is a measurement.
+        NoMeasurement: When no pixel of the cube is a measurement.
     """
     low, high = DETECTOR_WINDOWS_NM[detector]
 
@@ -56,11 +56,11 @@ def refused_mask(
     # A pixel is unusable when its column is dead or any of its bands is.
     pixels = scattered.any(axis=2)
     pixels[:, columns] = True
+    if pixels.all():
+        raise NoMeasurement(f"No pixel of this {detector} cube is a measurement.")
 
     # One stand-in for every refused cell, read off what the cube still measures.
     refused = scattered | dead
-    if refused.all():
-        raise NoMeasurement(f"No cell of this {detector} cube is a measurement.")
     fill = float(np.mean(cube, where=~refused))
     np.copyto(cube, fill, where=refused)
     return Mask(columns, bands, pixels, fill)

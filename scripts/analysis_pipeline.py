@@ -63,7 +63,8 @@ def compute_labels(force: bool) -> list[Label]:
         labels: Every labelled tile, the drawn ones marked so.
     """
     settings = analysis_settings().ground_truth
-    refused = catalogue.read_refused()
+    verdicts = catalogue.read_verdicts()
+    refused = catalogue.refused_tiles(verdicts)
     labels = drawn_labels(
         candidate_labels(
             read_selected_tiles(),
@@ -71,7 +72,7 @@ def compute_labels(force: bool) -> list[Label]:
             settings,
         ),
         settings,
-        refused,
+        verdicts,
     )
     artifacts.write_labels(labels)
     drawable = Counter(

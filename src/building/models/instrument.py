@@ -45,7 +45,8 @@ class Instrument:
     Attributes:
         layout: What its arrays hold, and which of them it is stored for.
         fetch: What brings one product down into the cache, as much as its tiles need.
-        read_observation: What reads a fetched product off disk, given its settings.
+        read_observation: What reads a fetched product off disk, given its settings,
+            or None where it measured nothing.
         crop: What cuts that observation to a tile's box, or None where it misses.
         archive: Which archive its products are downloaded from.
         worker_bytes: What one build holds of its largest product at once.

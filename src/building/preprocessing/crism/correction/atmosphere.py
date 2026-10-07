@@ -1,11 +1,13 @@
-"""Dividing out the atmosphere's gas bands, scaled to each pixel's CO2 depth."""
+"""Removing what the Martian atmosphere adds to a scan, rather than the ground."""
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 
-from building.configs.crism import CO2_BAND_NM
-from building.preprocessing.crism.models.mask import Mask
+from building.configs.crism import ATMOSPHERIC_BANDS_NM, CO2_BAND_NM, Detector
+from building.preprocessing.crism.models.observation import Mask
 
 
 def remove_atmosphere(
@@ -29,3 +31,27 @@ def remove_atmosphere(
     depth[~read] = np.median(depth[read]) if read.any() else 1.0
     divided = np.isfinite(transmission) & ~mask.bands
     np.divide(cube, transmission ** depth[:, :, None], out=cube, where=divided)
+
+
+def atmospheric_mask(
+    cube: np.ndarray, mask: Mask, centres: np.ndarray, detector: Detector
+) -> Mask:
+    """Drop the bands whose depth the atmosphere sets rather than the ground.
+
+    Args:
+        cube: The masked values as lines by samples by bands, filled in place.
+        mask: What that masking refused.
+        centres: The centre wavelength of every band.
+        detector: Which detector, `l` or `s`, which picks the windows.
+
+    Returns:
+        mask: The mask with those bands recorded.
+    """
+    caught = np.zeros(centres.shape, dtype=bool)
+    for low, high in ATMOSPHERIC_BANDS_NM[detector]:
+        caught |= (centres >= low) & (centres <= high)
+
+    # Only what masking still counted as usable is being taken away.
+    caught &= ~mask.bands
+    cube[:, :, caught] = mask.fill
+    return replace(mask, bands=mask.bands | caught)

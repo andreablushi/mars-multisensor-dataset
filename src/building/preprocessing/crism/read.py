@@ -2,74 +2,78 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
 
 from building.configs import crism as configs
-from building.preprocessing.crism import clean
-from building.preprocessing.crism.correction import bands_calibration, merge, shape
-from building.preprocessing.crism.models.observation import CrismObservation
+from building.preprocessing.crism import clean, merge
+from building.preprocessing.crism.models.observation import (
+    ACQUISITION_PLANES,
+    CrismObservation,
+)
 from common.pds import images, labels
 
-# What a wavelength file writes where the detector was never calibrated.
-UNCALIBRATED = 65535.0
 
-# What a label says about the calibration software, the same in every product.
-GROUND_SOFTWARE = ("MRO:IKF_", "MRO:RSC_", "MRO:REFZ_", "MRO:FRAM_STAT_")
-
-
-def cached_detectors(identifier: str) -> tuple[configs.Detector, ...]:
-    """Read which detectors of one observation were downloaded whole.
+def calibrated_cube(
+    cube: np.ndarray, table: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Order one cube by wavelength and fill what was never calibrated.
 
     Args:
-        identifier: The observation, its files already in the download cache.
+        cube: The values as lines by samples by bands, in stored band order.
+        table: The centre wavelength of every column and band, NaN if uncalibrated.
 
     Returns:
-        detectors: The detectors whose observation landed, the first of them the one
-            whose geometry places the observation.
+        cube: The cube with bands ascending, uncalibrated columns and bands NaN.
+        table: The centre wavelength of every column and band, in that same order.
 
     Raises:
-        FileNotFoundError: When neither detector landed whole.
+        ValueError: When the table does not fit the cube or has no calibrated band.
     """
-    found = tuple(
-        name
-        for name in configs.Detector
-        if all(
-            path.exists()
-            for path in configs.CACHE.product_files(
-                identifier, configs.Kind.OBSERVATION, detector=name
-            ).values()
+    if cube.shape[1:] != table.shape:
+        raise ValueError(
+            f"A cube of {cube.shape[1]} columns by {cube.shape[2]} bands cannot "
+            f"be read with a table of {table.shape[0]} by {table.shape[1]}."
         )
-    )
-    if not found:
-        raise FileNotFoundError(f"No detector of {identifier} is in the cache.")
-    return found
+    # What every band of this detector is centred on, averaged over its columns.
+    centres = configs.band_centres(table)
+    # Read the direction off the file instead of assuming one.
+    named = np.flatnonzero(~np.isnan(centres))
+    if not named.size:
+        raise ValueError("No band of this cube was ever calibrated.")
+    if centres[named[0]] > centres[named[-1]]:
+        cube, table = cube[:, :, ::-1], table[:, ::-1]
+
+    # A writable copy in the new order, since the reversal above is a view.
+    ordered = np.array(cube, dtype="f4")
+    # Say what was never calibrated with NaN, leaving the shape alone.
+    blank = np.isnan(table)
+    ordered[:, blank.all(axis=1), :] = np.nan
+    ordered[:, :, blank.all(axis=0)] = np.nan
+    return ordered, table
 
 
 def detector_rows(image: Path, label: dict[str, str]) -> np.ndarray:
     """Return the detector row every band of one image was read off.
 
     Args:
-        image: The `.img` file, which holds the row table after its cube.
-        label: Its parsed label, which says where that table starts.
+        image: The `.img` file, which holds the row table right after its cube.
+        label: Its parsed label, which sizes that cube.
 
     Returns:
         rows: One detector row per band, in stored band order.
     """
-    record = int(re.search(r"(\d+)\s*\)", label["^ROWNUM_TABLE"]).group(1))
-    size = int(label["RECORD_BYTES"].split()[0])
-    rows = np.fromfile(image, ">u2", int(label["BANDS"]), offset=(record - 1) * size)
-    # Only the low nine bits number the row.
-    return rows & 0x1FF
+    lines, samples, bands, _, dtype = labels.image_layout(label)
+    cube_bytes = lines * samples * bands * np.dtype(dtype).itemsize
+    return np.fromfile(image, ">u2", bands, offset=cube_bytes)
 
 
-def read_transmission(
+def read_atmosphere_transmission(
     label: dict[str, str], rows: np.ndarray, table: np.ndarray
 ) -> np.ndarray:
-    """Read the atmosphere's transmission over the rows one infrared scan was read off.
+    """Read the atmosphere's transmission used by the volcano scan.
 
     Args:
         label: The scan's label, which picks the record.
@@ -78,43 +82,44 @@ def read_transmission(
 
     Returns:
         transmission: Per column and band in wavelength order, NaN where unknown.
-
-    Raises:
-        ValueError: When the record lacks a row or does not fit the scan.
     """
     name = configs.transmission_record(label).lower()
     record = configs.CACHE.files(configs.WAVELENGTH_DIR, name)[".img"]
     values, held = images.load_cube(record)
-    measured = detector_rows(record, held)
-    at = np.searchsorted(measured, rows).clip(max=measured.size - 1)
-    if (measured[at] != rows).any():
-        raise ValueError(f"{name} holds no transmission for some rows of this scan.")
-    picked = np.where(values[:, :, at] >= UNCALIBRATED, np.nan, values[:, :, at])
-    return bands_calibration.calibrated_cube(picked, table)[0][0]
+    band_of_row = {row: band for band, row in enumerate(detector_rows(record, held))}
+    at = [band_of_row[row] for row in rows]
+    picked = np.where(
+        values[:, :, at] >= configs.UNCALIBRATED, np.nan, values[:, :, at]
+    )
+    return calibrated_cube(picked, table)[0][0]
 
 
 def read_detectors(
-    identifier: str, found: tuple[configs.Detector, ...]
+    identifier: str, found: list[configs.Detector]
 ) -> tuple[
-    dict[configs.Detector, tuple[np.ndarray, np.ndarray, np.ndarray | None]],
+    dict[configs.Detector, tuple[np.ndarray, np.ndarray]],
+    np.ndarray | None,
     list[dict[str, str]],
 ]:
     """Read every image one observation was downloaded as, keyed by detector.
 
     Args:
         identifier: The observation, its files already in the download cache.
-        found: The detectors that landed whole.
+        found: The detectors that landed, the first of them the one whose geometry
+            places the observation.
 
     Returns:
-        detectors: Each detector's cube, wavelength table and the atmosphere's
-            transmission, None off the infrared, bands ascending.
+        detectors: Each detector's cube and wavelength table, bands ascending.
+        transmission: The atmosphere's transmission over the infrared scan, or None
+            when the observation has no infrared half.
         held: Each detector's observation label, in the order found.
 
     Raises:
         FileNotFoundError: When a wavelength or transmission file is missing.
-        ValueError: When the band order, wavelength or transmission file cannot be read.
+        ValueError: When the band order or wavelength file cannot be read.
     """
     detectors = {}
+    transmission = None
     held = []
     for name in found:
         image = configs.CACHE.product_files(
@@ -125,48 +130,56 @@ def read_detectors(
         # The wavelength file this half was calibrated against, and no other.
         wavelength = Path(label[configs.WAVELENGTH_KEY]).stem.lower()
         record = configs.CACHE.files(configs.WAVELENGTH_DIR, wavelength)[".img"]
-        written = images.load_cube(record)[0][0]
-        table = np.where(written >= UNCALIBRATED, np.nan, written.astype("f8"))
-        transmission = None
+        table = configs.wavelength_table(record)
         if name == configs.Detector.INFRARED:
             rows = detector_rows(image, label)
-            transmission = read_transmission(label, rows, table)
+            transmission = read_atmosphere_transmission(label, rows, table)
         # Order the bands by wavelength and mark what was never calibrated.
-        detectors[name] = (
-            *bands_calibration.calibrated_cube(cube, table),
-            transmission,
-        )
-    return detectors, held
+        detectors[name] = calibrated_cube(cube, table)
+    return detectors, transmission, held
 
 
-def read_observation(identifier: str) -> CrismObservation:
+def read_observation(identifier: str) -> CrismObservation | None:
     """Read one observation, clean it, and join the detectors it has onto the grid.
 
     Args:
         identifier: The observation, its files already in the download cache.
 
     Returns:
-        observation: The observation on the survey's shared grid.
+        observation: The observation on the survey's shared grid, or None where no
+            detector measured a pixel.
 
     Raises:
         FileNotFoundError: When any file the observation needs is missing.
         ValueError: When a window keeps no band of a cube.
     """
-    found = cached_detectors(identifier)
-    detectors, held = read_detectors(identifier, found)
-    cleaned = clean.clean_detectors(detectors)
+    found = [
+        name
+        for name in configs.Detector
+        if configs.CACHE.product_files(
+            identifier, configs.Kind.OBSERVATION, detector=name
+        )[".img"].exists()
+    ]
+    if not found:
+        raise FileNotFoundError(f"No detector of {identifier} is in the cache.")
+    detectors, transmission, held = read_detectors(identifier, found)
+    cleaned = clean.clean_detectors(detectors, transmission)
+    if dropped := [name for name in found if name not in cleaned]:
+        missed = ", ".join(dropped)
+        print(f"note {identifier} [CRISM]: no pixel measured on {missed}", flush=True)
+    if not cleaned:
+        return None
     geometry, geometry_label = images.load_cube(
         configs.CACHE.product_files(
             identifier, configs.Kind.GEOMETRY, detector=found[0]
         )[".img"]
     )
-    label = {
-        key: value
-        for key, value in labels.merge(*held, geometry_label).items()
-        if not key.startswith(GROUND_SOFTWARE)
-    }
+    label = labels.merge(*held, geometry_label)
     observation = merge.merge_detectors(cleaned, geometry, label)
-    valid = shape.shaped_valid(
-        observation.cube, observation.valid, observation.measured_bands
+    valid = clean.photometric_valid(
+        observation.cube,
+        observation.geometry[:, :, ACQUISITION_PLANES["incidence_deg"]],
+        observation.valid,
+        observation.measured_bands,
     )
     return replace(observation, valid=valid)

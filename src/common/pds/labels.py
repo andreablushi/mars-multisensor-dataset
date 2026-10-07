@@ -171,7 +171,10 @@ def merge(*held: dict[str, str]) -> dict[str, str]:
     merged: dict[str, str] = {}
     for one in held:
         for key, value in one.items():
-            if key.startswith("^") or key in FILE_KEYS or value.upper() in MISSING:
+            if key.startswith("^") or key in FILE_KEYS:
+                continue
+            parts = value.strip("()").split(",")
+            if all(part.strip().strip('"').upper() in MISSING for part in parts):
                 continue
             merged.setdefault(key, value)
     return merged

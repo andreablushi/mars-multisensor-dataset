@@ -199,7 +199,9 @@ def build_product(
         )
         for frame in job.frames:
             try:
-                sample = instrument.crop(observation, frame)
+                sample = (
+                    None if observation is None else instrument.crop(observation, frame)
+                )
             except Exception as error:  # noqa: BLE001
                 # A tile failing to cut is kept as the error, and the rest still cut.
                 failed = failed or error
