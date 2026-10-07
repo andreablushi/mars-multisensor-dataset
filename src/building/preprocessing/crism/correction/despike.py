@@ -6,16 +6,18 @@ import numpy as np
 
 from building.preprocessing.crism.correction import moving_median
 
-# The windows crism_ml despikes with, in nm, at 20 deviations rather than five.
-SPIKE_PASSES = ((72.0, 20.0), (46.0, 20.0), (20.0, 20.0))
+PASSES = 3
+
+WINDOW = 3
+
+SIGMA = 20.0
 
 
-def remove_spikes(cube: np.ndarray, centres: np.ndarray, refused: np.ndarray) -> None:
-    """Remove spikes with narrowing windows, as crism_ml does.
+def remove_spikes(cube: np.ndarray, refused: np.ndarray) -> None:
+    """Remove spikes in repeated passes over a three band window, as crism_ml does.
 
     Args:
         cube: The flat-fielded values as lines by samples by bands, changed in place.
-        centres: The centre wavelength of every band it holds.
         refused: Lines by samples, True where the pixel is not a measurement.
     """
     if refused.all():
@@ -26,13 +28,12 @@ def remove_spikes(cube: np.ndarray, centres: np.ndarray, refused: np.ndarray) ->
     median = np.empty_like(cube)
     apart = np.empty_like(cube)
     caught = np.empty(cube.shape, dtype=bool)
-    for width, sigma in SPIKE_PASSES:
-        size = moving_median.window_size(centres, width)
-        moving_median.moving_median(cube, size, out=median)
+    for _ in range(PASSES):
+        moving_median.moving_median(cube, WINDOW, median)
         np.subtract(median, cube, out=apart)
         np.abs(apart, out=apart)
         # crism_ml judges every sample against the measured cube's own spread.
-        limit = np.mean(apart.mean(axis=-1), where=live) + sigma * np.mean(
+        limit = np.mean(apart.mean(axis=-1), where=live) + SIGMA * np.mean(
             apart.std(ddof=1, axis=-1), where=live
         )
         np.greater(apart, limit, out=caught)
