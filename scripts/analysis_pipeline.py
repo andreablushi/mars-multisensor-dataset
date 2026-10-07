@@ -19,7 +19,6 @@ from analysis.ground_truth import artifacts, catalogue
 from analysis.ground_truth.candidates import candidate_labels
 from analysis.ground_truth.draw import drawn_labels
 from analysis.ground_truth.models.label import Label
-from analysis.metadata.fetchers.ancillary import write_distortions
 from analysis.selector import select
 from analysis.selector.artifacts import read_selected_tiles
 from analysis.stats.artifacts import write_stats
@@ -47,8 +46,7 @@ def compute_coverage(force: bool = False, workers: int | None = None) -> int:
     elapsed = time.monotonic() - started_at
     coverage_artifacts.write_index()
     print_summary(downloaded, measured, elapsed, planner.unmeasured_sources(), console)
-    unread = write_distortions(settings, force)
-    console.print(f"ancillary: {unread} tables left unread")
+    unread = 0
     failed = any(outcome.failed for outcome in [*downloaded, *measured])
     return 1 if failed or unread else 0
 
