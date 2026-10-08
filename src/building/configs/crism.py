@@ -12,7 +12,6 @@ from building import paths
 from building.common.layout import Axis, Layout
 from building.common.naming import Naming
 from building.common.product_cache import ProductCache
-from common.paths import CONFIGS_ROOT
 from common.pds import images
 
 
@@ -44,9 +43,11 @@ NOISY_BANDS_NM = (648.954, 1052.972, 2631.447)
 # What a wavelength file writes where the detector was never calibrated.
 UNCALIBRATED = 65535.0
 
+WAVELENGTHS_ROOT = Path(__file__).parent / "wavelengths"
+
 SURVEY_WAVELENGTHS = {
-    Detector.INFRARED: CONFIGS_ROOT / "crism" / "cdr490947778566_wa0300010l_3.img",
-    Detector.VISIBLE: CONFIGS_ROOT / "crism" / "cdr450924300802_wa0300010s_2.img",
+    Detector.INFRARED: WAVELENGTHS_ROOT / "cdr490947778566_wa0300010l_3.img",
+    Detector.VISIBLE: WAVELENGTHS_ROOT / "cdr450924300802_wa0300010s_2.img",
 }
 
 
