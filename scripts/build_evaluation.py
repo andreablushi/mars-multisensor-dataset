@@ -46,13 +46,18 @@ def main() -> int:
     Returns:
         code: A process exit code, non zero when a product failed.
     """
-    arguments = args.script_parser(__doc__).parse_args()
+    parser = args.script_parser(__doc__)
+    parser.add_argument("overrides", nargs="*", help="Hydra overrides, as key=value")
+    arguments = parser.parse_args()
 
     if arguments.dh:
         return submit.submitted(
-            Function.BUILD_EVALUATION, arguments.ref, force=arguments.force
+            Function.BUILD_EVALUATION,
+            arguments.ref,
+            arguments.overrides,
+            force=arguments.force,
         )
-    settings = evaluation_settings()
+    settings = evaluation_settings(overrides=arguments.overrides)
     return build_dataset(settings, evaluation_selections(settings), arguments.force)
 
 

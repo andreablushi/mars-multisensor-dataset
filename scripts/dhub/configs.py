@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from common.config import load_config
@@ -49,6 +50,6 @@ class Platform:
     resources: dict[str, Resources]
 
 
-def load_platform() -> Platform:
+def load_platform(overrides: Sequence[str] = ()) -> Platform:
     """Settle what a platform run is given, reading the config file once."""
-    return load_config("digitalhub", Platform)
+    return load_config("digitalhub", Platform, tuple(overrides))

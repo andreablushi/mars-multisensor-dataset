@@ -50,14 +50,15 @@ def fetch_build(
 
 
 def build_handler[T: BuildSettings](
-    settled: Callable[[int | None], T],
+    settled: Callable[[int | None, Sequence[str]], T],
     selections: Callable[[T], list[Selection]],
     fetched: Sequence[Artifact],
 ) -> Callable:
     """Return the handler a build's job calls, the last checkpoint publishing it all.
 
     Args:
-        settled: What settles the build, given the cores the job was sized with.
+        settled: What settles the build, given the cores the job was sized with
+            and the overrides it was submitted with.
         selections: What reads the tiles to build once everything fetched is down.
         fetched: What the build reads, brought down first onto the job's empty disk.
 
@@ -66,13 +67,16 @@ def build_handler[T: BuildSettings](
     """
 
     @handler(outputs=[Artifact.DATASET.published])
-    def run_build(project, force: bool = False, workers: int | None = None):
+    def run_build(
+        project, force: bool = False, workers: int | None = None, overrides=()
+    ):
         """Build one dataset on DigitalHub and publish what it left on disk.
 
         Args:
             project: The DigitalHub project the dataset is logged into.
             force: Whether to build from nothing rather than fill in what is missing.
             workers: How many products to build at once, as the job was sized.
+            overrides: Hydra overrides of the build's config file.
 
         Returns:
             dataset: The published dataset, one object per crop.
@@ -86,7 +90,7 @@ def build_handler[T: BuildSettings](
             install_isis()
         for one in fetched:
             archives.download_artifact(project, one)
-        settings = settled(workers)
+        settings = settled(workers, overrides)
         name = f"{Artifact.DATASET.published}-{settings.name}"
         root = paths.dataset_root(settings.name)
         # A job starts on an empty disk, so only the index of what is built comes down

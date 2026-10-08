@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import digitalhub as dh
 
 from building.preprocessing.ctx import isis
@@ -9,12 +11,16 @@ from dhub import configs
 from dhub.paths import Function
 
 
-def submitted(stage: Function, ref: str, **parameters) -> int:
+def submitted(
+    stage: Function, ref: str, overrides: Sequence[str] = (), **parameters
+) -> int:
     """Register a version of one stage from a pushed commit, and run it.
 
     Args:
         stage: The stage to submit, naming its function, handler and resources.
         ref: The branch, tag, or commit the platform clones.
+        overrides: Hydra overrides, `resources.` ones of the platform config and the
+            rest of the stage's own, handed to the job.
         **parameters: What the handler is called with on the platform.
 
     Returns:
@@ -23,7 +29,10 @@ def submitted(stage: Function, ref: str, **parameters) -> int:
     Raises:
         RuntimeError: When an earlier run of the stage still holds a running pod.
     """
-    platform = configs.load_platform()
+    platform = configs.load_platform(
+        [one for one in overrides if one.startswith("resources.")]
+    )
+    handed = [one for one in overrides if not one.startswith("resources.")]
     asked = platform.resources[stage.name.lower()]
     project = dh.get_or_create_project(platform.project)
     # A stopped run can keep its pod alive, so only a deleted one is surely gone
@@ -59,7 +68,9 @@ def submitted(stage: Function, ref: str, **parameters) -> int:
             {"name": "PYTHONPATH", "value": f"{root}:{root}/src:{root}/scripts"},
             *(isis.ENVS if asked.isis else []),
         ],
-        parameters=parameters | {"workers": asked.cpu},
+        parameters=parameters
+        | {"workers": asked.cpu}
+        | ({"overrides": handed} if handed else {}),
         wait=False,
     )
     print(run.key)
