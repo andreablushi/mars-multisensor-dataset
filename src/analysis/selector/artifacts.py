@@ -72,11 +72,7 @@ def read_refused_observations() -> list[SelectedObservation]:
 
 
 def write_refused_observations(refused: Sequence[SelectedObservation]) -> None:
-    """Add observations a build cropped empty to those refused before, once each.
-
-    Args:
-        refused: The kept observations whose crop of their tile measured nothing.
-    """
+    """Add observations a build cropped empty to those refused before, once each."""
     parquet.write_rows(
         list(dict.fromkeys([*read_refused_observations(), *refused])),
         OBSERVATIONS,

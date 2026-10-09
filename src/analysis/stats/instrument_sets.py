@@ -22,7 +22,7 @@ def landings_per_set(tile_track: TileTrack) -> list[Landing]:
     track = tile_track.track
     counted: list[list[float]] = [[] for _ in track.labels]
     offered = [*zip(track.observations, track.owners, track.cells), *track.refused]
-    for observation, owner, cells in offered:
+    for _, owner, cells in offered:
         counted[owner].append(len(cells) * track.grid.cell_km2)
     criteria = analysis_settings().criteria
     return [

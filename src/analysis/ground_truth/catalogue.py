@@ -53,14 +53,7 @@ def read_features(refresh: bool) -> list[Feature]:
 
 
 def read_labels() -> list[Label]:
-    """Read back every labelled tile.
-
-    Returns:
-        labels: Every labelled tile, in the order they were written.
-
-    Raises:
-        FileNotFoundError: When no labels have been written.
-    """
+    """Read back every labelled tile, in the order they were written."""
     return parquet.read_rows(Label, LABELS, paths.LABELS_ROOT / paths.LABELS_NAME)
 
 
@@ -86,9 +79,5 @@ def refused_tiles(verdicts: dict[str, bool]) -> set[str]:
 
 
 def read_refused() -> set[str]:
-    """Read the tiles the review refused.
-
-    Returns:
-        refused: The names of the refused tiles, none when nothing was reviewed.
-    """
+    """Read the names of the tiles the review refused, none when nothing was."""
     return refused_tiles(read_verdicts())

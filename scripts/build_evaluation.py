@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 
-from dhub import args, checkpoint, submit
+from dhub import args, checkpoint
+from dhub.build import build_exit_code
 from dhub.paths import Artifact, Function
 
 from analysis.ground_truth import artifacts, catalogue
@@ -11,7 +12,6 @@ from analysis.selector.artifacts import read_selection
 from analysis.selector.models.selection import Selection
 from building import draw, paths
 from building.models.settings import BuildSettings
-from building.runner import build_dataset
 from common.config import evaluation_settings
 
 
@@ -46,19 +46,9 @@ def main() -> int:
     Returns:
         code: A process exit code, non zero when a product failed.
     """
-    parser = args.script_parser(__doc__)
-    parser.add_argument("overrides", nargs="*", help="Hydra overrides, as key=value")
-    arguments = parser.parse_args()
-
-    if arguments.dh:
-        return submit.submitted(
-            Function.BUILD_EVALUATION,
-            arguments.ref,
-            arguments.overrides,
-            force=arguments.force,
-        )
-    settings = evaluation_settings(overrides=arguments.overrides)
-    return build_dataset(settings, evaluation_selections(settings), arguments.force)
+    return build_exit_code(
+        __doc__, Function.BUILD_EVALUATION, evaluation_settings, evaluation_selections
+    )
 
 
 if __name__ == "__main__":

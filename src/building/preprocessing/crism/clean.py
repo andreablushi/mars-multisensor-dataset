@@ -41,10 +41,11 @@ def clean_observation(
     Returns:
         observation: The joined observation, or None where no detector measured.
     """
-    cleaned = {}
-    for name, (cube, rows) in scans.items():
-        if (half := clean_detector(name, cube, rows, label, spikes)) is not None:
-            cleaned[name] = half
+    cleaned = {
+        name: half
+        for name, (cube, rows) in scans.items()
+        if (half := clean_detector(name, cube, rows, label, spikes)) is not None
+    }
     if dropped := [name for name in scans if name not in cleaned]:
         missed = ", ".join(dropped)
         print(f"note {identifier} [CRISM]: no pixel measured on {missed}", flush=True)
