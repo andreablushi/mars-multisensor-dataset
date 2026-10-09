@@ -17,14 +17,6 @@ download_one() {
 
     dhcli download -p "$project" artifact -n "$name" -d "$staged"
 
-    # An archive comes down packed, the verdicts as the one file they are
-    local packed
-    packed="$(find "$staged" -maxdepth 1 -name '*.tar.gz' -print -quit)"
-    if [[ -n $packed ]]; then
-        tar -xzf "$packed" -C "$staged" --strip-components=1
-        rm -f "$packed"
-    fi
-
     # Nothing on disk is touched unless there is something to put in its place
     if [[ -z $(ls -A "$staged" 2>/dev/null) ]]; then
         echo "nothing came down for \`$name\`, leaving $dest as it was" >&2

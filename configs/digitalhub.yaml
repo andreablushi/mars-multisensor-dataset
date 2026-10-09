@@ -43,4 +43,9 @@ resources:
     cpu: 10
     memory: 56Gi
     disk: 120Gi
-
+  convert:
+    profile: cpu
+    shared: true
+    cpu: 4
+    memory: 16Gi
+    disk: 32Gi

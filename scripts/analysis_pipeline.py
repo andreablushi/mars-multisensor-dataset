@@ -7,8 +7,7 @@ import os
 import time
 from collections import Counter
 
-from dhub import archives, args, submit
-from dhub.paths import Artifact, Function
+from dhub import store, submit
 from digitalhub_runtime_python import handler
 from rich.console import Console
 
@@ -27,7 +26,7 @@ from analysis.stats.dataset import dataset_stats
 from common.config import analysis_settings
 from common.console import PLAIN_LOG_ENV
 
-SELECTION_ARTIFACTS = (Artifact.SELECTION, Artifact.STATS, Artifact.LABELS)
+SELECTION_ARTIFACTS = ("selection", "stats", "labels")
 
 
 def compute_coverage(force: bool = False, workers: int | None = None) -> int:
@@ -107,26 +106,21 @@ def compute_selection(force: bool = False, workers: int | None = None) -> None:
     )
 
 
-@handler(
-    outputs=[
-        artifact.published
-        for artifact in (Artifact.COVERAGE, Artifact.METADATA, *SELECTION_ARTIFACTS)
-    ]
-)
+@handler(outputs=["coverage", "metadata", *SELECTION_ARTIFACTS])
 def run_pipeline(project, force: bool = False, workers: int | None = None):
     """Run every stage on DigitalHub and publish everything each one left on disk.
 
     Args:
-        project: The DigitalHub project the archives are logged into.
+        project: The DigitalHub project the folders are logged into.
         force: Whether to redo finished work rather than skip it.
         workers: How many jobs each stage runs at once, as the job was sized.
 
     Returns:
-        coverage: The archive of the coverage events and summaries.
-        metadata: The archive of the ODE records the coverage was measured from.
-        selection: The archive of the tiles and observations kept.
-        stats: The archive of what the filter left of the dataset.
-        labels: The archive of every labelled tile.
+        coverage: The folder of the coverage events and summaries.
+        metadata: The folder of the ODE records the coverage was measured from.
+        selection: The folder of the tiles and observations kept.
+        stats: The folder of what the filter left of the dataset.
+        labels: The folder of every labelled tile.
 
     Raises:
         RuntimeError: When the measuring stage reported a failure.
@@ -134,49 +128,50 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
     os.environ[PLAIN_LOG_ENV] = "1"
     print("measuring coverage", flush=True)
     failed = compute_coverage(force, workers)
-    coverage = archives.published_artifact(project, Artifact.COVERAGE)
-    metadata = archives.published_artifact(project, Artifact.METADATA)
+    coverage, metadata = (
+        store.upload_folder(project, name, store.ARTIFACTS[name])
+        for name in ("coverage", "metadata")
+    )
     # Report a failure only once uploaded, and never select from short coverage
     if failed:
-        raise RuntimeError("the run had failures; the archives hold what finished")
-    archives.download_artifact(project, Artifact.VERDICTS)
-    archives.download_artifact(project, Artifact.SELECTION)
+        raise RuntimeError("the run had failures; the folders hold what finished")
+    store.download_verdicts(project)
+    store.download_folder(project, "selection", store.ARTIFACTS["selection"])
     compute_selection(force, workers)
     print("done", flush=True)
     return (
         coverage,
         metadata,
         *(
-            archives.published_artifact(project, artifact)
-            for artifact in SELECTION_ARTIFACTS
+            store.upload_folder(project, name, store.ARTIFACTS[name])
+            for name in SELECTION_ARTIFACTS
         ),
     )
 
 
-@handler(outputs=[artifact.published for artifact in SELECTION_ARTIFACTS])
+@handler(outputs=list(SELECTION_ARTIFACTS))
 def run_selection(project, force: bool = False, workers: int | None = None):
     """Select the dataset on DigitalHub under the filter, and publish what it leaves.
 
     Args:
-        project: The DigitalHub project the archives are logged into.
+        project: The DigitalHub project the folders are logged into.
         force: Whether to fetch the feature catalogue again.
         workers: How many processes to run on at once, as the job was sized.
 
     Returns:
-        selection: The archive of the tiles and observations kept.
-        stats: The archive of what the filter left of the dataset.
-        labels: The archive of every labelled tile.
+        selection: The folder of the tiles and observations kept.
+        stats: The folder of what the filter left of the dataset.
+        labels: The folder of every labelled tile.
     """
     os.environ[PLAIN_LOG_ENV] = "1"
-    archives.download_artifact(project, Artifact.COVERAGE)
-    archives.download_artifact(project, Artifact.METADATA)
-    archives.download_artifact(project, Artifact.VERDICTS)
-    archives.download_artifact(project, Artifact.SELECTION)
+    for name in ("coverage", "metadata", "selection"):
+        store.download_folder(project, name, store.ARTIFACTS[name])
+    store.download_verdicts(project)
     compute_selection(force, workers)
     print("done", flush=True)
     return tuple(
-        archives.published_artifact(project, artifact)
-        for artifact in SELECTION_ARTIFACTS
+        store.upload_folder(project, name, store.ARTIFACTS[name])
+        for name in SELECTION_ARTIFACTS
     )
 
 
@@ -186,7 +181,7 @@ def main() -> int:
     Returns:
         code: A process exit code, non zero when a stage failed.
     """
-    parsed = args.script_parser(__doc__, "redo finished work rather than skip it")
+    parsed = submit.script_parser(__doc__, "redo finished work rather than skip it")
     parsed.add_argument(
         "--only-stats",
         action="store_true",
@@ -196,7 +191,7 @@ def main() -> int:
     arguments = parsed.parse_args()
 
     if arguments.dh:
-        stage = Function.SELECTION if arguments.only_stats else Function.PIPELINE
+        stage = "selection" if arguments.only_stats else "pipeline"
         return submit.submitted(stage, arguments.ref, force=arguments.force)
     failed = 0 if arguments.only_stats else compute_coverage(arguments.force)
     compute_selection(force=arguments.force)
@@ -204,4 +199,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    args.run_script(main, "finished files")
+    raise SystemExit(main())

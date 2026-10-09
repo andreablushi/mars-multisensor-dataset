@@ -3,9 +3,8 @@
 
 from __future__ import annotations
 
-from dhub import args, checkpoint
-from dhub.build import build_exit_code
-from dhub.paths import Artifact, Function
+from dhub import build
+from digitalhub_runtime_python import handler
 
 from analysis.ground_truth import artifacts, catalogue
 from analysis.selector.artifacts import read_selection
@@ -33,11 +32,26 @@ def evaluation_selections(settings: BuildSettings) -> list[Selection]:
     return draw.draw_evaluation(read_selection(), labels)
 
 
-run_build = checkpoint.build_handler(
-    evaluation_settings,
-    evaluation_selections,
-    (Artifact.SELECTION, Artifact.LABELS),
-)
+@handler(outputs=["dataset"])
+def run_build(project, force: bool = False, workers: int | None = None, overrides=()):
+    """Build the evaluation dataset on DigitalHub and publish what it left on disk.
+
+    Args:
+        project: The DigitalHub project the dataset is logged into.
+        force: Whether to build from nothing rather than fill in what is missing.
+        workers: How many products to build at once, as the job was sized.
+        overrides: Hydra overrides of the build's config file.
+
+    Returns:
+        dataset: The published dataset, one object per crop.
+    """
+    return build.published_build(
+        project,
+        evaluation_settings(workers, overrides),
+        evaluation_selections,
+        ("selection", "labels"),
+        force,
+    )
 
 
 def main() -> int:
@@ -46,10 +60,10 @@ def main() -> int:
     Returns:
         code: A process exit code, non zero when a product failed.
     """
-    return build_exit_code(
-        __doc__, Function.BUILD_EVALUATION, evaluation_settings, evaluation_selections
+    return build.build_exit_code(
+        __doc__, "build_evaluation", evaluation_settings, evaluation_selections
     )
 
 
 if __name__ == "__main__":
-    args.run_script(main, "written crops")
+    raise SystemExit(main())
