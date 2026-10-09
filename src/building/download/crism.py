@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import httpx
 
 from building.configs import crism as configs
 from building.download import archive
 from common.models.tile import Tile
-from common.pds import labels
 
 
 def download_detector_product(
@@ -40,7 +37,7 @@ def download_detector_product(
 
 
 def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
-    """Download every published detector of one observation and its calibration files.
+    """Download every published detector of one observation and its geometry.
 
     Args:
         identifier: The observation to fetch.
@@ -50,7 +47,6 @@ def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> No
     Raises:
         FileNotFoundError: When ODE publishes neither detector, or the geometry of
             the first is missing.
-        KeyError: When a label names no wavelength file.
     """
     # A small share of the survey was archived as one half alone
     found = []
@@ -66,21 +62,3 @@ def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> No
         raise FileNotFoundError(f"ODE publishes no detector of {identifier}.")
     # Every half is placed by the first one's geometry, so no other is fetched
     download_detector_product(identifier, found[0], configs.Kind.GEOMETRY, client)
-    # Only now do the labels exist to be asked which files calibrate them.
-    for detector in found:
-        label = labels.load(
-            configs.CACHE.product_files(
-                identifier, configs.Kind.OBSERVATION, detector=detector
-            )[".lbl"]
-        )
-        names = [Path(label[configs.WAVELENGTH_KEY]).stem]
-        if detector == configs.Detector.INFRARED:
-            names.append(configs.transmission_record(label))
-        for name in names:
-            archive.download_product(
-                client,
-                name,
-                configs.CACHE.files(configs.WAVELENGTH_DIR, name.lower()),
-                pt=configs.WAVELENGTH_PRODUCT_TYPE,
-                **configs.ODE,
-            )

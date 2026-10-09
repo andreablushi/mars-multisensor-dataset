@@ -59,14 +59,7 @@ def load_observations(path: Path) -> ObservationSet:
 
 @functools.lru_cache(maxsize=1)
 def read_incidences(group: str) -> dict[str, float]:
-    """Read the incidence angle ODE published for every look of one group, cached.
-
-    Args:
-        group: The name of the tile group.
-
-    Returns:
-        incidences: The solar zenith angle of each look at its centre, by pdsid.
-    """
+    """Read the solar zenith angle ODE published for each look of a group, cached."""
     return {
         record["pdsid"]: float(record["Incidence_angle"])
         for path in (paths.METADATA_ROOT / group).glob("*.jsonl")

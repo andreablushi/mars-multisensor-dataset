@@ -17,3 +17,7 @@ preprocessing:
   CTX:
     clip: [1, 99]
     stride: 8
+  # The passes, window width and sigma CRISM spikes are removed with, as crism_ml
+  # sets them.
+  CRISM:
+    spikes: {passes: 3, window: 3, sigma: 20.0}

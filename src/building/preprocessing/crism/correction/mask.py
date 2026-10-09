@@ -1,66 +1,26 @@
-"""Saying which cells of a cube are not measurements, and filling them."""
+"""Saying which pixels of a cube are not measurements."""
 
 from __future__ import annotations
 
 import numpy as np
 
-from building.configs.crism import DETECTOR_WINDOWS_NM, Detector
-from building.preprocessing.crism.models.observation import Mask
-
 # The range a brightness can take, its floor below zero so noise there survives.
 BRIGHTNESS = (-0.05, 1.0)
 
 
-class NoMeasurement(ValueError):
-    """Raised when every pixel of one detector's cube is refused."""
-
-
-def refused_mask(
-    cube: np.ndarray, table: np.ndarray, centres: np.ndarray, detector: Detector
-) -> Mask:
-    """Fill everything one cube holds that is not a measurement.
+def refused_pixels(cube: np.ndarray, columns: np.ndarray) -> np.ndarray:
+    """Return which pixels are not a measurement.
 
     Args:
-        cube: The values as lines by samples by bands, filled in place.
-        table: The centre wavelength of every column and band, in that order.
-        centres: The centre wavelength of every band, averaged over its columns.
-        detector: Which detector, `l` for infrared or `s` for visible.
+        cube: The values as lines by samples by bands.
+        columns: One flag per sample, True where the column was never calibrated.
 
     Returns:
-        mask: The mask saying where the cube was filled rather than measured.
-
-    Raises:
-        ValueError: When the window keeps no band of the cube.
-        NoMeasurement: When no pixel of the cube is a measurement.
+        refused: Lines by samples, True where a band is no reading or the column dead.
     """
-    low, high = DETECTOR_WINDOWS_NM[detector]
-
-    # What the wavelength file refused to name, which is already NaN.
-    columns = np.isnan(table).all(axis=1)
-    # The sensor edges, where the window says the reading is not trusted.
-    edges = (centres < low) | (centres > high)
-    bands = np.isnan(centres) | edges
-
-    # What no value test may look at, held per column and band so it broadcasts.
-    dead = columns[:, None] | bands
-    if dead.all():
-        raise ValueError(f"The {detector} window keeps no band of this cube.")
-
-    # A brightness outside what light can do is not a reading.
     floor, ceiling = BRIGHTNESS
-    scattered = cube < floor
-    scattered |= cube > ceiling
-    scattered |= ~np.isfinite(cube)
-    scattered &= ~dead
-
+    # A brightness outside what light can do is not a reading, and neither is a NaN.
+    refused = ~((cube >= floor) & (cube <= ceiling)).all(axis=2)
     # A pixel is unusable when its column is dead or any of its bands is.
-    pixels = scattered.any(axis=2)
-    pixels[:, columns] = True
-    if pixels.all():
-        raise NoMeasurement(f"No pixel of this {detector} cube is a measurement.")
-
-    # One stand-in for every refused cell, read off what the cube still measures.
-    refused = scattered | dead
-    fill = float(np.mean(cube, where=~refused))
-    np.copyto(cube, fill, where=refused)
-    return Mask(columns, bands, pixels, fill)
+    refused[:, columns] = True
+    return refused

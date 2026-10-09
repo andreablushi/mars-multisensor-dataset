@@ -1,1 +1,1 @@
-"""Everything only a DigitalHub run needs: its config, its archives, its jobs."""
+"""Everything only a DigitalHub run needs: its stages, its store, its builds."""

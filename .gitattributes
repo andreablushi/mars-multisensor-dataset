@@ -1,0 +1,2 @@
+src/building/configs/calibration/*.img binary
+src/building/configs/calibration/*.lbl -diff -text linguist-generated=true

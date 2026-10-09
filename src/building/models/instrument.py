@@ -21,6 +21,7 @@ from building.download import sharad as sharad_download
 from building.preprocessing.common.models.sample import Sample
 from building.preprocessing.crism import crop as crism_crop
 from building.preprocessing.crism import read as crism_read
+from building.preprocessing.crism.correction import centre_wavelengths
 from building.preprocessing.ctx import crop as ctx_crop
 from building.preprocessing.ctx import read as ctx_read
 from building.preprocessing.mola import crop as mola_crop
@@ -72,7 +73,7 @@ INSTRUMENTS = {
     one.layout.instrument: one
     for one in (
         Instrument(
-            crism_configs.LAYOUT,
+            centre_wavelengths.LAYOUT,
             crism_download.fetch,
             crism_read.read_observation,
             crism_crop.crop,

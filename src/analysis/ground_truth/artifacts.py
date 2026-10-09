@@ -13,10 +13,5 @@ LABELS = parquet.schema_of(Label)
 
 
 def write_labels(labels: Sequence[Label], root: Path = paths.LABELS_ROOT) -> None:
-    """Write every labelled tile down, the drawn ones marked so.
-
-    Args:
-        labels: Every labelled tile.
-        root: The directory the file is written in, made when it is missing.
-    """
+    """Write every labelled tile down, the drawn ones marked so."""
     parquet.write_rows(labels, LABELS, root / paths.LABELS_NAME)
