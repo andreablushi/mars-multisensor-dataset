@@ -19,35 +19,20 @@ ACQUISITION_PLANES = {
 
 
 @dataclass(frozen=True, slots=True)
-class Mask:
-    """Where one cube was filled rather than measured, and why.
-
-    Attributes:
-        columns: One flag per sample, True where the column was never calibrated.
-        bands: One flag per band, True where the band is not kept.
-        pixels: Lines by samples, True where the pixel has no usable spectrum.
-        fill: The value every flagged cell was replaced with.
-    """
-
-    columns: np.ndarray
-    bands: np.ndarray
-    pixels: np.ndarray
-    fill: float
-
-
-@dataclass(frozen=True, slots=True)
 class DetectorCube:
-    """One detector's half of an observation, and what its cube holds.
+    """One detector's half of an observation, cleaned, on the bands it keeps.
 
     Attributes:
         cube: The values as lines by samples by bands, bands ascending.
         table: The centre wavelength in nm per column and band.
-        mask: Where the cleaning filled the cube rather than kept a measurement.
+        columns: One flag per sample, True where the column was never calibrated.
+        pixels: Lines by samples, True where the pixel has no usable spectrum.
     """
 
     cube: np.ndarray
     table: np.ndarray
-    mask: Mask
+    columns: np.ndarray
+    pixels: np.ndarray
 
 
 @dataclass(frozen=True, slots=True)

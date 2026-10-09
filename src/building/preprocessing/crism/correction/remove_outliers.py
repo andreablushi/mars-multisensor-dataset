@@ -2,32 +2,18 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
-
 import numpy as np
 
-from building.preprocessing.crism.models.observation import Mask
-
-FILL = 0.0
-
-PASSES = 3
-
-WINDOW = 3
-
-SIGMA = 20.0
+from building.configs.crism import FILL
 
 
-def flat_fielded_mask(cube: np.ndarray, mask: Mask) -> Mask:
+def flat_field(cube: np.ndarray, refused: np.ndarray) -> None:
     """Scale each column by the strip's median over the column's, band by band.
 
     Args:
         cube: The values as lines by samples by bands, levelled in place.
-        mask: What the cleaning refused, kept out of every median.
-
-    Returns:
-        mask: The same mask, every refused pixel now holding the fill.
+        refused: Lines by samples, True where the pixel is not a measurement.
     """
-    refused = mask.pixels
     strip = np.median(cube[~refused], axis=0)
     for at in range(cube.shape[1]):
         live = ~refused[:, at]
@@ -37,30 +23,32 @@ def flat_fielded_mask(cube: np.ndarray, mask: Mask) -> Mask:
             held = column[live]
             column[live] = held * (strip / np.median(held, axis=0))
     cube[refused] = FILL
-    return replace(mask, fill=FILL)
 
 
-def remove_spikes(cube: np.ndarray, refused: np.ndarray) -> None:
-    """Remove spikes in repeated passes over a three band window, as crism_ml does.
+def remove_spikes(
+    cube: np.ndarray, refused: np.ndarray, passes: int, window: int, sigma: float
+) -> None:
+    """Remove spikes in repeated passes over a moving median, as crism_ml does.
 
     Args:
         cube: The flat-fielded values as lines by samples by bands, changed in place.
         refused: Lines by samples, True where the pixel is not a measurement.
+        passes: How many times the cube is filtered.
+        window: How many bands wide the moving median is.
+        sigma: How many spreads from the median a value may sit.
     """
-    if refused.all():
-        return
     # A refused pixel is flat, so leaving it in would pull the threshold down.
     live = ~refused
     # The median, the distance from it and what that catches, refilled each pass.
     median = np.empty_like(cube)
     apart = np.empty_like(cube)
     caught = np.empty(cube.shape, dtype=bool)
-    for _ in range(PASSES):
-        moving_median(cube, WINDOW, median)
+    for _ in range(passes):
+        moving_median(cube, window, median)
         np.subtract(median, cube, out=apart)
         np.abs(apart, out=apart)
         # crism_ml judges every sample against the measured cube's own spread.
-        limit = np.mean(apart.mean(axis=-1), where=live) + SIGMA * np.mean(
+        limit = np.mean(apart.mean(axis=-1), where=live) + sigma * np.mean(
             apart.std(ddof=1, axis=-1), where=live
         )
         np.greater(apart, limit, out=caught)
