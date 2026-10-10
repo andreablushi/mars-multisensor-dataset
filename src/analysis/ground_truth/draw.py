@@ -1,4 +1,4 @@
-"""The balanced draw: the same number of every class, the clearest tiles first."""
+"""The balanced draw: the same number of every class, its features in turn."""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ import random
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
-from operator import attrgetter
 
 from analysis.ground_truth.catalogue import refused_tiles
 from analysis.ground_truth.models.label import Label
@@ -14,17 +13,19 @@ from analysis.ground_truth.models.settings import GroundTruthSettings
 
 
 def ranked_tiles(
-    labels: Sequence[Label], settings: GroundTruthSettings
+    labels: Sequence[Label], settings: GroundTruthSettings, verdicts: Mapping[str, bool]
 ) -> dict[str, list[str]]:
     """Rank the tiles of every class in the order the balanced draw takes them.
 
     Args:
         labels: Every labelled tile.
         settings: The settled choices, which name the classes and seed the ties.
+        verdicts: Whether each reviewed tile was accepted, a refused one ranked last.
 
     Returns:
         ranked: The tiles of every class in config order, the first taken first.
     """
+    refused = refused_tiles(verdicts)
     by_class: dict[str, dict[str, list[Label]]] = {
         name: {} for name in settings.classes
     }
@@ -35,21 +36,27 @@ def ranked_tiles(
     for name, by_feature in by_class.items():
         ranked = []
         for feature_labels in by_feature.values():
-            turns: Counter[int] = Counter()
-            for label in sorted(
-                feature_labels, key=attrgetter("overlaps", "centre_offset")
-            ):
+            in_turn = sorted(
+                feature_labels,
+                key=lambda label: (
+                    label.tile in refused,
+                    not verdicts.get(label.tile, False),
+                    label.overlaps,
+                    label.centre_offset,
+                ),
+            )
+            for turn, label in enumerate(in_turn):
                 # One feature at a time in turn, so no single feature fills its class
                 ranked.append(
                     (
+                        label.tile in refused,
+                        turn,
                         label.overlaps,
-                        turns[label.overlaps],
                         label.centre_offset,
                         rng.random(),
                         label.tile,
                     )
                 )
-                turns[label.overlaps] += 1
         ranked_by_class[name] = [tile for *_, tile in sorted(ranked)]
     return ranked_by_class
 
@@ -57,7 +64,7 @@ def ranked_tiles(
 def drawn_labels(
     labels: Sequence[Label], settings: GroundTruthSettings, verdicts: Mapping[str, bool]
 ) -> list[Label]:
-    """Mark the tiles the balanced draw takes of every class, the accepted first.
+    """Mark the tiles the balanced draw takes of every class, its features in turn.
 
     Args:
         labels: Every labelled tile.
@@ -80,11 +87,6 @@ def drawn_labels(
             f"{per_class} tiles are drawn per class, but {short} hold fewer"
         )
     drawn: set[str] = set()
-    for ranked in ranked_tiles(labels, settings).values():
-        # Skipped only once ranked, so a refusal never reshuffles what was accepted
-        kept = sorted(
-            (tile for tile in ranked if tile not in refused),
-            key=lambda tile: not verdicts.get(tile, False),
-        )
-        drawn.update(kept[:per_class])
+    for ranked in ranked_tiles(labels, settings, verdicts).values():
+        drawn.update([tile for tile in ranked if tile not in refused][:per_class])
     return [replace(label, drawn=label.tile in drawn) for label in labels]

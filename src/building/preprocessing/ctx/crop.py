@@ -46,6 +46,26 @@ def kept_pixels(image: Path, bounds: tuple[np.ndarray, ...]) -> np.ndarray:
     return geometry.kept_part(window, (lines - top, samples - left))
 
 
+def reached_lines(observation: CtxObservation, frame: Tile) -> tuple[int, int] | None:
+    """Return the first and last scan lines a tile's box reaches, with a margin.
+
+    Args:
+        observation: The calibrated scan.
+        frame: The local frame of the tile it was kept for.
+
+    Returns:
+        lines: The first and last line, counted from one, or None where it misses.
+    """
+    points = (observation.latitude, observation.latitude, observation.longitude, 0.0)
+    reached = observation.line[box.inside(points, box.bounds_box(frame))]
+    if not reached.size:
+        return None
+    return (
+        max(1, int(reached.min()) - configs.CROP_MARGIN_LINES),
+        min(observation.lines, int(reached.max()) + configs.CROP_MARGIN_LINES),
+    )
+
+
 def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
     """Return one scan holding only the pixels its tile's box keeps, projected by ISIS.
 
@@ -59,14 +79,11 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
     Raises:
         RuntimeError: When an ISIS application fails.
     """
-    edges = box.bounds_box(frame)
-    min_lat, max_lat, west, span = edges
-    points = (observation.latitude, observation.latitude, observation.longitude, 0.0)
-    reached = observation.line[box.inside(points, edges)]
-    if not reached.size:
+    reached = reached_lines(observation, frame)
+    if reached is None:
         return None
-    first = max(1, int(reached.min()) - configs.CROP_MARGIN_LINES)
-    last = min(observation.lines, int(reached.max()) + configs.CROP_MARGIN_LINES)
+    first, last = reached
+    min_lat, max_lat, west, span = box.bounds_box(frame)
     work = observation.cube.parent / frame.name
     trimmed, template, projected, image = (
         work.with_suffix(suffix) for suffix in (".cut.cub", ".map", ".map.cub", ".tif")

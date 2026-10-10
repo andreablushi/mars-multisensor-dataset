@@ -44,12 +44,10 @@ def candidate_labels(
     claims: list[dict[str, tuple[int, float]]] = [{} for _ in kept]
     for feature_index, feature in enumerate(classified.features):
         for label in classified.classes[feature_index] & texture_latitudes.keys():
-            region = texture_region(feature, texture_latitudes[label])
-            if region is None:
-                continue
-            offset = box.centre_offset(tile_boxes, region)
-            for tile in np.flatnonzero(box.inside(tile_boxes, region)):
-                claims[tile].setdefault(label, (feature_index, float(offset[tile])))
+            for region in texture_regions(feature, texture_latitudes[label]):
+                offset = box.centre_offset(tile_boxes, region)
+                for tile in np.flatnonzero(claimed_tiles(tile_boxes, region)):
+                    claims[tile].setdefault(label, (feature_index, float(offset[tile])))
     labels = []
     for tile, claimed in enumerate(claims):
         if tile in craters:
@@ -161,17 +159,38 @@ def crater_candidates(
     return labels
 
 
-def texture_region(feature: Feature, latitudes: list[float] | None) -> box.Box | None:
-    """Return the part of a feature's box a texture tile has to lie in.
+def texture_regions(
+    feature: Feature, latitudes: list[list[float]] | None
+) -> list[box.Box]:
+    """Return the parts of a feature's box a texture tile has to lie in.
 
     Args:
         feature: The feature.
-        latitudes: The latitudes the class is kept to, or None for anywhere.
+        latitudes: The latitude bands the class is kept to, or None for anywhere.
 
     Returns:
-        box: The box, or None where the latitudes leave none of it.
+        regions: One box per band the feature reaches, its whole box for anywhere.
     """
     south, north, west, span = box.bounds_box(feature)
-    if latitudes is not None:
-        south, north = max(south, latitudes[0]), min(north, latitudes[1])
-    return (south, north, west, span) if south < north else None
+    return [
+        (max(south, low), min(north, high), west, span)
+        for low, high in latitudes or [[south, north]]
+        if max(south, low) < min(north, high)
+    ]
+
+
+def claimed_tiles(tile_boxes: box.Box, region: box.Box) -> np.ndarray:
+    """Return which tiles lie in a region, or centre in one too small to hold them.
+
+    Args:
+        tile_boxes: Every kept tile's box, stacked.
+        region: The part of a feature's box a tile has to lie in.
+
+    Returns:
+        claimed: One flag per tile.
+    """
+    south, north, west, span = tile_boxes
+    latitude = (south + north) / 2.0
+    centre = (latitude, latitude, west + span / 2.0, 0.0)
+    small = (region[1] - region[0] < 2 * (north - south)) | (region[3] < 2 * span)
+    return box.inside(tile_boxes, region) | (small & box.inside(centre, region))

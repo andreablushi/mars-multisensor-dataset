@@ -89,22 +89,36 @@ def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> No
             for sheet in grid_sheets(held.resolution, client)
         ]
     for directory, product in wanted:
-        files = configs.CACHE.files(directory, product, configs.Kind.TOPOGRAPHY)
-        # One product carries many tiles, so only the first to want it fetches.
-        with _PRODUCT_LOCKS_GUARD:
-            lock = _PRODUCT_LOCKS.setdefault(product, threading.Lock())
-        with lock:
-            if all(path.exists() for path in files.values()):
-                continue
-            archive.download_files(
-                files,
-                {
-                    Path(name).suffix: url
-                    for name, url in record_files(client).items()
-                    if Path(name).stem == product
-                },
-                client=client,
-            )
+        fetch_product(directory, product, client)
+
+
+def fetch_product(directory: str, product: str, client: httpx.Client) -> None:
+    """Download one product of a grid, unless it is already on disk.
+
+    Args:
+        directory: The directory it lands in, its sheet or its grid.
+        product: The product, as ODE names it.
+        client: The client every query and download goes over.
+
+    Raises:
+        FileNotFoundError: When ODE offers no download for it.
+    """
+    files = configs.CACHE.files(directory, product, configs.Kind.TOPOGRAPHY)
+    # One product carries many tiles, so only the first to want it fetches.
+    with _PRODUCT_LOCKS_GUARD:
+        lock = _PRODUCT_LOCKS.setdefault(product, threading.Lock())
+    with lock:
+        if all(path.exists() for path in files.values()):
+            return
+        archive.download_files(
+            files,
+            {
+                Path(name).suffix: url
+                for name, url in record_files(client).items()
+                if Path(name).stem == product
+            },
+            client=client,
+        )
 
 
 def mola_grid(tile: Tile) -> str:

@@ -67,7 +67,9 @@ ground_truth:
     chaos: {descriptor: Chaos}
     dune_field: {descriptor: Unda}
     polar_layered_deposits: {names: [Planum Boreum, Planum Australe]}
-    ice_rich_plains: {names: [Arcadia Planitia, Utopia Planitia], latitudes: [38, 50]}
+    ice_rich_plains:
+      names: [Arcadia Planitia, Utopia Planitia, Acidalia Planitia, Sisyphi Planum, Argentea Planum, Parva Planum, Malea Planum]
+      latitudes: [[38.0, 50.0], [-72.0, -55.0]]
     ice_poor_plains:
-      names: [Meridiani Planum, Chryse Planitia, Isidis Planitia]
-      latitudes: [-30, 30]
+      names: [Meridiani Planum, Daedalia Planum, Hesperia Planum, Syrtis Major Planum, Solis Planum]
+      latitudes: [[-30.0, 30.0]]

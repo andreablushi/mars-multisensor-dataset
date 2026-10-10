@@ -9,6 +9,7 @@ from itertools import cycle
 
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -30,6 +31,7 @@ Row = Sequence[str]
 GREY = "#8a8a8a"
 STATISTIC_VALUE = ("Statistic", "Value")
 NO_TRACK = "The selection holds nothing to measure on this tile."
+STRETCH = (2, 98)
 
 
 def colours(labels: Sequence[str]) -> dict[str, Colour]:
@@ -150,6 +152,37 @@ def rendered(figure: Figure) -> widgets.Image:
         format="png",
         layout=widgets.Layout(max_width="100%", height="auto"),
     )
+
+
+def stretched(values: np.ndarray) -> np.ndarray:
+    """Return values stretched from their 2nd to 98th percentile onto 0 to 1."""
+    low, high = np.nanpercentile(values, STRETCH)
+    return np.clip((values - low) / (high - low), 0.0, 1.0)
+
+
+def side_by_side(
+    images: Sequence[tuple[str, np.ndarray]], aspect: str = "equal", cmap: str = "gray"
+) -> widgets.Image:
+    """Draw images in one row, each under its own title.
+
+    Args:
+        images: Each image's title and values from 0 to 1, a colour axis last for RGB.
+        aspect: How a pixel's sides compare, as imshow takes it.
+        cmap: The colour map a single plane is drawn in.
+
+    Returns:
+        row: The images as a PNG widget.
+    """
+    figure = Figure(figsize=(11, 4.5))
+    axes = figure.subplots(1, len(images), squeeze=False)[0]
+    for axis, (text, values) in zip(axes, images, strict=True):
+        axis.imshow(
+            values, cmap=cmap, aspect=aspect, interpolation="nearest", vmin=0, vmax=1
+        )
+        titled(axis, text)
+        axis.set_axis_off()
+    figure.tight_layout()
+    return rendered(figure)
 
 
 def written(title: str, headings: Sequence[str], rows: Sequence[Row]) -> widgets.HTML:

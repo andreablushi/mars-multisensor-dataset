@@ -29,7 +29,7 @@ def plot(
     by_tile = {label.tile: label for label in labels}
     ranked = {
         name: [by_tile[tile] for tile in tiles]
-        for name, tiles in ranked_tiles(labels, settings).items()
+        for name, tiles in ranked_tiles(labels, settings, verdicts).items()
         if tiles
     }
     if not ranked:

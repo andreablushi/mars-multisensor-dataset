@@ -36,8 +36,8 @@ def classes(labels: Sequence[Label], settings: GroundTruthSettings) -> widgets.W
             read_from += (
                 f", {rule.diameter_km[0]:g} to {rule.diameter_km[1]:g} km whole"
             )
-        if rule.latitudes is not None:
-            read_from += f", {rule.latitudes[0]:g} to {rule.latitudes[1]:g} deg"
+        for low, high in rule.latitudes or []:
+            read_from += f", {low:g} to {high:g} deg"
         rows.append((name, read_from, f"{labelled[name]:,}", f"{drawn[name]:,}"))
     return panels.written("Every class and what it is read from", _CLASSES, rows)
 
