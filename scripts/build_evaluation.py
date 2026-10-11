@@ -6,7 +6,7 @@ from __future__ import annotations
 from dhub import build
 from digitalhub_runtime_python import handler
 
-from analysis.ground_truth import artifacts, catalogue
+from analysis.ground_truth import catalogue
 from analysis.selector.artifacts import read_selection
 from analysis.selector.models.selection import Selection
 from building import draw, paths
@@ -28,7 +28,7 @@ def evaluation_selections(settings: BuildSettings) -> list[Selection]:
     """
     labels = catalogue.read_labels()
     root = paths.dataset_root(settings.name)
-    artifacts.write_labels([one for one in labels if one.drawn], root)
+    catalogue.write_labels([one for one in labels if one.drawn], root)
     return draw.draw_evaluation(read_selection(), labels)
 
 

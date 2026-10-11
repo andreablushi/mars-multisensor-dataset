@@ -14,7 +14,7 @@ from rich.console import Console
 from analysis import paths, planner, runner
 from analysis.console import print_summary
 from analysis.coverage import artifacts as coverage_artifacts
-from analysis.ground_truth import artifacts, catalogue
+from analysis.ground_truth import catalogue
 from analysis.ground_truth.candidates import candidate_labels
 from analysis.ground_truth.draw import drawn_labels
 from analysis.ground_truth.models.label import Label
@@ -73,7 +73,7 @@ def compute_labels(force: bool) -> list[Label]:
         settings,
         verdicts,
     )
-    artifacts.write_labels(labels)
+    catalogue.write_labels(labels)
     drawable = Counter(
         labelled.label for labelled in labels if labelled.tile not in refused
     )

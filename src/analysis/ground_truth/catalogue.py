@@ -1,19 +1,22 @@
-"""What the ground truth reads: ODE's features, the labels written, the verdicts."""
+"""What the ground truth reads and writes: ODE's features, the labels, the verdicts."""
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import asdict
+from pathlib import Path
 
 import httpx
 
 from analysis import paths
-from analysis.ground_truth.artifacts import LABELS
 from analysis.ground_truth.models.feature import Feature
 from analysis.ground_truth.models.label import Label
 from common.disk import parquet
 from common.disk.files import read_json, read_jsonl, write_json, write_jsonl
 from common.fetch.http import TLS_CONTEXT
 from common.fetch.ode import ODE_TARGET, fetch_results
+
+LABELS = parquet.schema_of(Label)
 
 
 def read_features(refresh: bool) -> list[Feature]:
@@ -55,6 +58,11 @@ def read_features(refresh: bool) -> list[Feature]:
 def read_labels() -> list[Label]:
     """Read back every labelled tile, in the order they were written."""
     return parquet.read_rows(Label, LABELS, paths.LABELS_ROOT / paths.LABELS_NAME)
+
+
+def write_labels(labels: Sequence[Label], root: Path = paths.LABELS_ROOT) -> None:
+    """Write every labelled tile down, the drawn ones marked so."""
+    parquet.write_rows(labels, LABELS, root / paths.LABELS_NAME)
 
 
 def read_verdicts() -> dict[str, bool]:
