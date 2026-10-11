@@ -17,7 +17,8 @@ preprocessing:
   CTX:
     clip: [1, 99]
     stride: 8
-  # The passes, window width and sigma CRISM spikes are removed with, as crism_ml
-  # sets them.
+  # The passes, window width and sigma CRISM spikes are removed with, the sigma as
+  # crism_ml sets it, and how many lines a column is levelled over along the track.
   CRISM:
-    spikes: {passes: 3, window: 3, sigma: 20.0}
+    spikes: {passes: 3, window: 3, sigma: 5.0}
+    levelling: 51

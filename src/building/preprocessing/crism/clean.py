@@ -1,4 +1,4 @@
-"""Cleaning each CRISM detector step by step, then joining and lighting them."""
+"""Cleaning each CRISM detector step by step, then joining, lighting and levelling."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from building.preprocessing.crism.correction import (
     atmosphere,
     centre_wavelengths,
     mask,
+    normalize,
     photometric,
     remove_outliers,
 )
@@ -28,6 +29,7 @@ def clean_observation(
     geometry: np.ndarray,
     label: dict[str, str],
     spikes: dict[str, float],
+    levelling: int,
 ) -> CrismObservation | None:
     """Clean every detector of one observation and join them onto the survey's grid.
 
@@ -37,9 +39,10 @@ def clean_observation(
         geometry: The backplanes that place every pixel.
         label: What every product the observation was published as says of it.
         spikes: The passes, window and sigma the spikes are removed with.
+        levelling: How many lines a column is levelled over along the track.
 
     Returns:
-        observation: The joined observation, or None where no detector measured.
+        observation: The joined observation, or None where a detector measured nothing.
     """
     cleaned = {}
     for name, (cube, rows) in scans.items():
@@ -65,10 +68,9 @@ def clean_observation(
         remove_outliers.flat_field(block, refused)
         remove_outliers.remove_spikes(block, refused, **spikes)
         cleaned[name] = DetectorCube(block, table, columns, refused)
-    if dropped := [name for name in scans if name not in cleaned]:
+    if dropped := [name for name in configs.Detector if name not in cleaned]:
         missed = ", ".join(dropped)
         print(f"note {identifier} [CRISM]: no pixel measured on {missed}", flush=True)
-    if not cleaned:
         return None
     observation = merge.merge_detectors(cleaned, geometry, label)
     valid = photometric.photometric_valid(
@@ -77,4 +79,9 @@ def clean_observation(
         observation.valid,
         observation.measured_bands,
     )
-    return replace(observation, valid=valid)
+    remove_outliers.level_columns(observation.cube, valid, levelling)
+    return replace(
+        observation,
+        cube=normalize.normalized_spectra(observation.cube, valid),
+        valid=valid,
+    )

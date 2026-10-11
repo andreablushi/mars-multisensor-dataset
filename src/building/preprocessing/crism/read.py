@@ -10,17 +10,18 @@ from common.pds import images, labels
 
 
 def read_observation(
-    identifier: str, spikes: dict[str, float]
+    identifier: str, spikes: dict[str, float], levelling: int
 ) -> CrismObservation | None:
     """Read one observation off disk and have it cleaned and joined onto the grid.
 
     Args:
         identifier: The observation, its files already in the download cache.
         spikes: The passes, window and sigma the spikes are removed with.
+        levelling: How many lines a column is levelled over along the track.
 
     Returns:
-        observation: The observation on the survey's shared grid, or None where no
-            detector measured a pixel.
+        observation: The observation on the survey's shared grid, or None where a
+            detector measured no pixel.
 
     Raises:
         FileNotFoundError: When no detector of the observation is in the cache.
@@ -43,4 +44,6 @@ def read_observation(
         )[".img"]
     )
     label = labels.merge(*held, geometry_label)
-    return clean.clean_observation(identifier, scans, geometry, label, spikes)
+    return clean.clean_observation(
+        identifier, scans, geometry, label, spikes, levelling
+    )

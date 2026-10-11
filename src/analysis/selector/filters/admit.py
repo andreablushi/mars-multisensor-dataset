@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import Sequence
 from math import inf
 
@@ -14,7 +15,7 @@ from analysis.selector.models.search_grid import SearchGrid
 from analysis.selector.models.track import Offered
 from analysis.utils import mask as packing
 from analysis.utils.tile_group import group_of_tile_named
-from building.configs import sharad
+from building.configs import crism, sharad
 
 
 def admitted_observations(
@@ -59,7 +60,42 @@ def admitted_observations(
             measured = observation.pdsid not in emptied
             verdict = admitted if lit and measured and landed_km2 >= floor else refused
             verdict.append((observation, owner, cells))
-    return admitted, refused
+    return whole_observations(admitted, refused, coverage)
+
+
+def whole_observations(
+    admitted: Offered, refused: Offered, coverage: Sequence[SetCoverage]
+) -> tuple[Offered, Offered]:
+    """Turn away every CRISM look whose other detector the tile did not admit.
+
+    Args:
+        admitted: What the tile keeps so far, with each set and the cells it fills.
+        refused: What it turned away so far, carrying the same.
+        coverage: The tile's instrument sets, which the owners index.
+
+    Returns:
+        admitted: What it keeps, every CRISM observation with both its detectors.
+        refused: What it turned away, the lone halves among them.
+    """
+    crism_looks = [
+        coverage[owner].summary.iid == crism.ODE["iid"] for _, owner, _ in admitted
+    ]
+    detectors: dict[str, set[str]] = defaultdict(set)
+    for (observation, _, _), is_crism in zip(admitted, crism_looks, strict=True):
+        if is_crism:
+            parts = crism.NAMING.parts(observation.pdsid) or {}
+            detectors[crism.NAMING.observation_id(observation.pdsid)].add(
+                parts.get("detector", "")
+            )
+    whole = {name for name, held in detectors.items() if held >= set(crism.Detector)}
+    lone = [
+        is_crism and crism.NAMING.observation_id(one[0].pdsid) not in whole
+        for one, is_crism in zip(admitted, crism_looks, strict=True)
+    ]
+    return (
+        [one for one, half in zip(admitted, lone, strict=True) if not half],
+        [*refused, *(one for one, half in zip(admitted, lone, strict=True) if half)],
+    )
 
 
 def floor_km2(criteria: Criteria, iid: str) -> float:

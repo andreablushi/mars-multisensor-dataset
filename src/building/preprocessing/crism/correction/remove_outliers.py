@@ -1,8 +1,11 @@
-"""Levelling the columns of a strip, then removing spikes from its spectra."""
+"""Levelling the columns of a strip, across it and along it, and removing spikes."""
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 
 from building.configs.crism import FILL
 
@@ -64,3 +67,24 @@ def remove_spikes(
         )
         np.greater(apart, limit, out=caught)
         np.copyto(cube, median, where=caught)
+
+
+def level_columns(cube: np.ndarray, valid: np.ndarray, lines: int) -> None:
+    """Scale each column by the strip's median over its running median, band by band.
+
+    Args:
+        cube: The values as lines by samples by bands, levelled in place.
+        valid: Lines by samples, True where the pixel is a measurement.
+        lines: How many lines the running median spans along the track, odd.
+    """
+    held = np.where(valid[..., None], cube, np.nan).astype("f4")
+    half = lines // 2
+    padded = np.pad(held, ((half, half), (0, 0), (0, 0)), constant_values=np.nan)
+    with warnings.catch_warnings(action="ignore"):
+        strip = np.nanmedian(held[valid], axis=0)
+        for at in np.flatnonzero(np.isfinite(strip)):
+            local = np.nanmedian(
+                sliding_window_view(padded[..., at], lines, axis=0), -1
+            )
+            band = cube[..., at]
+            band[valid] *= strip[at] / local[valid]
