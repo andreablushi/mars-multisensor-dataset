@@ -1,4 +1,4 @@
-"""CTX over one tile, as raw camera counts and as the build calibrates and cuts it."""
+"""CTX over one tile, as raw camera counts and as the model receives it."""
 
 from __future__ import annotations
 
@@ -50,8 +50,8 @@ def delivered_counts(cube: Path, lines: tuple[int, int]) -> np.ndarray:
     return panels.stretched(np.where(counts > 0, counts, np.nan))
 
 
-def plot(identifier: str, frame: Tile) -> widgets.Widget:
-    """Show one CTX scan over a tile, as raw counts and built."""
+def drawn_panel(identifier: str, frame: Tile) -> widgets.VBox:
+    """Show one CTX scan over a tile, as downloaded and as the model receives it."""
     product.fetch_product(NAME, identifier, frame)
     placed = configs.CACHE.files(identifier, identifier)[configs.CUBE_SUFFIX]
     kept = placed.with_suffix(".placed.cub")
@@ -63,7 +63,18 @@ def plot(identifier: str, frame: Tile) -> widgets.Widget:
         observation.cube.unlink()
     finally:
         kept.replace(placed)
-    built = np.where(sample.measured_ground, sample.image, np.nan)
-    return panels.side_by_side(
-        [("Raw counts", delivered), ("Built sample", panels.stretched(built))]
+    shown = np.where(sample.measured_ground, product.model_input(NAME, sample), np.nan)
+    images = panels.side_by_side(
+        [
+            ("Downloaded sample", delivered),
+            ("Model input", product.scaled_input(shown)),
+        ]
     )
+    return widgets.VBox(
+        [images, product.acquisition_table(NAME, identifier, sample, frame)]
+    )
+
+
+def plot(identifier: str, frame: Tile) -> widgets.VBox:
+    """Show one CTX scan, drawn once, then read off disk."""
+    return product.kept_panel(NAME, identifier, frame, drawn_panel)

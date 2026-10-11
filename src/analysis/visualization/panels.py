@@ -147,8 +147,13 @@ def rendered(figure: Figure) -> widgets.Image:
     """
     buffer = io.BytesIO()
     figure.savefig(buffer, format="png", dpi=figure.dpi)
+    return png_widget(buffer.getvalue())
+
+
+def png_widget(value: bytes) -> widgets.Image:
+    """Return PNG bytes as a widget that fits its area's width."""
     return widgets.Image(
-        value=buffer.getvalue(),
+        value=value,
         format="png",
         layout=widgets.Layout(max_width="100%", height="auto"),
     )
@@ -161,7 +166,10 @@ def stretched(values: np.ndarray) -> np.ndarray:
 
 
 def side_by_side(
-    images: Sequence[tuple[str, np.ndarray]], aspect: str = "equal", cmap: str = "gray"
+    images: Sequence[tuple[str, np.ndarray]],
+    aspect: str = "equal",
+    cmap: str = "gray",
+    label: str | None = None,
 ) -> widgets.Image:
     """Draw images in one row, each under its own title.
 
@@ -169,11 +177,14 @@ def side_by_side(
         images: Each image's title and values from 0 to 1, a colour axis last for RGB.
         aspect: How a pixel's sides compare, as imshow takes it.
         cmap: The colour map a single plane is drawn in.
+        label: What the row shows, written down its left side, or None for nothing.
 
     Returns:
         row: The images as a PNG widget.
     """
     figure = Figure(figsize=(11, 4.5))
+    if label is not None:
+        figure.supylabel(label, fontsize=12)
     axes = figure.subplots(1, len(images), squeeze=False)[0]
     for axis, (text, values) in zip(axes, images, strict=True):
         axis.imshow(
