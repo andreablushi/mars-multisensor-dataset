@@ -105,6 +105,11 @@ def survey_bands_nm(detector: configs.Detector) -> tuple[float, ...]:
     return tuple(centres[kept].tolist())
 
 
+SURVEY_ROWS = {
+    detector: detector_rows(record, labels.load(record.with_suffix(".lbl")))
+    for detector, record in configs.WAVELENGTH_FILES.items()
+}
+
 DETECTOR_BANDS_NM = {
     detector: survey_bands_nm(detector) for detector in configs.Detector
 }

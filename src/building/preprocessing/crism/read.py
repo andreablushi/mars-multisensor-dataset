@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import numpy as np
+
 from building.configs import crism as configs
 from building.preprocessing.crism import clean
 from building.preprocessing.crism.correction import centre_wavelengths
@@ -34,7 +36,9 @@ def read_observation(
         )[".img"]
         if image.exists():
             cube, label = images.load_cube(image)
-            scans[name] = (cube, centre_wavelengths.detector_rows(image, label))
+            rows = centre_wavelengths.detector_rows(image, label)
+            survey = np.isin(rows, centre_wavelengths.SURVEY_ROWS[name])
+            scans[name] = (cube[:, :, survey], rows[survey])
             held.append(label)
     if not scans:
         raise FileNotFoundError(f"No detector of {identifier} is in the cache.")
