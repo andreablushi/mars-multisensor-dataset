@@ -1,21 +1,13 @@
-"""What each instrument lands on a tile, and how far it reaches on it."""
+"""The tables of a dataset the filter leaves: what it lands, and how big it is."""
 
 from __future__ import annotations
 
 import ipywidgets as widgets
 
 from analysis.stats.models import DatasetStats
-from analysis.visualization import panels, wording
-from analysis.visualization.panels import Row
 from common.config import analysis_settings
-
-_LANDED = (
-    "Instrument",
-    "Mean observations selected",
-    "Mean pixels landed per observation",
-    "Pixels asked",
-    "Mean coverage inside a tile",
-)
+from visualization import config, panels, wording
+from visualization.panels import Row
 
 
 def landed(dataset: DatasetStats) -> widgets.Widget:
@@ -31,7 +23,7 @@ def landed(dataset: DatasetStats) -> widgets.Widget:
                 landed_km2, lambda km2: wording.pixels_of_ground(km2, iid)
             )
         else:
-            pixels_landed = wording.UNCOUNTED
+            pixels_landed = config.UNCOUNTED
         asked = admits.get(iid)
         rows.append(
             (
@@ -40,7 +32,7 @@ def landed(dataset: DatasetStats) -> widgets.Widget:
                     dataset.selected[iid], "{:,.1f}".format, "{:,.0f}".format
                 ),
                 pixels_landed,
-                wording.pixels(asked, iid) if asked else wording.NOTHING,
+                wording.pixels(asked, iid) if asked else config.NOTHING,
                 wording.spread(dataset.reached[iid], percent),
             )
         )
@@ -55,5 +47,26 @@ def landed(dataset: DatasetStats) -> widgets.Widget:
         )
     )
     return panels.written(
-        "What each instrument lands on a tile and how far it reaches", _LANDED, rows
+        "What each instrument lands on a tile and how far it reaches",
+        config.LANDED,
+        rows,
     )
+
+
+def final(dataset: DatasetStats) -> widgets.Widget:
+    """Tabulate the dataset the filter leaves behind."""
+    rows: list[Row] = [
+        ("Tiles searched", f"{dataset.searched:,}"),
+        ("Tiles kept", f"{dataset.kept:,}"),
+        ("Mean window", wording.spread(dataset.days, wording.duration)),
+    ]
+    for iid in dataset.iids:
+        selected = dataset.selected[iid]
+        rows += [
+            (
+                f"{iid} observations selected",
+                f"{selected.mean * selected.counted:,.0f}",
+            ),
+            (f"{iid} observations to download", f"{dataset.downloads[iid]:,}"),
+        ]
+    return panels.written("The dataset the filter leaves", config.STATISTIC_VALUE, rows)

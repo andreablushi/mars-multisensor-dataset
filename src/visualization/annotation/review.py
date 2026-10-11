@@ -1,4 +1,4 @@
-"""The review: every labelled tile of a class in draw order, accepted or rejected."""
+"""The review: every labelled tile of a class in draw order, and where it stands."""
 
 from __future__ import annotations
 
@@ -10,20 +10,16 @@ from html import escape
 import ipywidgets as widgets
 
 from analysis.ground_truth import catalogue
-from analysis.ground_truth.draw import ranked_tiles
+from analysis.ground_truth.draw import drawn_labels, ranked_tiles
 from analysis.ground_truth.models.label import Label
 from analysis.ground_truth.models.settings import GroundTruthSettings
-from analysis.visualization import panels
-from analysis.visualization.ground_truth.drawn import class_pickers, label_map
-
-VERDICT = {True: "accepted", False: "rejected", None: "not reviewed"}
-NOTHING_LABELLED = "No tile has been labelled."
+from visualization import panels
+from visualization.annotation import config
+from visualization.labelled import TileStepper
 
 
 def plot(
-    labels: Sequence[Label],
-    settings: GroundTruthSettings,
-    verdicts: dict[str, bool],
+    labels: Sequence[Label], settings: GroundTruthSettings, verdicts: dict[str, bool]
 ) -> widgets.Widget:
     """Step through every labelled tile of a class in draw order, to judge it."""
     by_tile = {label.tile: label for label in labels}
@@ -33,11 +29,30 @@ def plot(
         if tiles
     }
     if not ranked:
-        return panels.unavailable(NOTHING_LABELLED)
+        return panels.unavailable(config.NOTHING_LABELLED)
     return TileReview(ranked, verdicts).box
 
 
-class TileReview:
+def table(
+    labels: Sequence[Label], settings: GroundTruthSettings, verdicts: dict[str, bool]
+) -> widgets.Widget:
+    """Tabulate every class's verdicts so far, and the draw they leave."""
+    refused = catalogue.refused_tiles(verdicts)
+    drawn = [label for label in drawn_labels(labels, settings, verdicts) if label.drawn]
+    counts = [
+        Counter(label.label for label in labels),
+        Counter(label.label for label in labels if verdicts.get(label.tile)),
+        Counter(label.label for label in labels if label.tile in refused),
+        Counter(label.label for label in drawn),
+        Counter(label.label for label in drawn if label.tile not in verdicts),
+    ]
+    rows = [
+        (name, *(f"{count[name]:,}" for count in counts)) for name in settings.classes
+    ]
+    return panels.written("Every class, as the review leaves it", config.VERDICTS, rows)
+
+
+class TileReview(TileStepper):
     """The tiles of every class, stepped through in draw order and judged one by one.
 
     Attributes:
@@ -53,56 +68,32 @@ class TileReview:
             ranked: The tiles of every class holding any, in draw order.
             verdicts: Whether each reviewed tile was accepted, written on every verdict.
         """
-        self._ranked = ranked
         self._verdicts = verdicts
-        self._group, self._tile, pickers = class_pickers(list(ranked))
         accept = widgets.Button(description="Accept", button_style="success")
         reject = widgets.Button(description="Reject", button_style="danger")
-        self._note = widgets.HTML()
-        self._area = widgets.Box()
-        self._tile.observe(self._show, names="value")
-        self._group.observe(self._offer, names="value")
         accept.on_click(partial(self._judge, True))
         reject.on_click(partial(self._judge, False))
-        self._offer()
-        self.box = widgets.VBox(
-            [
-                pickers,
-                widgets.HBox([accept, reject]),
-                self._note,
-                self._area,
-            ]
-        )
+        super().__init__(ranked, widgets.Box(), [widgets.HBox([accept, reject])])
 
-    def _offer(self, _change=None) -> None:
-        """Offer the chosen class's tiles, opening on the first not yet reviewed."""
-        tiles = self._ranked[self._group.value]
-        self._tile.unobserve(self._show, names="value")
-        self._tile.options = [(label.tile, label) for label in tiles]
-        self._tile.index = next(
+    def _first(self, tiles: list[Label]) -> int:
+        """Return the index of the chosen class's first tile not yet reviewed."""
+        return next(
             (at for at, label in enumerate(tiles) if label.tile not in self._verdicts),
             0,
         )
-        self._tile.observe(self._show, names="value")
-        self._show()
 
-    def _show(self, _change=None) -> None:
-        """Draw the chosen tile's mosaic crop and note where the review stands."""
-        if self._tile.value is None:
-            return
-        self._area.children = (label_map(self._tile.value),)
-        self._write_note()
-
-    def _write_note(self) -> None:
-        """Note the chosen tile's feature and verdict, and its class's count so far."""
+    def _place(self) -> str:
+        """Return the chosen tile's place and verdict, and its class's count so far."""
         label = self._tile.value
         judged = Counter(
             self._verdicts.get(one.tile) for one in self._ranked[label.label]
         )
-        self._note.value = escape(
-            f"{self._tile.index + 1} of {len(self._tile.options)}, {label.feature}, "
-            f"{VERDICT[self._verdicts.get(label.tile)]}. {label.label}: "
-            + ", ".join(f"{judged[held]:,} {word}" for held, word in VERDICT.items())
+        return (
+            f"{super()._place()}, {config.VERDICT[self._verdicts.get(label.tile)]}. "
+            f"{label.label}: "
+            + ", ".join(
+                f"{judged[held]:,} {word}" for held, word in config.VERDICT.items()
+            )
         )
 
     def _judge(self, accepted: bool, _button) -> None:
@@ -116,4 +107,4 @@ class TileReview:
         if self._tile.index + 1 < len(self._tile.options):
             self._tile.index += 1
         else:
-            self._write_note()
+            self._note.value = escape(self._place())

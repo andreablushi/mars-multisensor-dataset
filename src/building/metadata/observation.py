@@ -42,6 +42,8 @@ class ObservationMetadata:
         band_mean: The mean of each spectral band, None for a band it never
             measured, or None without wavelength.
         band_std: Each band's standard deviation, None likewise.
+        band_min: Each band's smallest value, None likewise.
+        band_max: Each band's largest value, None likewise.
         band_valid_count: The measurements each band pools, or None.
         t_start: When the observation started, or None.
         t_end: When it ended, or None for the same reason.
@@ -63,6 +65,8 @@ class ObservationMetadata:
     value_std: float
     band_mean: tuple[float | None, ...] | None = None
     band_std: tuple[float | None, ...] | None = None
+    band_min: tuple[float | None, ...] | None = None
+    band_max: tuple[float | None, ...] | None = None
     band_valid_count: tuple[int, ...] | None = None
     t_start: datetime | None = None
     t_end: datetime | None = None
@@ -159,7 +163,7 @@ def measured_statistics(
         if np.issubdtype(values.dtype, np.integer)
         else np.finfo(values.dtype)
     )
-    band_mean = band_std = band_valid_count = None
+    band_mean = band_std = band_min = band_max = band_valid_count = None
     # A band is the one axis a reader normalises against, so it survives the reduction.
     if Axis.WAVELENGTH in layout.axes:
         band_valid_count = tuple(measured.sum(axis=ground).tolist())
@@ -168,8 +172,10 @@ def measured_statistics(
             reduced = [
                 np.mean(values, axis=ground, where=measured),
                 np.std(values, axis=ground, where=measured),
+                np.min(values, axis=ground, where=measured, initial=limits.max),
+                np.max(values, axis=ground, where=measured, initial=limits.min),
             ]
-        band_mean, band_std = (
+        band_mean, band_std, band_min, band_max = (
             tuple(
                 one if pooled else None
                 for one, pooled in zip(each.tolist(), band_valid_count, strict=True)
@@ -184,6 +190,8 @@ def measured_statistics(
         "value_std": float(np.std(values, where=measured)),
         "band_mean": band_mean,
         "band_std": band_std,
+        "band_min": band_min,
+        "band_max": band_max,
         "band_valid_count": band_valid_count,
     }
 

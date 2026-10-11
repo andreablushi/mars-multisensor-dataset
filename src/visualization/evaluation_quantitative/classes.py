@@ -1,7 +1,8 @@
-"""Every drawn tile of the evaluation set on one map, coloured by its class."""
+"""Every class of the evaluation set: what it is read from, and where its tiles lie."""
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Sequence
 from functools import partial
 
@@ -10,21 +11,41 @@ from matplotlib.lines import Line2D
 
 from analysis.ground_truth.models.label import Label
 from analysis.ground_truth.models.settings import GroundTruthSettings
-from analysis.visualization import mosaic, panels
-from analysis.visualization.ground_truth.drawn import NOTHING_DRAWN, drawn_by_class
 from common.maths import geodesy
+from visualization import mosaic, panels
+from visualization.config import MARS_PIXELS
+from visualization.evaluation_quantitative import config
+from visualization.evaluation_quantitative.drawn import drawn_by_class
+from visualization.panels import Row
 
-MARKER_SIZE = 18
+
+def table(labels: Sequence[Label], settings: GroundTruthSettings) -> widgets.Widget:
+    """Tabulate every class: what it is read from, and its tiles and features."""
+    labelled = [(label.label, label.feature) for label in labels]
+    drawn = [(label.label, label.feature) for label in labels if label.drawn]
+    counts = [
+        Counter(name for name, _ in pairs)
+        for pairs in (labelled, set(labelled), drawn, set(drawn))
+    ]
+    rows: list[Row] = []
+    for name, rule in settings.classes.items():
+        read_from = rule.descriptor or ", ".join(rule.names)
+        if rule.diameter_km is not None:
+            read_from += (
+                f", {rule.diameter_km[0]:g} to {rule.diameter_km[1]:g} km whole"
+            )
+        for low, high in rule.latitudes or []:
+            read_from += f", {low:g} to {high:g} deg"
+        rows.append((name, read_from, *(f"{count[name]:,}" for count in counts)))
+    return panels.written("Every class and what it is read from", config.CLASSES, rows)
 
 
 def plot(labels: Sequence[Label], settings: GroundTruthSettings) -> widgets.Widget:
     """Map every drawn tile at its centre, one colour per class."""
     grouped = drawn_by_class(labels, settings)
     if not grouped:
-        return panels.unavailable(NOTHING_DRAWN)
-    return mosaic.fetched(
-        mosaic.MARS, partial(classes_map, grouped), mosaic.MARS_PIXELS
-    )
+        return panels.unavailable(config.NOTHING_DRAWN)
+    return mosaic.fetched(mosaic.MARS, partial(classes_map, grouped), MARS_PIXELS)
 
 
 def classes_map(grouped: dict[str, list[Label]], image: bytes) -> widgets.Image:
@@ -45,7 +66,7 @@ def classes_map(grouped: dict[str, list[Label]], image: bytes) -> widgets.Image:
         axis.scatter(
             lon,
             lat,
-            s=MARKER_SIZE,
+            s=config.MARKER_SIZE,
             color=colours[name],
             edgecolor="black",
             linewidth=0.4,

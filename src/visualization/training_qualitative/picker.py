@@ -8,15 +8,39 @@ import ipywidgets as widgets
 from IPython.display import display
 
 from analysis.coverage import artifacts as coverage_artifacts
+from analysis.coverage.models.coverage import SetCoverage
+from analysis.selector.models.selection import Selection
 from analysis.stats.artifacts import read_tile_selection
 from analysis.stats.order import config_rank
 from analysis.utils.tile_group import tile_grid
-from analysis.visualization import panels
-from analysis.visualization.panels import Coverage
 from common.maths import geodesy
 from common.maths.box import POLE
+from common.models.tile import Tile
+from visualization import panels
+from visualization.training_qualitative import config
 
-COORDINATE = widgets.Layout(width="200px")
+# The tile every panel is drawn for
+Coverage = list[SetCoverage]
+
+
+def tile_title(coverage: Coverage) -> str:
+    """Return the tile a loaded coverage belongs to."""
+    return f"Tile {coverage[0].summary.tile}"
+
+
+def tile_report(tile: Tile, selection: Selection | None) -> str:
+    """Write a tile's bounds and what the selection made of it."""
+    return (
+        f"{tile.min_lat:.3f} to {tile.max_lat:.3f} lat, "
+        f"{tile.west_lon:.3f} to {tile.east_lon:.3f} lon, "
+        + (
+            "not in the selection"
+            if selection is None
+            else "kept by the selection"
+            if selection.tile.kept
+            else "refused, no window meets the filter"
+        )
+    )
 
 
 class TilePicker:
@@ -36,14 +60,14 @@ class TilePicker:
             value=18.4,
             min=-POLE,
             max=POLE,
-            layout=COORDINATE,
+            layout=config.COORDINATE,
         )
         self._lon = widgets.BoundedFloatText(
             description="Longitude:",
             value=77.5,
             min=-geodesy.HALF_TURN,
             max=geodesy.TURN,
-            layout=COORDINATE,
+            layout=config.COORDINATE,
         )
         self._confirm = widgets.Button(
             description="Confirm", button_style="primary", icon="check"
@@ -83,7 +107,7 @@ class TilePicker:
             key=lambda instrument: config_rank(instrument.summary.set_key),
         )
         if self.coverage:
-            report = panels.tile_report(tile, read_tile_selection(tile.name))
+            report = tile_report(tile, read_tile_selection(tile.name))
             status = widgets.HTML(
                 f"Loaded <b>tile {tile.name}</b>, {report}. "
                 "The cells below have filled in."

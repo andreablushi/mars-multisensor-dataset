@@ -13,14 +13,10 @@ from matplotlib.patches import Patch
 from analysis.partition import Tessellate
 from analysis.selector.models.selection import Selection
 from analysis.utils.tile_group import tile_grid
-from analysis.visualization import mosaic, panels
-from analysis.visualization.mosaic import MARS
-
-RASTER_DEG = 0.1
-
-KEPT = "#2ca02c"
-EXCLUDED = "#d62728"
-TILE_ALPHA = 0.45
+from visualization import mosaic, panels
+from visualization.config import MARS_PIXELS
+from visualization.mosaic import MARS
+from visualization.training_quantitative import config
 
 
 def plot(selections: Sequence[Selection]) -> widgets.Widget:
@@ -33,7 +29,7 @@ def plot(selections: Sequence[Selection]) -> widgets.Widget:
             [tile.band for tile in kept_tiles], [tile.column for tile in kept_tiles]
         )
     ] = True
-    return mosaic.fetched(MARS, partial(kept_map, kept, grid), mosaic.MARS_PIXELS)
+    return mosaic.fetched(MARS, partial(kept_map, kept, grid), MARS_PIXELS)
 
 
 def kept_map(kept: np.ndarray, grid: Tessellate, image: bytes) -> widgets.Image:
@@ -47,21 +43,23 @@ def kept_map(kept: np.ndarray, grid: Tessellate, image: bytes) -> widgets.Image:
     Returns:
         map: The map, rendered.
     """
-    lat = np.arange(MARS.north - RASTER_DEG / 2.0, MARS.south, -RASTER_DEG)
-    lon = np.arange(MARS.west + RASTER_DEG / 2.0, MARS.east, RASTER_DEG)
+    lat = np.arange(
+        MARS.north - config.RASTER_DEG / 2.0, MARS.south, -config.RASTER_DEG
+    )
+    lon = np.arange(MARS.west + config.RASTER_DEG / 2.0, MARS.east, config.RASTER_DEG)
     bands, columns = grid.tile_indices(*np.meshgrid(lon, lat))
     painted = np.where(
         kept[grid.flat_tile_indices(bands, columns)][..., None],
-        to_rgba(KEPT, TILE_ALPHA),
-        to_rgba(EXCLUDED, TILE_ALPHA),
+        to_rgba(config.KEPT, config.TILE_ALPHA),
+        to_rgba(config.EXCLUDED, config.TILE_ALPHA),
     )
     title = f"{int(kept.sum()):,} of {kept.size:,} tiles kept"
     figure, axis = mosaic.mars_board(image, title)
     axis.imshow(painted, **mosaic.MARS_LAID)
     axis.legend(
         handles=[
-            Patch(color=KEPT, alpha=TILE_ALPHA, label="kept"),
-            Patch(color=EXCLUDED, alpha=TILE_ALPHA, label="excluded"),
+            Patch(color=config.KEPT, alpha=config.TILE_ALPHA, label="kept"),
+            Patch(color=config.EXCLUDED, alpha=config.TILE_ALPHA, label="excluded"),
         ],
         fontsize=9,
         loc="lower left",

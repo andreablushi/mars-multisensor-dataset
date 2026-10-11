@@ -7,11 +7,7 @@ from collections.abc import Callable
 from analysis.models.instrument import PIXEL_KM2
 from analysis.stats.models import Spread
 from building.configs import sharad
-
-NOTHING = "none"
-UNCOUNTED = "not counted"
-
-_STEPS = ((1e12, "T"), (1e9, "G"), (1e6, "M"), (1e3, "k"))
+from visualization import config
 
 
 def compact(value: float) -> str:
@@ -23,7 +19,7 @@ def compact(value: float) -> str:
     Returns:
         written: The count itself when small, and otherwise in thousands and up.
     """
-    for limit, suffix in _STEPS:
+    for limit, suffix in config.STEPS:
         if value >= limit:
             return f"{value / limit:,.2f} {suffix}"
     return f"{value:,.0f}"
@@ -48,11 +44,6 @@ def duration(days: float) -> str:
     if days < 10.0:
         return f"{days:.1f} days"
     return f"{days:,.0f} days"
-
-
-def counted(number: float, noun: str) -> str:
-    """Write how many of something there are, the noun made plural to match."""
-    return f"{number:,.0f} {noun}" + ("" if number == 1 else "s")
 
 
 def pixels(count: float, iid: str) -> str:
@@ -81,7 +72,7 @@ def spread(
         written: The mean, then the least and the most unless every tile agreed.
     """
     if not measured.counted:
-        return NOTHING
+        return config.NOTHING
     mean = written(measured.mean)
     if measured.agreed:
         return mean

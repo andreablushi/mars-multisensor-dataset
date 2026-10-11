@@ -8,25 +8,17 @@ import ipywidgets as widgets
 
 from analysis.models.instrument import PIXEL_KM2
 from analysis.stats.models import CatalogueStats
-from analysis.visualization import panels, wording
-from analysis.visualization.panels import Row
 from common.maths.physics import METRES_PER_KM
-
-_INSTRUMENTS = (
-    "Instrument",
-    "Tiles reached",
-    "Observations",
-    "Resolution",
-    "First look",
-    "Last look",
-)
+from visualization import panels, wording
+from visualization.config import STATISTIC_VALUE
+from visualization.training_quantitative import config
 
 
 def measured(catalogue: CatalogueStats) -> widgets.Widget:
     """Tabulate how big the measured dataset is."""
     return panels.written(
         "The ODE dataset that was measured",
-        panels.STATISTIC_VALUE,
+        STATISTIC_VALUE,
         [
             ("Tiles Mars is split into", f"{catalogue.tiles:,}"),
             ("Tile side", f"{catalogue.tile_km:,.0f} km"),
@@ -38,17 +30,15 @@ def measured(catalogue: CatalogueStats) -> widgets.Widget:
 
 def instruments(catalogue: CatalogueStats) -> widgets.Widget:
     """Tabulate what each instrument holds of the measured dataset."""
-    rows: list[Row] = []
-    for instrument in catalogue.instruments:
-        resolution = f"{math.sqrt(PIXEL_KM2[instrument.iid]) * METRES_PER_KM:,.1f} m"
-        rows.append(
-            (
-                instrument.iid,
-                f"{instrument.tiles:,}",
-                f"{instrument.observations:,}",
-                resolution,
-                f"{instrument.first:%Y-%m-%d}",
-                f"{instrument.last:%Y-%m-%d}",
-            )
+    rows = [
+        (
+            instrument.iid,
+            f"{instrument.tiles:,}",
+            f"{instrument.observations:,}",
+            f"{math.sqrt(PIXEL_KM2[instrument.iid]) * METRES_PER_KM:,.1f} m",
+            f"{instrument.first:%Y-%m-%d}",
+            f"{instrument.last:%Y-%m-%d}",
         )
-    return panels.written("Global instrument coverage", _INSTRUMENTS, rows)
+        for instrument in catalogue.instruments
+    ]
+    return panels.written("Global instrument coverage", config.INSTRUMENTS, rows)
