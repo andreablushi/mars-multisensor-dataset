@@ -1,4 +1,4 @@
-"""The constants each instrument of a build is standardised by, pooled once built."""
+"""The constants each instrument of a build, and its clutter, is standardised by."""
 
 from __future__ import annotations
 
@@ -15,13 +15,15 @@ from building.metadata.index import read_observation_metadata
 from building.metadata.observation import ObservationMetadata
 from building.models.settings import BuildSettings
 
+CLUTTER = "clutter"
+
 
 def record_normalization(
     settings: BuildSettings,
     root: Path,
     fetch: Callable[[str, Path, Sequence[str]], None] | None,
 ) -> None:
-    """Record in the manifest the mean and std every instrument is standardised by.
+    """Record in the manifest the mean and std every instrument and clutter is read by.
 
     Args:
         settings: The settled choices for the build, naming it and its reference.
@@ -32,10 +34,17 @@ def record_normalization(
         FileNotFoundError: When the reference build records no constants.
     """
     records = read_observation_metadata(root)
-    constants = _reference_normalization(settings, fetch) or {
-        name: dataset_constants([one for one in records if one.instrument == name])
-        for name in {one.instrument for one in records}
-    }
+    constants = _reference_normalization(settings, fetch)
+    if constants is None:
+        constants = {
+            name: dataset_constants([one for one in records if one.instrument == name])
+            for name in {one.instrument for one in records}
+        }
+        simulated = [one for one in records if one.clutter_mean is not None]
+        if simulated:
+            constants[CLUTTER] = dataset_constants(
+                simulated, "clutter_mean", "clutter_std"
+            )
     write_manifest(replace(read_manifest(root), normalization=constants), root)
 
 
@@ -65,11 +74,17 @@ def _reference_normalization(
     return constants
 
 
-def dataset_constants(records: Sequence[ObservationMetadata]) -> dict[str, Any]:
+def dataset_constants(
+    records: Sequence[ObservationMetadata],
+    mean_field: str = "value_mean",
+    std_field: str = "value_std",
+) -> dict[str, Any]:
     """Return the mean and std of every value an instrument's rows measured.
 
     Args:
         records: The rows of one instrument, their statistics not yet standardised.
+        mean_field: The row field a scalar mean is pooled from.
+        std_field: The row field a scalar std is pooled from.
 
     Returns:
         constants: The mean and std, per band where the rows carry bands, pooled
@@ -87,7 +102,7 @@ def dataset_constants(records: Sequence[ObservationMetadata]) -> dict[str, Any]:
     else:
         counts, means, stds = (
             np.array([getattr(one, name) for one in records], np.float64)
-            for name in ("valid_count", "value_mean", "value_std")
+            for name in ("valid_count", mean_field, std_field)
         )
     total = counts.sum(axis=0)
     measured = total > 0

@@ -27,7 +27,8 @@ class DatasetManifest:
         revision: The commit the build ran from, or None outside a checkout.
         band_centres_nm: The nominal band centres in nm, by instrument.
         normalization: The mean and std each instrument is standardised by, per band
-            where it has bands, or None before the dataset is normalized.
+            where it has bands, and the SHARAD clutter's under `clutter`, or None
+            before the dataset is normalized.
     """
 
     built_at: str
