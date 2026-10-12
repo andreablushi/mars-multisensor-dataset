@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
 from enum import StrEnum
@@ -10,6 +11,7 @@ from building import paths
 from building.common.layout import Axis, Layout
 from building.common.naming import Naming
 from building.common.product_cache import ProductCache
+from common.maths import physics
 
 
 class Kind(StrEnum):
@@ -86,6 +88,10 @@ GRIDS = {
     NORTH_POLAR: Grid(128, "megt_n_128_1"),
     SOUTH_POLAR: Grid(128, "megt_s_128_1"),
 }
+
+SPACING_M = (
+    math.radians(1.0 / GRIDS[EQUATORIAL].resolution) * physics.EQUATORIAL_RADIUS_M
+)
 
 
 def sheet_resolution(name: str) -> int | None:
