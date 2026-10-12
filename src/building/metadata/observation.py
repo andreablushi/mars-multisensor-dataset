@@ -45,6 +45,9 @@ class ObservationMetadata:
         band_min: Each band's smallest value, None likewise.
         band_max: Each band's largest value, None likewise.
         band_valid_count: The measurements each band pools, or None.
+        clutter_mean: The mean of its clutter simulation where it measured, or None
+            without one.
+        clutter_std: That simulation's standard deviation there, or None likewise.
         t_start: When the observation started, or None.
         t_end: When it ended, or None for the same reason.
         acquisition: Where the Sun and the spacecraft stood over the crop.
@@ -68,6 +71,8 @@ class ObservationMetadata:
     band_min: tuple[float | None, ...] | None = None
     band_max: tuple[float | None, ...] | None = None
     band_valid_count: tuple[int, ...] | None = None
+    clutter_mean: float | None = None
+    clutter_std: float | None = None
     t_start: datetime | None = None
     t_end: datetime | None = None
     acquisition: AcquisitionInfo = field(default_factory=AcquisitionInfo)
@@ -101,6 +106,15 @@ def observation_metadata(
     """
     values = getattr(held, layout.measurement)
     measured = measured_mask(held.measured_ground, held.measured_bands, layout, values)
+    clutter = getattr(held, "clutter", None)
+    simulated = (
+        {}
+        if clutter is None
+        else {
+            "clutter_mean": float(np.mean(clutter, where=measured)),
+            "clutter_std": float(np.std(clutter, where=measured)),
+        }
+    )
     return ObservationMetadata(
         tile=frame.name,
         instrument=layout.instrument,
@@ -114,6 +128,7 @@ def observation_metadata(
         t_end=_label_time(held.label, STOPPED),
         acquisition=acquisition_info(held, frame),
         **measured_statistics(values, measured, layout),
+        **simulated,
     )
 
 
