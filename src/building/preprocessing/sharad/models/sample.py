@@ -15,7 +15,7 @@ class SharadSample(Sample):
 
     Attributes:
         power: Normalized dB, delay samples by traces, only the traces left.
-        clutter: The simulated clutter power on the same grid, zero without echo.
+        clutter: The simulated clutter in dB on the same grid, floored without echo.
         traces: Which original radargram columns these traces are, from zero.
     """
 
