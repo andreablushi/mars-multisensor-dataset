@@ -57,9 +57,6 @@ RESOLUTIONS = {"c": 4, "e": 16, "f": 32, "g": 64, "h": 128}
 # The latitude the sheeted grid reaches, past which only a cap is published fine.
 SHEETED_REACH = 88.0
 
-# The latitude a cap holds at every longitude, its corners alone reaching lower.
-POLAR_FLOOR = 51.55
-
 
 @dataclass(frozen=True, slots=True)
 class Grid:
@@ -81,13 +78,11 @@ class Grid:
 
 # The grid a tile is merged from, named for the record and how fine it is.
 EQUATORIAL = "megdr128"
-COARSE = "megdr64"
 NORTH_POLAR = "megdr128n"
 SOUTH_POLAR = "megdr128s"
 
 GRIDS = {
     EQUATORIAL: Grid(128),
-    COARSE: Grid(64),
     NORTH_POLAR: Grid(128, "megt_n_128_1"),
     SOUTH_POLAR: Grid(128, "megt_s_128_1"),
 }

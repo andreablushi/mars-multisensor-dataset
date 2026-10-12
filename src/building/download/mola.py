@@ -117,9 +117,7 @@ def mola_grid(tile: Tile) -> str:
         grid: The one grid that covers it, since a merge is never joined across two.
     """
     if tile.max_lat > configs.SHEETED_REACH:
-        held = tile.min_lat >= configs.POLAR_FLOOR
-        return configs.NORTH_POLAR if held else configs.COARSE
+        return configs.NORTH_POLAR
     if tile.min_lat < -configs.SHEETED_REACH:
-        held = tile.max_lat <= -configs.POLAR_FLOOR
-        return configs.SOUTH_POLAR if held else configs.COARSE
+        return configs.SOUTH_POLAR
     return configs.EQUATORIAL
