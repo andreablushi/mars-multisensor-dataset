@@ -9,10 +9,15 @@ import httpx
 
 from building.configs import mola as configs
 from building.download import archive
+from building.preprocessing.common import cut
+from building.preprocessing.mola import projection
 from common.models.tile import Tile
+from common.pds import labels
 
 # ODE names a gridded product by its image file, suffix included.
 ODE_SUFFIX = ".img"
+
+LABEL_SUFFIX = ".lbl"
 
 # How many to ask at once. The record is under a hundred, so one page holds it all.
 PAGE = 500
@@ -69,12 +74,12 @@ def grid_sheets(resolution: int, client: httpx.Client) -> list[str]:
 
 
 def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
-    """Download every product one grid is published as, skipping those on disk.
+    """Download every product of one grid that reaches a tile, skipping those on disk.
 
     Args:
         identifier: The grid to fetch, as `configs.GRIDS` names it.
         client: The client every query and download goes over.
-        frames: Unused, since the grid is fetched whole.
+        frames: The tiles it is cut to, the only ground whose images are downloaded.
 
     Raises:
         FileNotFoundError: When ODE offers no download for one of them.
@@ -96,15 +101,16 @@ def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> No
         with lock:
             if all(path.exists() for path in files.values()):
                 continue
-            archive.download_files(
-                files,
-                {
-                    Path(name).suffix: url
-                    for name, url in record_files(client).items()
-                    if Path(name).stem == product
-                },
-                client=client,
-            )
+            urls = {
+                Path(name).suffix: url
+                for name, url in record_files(client).items()
+                if Path(name).stem == product
+            }
+            label = files[LABEL_SUFFIX]
+            archive.download_files({LABEL_SUFFIX: label}, urls, client=client)
+            placed = projection.grid_position(labels.load(label))
+            if any(cut.overlap(placed, frame) is not None for frame in frames):
+                archive.download_files(files, urls, client=client)
 
 
 def mola_grid(tile: Tile) -> str:

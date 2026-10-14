@@ -48,7 +48,12 @@ def plot(name: str, identifier: str, frame: Tile) -> widgets.VBox:
             instrument.fetch(identifier, client, (frame,))
         if instrument.place:
             instrument.place(identifier)
-        drawn = {"CRISM": crism_images, "CTX": ctx_images, "SHARAD": sharad_images}
+        drawn = {
+            "CRISM": crism_images,
+            "CTX": ctx_images,
+            "MOLA": mola_images,
+            "SHARAD": sharad_images,
+        }
         rows, sample = drawn[name](name, identifier, frame)
         write_json(
             path,
@@ -234,6 +239,25 @@ def ctx_images(
         [("Downloaded sample", delivered), ("Model input", shown)]
     )
     return [row], sample
+
+
+def mola_images(
+    name: str, identifier: str, frame: Tile
+) -> tuple[list[widgets.Image], Sample]:
+    """Draw one MOLA grid over a tile as the model receives it.
+
+    Args:
+        name: The instrument, as the build names it.
+        identifier: The grid, its sheets already in the download cache.
+        frame: The tile it is cut to.
+
+    Returns:
+        rows: The model input, alone in its row.
+        sample: The crop the build would write.
+    """
+    _, sample = product.observed_sample(name, identifier, frame)
+    shown = np.where(sample.measured_ground, product.model_input(name, sample), np.nan)
+    return [product.side_by_side([("Model input", shown)])], sample
 
 
 def sharad_images(
