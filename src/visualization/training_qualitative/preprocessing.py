@@ -257,7 +257,10 @@ def mola_images(
     """
     _, sample = product.observed_sample(name, identifier, frame)
     shown = np.where(sample.measured_ground, sample.elevation, np.nan)
-    return [product.side_by_side([("Elevation", product.stretched(shown))])], sample
+    row = product.side_by_side(
+        [("Elevation", product.stretched(shown))], cmap=config.ELEVATION_CMAP
+    )
+    return [row], sample
 
 
 def sharad_images(

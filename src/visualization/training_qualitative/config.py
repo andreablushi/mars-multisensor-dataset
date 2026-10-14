@@ -21,6 +21,8 @@ STRETCH = (2, 98)
 CLIP = 2.0
 STD_FLOOR = 1e-6
 
+ELEVATION_CMAP = "turbo"
+
 VIEWS = {
     "True colour R600 G530 B440": (crism.Detector.VISIBLE, (600.0, 530.0, 440.0)),
     "False colour R2529 G1506 B1080": (

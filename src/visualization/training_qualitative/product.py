@@ -167,13 +167,16 @@ def stretched(values: np.ndarray) -> np.ndarray:
 
 
 def side_by_side(
-    images: Sequence[tuple[str, np.ndarray]], label: str | None = None
+    images: Sequence[tuple[str, np.ndarray]],
+    label: str | None = None,
+    cmap: str = "gray",
 ) -> widgets.Image:
     """Draw images in one row, each under its own title.
 
     Args:
         images: Each image's title and values from 0 to 1, a colour axis last for RGB.
         label: What the row shows, written down its left side, or None for nothing.
+        cmap: The colour map a single band is drawn in.
 
     Returns:
         row: The images as a PNG widget.
@@ -184,7 +187,7 @@ def side_by_side(
     axes = figure.subplots(1, len(images), squeeze=False)[0]
     for axis, (text, values) in zip(axes, images, strict=True):
         axis.imshow(
-            values, cmap="gray", aspect="equal", interpolation="nearest", vmin=0, vmax=1
+            values, cmap=cmap, aspect="equal", interpolation="nearest", vmin=0, vmax=1
         )
         panels.titled(axis, text)
         axis.set_axis_off()
