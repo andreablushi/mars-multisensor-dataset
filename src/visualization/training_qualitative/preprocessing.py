@@ -244,7 +244,7 @@ def ctx_images(
 def mola_images(
     name: str, identifier: str, frame: Tile
 ) -> tuple[list[widgets.Image], Sample]:
-    """Draw one MOLA grid over a tile as the model receives it.
+    """Draw one MOLA grid's elevation over a tile, stretched.
 
     Args:
         name: The instrument, as the build names it.
@@ -252,12 +252,12 @@ def mola_images(
         frame: The tile it is cut to.
 
     Returns:
-        rows: The model input, alone in its row.
+        rows: The elevation, alone in its row.
         sample: The crop the build would write.
     """
     _, sample = product.observed_sample(name, identifier, frame)
-    shown = np.where(sample.measured_ground, product.model_input(name, sample), np.nan)
-    return [product.side_by_side([("Model input", shown)])], sample
+    shown = np.where(sample.measured_ground, sample.elevation, np.nan)
+    return [product.side_by_side([("Elevation", product.stretched(shown))])], sample
 
 
 def sharad_images(
