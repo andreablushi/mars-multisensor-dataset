@@ -23,7 +23,7 @@ def record_normalization(
     root: Path,
     fetch: Callable[[str, Path, Sequence[str]], None] | None,
 ) -> None:
-    """Record in the manifest the mean and std every instrument and clutter is read by.
+    """Record in the manifest the mean, std, min and max of each instrument and clutter.
 
     Args:
         settings: The settled choices for the build, naming it and its reference.
@@ -42,9 +42,7 @@ def record_normalization(
         }
         simulated = [one for one in records if one.clutter_mean is not None]
         if simulated:
-            constants[CLUTTER] = dataset_constants(
-                simulated, "clutter_mean", "clutter_std"
-            )
+            constants[CLUTTER] = dataset_constants(simulated, CLUTTER)
     write_manifest(replace(read_manifest(root), normalization=constants), root)
 
 
@@ -75,46 +73,73 @@ def _reference_normalization(
 
 
 def dataset_constants(
-    records: Sequence[ObservationMetadata],
-    mean_field: str = "value_mean",
-    std_field: str = "value_std",
+    records: Sequence[ObservationMetadata], prefix: str = "value"
 ) -> dict[str, Any]:
-    """Return the mean and std of every value an instrument's rows measured.
+    """Return the mean, std, min and max of every value an instrument's rows measured.
 
     Args:
         records: The rows of one instrument, their statistics not yet standardised.
-        mean_field: The row field a scalar mean is pooled from.
-        std_field: The row field a scalar std is pooled from.
+        prefix: What the row fields a scalar is pooled from start with.
 
     Returns:
-        constants: The mean and std, per band where the rows carry bands, pooled
-            exactly from each row's count, mean and std.
+        constants: The mean, std, min and max, per band where the rows carry bands
+            with every band's pooled under `global`, pooled exactly from each row's.
     """
-    if records[0].band_valid_count is not None:
-        counts = np.array([one.band_valid_count for one in records], np.float64)
-        means, stds = (
-            np.array(
-                [[value or 0.0 for value in getattr(one, name)] for one in records],
-                np.float64,
-            )
-            for name in ("band_mean", "band_std")
+    constants = pooled_constants(records, "valid_count", prefix)
+    if records[0].band_valid_count is None:
+        return constants
+    return pooled_constants(records, "band_valid_count", "band") | {"global": constants}
+
+
+def pooled_constants(
+    records: Sequence[ObservationMetadata], count: str, prefix: str
+) -> dict[str, Any]:
+    """Return the mean, std, min and max pooled from each row's own.
+
+    Args:
+        records: The rows pooled.
+        count: The field holding each row's count, a scalar or one per band.
+        prefix: What the fields holding each row's mean, std, min and max start with.
+
+    Returns:
+        constants: Scalars, or one per band, where a band no row measured keeps
+            the identity and None as its extremes.
+    """
+    counts, means, stds, lows, highs = (
+        np.array([getattr(one, name) for one in records], np.float64)
+        for name in (
+            count,
+            *(f"{prefix}_{one}" for one in ("mean", "std", "min", "max")),
         )
-    else:
-        counts, means, stds = (
-            np.array([getattr(one, name) for one in records], np.float64)
-            for name in ("valid_count", mean_field, std_field)
-        )
+    )
     total = counts.sum(axis=0)
     measured = total > 0
     # A band no row measured is never read, so it keeps the identity
     mean = np.divide(
-        (counts * means).sum(axis=0), total, out=np.zeros_like(total), where=measured
+        (counts * np.nan_to_num(means)).sum(axis=0),
+        total,
+        out=np.zeros_like(total),
+        where=measured,
     )
     square = np.divide(
-        (counts * (stds**2 + means**2)).sum(axis=0),
+        (counts * np.nan_to_num(stds**2 + means**2)).sum(axis=0),
         total,
         out=np.ones_like(total),
         where=measured,
     )
     std = np.where(measured, np.sqrt(square - mean**2), 1.0)
-    return {"mean": mean.tolist(), "std": std.tolist()}
+    held = (counts > 0) & ~np.isnan(lows)
+    low = np.min(lows, axis=0, where=held, initial=np.inf)
+    high = np.max(highs, axis=0, where=held, initial=-np.inf)
+    return {
+        "mean": mean.tolist(),
+        "std": std.tolist(),
+        "min": finite_or_none(low),
+        "max": finite_or_none(high),
+    }
+
+
+def finite_or_none(values: np.ndarray) -> float | None | list[float | None]:
+    """Return values as plain floats, None where one is not finite."""
+    held = [float(one) if np.isfinite(one) else None for one in np.atleast_1d(values)]
+    return held if np.ndim(values) else held[0]

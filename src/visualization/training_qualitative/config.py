@@ -23,14 +23,12 @@ STD_FLOOR = 1e-6
 
 ELEVATION_CMAP = "turbo"
 
-RANGES_DB = (
+RANGES = (
     "Array",
-    "Track min (dB)",
-    "Track max (dB)",
-    "Crop min (dB)",
-    "Crop max (dB)",
-    "Dataset min (dB)",
-    "Dataset max (dB)",
+    "Cropped min (dB)",
+    "Cropped max (dB)",
+    "Preprocessed min (dB)",
+    "Preprocessed max (dB)",
 )
 
 VIEWS = {

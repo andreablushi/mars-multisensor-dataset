@@ -17,7 +17,6 @@ from building.preprocessing.sharad.models.observation import (
     SharadObservation,
 )
 from building.preprocessing.sharad.models.sample import SharadSample
-from building.preprocessing.sharad.normalize import clutter_db
 from common.models.tile import Tile
 
 FILL = 0.0
@@ -74,7 +73,7 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
         inside=held.inside,
         valid=valid,
         power=np.where(valid, power, FILL),
-        clutter=clutter_db(observation.clutter[:, traces]),
+        clutter=observation.clutter[:, traces],
         traces=traces,
         incidence_deg=geometry[SOLAR_ZENITH_FIELD],
         spacecraft_altitude_km=(

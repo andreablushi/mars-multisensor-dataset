@@ -87,6 +87,27 @@ def acquisition_table(
     return panels.written("Acquisition", STATISTIC_VALUE, rows)
 
 
+def standardised_values(
+    values: np.ndarray, axes: Sequence[str], name: str
+) -> np.ndarray:
+    """Return values standardised by the training build's constants.
+
+    Args:
+        values: The values, as the build stored them.
+        axes: What each axis of the values holds.
+        name: The instrument, or `clutter` for the SHARAD cluttergram.
+
+    Returns:
+        values: Less the mean and over the std, per band where they have bands.
+    """
+    constants = read_normalization(built.dataset_root(training_settings().name))[name]
+    shape = [-1 if axis == Axis.WAVELENGTH else 1 for axis in axes]
+    mean, std = (
+        np.asarray(constants[key], np.float32).reshape(shape) for key in ("mean", "std")
+    )
+    return (values - mean) / np.maximum(std, config.STD_FLOOR)
+
+
 def model_input(name: str, sample: Sample) -> np.ndarray:
     """Return a built crop's values as the MAE loader hands them to the model.
 
@@ -100,14 +121,10 @@ def model_input(name: str, sample: Sample) -> np.ndarray:
     """
     layout = INSTRUMENTS[name].layout
     values = getattr(sample, layout.measurement)
-    values = values.astype(layout.stored or values.dtype)
-    constants = read_normalization(built.dataset_root(training_settings().name))[name]
     # Mirrors standardised_values and read_observation in mars-multisensor-mae's store
-    shape = [-1 if axis == Axis.WAVELENGTH else 1 for axis in layout.axes]
-    mean, std = (
-        np.asarray(constants[key], np.float32).reshape(shape) for key in ("mean", "std")
+    standardised = standardised_values(
+        values.astype(layout.stored or values.dtype), layout.axes, name
     )
-    standardised = (values - mean) / np.maximum(std, config.STD_FLOOR)
     if name == "CRISM":
         measured = sample.measured_ground[..., None] & np.isfinite(standardised)
         standardised = np.where(

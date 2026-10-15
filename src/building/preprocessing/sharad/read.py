@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 
 from building.configs import sharad as configs
 from building.preprocessing.sharad.models.observation import SharadObservation
-from building.preprocessing.sharad.normalize import normalized_power
+from building.preprocessing.sharad.normalize import (
+    clutter_db,
+    radargram_db,
+    surface_aligned,
+)
 from common.pds import images, labels, tables
 
 
@@ -17,8 +23,8 @@ def read_observation(identifier: str) -> SharadObservation:
         identifier: The observation, its files already in the download cache.
 
     Returns:
-        observation: The traces normalized, with their geometry and clutter
-            simulation.
+        observation: The radargram and its clutter simulation, each aligned on its
+            average surface, with their geometry.
 
     Raises:
         FileNotFoundError: When any product or a label is missing.
@@ -37,15 +43,28 @@ def read_observation(identifier: str) -> SharadObservation:
         raise ValueError(
             f"{identifier} places {len(geometry)} traces of {power.shape[1]}."
         )
-    simulated = held[configs.Kind.CLUTTER][".img"]
-    if simulated.stat().st_size != power.size * np.dtype(configs.CLUTTER_TYPE).itemsize:
-        raise ValueError(f"{simulated.name} is not one array the radargram's size.")
-    clutter = np.memmap(
-        simulated, dtype=configs.CLUTTER_TYPE, mode="r", shape=power.shape
-    )
+    clutter = clutter_power(held[configs.Kind.CLUTTER][".img"], power.shape)
     return SharadObservation(
         labels.merge(sounding, geometry_label),
-        normalized_power(power, clutter),
-        clutter,
+        surface_aligned(radargram_db(power)),
+        surface_aligned(clutter_db(clutter)),
         geometry,
     )
+
+
+def clutter_power(path: Path, shape: tuple[int, ...]) -> np.memmap:
+    """Map one clutter simulation off disk, on its radargram's grid.
+
+    Args:
+        path: The simulation's image file.
+        shape: The radargram's shape, delay samples by traces.
+
+    Returns:
+        clutter: The simulated power, zero without echo.
+
+    Raises:
+        ValueError: When the file is not one array the radargram's size.
+    """
+    if path.stat().st_size != np.prod(shape) * np.dtype(configs.CLUTTER_TYPE).itemsize:
+        raise ValueError(f"{path.name} is not one array the radargram's size.")
+    return np.memmap(path, dtype=configs.CLUTTER_TYPE, mode="r", shape=shape)

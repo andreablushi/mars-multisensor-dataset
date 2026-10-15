@@ -22,8 +22,9 @@ class SharadObservation:
 
     Attributes:
         label: What every product it was published as says about it, merged.
-        power: Normalized dB, delay samples by traces.
-        clutter: The simulated clutter power per column, zero without echo.
+        power: dB aligned on the average surface, delay samples by traces.
+        clutter: The simulated clutter in dB on the same grid, floored without
+            echo and aligned on its own average surface.
         geometry: One row per trace, in the same order.
     """
 

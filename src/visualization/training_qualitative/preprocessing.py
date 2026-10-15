@@ -14,10 +14,8 @@ import tifffile
 from matplotlib.figure import Figure
 
 from analysis import paths
-from building import paths as built
+from building.common.normalize import CLUTTER
 from building.configs import crism, ctx, sharad
-from building.metadata.index import read_observation_metadata
-from building.metadata.observation import ObservationMetadata
 from building.models.instrument import INSTRUMENTS
 from building.preprocessing.common import cut, geometry
 from building.preprocessing.common.models.position import Position
@@ -29,17 +27,15 @@ from building.preprocessing.crism.models.observation import (
 )
 from building.preprocessing.ctx.crop import reached_lines
 from building.preprocessing.ctx.isis import run_isis
-from building.preprocessing.sharad.models.observation import SharadObservation
 from building.preprocessing.sharad.models.sample import SharadSample
-from building.preprocessing.sharad.normalize import clutter_db
-from common.config import training_settings
+from building.preprocessing.sharad.normalize import clutter_db, radargram_db
+from building.preprocessing.sharad.read import clutter_power
 from common.disk.files import read_json, write_json
 from common.disk.slugify import slugify
 from common.fetch.http import TLS_CONTEXT
 from common.models.tile import Tile
 from common.pds import images
 from visualization import panels
-from visualization.config import NOTHING
 from visualization.training_qualitative import config, product
 
 BUILT_NM = np.asarray(centre_wavelengths.BANDS_NM)
@@ -271,69 +267,35 @@ def mola_images(
     return [row], sample
 
 
-def dataset_range(
-    records: list[ObservationMetadata], low: str, high: str
-) -> tuple[str, str]:
-    """Return the smallest and largest of two index fields over every record.
-
-    Args:
-        records: The index rows pooled.
-        low: The field holding each row's minimum.
-        high: The field holding each row's maximum.
-
-    Returns:
-        range: Both written to one decimal, or NOTHING where a row lacks them.
-    """
-    lows, highs = ([getattr(one, field) for one in records] for field in (low, high))
-    if not lows or None in lows or None in highs:
-        return NOTHING, NOTHING
-    return f"{min(lows):.1f}", f"{max(highs):.1f}"
+def shown_range(values: np.ndarray) -> tuple[float, float]:
+    """Return the 2nd percentile and the maximum of an array's finite values."""
+    finite = values[np.isfinite(values)]
+    return float(np.percentile(finite, config.STRETCH[0])), float(finite.max())
 
 
-def sharad_ranges(observation: SharadObservation, sample: SharadSample) -> widgets.HTML:
-    """Tabulate the dB range of a radargram and its cluttergram, track to dataset."""
-    records = [
-        one
-        for one in read_observation_metadata(
-            built.dataset_root(training_settings().name)
-        )
-        if one.instrument == "SHARAD"
-    ]
+def sharad_ranges(
+    steps: tuple[tuple[np.ndarray, np.ndarray], ...], sample: SharadSample
+) -> widgets.HTML:
+    """Tabulate the crop's radargram and cluttergram dB range at each step."""
     held = sample.valid[None, :]
     rows = [
         (
-            text,
+            kind,
             *(
-                f"{edge(values):.1f}"
-                for values in (whole, cropped)
+                f"{edge(np.where(held, step[index][:, sample.traces], np.nan)):.1f}"
+                for step in steps
                 for edge in (np.nanmin, np.nanmax)
             ),
-            *dataset_range(records, low, high),
         )
-        for text, whole, cropped, low, high in (
-            (
-                "Preprocessed radargram",
-                observation.power,
-                np.where(held, sample.power, np.nan),
-                "value_min",
-                "value_max",
-            ),
-            (
-                "Preprocessed cluttergram",
-                clutter_db(observation.clutter),
-                np.where(held, sample.clutter, np.nan),
-                "clutter_min",
-                "clutter_max",
-            ),
-        )
+        for index, kind in enumerate(("Radargram", "Cluttergram"))
     ]
-    return panels.written("Min-max", config.RANGES_DB, rows)
+    return panels.written("Min-max", config.RANGES, rows)
 
 
 def sharad_images(
     name: str, identifier: str, frame: Tile
 ) -> tuple[list[widgets.Widget], Sample]:
-    """Draw one SHARAD track and its cluttergram whole, beside the model input.
+    """Draw one SHARAD track whole, then its crop at every step up to the model input.
 
     Args:
         name: The instrument, as the build names it.
@@ -341,36 +303,66 @@ def sharad_images(
         frame: The tile it is cut to.
 
     Returns:
-        rows: The radargram, its cluttergram and the crop in one figure, then
-            their dB ranges.
+        rows: The radargram and its cluttergram whole, then cropped as downloaded,
+            preprocessed and standardised, in one figure, then the crop's dB
+            range as cropped and as preprocessed.
         sample: The crop the build would write.
     """
     observation, sample = product.observed_sample(name, identifier, frame)
     power, _ = images.load_cube(
         sharad.CACHE.product_files(identifier, sharad.Kind.OBSERVATION)[".img"]
     )
-    figure = Figure(figsize=(11, 7))
-    axes = figure.subplot_mosaic(
-        [["radargram", "crop"], ["cluttergram", "crop"]], width_ratios=(2, 1)
+    power = power[:, :, 0]
+    clutter = clutter_power(
+        sharad.CACHE.product_files(identifier, sharad.Kind.CLUTTER)[".img"],
+        power.shape,
     )
-    for panel, values, text in (
-        ("radargram", product.stretched(power[:, :, 0]), "Downloaded sample"),
-        (
-            "cluttergram",
-            product.stretched(np.asarray(observation.clutter)),
-            "Downloaded cluttergram",
+    downloaded = (radargram_db(power), clutter_db(clutter))
+    preprocessed = (observation.power, observation.clutter)
+    columns = {
+        "Cropped sample (dB)": downloaded,
+        "Preprocessed sample (dB)": preprocessed,
+        "Model input (z)": tuple(
+            product.standardised_values(values, sharad.LAYOUT.axes, key)
+            for values, key in zip(preprocessed, (name, CLUTTER), strict=True)
         ),
-        ("crop", product.model_input(name, sample), "Model input"),
-    ):
-        axis = axes[panel]
+    }
+    aligned = "Preprocessed sample (dB)"
+    kinds = ("radargram", "cluttergram")
+    figure = Figure(figsize=(20, 7))
+    axes = figure.subplots(2, 1 + len(columns), width_ratios=(2, *[1] * len(columns)))
+    for axis, whole, kind in zip(axes[:, 0], (power, clutter), kinds, strict=True):
         axis.imshow(
-            values, cmap="gray", aspect="auto", interpolation="nearest", vmin=0, vmax=1
+            product.stretched(whole),
+            cmap="gray",
+            aspect="auto",
+            interpolation="nearest",
+            vmin=0,
+            vmax=1,
         )
-        panels.titled(axis, text)
+        panels.titled(axis, f"Downloaded sample\n{kind}")
+        for edge in (sample.traces[0], sample.traces[-1]):
+            axis.axvline(edge, color="tab:orange", linewidth=1.0)
+    for column, (text, pair) in enumerate(columns.items(), start=1):
+        crops = [values[:, sample.traces] for values in pair]
+        shared = shown_range(np.concatenate([crop.ravel() for crop in crops]))
+        for axis, crop, kind in zip(axes[:, column], crops, kinds, strict=True):
+            low, high = shared if text == aligned else shown_range(crop)
+            image = axis.imshow(
+                crop,
+                cmap="gray",
+                aspect="auto",
+                interpolation="nearest",
+                vmin=low,
+                vmax=high,
+            )
+            panels.titled(axis, f"{text}\n{kind}")
+            figure.colorbar(image, ax=axis)
+    for axis in axes.flat:
         axis.set_xlabel("Trace")
         axis.set_ylabel("Delay row")
-    for panel in ("radargram", "cluttergram"):
-        for edge in (sample.traces[0], sample.traces[-1]):
-            axes[panel].axvline(edge, color="tab:orange", linewidth=1.0)
     figure.tight_layout()
-    return [panels.rendered(figure), sharad_ranges(observation, sample)], sample
+    return [
+        panels.rendered(figure),
+        sharad_ranges((downloaded, preprocessed), sample),
+    ], sample

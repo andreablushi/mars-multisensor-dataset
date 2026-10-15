@@ -26,8 +26,9 @@ class DatasetManifest:
         selection: Where the selection it was built from was read.
         revision: The commit the build ran from, or None outside a checkout.
         band_centres_nm: The nominal band centres in nm, by instrument.
-        normalization: The mean and std each instrument is standardised by, per band
-            where it has bands, and the SHARAD clutter's under `clutter`, or None
+        normalization: The mean and std each instrument is standardised by, with
+            its min and max, per band where it has bands and pooled over them
+            under `global`, and the SHARAD clutter's under `clutter`, or None
             before the dataset is normalized.
     """
 
@@ -83,7 +84,7 @@ def read_normalization(root: Path) -> dict[str, dict[str, Any]] | None:
         root: The directory the build was written in.
 
     Returns:
-        normalization: The mean and std of each instrument, or None.
+        normalization: The constants of each instrument, or None.
     """
     manifest = read_manifest(root)
     return None if manifest is None else manifest.normalization
