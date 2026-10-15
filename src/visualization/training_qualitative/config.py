@@ -23,6 +23,16 @@ STD_FLOOR = 1e-6
 
 ELEVATION_CMAP = "turbo"
 
+RANGES_DB = (
+    "Array",
+    "Track min (dB)",
+    "Track max (dB)",
+    "Crop min (dB)",
+    "Crop max (dB)",
+    "Dataset min (dB)",
+    "Dataset max (dB)",
+)
+
 VIEWS = {
     "True colour R600 G530 B440": (crism.Detector.VISIBLE, (600.0, 530.0, 440.0)),
     "False colour R2529 G1506 B1080": (

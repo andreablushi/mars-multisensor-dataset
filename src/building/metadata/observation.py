@@ -48,6 +48,8 @@ class ObservationMetadata:
         clutter_mean: The mean of its clutter simulation where it measured, or None
             without one.
         clutter_std: That simulation's standard deviation there, or None likewise.
+        clutter_min: That simulation's smallest value there, or None likewise.
+        clutter_max: Its largest value there, or None likewise.
         t_start: When the observation started, or None.
         t_end: When it ended, or None for the same reason.
         acquisition: Where the Sun and the spacecraft stood over the crop.
@@ -73,6 +75,8 @@ class ObservationMetadata:
     band_valid_count: tuple[int, ...] | None = None
     clutter_mean: float | None = None
     clutter_std: float | None = None
+    clutter_min: float | None = None
+    clutter_max: float | None = None
     t_start: datetime | None = None
     t_end: datetime | None = None
     acquisition: AcquisitionInfo = field(default_factory=AcquisitionInfo)
@@ -113,6 +117,8 @@ def observation_metadata(
         else {
             "clutter_mean": float(np.mean(clutter, where=measured)),
             "clutter_std": float(np.std(clutter, where=measured)),
+            "clutter_min": float(np.min(clutter, where=measured, initial=np.inf)),
+            "clutter_max": float(np.max(clutter, where=measured, initial=-np.inf)),
         }
     )
     return ObservationMetadata(

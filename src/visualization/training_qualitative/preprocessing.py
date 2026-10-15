@@ -14,7 +14,10 @@ import tifffile
 from matplotlib.figure import Figure
 
 from analysis import paths
+from building import paths as built
 from building.configs import crism, ctx, sharad
+from building.metadata.index import read_observation_metadata
+from building.metadata.observation import ObservationMetadata
 from building.models.instrument import INSTRUMENTS
 from building.preprocessing.common import cut, geometry
 from building.preprocessing.common.models.position import Position
@@ -26,12 +29,17 @@ from building.preprocessing.crism.models.observation import (
 )
 from building.preprocessing.ctx.crop import reached_lines
 from building.preprocessing.ctx.isis import run_isis
+from building.preprocessing.sharad.models.observation import SharadObservation
+from building.preprocessing.sharad.models.sample import SharadSample
+from building.preprocessing.sharad.normalize import clutter_db
+from common.config import training_settings
 from common.disk.files import read_json, write_json
 from common.disk.slugify import slugify
 from common.fetch.http import TLS_CONTEXT
 from common.models.tile import Tile
 from common.pds import images
 from visualization import panels
+from visualization.config import NOTHING
 from visualization.training_qualitative import config, product
 
 BUILT_NM = np.asarray(centre_wavelengths.BANDS_NM)
@@ -263,9 +271,68 @@ def mola_images(
     return [row], sample
 
 
+def dataset_range(
+    records: list[ObservationMetadata], low: str, high: str
+) -> tuple[str, str]:
+    """Return the smallest and largest of two index fields over every record.
+
+    Args:
+        records: The index rows pooled.
+        low: The field holding each row's minimum.
+        high: The field holding each row's maximum.
+
+    Returns:
+        range: Both written to one decimal, or NOTHING where a row lacks them.
+    """
+    lows, highs = ([getattr(one, field) for one in records] for field in (low, high))
+    if not lows or None in lows or None in highs:
+        return NOTHING, NOTHING
+    return f"{min(lows):.1f}", f"{max(highs):.1f}"
+
+
+def sharad_ranges(observation: SharadObservation, sample: SharadSample) -> widgets.HTML:
+    """Tabulate the dB range of a radargram and its cluttergram, track to dataset."""
+    records = [
+        one
+        for one in read_observation_metadata(
+            built.dataset_root(training_settings().name)
+        )
+        if one.instrument == "SHARAD"
+    ]
+    held = sample.valid[None, :]
+    rows = [
+        (
+            text,
+            *(
+                f"{edge(values):.1f}"
+                for values in (whole, cropped)
+                for edge in (np.nanmin, np.nanmax)
+            ),
+            *dataset_range(records, low, high),
+        )
+        for text, whole, cropped, low, high in (
+            (
+                "Preprocessed radargram",
+                observation.power,
+                np.where(held, sample.power, np.nan),
+                "value_min",
+                "value_max",
+            ),
+            (
+                "Preprocessed cluttergram",
+                clutter_db(observation.clutter),
+                np.where(held, sample.clutter, np.nan),
+                "clutter_min",
+                "clutter_max",
+            ),
+        )
+    ]
+    return panels.written("Min-max", config.RANGES_DB, rows)
+
+
 def sharad_images(
     name: str, identifier: str, frame: Tile
-) -> tuple[list[widgets.Image], Sample]:
+) -> tuple[list[widgets.Widget], Sample]:
     """Draw one SHARAD track and its cluttergram whole, beside the model input.
 
     Args:
@@ -274,7 +341,8 @@ def sharad_images(
         frame: The tile it is cut to.
 
     Returns:
-        rows: The radargram, its cluttergram and the crop, in one figure.
+        rows: The radargram, its cluttergram and the crop in one figure, then
+            their dB ranges.
         sample: The crop the build would write.
     """
     observation, sample = product.observed_sample(name, identifier, frame)
@@ -305,4 +373,4 @@ def sharad_images(
         for edge in (sample.traces[0], sample.traces[-1]):
             axes[panel].axvline(edge, color="tab:orange", linewidth=1.0)
     figure.tight_layout()
-    return [panels.rendered(figure)], sample
+    return [panels.rendered(figure), sharad_ranges(observation, sample)], sample
