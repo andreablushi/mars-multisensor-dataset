@@ -331,20 +331,41 @@ def sharad_ranges(
 def sharad_images(
     name: str, identifiers: Sequence[str], frame: Tile
 ) -> tuple[list[widgets.Widget], list[Sample]]:
+    """Draw every SHARAD track of a tile, one after another.
+
+    Args:
+        name: The instrument, as the build names it.
+        identifiers: The tracks, oldest first, their files in the download cache.
+        frame: The tile they are cut to.
+
+    Returns:
+        rows: Each track's rows in turn.
+        samples: The crops the build would write, one per track.
+    """
+    rows, samples = [], []
+    for identifier in identifiers:
+        drawn, sample = sharad_track_images(name, identifier, frame)
+        rows.extend(drawn)
+        samples.append(sample)
+    return rows, samples
+
+
+def sharad_track_images(
+    name: str, identifier: str, frame: Tile
+) -> tuple[list[widgets.Widget], Sample]:
     """Draw one SHARAD track whole, then its crop at every step up to the model input.
 
     Args:
         name: The instrument, as the build names it.
-        identifiers: The one track, its files already in the download cache.
+        identifier: The track, its files already in the download cache.
         frame: The tile it is cut to.
 
     Returns:
         rows: The radargram and its cluttergram whole, then cropped as downloaded,
-            preprocessed and standardised, in one figure, then the crop's dB
-            range as cropped and as preprocessed.
-        samples: The crop the build would write, alone.
+            preprocessed and standardised, in one figure under the track's name,
+            then the crop's dB range as cropped and as preprocessed.
+        sample: The crop the build would write.
     """
-    (identifier,) = identifiers
     observation, sample = product.observed_sample(name, identifier, frame)
     power, _ = images.load_cube(
         sharad.CACHE.product_files(identifier, sharad.Kind.OBSERVATION)[".img"]
@@ -367,6 +388,7 @@ def sharad_images(
     aligned = "Preprocessed sample (dB)"
     kinds = ("radargram", "cluttergram")
     figure = Figure(figsize=(20, 7))
+    figure.suptitle(identifier, fontsize=14)
     axes = figure.subplots(2, 1 + len(columns), width_ratios=(2, *[1] * len(columns)))
     fetched = power.any(axis=0)
     for axis, whole, kind in zip(axes[:, 0], (power, clutter), kinds, strict=True):
@@ -403,4 +425,4 @@ def sharad_images(
     return [
         panels.rendered(figure),
         sharad_ranges((downloaded, preprocessed), sample),
-    ], [sample]
+    ], sample
