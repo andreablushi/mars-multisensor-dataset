@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import base64
 import shutil
-from collections.abc import Callable
-from pathlib import Path
+from collections.abc import Sequence
+from functools import partial
 
 import httpx
 import ipywidgets as widgets
 import numpy as np
-import tifffile
 from matplotlib.figure import Figure
 
 from analysis import paths
@@ -25,8 +24,9 @@ from building.preprocessing.crism.models.observation import (
     LATITUDE_PLANE,
     LONGITUDE_PLANE,
 )
-from building.preprocessing.ctx.crop import reached_lines
-from building.preprocessing.ctx.isis import run_isis
+from building.preprocessing.ctx.crop import projected_pixels
+from building.preprocessing.ctx.isis import export_image
+from building.preprocessing.ctx.models.sample import BLANK
 from building.preprocessing.sharad.models.sample import SharadSample
 from building.preprocessing.sharad.normalize import clutter_db, radargram_db
 from building.preprocessing.sharad.read import clutter_power
@@ -40,25 +40,33 @@ from visualization.training_qualitative import config, product
 
 BUILT_NM = np.asarray(centre_wavelengths.BANDS_NM)
 
+RAW_EXPORT = partial(export_image, span=config.RAW_COUNTS)
 
-def plot(name: str, identifier: str, frame: Tile) -> widgets.VBox:
-    """Show one product over a tile, drawn once, then read off disk."""
+
+def plot(name: str, frame: Tile, identifier: str | None = None) -> widgets.VBox:
+    """Show every product the index holds of a tile as one mosaic, or one product."""
+    identifiers = (
+        (identifier,) if identifier else product.indexed_identifiers(name, frame)
+    )
     path = (
-        paths.PANELS_ROOT / slugify(name) / f"{slugify(identifier)}_{frame.name}.json"
+        paths.PANELS_ROOT
+        / slugify(name)
+        / f"{slugify(identifier or config.MOSAIC)}_{frame.name}.json"
     )
     if not path.exists():
         instrument = INSTRUMENTS[name]
         with httpx.Client(verify=TLS_CONTEXT) as client:
-            instrument.fetch(identifier, client, (frame,))
-        if instrument.place:
-            instrument.place(identifier)
+            for one in identifiers:
+                instrument.fetch(one, client, (frame,))
+                if instrument.place:
+                    instrument.place(one)
         drawn = {
             "CRISM": crism_images,
             "CTX": ctx_images,
             "MOLA": mola_images,
             "SHARAD": sharad_images,
         }
-        rows, sample = drawn[name](name, identifier, frame)
+        rows, samples = drawn[name](name, identifiers, frame)
         write_json(
             path,
             [
@@ -67,7 +75,7 @@ def plot(name: str, identifier: str, frame: Tile) -> widgets.VBox:
                 else {"html": child.value}
                 for child in [
                     *rows,
-                    product.acquisition_table(name, identifier, sample, frame),
+                    product.acquisition_table(name, identifiers, samples, frame),
                 ]
             ],
         )
@@ -81,17 +89,41 @@ def plot(name: str, identifier: str, frame: Tile) -> widgets.VBox:
     )
 
 
-def composite(
-    cube: np.ndarray, centres: np.ndarray, bands_nm: tuple, scale: Callable
-) -> np.ndarray:
-    """Return a cube's bands nearest three wavelengths as RGB, each band scaled."""
-    bands = [int(np.nanargmin(np.abs(centres - nm))) for nm in bands_nm]
-    return np.nan_to_num(np.dstack([scale(cube[..., at]) for at in bands]))
+def composite_layers(
+    layers: Sequence[tuple[Position, np.ndarray, np.ndarray]],
+    bands_nm: tuple,
+    stretch: bool,
+) -> list[product.Layer]:
+    """Return each crop's bands nearest three wavelengths as RGB, stretched alike.
+
+    Args:
+        layers: Each crop's position, its cube as lines by samples by bands, and
+            the centre of every band in nm.
+        bands_nm: The wavelengths drawn as red, green and blue.
+        stretch: Whether each colour is stretched across every crop at once.
+
+    Returns:
+        layers: Each crop's position beside its RGB values.
+    """
+    picked = [
+        cube[..., [int(np.nanargmin(np.abs(centres - nm))) for nm in bands_nm]]
+        for _, cube, centres in layers
+    ]
+    if stretch:
+        colours = [
+            product.stretched_alike([one[..., at] for one in picked])
+            for at in range(len(bands_nm))
+        ]
+        picked = [np.dstack(planes) for planes in zip(*colours, strict=True)]
+    return [
+        (position, values)
+        for (position, _, _), values in zip(layers, picked, strict=True)
+    ]
 
 
 def delivered_cube(
     identifier: str, detector: crism.Detector, frame: Tile
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[Position, np.ndarray, np.ndarray]:
     """Return one detector's I/F over a tile, as the archive holds it.
 
     Args:
@@ -100,6 +132,7 @@ def delivered_cube(
         frame: The tile it is cut to.
 
     Returns:
+        position: Where the kept samples sit.
         cube: Lines by samples by bands, NaN outside the tile or a reading.
         centres: The centre wavelength of every band in nm.
     """
@@ -128,143 +161,146 @@ def delivered_cube(
     raw = geometry.kept_part(cube[:lines], held.bounds)
     inside = True if held.inside is None else held.inside[..., None]
     raw = np.where(inside & (raw >= floor) & (raw <= ceiling), raw, np.nan)
-    return raw, centre_wavelengths.band_centres(table)
+    return held.position, raw, centre_wavelengths.band_centres(table)
 
 
 def crism_images(
-    name: str, identifier: str, frame: Tile
-) -> tuple[list[widgets.Image], Sample]:
-    """Draw one CRISM observation over a tile in true and false colour, every stage.
+    name: str, identifiers: Sequence[str], frame: Tile
+) -> tuple[list[widgets.Image], list[Sample]]:
+    """Draw a tile's CRISM observations in true and false colour, every stage.
 
     Args:
         name: The instrument, as the build names it.
-        identifier: The observation, its files already in the download cache.
-        frame: The tile it is cut to.
+        identifiers: The observations, oldest first, their files in the cache.
+        frame: The tile they are cut to.
 
     Returns:
-        rows: One row of every stage per view.
-        sample: The crop the build would write.
+        rows: One row per stage, its mosaic in every view side by side.
+        samples: The crops the build would write, one per observation.
     """
-    _, sample = product.observed_sample(name, identifier, frame)
-    built, shown, ranged, pooled = (
-        np.where(sample.measured_ground[..., None], values, np.nan)
-        for values in (
+    samples = []
+    built = {title: [] for title in config.BUILT_STAGES}
+    for identifier in identifiers:
+        _, sample = product.observed_sample(name, identifier, frame)
+        samples.append(sample)
+        stages = (
             sample.cube,
             product.model_input(name, sample),
             product.min_max_input(identifier, sample, frame),
             product.min_max_input(identifier, sample, frame, per_band=False),
         )
-    )
+        for layers, values in zip(built.values(), stages, strict=True):
+            held = np.where(sample.measured_ground[..., None], values, np.nan)
+            layers.append((sample.position, held, BUILT_NM))
     delivered = {
-        detector: delivered_cube(identifier, detector, frame)
+        detector: [
+            delivered_cube(identifier, detector, frame) for identifier in identifiers
+        ]
         for detector, _ in config.VIEWS.values()
     }
     rows = [
         product.side_by_side(
             [
                 (
-                    "Downloaded sample",
-                    composite(*delivered[detector], bands, product.stretched),
-                ),
-                (
-                    "Preprocessed sample",
-                    composite(built, BUILT_NM, bands, product.stretched),
-                ),
-                ("Model input", composite(shown, BUILT_NM, bands, np.asarray)),
-                ("Min-max input", composite(ranged, BUILT_NM, bands, np.asarray)),
-                (
-                    "Global min-max input",
-                    composite(pooled, BUILT_NM, bands, np.asarray),
-                ),
+                    view,
+                    composite_layers(
+                        delivered[detector]
+                        if title == config.DOWNLOADED
+                        else built[title],
+                        bands,
+                        title in config.STRETCHED,
+                    ),
+                )
+                for view, (detector, bands) in config.VIEWS.items()
             ],
-            label=view,
+            label=title,
+            height=config.CRISM_ROW_HEIGHT,
         )
-        for view, (detector, bands) in config.VIEWS.items()
+        for title in (config.DOWNLOADED, *built)
     ]
-    return rows, sample
-
-
-def delivered_counts(cube: Path, lines: tuple[int, int]) -> np.ndarray:
-    """Return the raw counts of a placed scan's lines, stretched.
-
-    Args:
-        cube: The placed scan, before calibration.
-        lines: The first and last line to read, counted from one.
-
-    Returns:
-        counts: Lines by samples in camera geometry, from 0 to 1.
-
-    Raises:
-        RuntimeError: When an ISIS application fails.
-    """
-    first, last = lines
-    trimmed, image = (cube.with_suffix(suffix) for suffix in (".raw.cub", ".raw.tif"))
-    try:
-        run_isis(
-            "crop",
-            {"from": cube, "to": trimmed, "line": first, "nlines": last - first + 1},
-        )
-        run_isis(
-            "isis2std",
-            {"from": trimmed, "to": image, "format": "tiff", "bittype": "u16bit"},
-        )
-        counts = tifffile.imread(image).astype(float)
-    finally:
-        trimmed.unlink(missing_ok=True)
-        image.unlink(missing_ok=True)
-    return product.stretched(np.where(counts > 0, counts, np.nan))
+    return rows, samples
 
 
 def ctx_images(
-    name: str, identifier: str, frame: Tile
-) -> tuple[list[widgets.Image], Sample]:
-    """Draw one CTX scan over a tile, as downloaded and as the model receives it.
+    name: str, identifiers: Sequence[str], frame: Tile
+) -> tuple[list[widgets.Image], list[Sample]]:
+    """Draw a tile's CTX scans, as downloaded and as the model receives them.
 
     Args:
         name: The instrument, as the build names it.
-        identifier: The scan, already fetched and placed.
-        frame: The tile it is cut to.
+        identifiers: The scans, oldest first, already fetched and placed.
+        frame: The tile they are cut to.
 
     Returns:
-        rows: Both stages, in one row.
-        sample: The crop the build would write.
+        rows: Both stages' mosaics, in one row.
+        samples: The crops the build would write, one per scan.
     """
-    placed = ctx.CACHE.files(identifier, identifier)[ctx.CUBE_SUFFIX]
-    kept = placed.with_suffix(".placed.cub")
-    shutil.copyfile(placed, kept)
-    try:
-        observation, sample = product.observed_sample(name, identifier, frame)
-        delivered = delivered_counts(kept, reached_lines(observation, frame))
-        observation.cube.unlink()
-    finally:
-        kept.replace(placed)
-    shown = np.where(sample.measured_ground, product.model_input(name, sample), np.nan)
+    samples, delivered, shown = [], [], []
+    for identifier in identifiers:
+        placed = ctx.CACHE.files(identifier, identifier)[ctx.CUBE_SUFFIX]
+        kept = placed.with_suffix(".placed.cub")
+        shutil.copyfile(placed, kept)
+        try:
+            observation, sample = product.observed_sample(name, identifier, frame)
+            pixels, held, _ = projected_pixels(observation, kept, frame, RAW_EXPORT)
+            observation.cube.unlink()
+        finally:
+            kept.replace(placed)
+        samples.append(sample)
+        inside = True if held.inside is None else held.inside
+        counts = np.where(inside & (pixels != BLANK), pixels, np.nan)
+        delivered.append((held.position, counts))
+        values = product.model_input(name, sample)
+        shown.append(
+            (sample.position, np.where(sample.measured_ground, values, np.nan))
+        )
+    stretched = product.stretched_alike([counts for _, counts in delivered])
     row = product.side_by_side(
-        [("Downloaded sample", delivered), ("Model input", shown)]
+        [
+            (
+                config.DOWNLOADED,
+                [
+                    (position, counts)
+                    for (position, _), counts in zip(delivered, stretched, strict=True)
+                ],
+            ),
+            ("Model input", shown),
+        ]
     )
-    return [row], sample
+    return [row], samples
 
 
 def mola_images(
-    name: str, identifier: str, frame: Tile
-) -> tuple[list[widgets.Image], Sample]:
-    """Draw one MOLA grid's elevation over a tile, stretched.
+    name: str, identifiers: Sequence[str], frame: Tile
+) -> tuple[list[widgets.Image], list[Sample]]:
+    """Draw a tile's MOLA grids' elevation, stretched alike.
 
     Args:
         name: The instrument, as the build names it.
-        identifier: The grid, its sheets already in the download cache.
-        frame: The tile it is cut to.
+        identifiers: The grids, their sheets already in the download cache.
+        frame: The tile they are cut to.
 
     Returns:
-        rows: The elevation, alone in its row.
-        sample: The crop the build would write.
+        rows: The elevation's mosaic, alone in its row.
+        samples: The crops the build would write, one per grid.
     """
-    _, sample = product.observed_sample(name, identifier, frame)
-    shown = np.where(sample.measured_ground, sample.elevation, np.nan)
-    row = product.side_by_side(
-        [("Elevation", product.stretched(shown))], cmap=config.ELEVATION_CMAP
+    samples = [product.observed_sample(name, one, frame)[1] for one in identifiers]
+    elevations = product.stretched_alike(
+        [np.where(one.measured_ground, one.elevation, np.nan) for one in samples]
     )
-    return [row], sample
+    row = product.side_by_side(
+        [
+            (
+                "Elevation",
+                [
+                    (one.position, elevation)
+                    for one, elevation in zip(samples, elevations, strict=True)
+                ],
+            )
+        ],
+        cmap=config.ELEVATION_CMAP,
+    )
+    return [row], samples
 
 
 def shown_range(values: np.ndarray) -> tuple[float, float]:
@@ -293,21 +329,22 @@ def sharad_ranges(
 
 
 def sharad_images(
-    name: str, identifier: str, frame: Tile
-) -> tuple[list[widgets.Widget], Sample]:
+    name: str, identifiers: Sequence[str], frame: Tile
+) -> tuple[list[widgets.Widget], list[Sample]]:
     """Draw one SHARAD track whole, then its crop at every step up to the model input.
 
     Args:
         name: The instrument, as the build names it.
-        identifier: The track, its files already in the download cache.
+        identifiers: The one track, its files already in the download cache.
         frame: The tile it is cut to.
 
     Returns:
         rows: The radargram and its cluttergram whole, then cropped as downloaded,
             preprocessed and standardised, in one figure, then the crop's dB
             range as cropped and as preprocessed.
-        sample: The crop the build would write.
+        samples: The crop the build would write, alone.
     """
+    (identifier,) = identifiers
     observation, sample = product.observed_sample(name, identifier, frame)
     power, _ = images.load_cube(
         sharad.CACHE.product_files(identifier, sharad.Kind.OBSERVATION)[".img"]
@@ -331,9 +368,10 @@ def sharad_images(
     kinds = ("radargram", "cluttergram")
     figure = Figure(figsize=(20, 7))
     axes = figure.subplots(2, 1 + len(columns), width_ratios=(2, *[1] * len(columns)))
+    fetched = power.any(axis=0)
     for axis, whole, kind in zip(axes[:, 0], (power, clutter), kinds, strict=True):
         axis.imshow(
-            product.stretched(whole),
+            product.stretched(np.where(fetched, whole, np.nan)),
             cmap="gray",
             aspect="auto",
             interpolation="nearest",
@@ -365,4 +403,4 @@ def sharad_images(
     return [
         panels.rendered(figure),
         sharad_ranges((downloaded, preprocessed), sample),
-    ], sample
+    ], [sample]

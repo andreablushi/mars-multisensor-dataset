@@ -141,17 +141,20 @@ def run_isis(
         raise RuntimeError(f"{app}: {(done.stderr or done.stdout).strip()}")
 
 
-def export_image(cube: Path, image: Path) -> None:
-    """Write one cube as a TIFF of 16-bit counts over the reflectance range.
+def export_image(
+    cube: Path, image: Path, span: tuple[float, float] = configs.REFLECTANCE_RANGE
+) -> None:
+    """Write one cube as a TIFF of 16-bit counts over a range of its values.
 
     Args:
         cube: The ISIS cube to export.
         image: Where the TIFF is written.
+        span: The lowest and highest value the counts are stretched over.
 
     Raises:
         RuntimeError: When isis2std fails.
     """
-    low, high = configs.REFLECTANCE_RANGE
+    low, high = span
     run_isis(
         "isis2std",
         {

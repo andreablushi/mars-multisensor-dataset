@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -10,6 +11,7 @@ import tifffile
 
 from building.configs import ctx as configs
 from building.preprocessing.common import cut, geometry
+from building.preprocessing.common.models.overlap import Overlap
 from building.preprocessing.ctx import projection
 from building.preprocessing.ctx.isis import export_image, read_cube_label, run_isis
 from building.preprocessing.ctx.models.observation import CtxObservation
@@ -66,15 +68,24 @@ def reached_lines(observation: CtxObservation, frame: Tile) -> tuple[int, int] |
     )
 
 
-def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
-    """Return one scan holding only the pixels its tile's box keeps, projected by ISIS.
+def projected_pixels(
+    observation: CtxObservation,
+    cube: Path,
+    frame: Tile,
+    export: Callable[[Path, Path], None] = export_image,
+) -> tuple[np.ndarray, Overlap, dict[str, str]] | None:
+    """Return the pixels a tile's box keeps of one scan's cube, projected by ISIS.
 
     Args:
-        observation: The calibrated scan.
+        observation: The calibrated scan, which says where its lines fall.
+        cube: The cube projected, in the scan's camera geometry.
         frame: The local frame of the tile it was kept for.
+        export: What writes the projected cube as a TIFF of counts.
 
     Returns:
-        sample: The scan cut to that tile, or None where it reaches none of it.
+        projected: The pixels the box keeps as lines by samples, what it keeps of
+            the projected grid, and the projected label merged over the scan's
+            own, or None where the scan reaches none of the box.
 
     Raises:
         RuntimeError: When an ISIS application fails.
@@ -84,7 +95,7 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         return None
     first, last = reached
     min_lat, max_lat, west, span = box.bounds_box(frame)
-    work = observation.cube.parent / frame.name
+    work = cube.parent / frame.name
     trimmed, template, projected, image = (
         work.with_suffix(suffix) for suffix in (".cut.cub", ".map", ".map.cub", ".tif")
     )
@@ -93,7 +104,7 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         run_isis(
             "crop",
             {
-                "from": observation.cube,
+                "from": cube,
                 "to": trimmed,
                 "line": first,
                 "nlines": last - first + 1,
@@ -117,7 +128,7 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
                 "maxlon": west + span,
             },
         )
-        export_image(projected, image)
+        export(projected, image)
         label = labels.merge(read_cube_label(projected), observation.label)
         held = cut.overlap(projection.grid_position(label), frame)
         if held is None:
@@ -126,6 +137,26 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
     finally:
         for path in work.parent.glob(f"{work.name}.*"):
             path.unlink()
+    return pixels, held, label
+
+
+def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
+    """Return one scan holding only the pixels its tile's box keeps, projected by ISIS.
+
+    Args:
+        observation: The calibrated scan.
+        frame: The local frame of the tile it was kept for.
+
+    Returns:
+        sample: The scan cut to that tile, or None where it reaches none of it.
+
+    Raises:
+        RuntimeError: When an ISIS application fails.
+    """
+    projected = projected_pixels(observation, observation.cube, frame)
+    if projected is None:
+        return None
+    pixels, held, label = projected
     measured = pixels != BLANK
     return CtxSample(
         position=held.position,

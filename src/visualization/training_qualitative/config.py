@@ -23,6 +23,26 @@ STD_FLOOR = 1e-6
 
 ELEVATION_CMAP = "turbo"
 
+DRAWN_PIXELS = 1000
+
+ROW_HEIGHT = 4.5
+CRISM_ROW_HEIGHT = 5.5
+
+MOSAIC = "mosaic"
+
+RAW_COUNTS = (0.0, 4095.0)
+
+DOWNLOADED = "Downloaded sample"
+
+BUILT_STAGES = (
+    "Preprocessed sample",
+    "Model input",
+    "Min-max input",
+    "Global min-max input",
+)
+
+STRETCHED = (DOWNLOADED, BUILT_STAGES[0])
+
 RANGES = (
     "Array",
     "Cropped min (dB)",
