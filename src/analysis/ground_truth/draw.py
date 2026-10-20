@@ -1,4 +1,4 @@
-"""The balanced draw: the same number of every class, its features in turn."""
+"""The draw: every accepted tile, or every class to one size, its features in turn."""
 
 from __future__ import annotations
 
@@ -64,11 +64,11 @@ def ranked_tiles(
 def drawn_labels(
     labels: Sequence[Label], settings: GroundTruthSettings, verdicts: Mapping[str, bool]
 ) -> list[Label]:
-    """Mark the tiles the balanced draw takes of every class, its features in turn.
+    """Mark the tiles the draw takes, balanced or every accepted one.
 
     Args:
         labels: Every labelled tile.
-        settings: The settled choices, which size the draw and seed it.
+        settings: The settled choices, which balance the draw, size it and seed it.
         verdicts: Whether each reviewed tile was accepted, a refused one never taken.
 
     Returns:
@@ -77,6 +77,10 @@ def drawn_labels(
     Raises:
         ValueError: When a class holds fewer tiles than every class is drawn for.
     """
+    if not settings.balanced:
+        return [
+            replace(label, drawn=verdicts.get(label.tile, False)) for label in labels
+        ]
     refused = refused_tiles(verdicts)
     drawable = Counter(label.label for label in labels if label.tile not in refused)
     per_class = settings.per_class or min(drawable[name] for name in settings.classes)

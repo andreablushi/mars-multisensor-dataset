@@ -55,6 +55,9 @@ ground_truth:
   # The IAU descriptors the draw keeps tiles clear of first, beside every other class.
   excluded: [Tholus, Patera, Mons, Vallis, Mensa, Collis, Cavus, Chasma, Catena, Rupes, Dorsum, Sulcus, Labes]
 
+  # Whether every class is drawn to one size, or every accepted tile is drawn instead.
+  balanced: false
+
   # How many tiles are drawn of every class, or null for as many as the scarcest class holds.
   per_class: null
 

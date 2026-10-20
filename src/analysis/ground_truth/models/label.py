@@ -23,7 +23,7 @@ class Label(Boxed):
         west_lon: The westernmost longitude of that box in degrees, 0 to 360.
         east_lon: The easternmost longitude of that box, 0 to 360, the westernmost
             at a pole.
-        drawn: Whether the balanced draw took it into the evaluation set.
+        drawn: Whether the draw took it into the evaluation set.
     """
 
     tile: str

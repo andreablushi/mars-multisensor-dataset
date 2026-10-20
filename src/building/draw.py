@@ -48,7 +48,7 @@ def draw_training(
 def draw_evaluation(
     picked: Sequence[Selection], labels: Sequence[Label]
 ) -> list[Selection]:
-    """Keep the tiles the balanced draw took for the evaluation build.
+    """Keep the tiles the draw took for the evaluation build.
 
     Args:
         picked: What the search left of every tile it searched.

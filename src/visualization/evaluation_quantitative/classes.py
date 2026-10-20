@@ -52,7 +52,7 @@ def classes_map(grouped: dict[str, list[Label]], image: bytes) -> widgets.Image:
     """Draw the drawn tiles over the mosaic of Mars, one colour per class.
 
     Args:
-        grouped: The tiles the balanced draw took, by class in config order.
+        grouped: The tiles the draw took, by class in config order.
         image: The mosaic of the whole planet, as fetched.
 
     Returns:

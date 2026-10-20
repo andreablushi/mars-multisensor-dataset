@@ -53,7 +53,7 @@ def compute_coverage(force: bool = False, workers: int | None = None) -> int:
 
 
 def compute_labels(force: bool) -> list[Label]:
-    """Label every kept tile, draw the balanced set held out of training, and write it.
+    """Label every kept tile, draw the set held out of training, and write it.
 
     Args:
         force: Whether to fetch the feature catalogue again rather than read it.
