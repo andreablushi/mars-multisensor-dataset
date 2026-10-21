@@ -33,7 +33,7 @@ criteria:
     - {SHARAD: 0.0}
 
   # The pixels an instrument has to land on a tile to count, powers of two preferred
-  admits: {CTX: 2097152, CRISM: 4096, SHARAD: 64}
+  admits: {CTX: 32768, CRISM: 4096, SHARAD: 64}
 
   # The solar zenith angle past which an instrument's look is taken at night, in degrees: refused for CTX and CRISM, preferred for SHARAD
   solar_zenith: {CTX: 90.0, CRISM: 85.0, SHARAD: 100.0}

@@ -14,7 +14,7 @@ SHARAD_ALONG_TRACK_M = 460.0
 
 # Ground one pixel covers in square kilometres, by instrument
 PIXEL_KM2 = {
-    "CTX": (6.0 / METRES_PER_KM) ** 2,
+    "CTX": (48.0 / METRES_PER_KM) ** 2,
     "CRISM": (180.0 / METRES_PER_KM) ** 2,
     "SHARAD": SHARAD_SWATH_M * SHARAD_ALONG_TRACK_M / METRES_PER_KM**2,
 }
