@@ -12,11 +12,13 @@ downloads:
 
 # What each instrument's reader is handed, the same in every build so they match.
 preprocessing:
-  # The percentiles a CTX scan is clipped at, and how many lines and samples apart
-  # the counts its statistics are measured on sit.
+  # The percentiles a CTX scan is clipped at, how many lines and samples apart
+  # the counts its statistics are measured on sit, and how many pixels a side
+  # every crop is averaged over.
   CTX:
     clip: [1, 99]
     stride: 8
+    pool: 8
   # The passes, window width and sigma CRISM spikes are removed with, the sigma as
   # crism_ml sets it, and how many lines a column is levelled over along the track.
   CRISM:

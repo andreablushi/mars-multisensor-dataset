@@ -30,7 +30,7 @@ LAYOUT = Layout(
     dims=("line", "sample"),
     axes=(Axis.GROUND, Axis.GROUND),
     measurement="image",
-    stored="f2",
+    stored="f4",
 )
 
 # What ODE publishes CTX under.

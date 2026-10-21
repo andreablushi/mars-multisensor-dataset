@@ -17,6 +17,7 @@ from building.preprocessing.ctx.isis import export_image, read_cube_label, run_i
 from building.preprocessing.ctx.models.observation import CtxObservation
 from building.preprocessing.ctx.models.sample import BLANK, CtxSample
 from building.preprocessing.ctx.normalize import normalized_pixels
+from building.preprocessing.ctx.pool import pooled_sample
 from common.maths import box
 from common.models.tile import Tile
 from common.pds import labels
@@ -148,7 +149,8 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         frame: The local frame of the tile it was kept for.
 
     Returns:
-        sample: The scan cut to that tile, or None where it reaches none of it.
+        sample: The scan cut to that tile and averaged over its blocks, or None
+            where it reaches none of it.
 
     Raises:
         RuntimeError: When an ISIS application fails.
@@ -158,10 +160,11 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         return None
     pixels, held, label = projected
     measured = pixels != BLANK
-    return CtxSample(
+    sample = CtxSample(
         position=held.position,
         label=label,
         inside=held.inside,
         valid=geometry.partial_mask(measured),
         image=normalized_pixels(pixels, measured, observation.statistics),
     )
+    return pooled_sample(sample, observation.pool)

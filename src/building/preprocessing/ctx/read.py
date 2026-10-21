@@ -15,7 +15,7 @@ from common.disk.files import read_json
 
 
 def read_observation(
-    identifier: str, clip: Sequence[float], stride: int
+    identifier: str, clip: Sequence[float], stride: int, pool: int
 ) -> CtxObservation:
     """Calibrate one placed scan and sample where its lines fall on the ground.
 
@@ -23,6 +23,7 @@ def read_observation(
         identifier: The observation, its files already in the download cache.
         clip: The low and high percentiles the scan's counts are clipped at.
         stride: How many lines and samples apart its statistics are measured.
+        pool: How many pixels a side its crops are averaged over.
 
     Returns:
         observation: The calibrated scan and its sampled ground points.
@@ -71,4 +72,5 @@ def read_observation(
         np.array([float(row["PlanetocentricLatitude"]) for row in rows]),
         np.array([float(row["PositiveEast360Longitude"]) for row in rows]),
         scan_statistics(cube, clip, stride),
+        pool,
     )
