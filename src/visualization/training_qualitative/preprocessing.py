@@ -29,11 +29,7 @@ from building.preprocessing.crism.models.observation import (
 from building.preprocessing.ctx.crop import projected_pixels
 from building.preprocessing.ctx.isis import export_image
 from building.preprocessing.ctx.models.sample import BLANK
-from building.preprocessing.sharad.normalize import (
-    clutter_db,
-    radargram_db,
-    surface_aligned,
-)
+from building.preprocessing.sharad.normalize import clutter_db, radargram_db
 from building.preprocessing.sharad.read import clutter_power
 from common.disk.files import read_json, write_json
 from common.disk.slugify import slugify
@@ -428,7 +424,10 @@ def sharad_images(
         np.where(sample.valid, values[:, sample.traces], np.nan)
         for values in (radargram_db(power), clutter_db(clutter))
     )
-    aligned = tuple(surface_aligned(crop) for crop in cropped)
+    aligned = tuple(
+        np.where(sample.valid, values, np.nan)
+        for values in (sample.power, sample.clutter)
+    )
     # What the alignment subtracted, the same on every value of a crop
     offsets = tuple(
         float(np.nanmean(crop - one))

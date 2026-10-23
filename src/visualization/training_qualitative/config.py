@@ -48,8 +48,6 @@ SHARAD_SAMPLES = {
     "Ice rich, south polar layered deposits": ("s_08827401", "b016_c0055"),
 }
 
-SHARAD_ALIGNED_CONSTANTS = (-23.152, 5.576)
-
 SHARAD_CLIP = (-2.0, 3.0)
 
 SHARAD_KINDS = ("radargram", "cluttergram")

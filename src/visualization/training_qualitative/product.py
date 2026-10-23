@@ -13,6 +13,7 @@ from matplotlib.figure import Figure
 from analysis.selector.artifacts import read_selection
 from building import paths as built
 from building.common.layout import Axis
+from building.configs import sharad
 from building.metadata.dataset import read_normalization
 from building.metadata.index import read_observation_metadata
 from building.metadata.observation import (
@@ -170,9 +171,8 @@ def model_input(name: str, sample: Sample) -> np.ndarray:
 
 
 def sharad_model_input(aligned: np.ndarray, clip: tuple[float, float]) -> np.ndarray:
-    """Return an aligned SHARAD crop standardised by the shared constants, clipped."""
-    mean, std = config.SHARAD_ALIGNED_CONSTANTS
-    return np.clip((aligned - mean) / std, *clip)
+    """Return an aligned SHARAD array standardised by the radargram's constants."""
+    return np.clip(standardised_values(aligned, sharad.LAYOUT.axes, "SHARAD"), *clip)
 
 
 def min_max_input(

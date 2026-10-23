@@ -1,4 +1,4 @@
-"""The constants each instrument of a build, and its clutter, is standardised by."""
+"""The constants each instrument of a build is standardised by."""
 
 from __future__ import annotations
 
@@ -15,15 +15,13 @@ from building.metadata.index import read_observation_metadata
 from building.metadata.observation import ObservationMetadata
 from building.models.settings import BuildSettings
 
-CLUTTER = "clutter"
-
 
 def record_normalization(
     settings: BuildSettings,
     root: Path,
     fetch: Callable[[str, Path, Sequence[str]], None] | None,
 ) -> None:
-    """Record in the manifest the mean, std, min and max of each instrument and clutter.
+    """Record in the manifest the mean, std, min and max of each instrument.
 
     Args:
         settings: The settled choices for the build, naming it and its reference.
@@ -40,9 +38,6 @@ def record_normalization(
             name: dataset_constants([one for one in records if one.instrument == name])
             for name in {one.instrument for one in records}
         }
-        simulated = [one for one in records if one.clutter_mean is not None]
-        if simulated:
-            constants[CLUTTER] = dataset_constants(simulated, CLUTTER)
     write_manifest(replace(read_manifest(root), normalization=constants), root)
 
 

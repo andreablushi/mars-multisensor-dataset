@@ -8,11 +8,7 @@ import numpy as np
 
 from building.configs import sharad as configs
 from building.preprocessing.sharad.models.observation import SharadObservation
-from building.preprocessing.sharad.normalize import (
-    clutter_db,
-    radargram_db,
-    surface_aligned,
-)
+from building.preprocessing.sharad.normalize import clutter_db, radargram_db
 from common.pds import images, labels, tables
 
 
@@ -23,8 +19,8 @@ def read_observation(identifier: str) -> SharadObservation:
         identifier: The observation, its files already in the download cache.
 
     Returns:
-        observation: The radargram and its clutter simulation, each aligned on its
-            average surface, with their geometry.
+        observation: The radargram and its clutter simulation in dB, with their
+            geometry.
 
     Raises:
         FileNotFoundError: When any product or a label is missing.
@@ -46,8 +42,8 @@ def read_observation(identifier: str) -> SharadObservation:
     clutter = clutter_power(held[configs.Kind.CLUTTER][".img"], power.shape)
     return SharadObservation(
         labels.merge(sounding, geometry_label),
-        surface_aligned(radargram_db(power)),
-        surface_aligned(clutter_db(clutter)),
+        radargram_db(power),
+        clutter_db(clutter),
         geometry,
     )
 

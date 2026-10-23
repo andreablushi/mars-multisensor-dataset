@@ -17,6 +17,7 @@ from building.preprocessing.sharad.models.observation import (
     SharadObservation,
 )
 from building.preprocessing.sharad.models.sample import SharadSample
+from building.preprocessing.sharad.normalize import surface_aligned
 from common.models.tile import Tile
 
 FILL = 0.0
@@ -56,7 +57,8 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
         frame: The local frame of the tile it was kept for.
 
     Returns:
-        sample: The track cut to that tile, or None where it reaches none of it.
+        sample: The track cut to that tile, each array aligned on the average surface
+            of the traces it measured there, or None where it reaches none of it.
     """
     held = cut.overlap(trace_position(observation.geometry), frame)
     if held is None:
@@ -66,14 +68,15 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
     power = observation.power[:, traces]
     # The archive sounds a trace or fills it whole, so one flag covers its delays.
     valid = np.isfinite(power).all(axis=0)
+    measured = valid if held.inside is None else valid & held.inside
     geometry = observation.geometry[traces]
     return SharadSample(
         position=held.position,
         label=observation.label,
         inside=held.inside,
         valid=valid,
-        power=np.where(valid, power, FILL),
-        clutter=observation.clutter[:, traces],
+        power=np.where(valid, surface_aligned(power, measured), FILL),
+        clutter=surface_aligned(observation.clutter[:, traces], measured),
         traces=traces,
         incidence_deg=geometry[SOLAR_ZENITH_FIELD],
         spacecraft_altitude_km=(

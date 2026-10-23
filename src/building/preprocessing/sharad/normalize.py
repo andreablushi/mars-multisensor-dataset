@@ -1,4 +1,4 @@
-"""Aligning a SHARAD radargram and its clutter simulation on their average surface."""
+"""Aligning a SHARAD crop's radargram and clutter simulation on their surface."""
 
 from __future__ import annotations
 
@@ -26,14 +26,16 @@ def clutter_db(clutter: np.ndarray) -> np.ndarray:
     return 10 * np.log10(np.maximum(clutter, floor))
 
 
-def surface_aligned(db: np.ndarray) -> np.ndarray:
-    """Return a track in dB less the average of its traces' peaks.
+def surface_aligned(db: np.ndarray, measured: np.ndarray) -> np.ndarray:
+    """Return a crop in dB less the average peak of its measured traces.
 
     Args:
-        db: One track in dB, delay samples by traces.
+        db: One crop in dB, delay samples by traces.
+        measured: Which of its traces were measured.
 
     Returns:
-        aligned: The same grid, 0 dB at the average peak of the traces that echo.
+        aligned: The same grid, 0 dB at the average peak of the measured traces
+            that echo.
     """
-    peaks = db.max(axis=0)
+    peaks = db[:, measured].max(axis=0)
     return db - np.mean(peaks, where=peaks > configs.CLUTTER_FLOOR_DB)
