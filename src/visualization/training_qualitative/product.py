@@ -169,6 +169,12 @@ def model_input(name: str, sample: Sample) -> np.ndarray:
     return np.clip((standardised + config.CLIP) / (2 * config.CLIP), 0.0, 1.0)
 
 
+def sharad_model_input(aligned: np.ndarray, clip: tuple[float, float]) -> np.ndarray:
+    """Return an aligned SHARAD crop standardised by the shared constants, clipped."""
+    mean, std = config.SHARAD_ALIGNED_CONSTANTS
+    return np.clip((aligned - mean) / std, *clip)
+
+
 def min_max_input(
     identifier: str, sample: Sample, frame: Tile, per_band: bool = True
 ) -> np.ndarray:

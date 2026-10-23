@@ -4,16 +4,18 @@ from __future__ import annotations
 
 import base64
 import shutil
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from functools import partial
+from pathlib import Path
 
 import httpx
 import ipywidgets as widgets
 import numpy as np
+from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 from analysis import paths
-from building.common.normalize import CLUTTER
+from analysis.utils.tile_group import tile_grid
 from building.configs import crism, ctx, sharad
 from building.models.instrument import INSTRUMENTS
 from building.preprocessing.common import cut, geometry
@@ -27,8 +29,11 @@ from building.preprocessing.crism.models.observation import (
 from building.preprocessing.ctx.crop import projected_pixels
 from building.preprocessing.ctx.isis import export_image
 from building.preprocessing.ctx.models.sample import BLANK
-from building.preprocessing.sharad.models.sample import SharadSample
-from building.preprocessing.sharad.normalize import clutter_db, radargram_db
+from building.preprocessing.sharad.normalize import (
+    clutter_db,
+    radargram_db,
+    surface_aligned,
+)
 from building.preprocessing.sharad.read import clutter_power
 from common.disk.files import read_json, write_json
 from common.disk.slugify import slugify
@@ -53,6 +58,49 @@ def plot(name: str, frame: Tile, identifier: str | None = None) -> widgets.VBox:
         / slugify(name)
         / f"{slugify(identifier or config.MOSAIC)}_{frame.name}.json"
     )
+    drawn = {"CRISM": crism_images, "CTX": ctx_images, "MOLA": mola_images}
+    return cached_panels(path, name, identifiers, frame, drawn[name])
+
+
+def plot_sharad(clip: tuple[float, float] = config.SHARAD_CLIP) -> widgets.VBox:
+    """Show each hardcoded SHARAD track whole, cropped, and as the model reads it."""
+    grid = tile_grid()
+    low, high = clip
+    return widgets.VBox(
+        [
+            cached_panels(
+                paths.PANELS_ROOT
+                / slugify("SHARAD")
+                / f"{identifier}_{tile}_clip_{low:g}_{high:g}.json",
+                "SHARAD",
+                (identifier,),
+                grid.tile_named(tile),
+                partial(sharad_images, title=title, clip=clip),
+            )
+            for title, (identifier, tile) in config.SHARAD_SAMPLES.items()
+        ]
+    )
+
+
+def cached_panels(
+    path: Path,
+    name: str,
+    identifiers: Sequence[str],
+    frame: Tile,
+    draw: Callable[..., tuple[list[widgets.Widget], list[Sample]]],
+) -> widgets.VBox:
+    """Return the panels of products over a tile, drawn once and kept at a path.
+
+    Args:
+        path: Where the drawn panels are kept.
+        name: The instrument, as the build names it.
+        identifiers: The products, fetched first when not drawn yet.
+        frame: The tile they are cut to.
+        draw: What draws the products' rows and the crops the build would write.
+
+    Returns:
+        panels: The rows, then what every crop was taken under.
+    """
     if not path.exists():
         instrument = INSTRUMENTS[name]
         with httpx.Client(verify=TLS_CONTEXT) as client:
@@ -60,13 +108,7 @@ def plot(name: str, frame: Tile, identifier: str | None = None) -> widgets.VBox:
                 instrument.fetch(one, client, (frame,))
                 if instrument.place:
                     instrument.place(one)
-        drawn = {
-            "CRISM": crism_images,
-            "CTX": ctx_images,
-            "MOLA": mola_images,
-            "SHARAD": sharad_images,
-        }
-        rows, samples = drawn[name](name, identifiers, frame)
+        rows, samples = draw(name, identifiers, frame)
         write_json(
             path,
             [
@@ -309,64 +351,71 @@ def shown_range(values: np.ndarray) -> tuple[float, float]:
     return float(np.percentile(finite, config.STRETCH[0])), float(finite.max())
 
 
+def shown_crop(
+    figure: Figure,
+    axis: Axes,
+    values: np.ndarray,
+    edges: tuple[float, float],
+    text: str,
+) -> None:
+    """Draw one crop in grey between two edges, titled, its colour bar beside it."""
+    image = axis.imshow(
+        values,
+        cmap="gray",
+        aspect="auto",
+        interpolation="nearest",
+        vmin=edges[0],
+        vmax=edges[1],
+    )
+    panels.titled(axis, text)
+    figure.colorbar(image, ax=axis)
+
+
 def sharad_ranges(
-    steps: tuple[tuple[np.ndarray, np.ndarray], ...], sample: SharadSample
+    cropped: tuple[np.ndarray, np.ndarray],
+    offsets: tuple[float, float],
+    models: tuple[np.ndarray, np.ndarray],
 ) -> widgets.HTML:
-    """Tabulate the crop's radargram and cluttergram dB range at each step."""
-    held = sample.valid[None, :]
+    """Tabulate each array's range in dB, its surface offset, then its model range."""
+    edges = (np.nanmin, np.nanmax)
     rows = [
         (
             kind,
-            *(
-                f"{edge(np.where(held, step[index][:, sample.traces], np.nan)):.1f}"
-                for step in steps
-                for edge in (np.nanmin, np.nanmax)
-            ),
+            *(f"{edge(crop):.1f}" for edge in edges),
+            f"{offset:.1f}",
+            *(f"{edge(model):.2f}" for edge in edges),
         )
-        for index, kind in enumerate(("Radargram", "Cluttergram"))
+        for kind, crop, offset, model in zip(
+            config.SHARAD_KINDS, cropped, offsets, models, strict=True
+        )
     ]
     return panels.written("Min-max", config.RANGES, rows)
 
 
 def sharad_images(
-    name: str, identifiers: Sequence[str], frame: Tile
+    name: str,
+    identifiers: Sequence[str],
+    frame: Tile,
+    title: str,
+    clip: tuple[float, float],
 ) -> tuple[list[widgets.Widget], list[Sample]]:
-    """Draw every SHARAD track of a tile, one after another.
+    """Draw one SHARAD track whole, then its crop in dB, aligned, and as read.
 
     Args:
         name: The instrument, as the build names it.
-        identifiers: The tracks, oldest first, their files in the download cache.
-        frame: The tile they are cut to.
-
-    Returns:
-        rows: Each track's rows in turn.
-        samples: The crops the build would write, one per track.
-    """
-    rows, samples = [], []
-    for identifier in identifiers:
-        drawn, sample = sharad_track_images(name, identifier, frame)
-        rows.extend(drawn)
-        samples.append(sample)
-    return rows, samples
-
-
-def sharad_track_images(
-    name: str, identifier: str, frame: Tile
-) -> tuple[list[widgets.Widget], Sample]:
-    """Draw one SHARAD track whole, then its crop at every step up to the model input.
-
-    Args:
-        name: The instrument, as the build names it.
-        identifier: The track, its files already in the download cache.
+        identifiers: The track alone, its files already in the download cache.
         frame: The tile it is cut to.
+        title: What the track shows, written above it.
+        clip: The low and high its standardised arrays are clipped to.
 
     Returns:
-        rows: The radargram and its cluttergram whole, then cropped as downloaded,
-            preprocessed and standardised, in one figure under the track's name,
-            then the crop's dB range as cropped and as preprocessed.
-        sample: The crop the build would write.
+        rows: The radargram and its cluttergram whole, cropped in dB, each aligned
+            on its own surface, then both standardised alike and clipped, in one
+            figure, then their ranges.
+        samples: The crop the build would write.
     """
-    observation, sample = product.observed_sample(name, identifier, frame)
+    (identifier,) = identifiers
+    _, sample = product.observed_sample(name, identifier, frame)
     power, _ = images.load_cube(
         sharad.CACHE.product_files(identifier, sharad.Kind.OBSERVATION)[".img"]
     )
@@ -375,22 +424,31 @@ def sharad_track_images(
         sharad.CACHE.product_files(identifier, sharad.Kind.CLUTTER)[".img"],
         power.shape,
     )
-    downloaded = (radargram_db(power), clutter_db(clutter))
-    preprocessed = (observation.power, observation.clutter)
+    cropped = tuple(
+        np.where(sample.valid, values[:, sample.traces], np.nan)
+        for values in (radargram_db(power), clutter_db(clutter))
+    )
+    aligned = tuple(surface_aligned(crop) for crop in cropped)
+    # What the alignment subtracted, the same on every value of a crop
+    offsets = tuple(
+        float(np.nanmean(crop - one))
+        for crop, one in zip(cropped, aligned, strict=True)
+    )
+    models = tuple(product.sharad_model_input(one, clip) for one in aligned)
+    low, high = clip
     columns = {
-        "Cropped sample (dB)": downloaded,
-        "Preprocessed sample (dB)": preprocessed,
-        "Model input (z)": tuple(
-            product.standardised_values(values, sharad.LAYOUT.axes, key)
-            for values, key in zip(preprocessed, (name, CLUTTER), strict=True)
+        "Cropped sample (dB)": (cropped, None),
+        "Aligned on its surface (dB)": (
+            aligned,
+            shown_range(np.concatenate([one.ravel() for one in aligned])),
         ),
+        f"Model input (z), clipped to [{low:g}, {high:g}]": (models, clip),
     }
-    aligned = "Preprocessed sample (dB)"
-    kinds = ("radargram", "cluttergram")
-    figure = Figure(figsize=(20, 7))
-    figure.suptitle(identifier, fontsize=14)
-    axes = figure.subplots(2, 1 + len(columns), width_ratios=(2, *[1] * len(columns)))
+    figure = Figure(figsize=(24, 7))
+    figure.suptitle(f"{title}: {identifier} on {frame.name}", fontsize=14)
+    axes = figure.subplots(2, 4, width_ratios=(2, 1, 1, 1))
     fetched = power.any(axis=0)
+    kinds = config.SHARAD_KINDS
     for axis, whole, kind in zip(axes[:, 0], (power, clutter), kinds, strict=True):
         axis.imshow(
             product.stretched(np.where(fetched, whole, np.nan)),
@@ -403,26 +461,13 @@ def sharad_track_images(
         panels.titled(axis, f"Downloaded sample\n{kind}")
         for edge in (sample.traces[0], sample.traces[-1]):
             axis.axvline(edge, color="tab:orange", linewidth=1.0)
-    for column, (text, pair) in enumerate(columns.items(), start=1):
-        crops = [values[:, sample.traces] for values in pair]
-        shared = shown_range(np.concatenate([crop.ravel() for crop in crops]))
-        for axis, crop, kind in zip(axes[:, column], crops, kinds, strict=True):
-            low, high = shared if text == aligned else shown_range(crop)
-            image = axis.imshow(
-                crop,
-                cmap="gray",
-                aspect="auto",
-                interpolation="nearest",
-                vmin=low,
-                vmax=high,
+    for column, (text, (pair, shared)) in enumerate(columns.items(), start=1):
+        for axis, crop, kind in zip(axes[:, column], pair, kinds, strict=True):
+            shown_crop(
+                figure, axis, crop, shared or shown_range(crop), f"{text}\n{kind}"
             )
-            panels.titled(axis, f"{text}\n{kind}")
-            figure.colorbar(image, ax=axis)
     for axis in axes.flat:
         axis.set_xlabel("Trace")
         axis.set_ylabel("Delay row")
     figure.tight_layout()
-    return [
-        panels.rendered(figure),
-        sharad_ranges((downloaded, preprocessed), sample),
-    ], sample
+    return [panels.rendered(figure), sharad_ranges(cropped, offsets, models)], [sample]

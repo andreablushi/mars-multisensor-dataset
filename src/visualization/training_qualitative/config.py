@@ -43,12 +43,24 @@ BUILT_STAGES = (
 
 STRETCHED = (DOWNLOADED, BUILT_STAGES[0])
 
+SHARAD_SAMPLES = {
+    "Ice poor, Amazonis Planitia": ("s_00579101", "b217_c0322"),
+    "Ice rich, south polar layered deposits": ("s_08827401", "b016_c0055"),
+}
+
+SHARAD_ALIGNED_CONSTANTS = (-23.152, 5.576)
+
+SHARAD_CLIP = (-2.0, 3.0)
+
+SHARAD_KINDS = ("radargram", "cluttergram")
+
 RANGES = (
     "Array",
     "Cropped min (dB)",
     "Cropped max (dB)",
-    "Preprocessed min (dB)",
-    "Preprocessed max (dB)",
+    "Surface offset (dB)",
+    "Model input min (z)",
+    "Model input max (z)",
 )
 
 VIEWS = {
