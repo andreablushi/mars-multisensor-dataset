@@ -60,7 +60,7 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
     Returns:
         sample: The track cut to that tile, each array aligned on the average surface
             of the traces it measured there and the radargram gated at its noise
-            threshold, or None where it measures none of it.
+            threshold, or None where it measures none of it or holds no echo.
     """
     held = cut.overlap(trace_position(observation.geometry), frame)
     if held is None:
@@ -74,6 +74,8 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
     if not measured.any():
         return None
     noise = measured_noise(surface_aligned(power, measured)[:, valid], observation.gate)
+    if noise is None:
+        return None
     gated = np.full(power.shape, FILL, power.dtype)
     gated[:, valid] = denoised(noise.averaged, noise.threshold, noise.spread)
     geometry = observation.geometry[traces]
