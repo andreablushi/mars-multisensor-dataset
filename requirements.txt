@@ -158,7 +158,9 @@ rich==15.0.0
 s3transfer==0.19.2
     # via boto3
 scipy==1.18.0
-    # via mlcroissant
+    # via
+    #   mars-multisensor-dataset
+    #   mlcroissant
 shapely==2.1.2
     # via mars-multisensor-dataset
 six==1.17.0

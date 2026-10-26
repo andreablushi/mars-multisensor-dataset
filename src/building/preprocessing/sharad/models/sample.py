@@ -15,12 +15,18 @@ class SharadSample(Sample):
 
     Attributes:
         power: dB aligned on the average surface of the traces this crop measured,
+            averaged along each delay row and soft gated at its noise threshold,
             delay samples by traces, only the traces left.
         clutter: The simulated clutter in dB on the same grid, floored without echo
             and aligned on its own average surface over the same traces.
         traces: Which original radargram columns these traces are, from zero.
+        noise_threshold_db: The threshold its noise was gated at, dB over its
+            surface.
+        noise_spread_db: The standard deviation of that noise in dB.
     """
 
     power: np.ndarray
     clutter: np.ndarray
     traces: np.ndarray
+    noise_threshold_db: float
+    noise_spread_db: float

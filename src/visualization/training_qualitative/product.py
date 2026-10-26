@@ -27,6 +27,7 @@ from building.preprocessing.common.models.sample import Sample
 from building.preprocessing.common.store import sample_path
 from common.config import training_settings
 from common.models.tile import Tile
+from common.pds import images
 from visualization import panels
 from visualization.config import STATISTIC_VALUE
 from visualization.training_qualitative import config
@@ -170,9 +171,24 @@ def model_input(name: str, sample: Sample) -> np.ndarray:
     return np.clip((standardised + config.CLIP) / (2 * config.CLIP), 0.0, 1.0)
 
 
-def sharad_model_input(aligned: np.ndarray, clip: tuple[float, float]) -> np.ndarray:
-    """Return an aligned SHARAD array standardised by the radargram's constants."""
-    return np.clip(standardised_values(aligned, sharad.LAYOUT.axes, "SHARAD"), *clip)
+def sharad_model_input(preprocessed: np.ndarray) -> np.ndarray:
+    """Return a preprocessed SHARAD array standardised by the radargram's constants."""
+    return standardised_values(preprocessed, sharad.LAYOUT.axes, "SHARAD")
+
+
+def sharad_power(identifier: str) -> np.ndarray:
+    """Return a whole SHARAD radargram as archived, delay rows by traces."""
+    return images.load_cube(
+        sharad.CACHE.product_files(identifier, sharad.Kind.OBSERVATION)[".img"]
+    )[0][:, :, 0]
+
+
+def sharad_gate_name() -> str:
+    """Return the build's SHARAD gate settings as one name, to cache a panel under."""
+    return "_".join(
+        f"{key}_{value:g}"
+        for key, value in training_settings().preprocessing["SHARAD"].items()
+    )
 
 
 def min_max_input(

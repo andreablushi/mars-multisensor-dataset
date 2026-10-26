@@ -8,6 +8,7 @@ import numpy as np
 
 from building.preprocessing.common import cut
 from building.preprocessing.common.models.position import Position
+from building.preprocessing.sharad.denoise import denoised, measured_noise
 from building.preprocessing.sharad.models.observation import (
     LATITUDE_FIELD,
     LONGITUDE_FIELD,
@@ -58,7 +59,8 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
 
     Returns:
         sample: The track cut to that tile, each array aligned on the average surface
-            of the traces it measured there, or None where it reaches none of it.
+            of the traces it measured there and the radargram gated at its noise
+            threshold, or None where it measures none of it.
     """
     held = cut.overlap(trace_position(observation.geometry), frame)
     if held is None:
@@ -69,17 +71,24 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
     # The archive sounds a trace or fills it whole, so one flag covers its delays.
     valid = np.isfinite(power).all(axis=0)
     measured = valid if held.inside is None else valid & held.inside
+    if not measured.any():
+        return None
+    noise = measured_noise(surface_aligned(power, measured)[:, valid], observation.gate)
+    gated = np.full(power.shape, FILL, power.dtype)
+    gated[:, valid] = denoised(noise.averaged, noise.threshold, noise.spread)
     geometry = observation.geometry[traces]
     return SharadSample(
         position=held.position,
         label=observation.label,
         inside=held.inside,
         valid=valid,
-        power=np.where(valid, surface_aligned(power, measured), FILL),
+        power=gated,
         clutter=surface_aligned(observation.clutter[:, traces], measured),
         traces=traces,
         incidence_deg=geometry[SOLAR_ZENITH_FIELD],
         spacecraft_altitude_km=(
             geometry[SPACECRAFT_RADIUS_FIELD] - geometry[MARS_RADIUS_FIELD]
         ),
+        noise_threshold_db=noise.threshold,
+        noise_spread_db=noise.spread,
     )

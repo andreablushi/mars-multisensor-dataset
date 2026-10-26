@@ -50,6 +50,9 @@ class ObservationMetadata:
         clutter_std: That simulation's standard deviation there, or None likewise.
         clutter_min: That simulation's smallest value there, or None likewise.
         clutter_max: Its largest value there, or None likewise.
+        noise_threshold_db: The threshold its noise was gated at, or None without a
+            gate.
+        noise_spread_db: The standard deviation of that noise, or None likewise.
         t_start: When the observation started, or None.
         t_end: When it ended, or None for the same reason.
         acquisition: Where the Sun and the spacecraft stood over the crop.
@@ -77,6 +80,8 @@ class ObservationMetadata:
     clutter_std: float | None = None
     clutter_min: float | None = None
     clutter_max: float | None = None
+    noise_threshold_db: float | None = None
+    noise_spread_db: float | None = None
     t_start: datetime | None = None
     t_end: datetime | None = None
     acquisition: AcquisitionInfo = field(default_factory=AcquisitionInfo)
@@ -135,6 +140,8 @@ def observation_metadata(
         acquisition=acquisition_info(held, frame),
         **measured_statistics(values, measured, layout),
         **simulated,
+        noise_threshold_db=getattr(held, "noise_threshold_db", None),
+        noise_spread_db=getattr(held, "noise_spread_db", None),
     )
 
 

@@ -6,6 +6,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from building.preprocessing.sharad.models.gate import Gate
+
 # Which geometry field places a trace.
 LATITUDE_FIELD = "LATITUDE"
 LONGITUDE_FIELD = "LONGITUDE"
@@ -26,9 +28,11 @@ class SharadObservation:
         clutter: The simulated clutter in dB on the same grid, floored without
             echo.
         geometry: One row per trace, in the same order.
+        gate: The settings its crops' noise is measured and gated with.
     """
 
     label: dict[str, str]
     power: np.ndarray
     clutter: np.ndarray
     geometry: np.recarray
+    gate: Gate

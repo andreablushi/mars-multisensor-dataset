@@ -29,7 +29,11 @@ from building.preprocessing.crism.models.observation import (
 from building.preprocessing.ctx.crop import projected_pixels
 from building.preprocessing.ctx.isis import export_image
 from building.preprocessing.ctx.models.sample import BLANK
-from building.preprocessing.sharad.normalize import clutter_db, radargram_db
+from building.preprocessing.sharad.normalize import (
+    clutter_db,
+    radargram_db,
+    surface_aligned,
+)
 from building.preprocessing.sharad.read import clutter_power
 from common.disk.files import read_json, write_json
 from common.disk.slugify import slugify
@@ -58,20 +62,19 @@ def plot(name: str, frame: Tile, identifier: str | None = None) -> widgets.VBox:
     return cached_panels(path, name, identifiers, frame, drawn[name])
 
 
-def plot_sharad(clip: tuple[float, float] = config.SHARAD_CLIP) -> widgets.VBox:
-    """Show each hardcoded SHARAD track whole, cropped, and as the model reads it."""
+def plot_sharad() -> widgets.VBox:
+    """Show each hardcoded SHARAD track whole, cropped, preprocessed, and as read."""
     grid = tile_grid()
-    low, high = clip
     return widgets.VBox(
         [
             cached_panels(
                 paths.PANELS_ROOT
                 / slugify("SHARAD")
-                / f"{identifier}_{tile}_clip_{low:g}_{high:g}.json",
+                / f"{identifier}_{tile}_{product.sharad_gate_name()}.json",
                 "SHARAD",
                 (identifier,),
                 grid.tile_named(tile),
-                partial(sharad_images, title=title, clip=clip),
+                partial(sharad_images, title=title),
             )
             for title, (identifier, tile) in config.SHARAD_SAMPLES.items()
         ]
@@ -393,29 +396,24 @@ def sharad_images(
     identifiers: Sequence[str],
     frame: Tile,
     title: str,
-    clip: tuple[float, float],
 ) -> tuple[list[widgets.Widget], list[Sample]]:
-    """Draw one SHARAD track whole, then its crop in dB, aligned, and as read.
+    """Draw one SHARAD track whole, then its crop in dB, preprocessed, and as read.
 
     Args:
         name: The instrument, as the build names it.
         identifiers: The track alone, its files already in the download cache.
         frame: The tile it is cut to.
         title: What the track shows, written above it.
-        clip: The low and high its standardised arrays are clipped to.
 
     Returns:
         rows: The radargram and its cluttergram whole, cropped in dB, each aligned
-            on its own surface, then both standardised alike and clipped, in one
-            figure, then their ranges.
+            on its own surface and the radargram gated at its noise threshold, then
+            both standardised alike, in one figure, then their ranges.
         samples: The crop the build would write.
     """
     (identifier,) = identifiers
     _, sample = product.observed_sample(name, identifier, frame)
-    power, _ = images.load_cube(
-        sharad.CACHE.product_files(identifier, sharad.Kind.OBSERVATION)[".img"]
-    )
-    power = power[:, :, 0]
+    power = product.sharad_power(identifier)
     clutter = clutter_power(
         sharad.CACHE.product_files(identifier, sharad.Kind.CLUTTER)[".img"],
         power.shape,
@@ -424,24 +422,26 @@ def sharad_images(
         np.where(sample.valid, values[:, sample.traces], np.nan)
         for values in (radargram_db(power), clutter_db(clutter))
     )
-    aligned = tuple(
+    preprocessed = tuple(
         np.where(sample.valid, values, np.nan)
         for values in (sample.power, sample.clutter)
     )
     # What the alignment subtracted, the same on every value of a crop
     offsets = tuple(
-        float(np.nanmean(crop - one))
-        for crop, one in zip(cropped, aligned, strict=True)
+        float(np.nanmean(crop - surface_aligned(crop, sample.measured_ground)))
+        for crop in cropped
     )
-    models = tuple(product.sharad_model_input(one, clip) for one in aligned)
-    low, high = clip
+    models = tuple(product.sharad_model_input(one) for one in preprocessed)
     columns = {
         "Cropped sample (dB)": (cropped, None),
-        "Aligned on its surface (dB)": (
-            aligned,
-            shown_range(np.concatenate([one.ravel() for one in aligned])),
+        "Preprocessed (dB over surface)": (
+            preprocessed,
+            shown_range(np.concatenate([one.ravel() for one in preprocessed])),
         ),
-        f"Model input (z), clipped to [{low:g}, {high:g}]": (models, clip),
+        "Model input (z)": (
+            models,
+            shown_range(np.concatenate([one.ravel() for one in models])),
+        ),
     }
     figure = Figure(figsize=(24, 7))
     figure.suptitle(f"{title}: {identifier} on {frame.name}", fontsize=14)

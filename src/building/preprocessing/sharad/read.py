@@ -7,20 +7,32 @@ from pathlib import Path
 import numpy as np
 
 from building.configs import sharad as configs
+from building.preprocessing.sharad.models.gate import Gate
 from building.preprocessing.sharad.models.observation import SharadObservation
 from building.preprocessing.sharad.normalize import clutter_db, radargram_db
 from common.pds import images, labels, tables
 
 
-def read_observation(identifier: str) -> SharadObservation:
+def read_observation(
+    identifier: str,
+    looks: int,
+    false_alarm: float,
+    guard_rows: int,
+    echo_margin_db: float,
+) -> SharadObservation:
     """Read one radargram and join it to the geometry it was measured at.
 
     Args:
         identifier: The observation, its files already in the download cache.
+        looks: How many traces each delay row of its crops is averaged over.
+        false_alarm: The share of a crop's pure noise left over its threshold.
+        guard_rows: The rows kept between an echo and the noise beside it.
+        echo_margin_db: How far a row's mean power stands over the noise above the
+            surface to hold an echo.
 
     Returns:
         observation: The radargram and its clutter simulation in dB, with their
-            geometry.
+            geometry and the gate its crops' noise is measured with.
 
     Raises:
         FileNotFoundError: When any product or a label is missing.
@@ -45,6 +57,7 @@ def read_observation(identifier: str) -> SharadObservation:
         radargram_db(power),
         clutter_db(clutter),
         geometry,
+        Gate(looks, false_alarm, guard_rows, echo_margin_db),
     )
 
 

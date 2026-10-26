@@ -48,7 +48,23 @@ SHARAD_SAMPLES = {
     "Ice rich, south polar layered deposits": ("s_08827401", "b016_c0055"),
 }
 
-SHARAD_CLIP = (-2.0, 3.0)
+SHARAD_NOISE_SAMPLES = (
+    ("s_07711801", "b217_c0057"),
+    ("s_00196301", "b284_c0102"),
+    ("s_00294501", "b013_c0082"),
+    ("s_00293902", "b321_c0019"),
+    ("s_02707901", "b217_c0057"),
+    ("s_08827401", "b016_c0055"),
+    ("s_00579101", "b217_c0322"),
+)
+
+NOISE_STATISTICS = (
+    "Noise mean (dB over surface)",
+    "Noise spread (dB)",
+    "Threshold over noise (dB)",
+    "Kept",
+    "PD",
+)
 
 SHARAD_KINDS = ("radargram", "cluttergram")
 
