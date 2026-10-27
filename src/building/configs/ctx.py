@@ -54,6 +54,10 @@ ODE_ACQUISITION = (
     "Solar_time",
 )
 
+INDEX_NOTE = "NOTE: Index Record:"
+
+INDEX_AZIMUTHS = {"NORTH_AZIMUTH": 38, "SUB_SOLAR_AZIMUTH": 39}
+
 PIXEL_RESOLUTION_M = 6.0
 
 WARP_ALGORITHM = "forwardpatch"

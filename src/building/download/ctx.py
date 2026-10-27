@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import subprocess
 import time
 
@@ -53,13 +54,30 @@ def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> No
         for key in configs.ODE_ACQUISITION
         if entries[0].get(key)
     }
-    write_json(metadata, acquisition)
+    write_json(metadata, acquisition | index_azimuths(entries[0]))
     offered = archive.file_fields(entries[0])
     archive.download_files(
         {configs.IMAGE_SUFFIX: raw},
         {configs.IMAGE_SUFFIX: offered.get(f"{identifier}{configs.IMAGE_SUFFIX}")},
         client=client,
     )
+
+
+def index_azimuths(entry: dict) -> dict[str, str]:
+    """Return the image plane azimuths of the PDS index row ODE quotes for a scan.
+
+    Args:
+        entry: The scan's product, as ODE answers with it.
+
+    Returns:
+        azimuths: Each of `configs.INDEX_AZIMUTHS` as its row writes it, none
+            without that row.
+    """
+    notes = entry.get("ODE_notes", {}).get("ODE_note", [])
+    if configs.INDEX_NOTE not in notes:
+        return {}
+    row = next(csv.reader([notes[notes.index(configs.INDEX_NOTE) + 1]]))
+    return {key: row[at].strip() for key, at in configs.INDEX_AZIMUTHS.items()}
 
 
 def place(identifier: str) -> None:

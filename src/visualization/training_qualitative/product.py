@@ -35,13 +35,16 @@ from visualization.training_qualitative import config
 Layer = tuple[Position, np.ndarray]
 
 
-def observed_sample(name: str, identifier: str, frame: Tile) -> tuple[Any, Sample]:
+def observed_sample(
+    name: str, identifier: str, frame: Tile, **settings: object
+) -> tuple[Any, Sample]:
     """Read one fetched product and cut it to a tile, as a training build does.
 
     Args:
         name: The instrument, as the build names it.
         identifier: What that instrument was asked for, its observation.
         frame: The tile it is cut to.
+        **settings: Preprocessing settings standing in for the build's own.
 
     Returns:
         observation: The product as its reader handed it back.
@@ -50,7 +53,7 @@ def observed_sample(name: str, identifier: str, frame: Tile) -> tuple[Any, Sampl
     Raises:
         ValueError: When the product measured nothing or reaches none of the tile.
     """
-    preprocessing = training_settings().preprocessing.get(name, {})
+    preprocessing = {**training_settings().preprocessing.get(name, {}), **settings}
     observation = INSTRUMENTS[name].read_observation(identifier, **preprocessing)
     sample = None if observation is None else INSTRUMENTS[name].crop(observation, frame)
     if sample is None:
@@ -183,12 +186,17 @@ def sharad_power(identifier: str) -> np.ndarray:
     )[0][:, :, 0]
 
 
-def sharad_gate_name() -> str:
-    """Return the build's SHARAD gate settings as one name, to cache a panel under."""
-    return "_".join(
-        f"{key}_{value:g}"
-        for key, value in training_settings().preprocessing["SHARAD"].items()
-    )
+def sharad_gate_name(**settings: float) -> str:
+    """Return the build's SHARAD gate settings, any given in their place, as one name.
+
+    Args:
+        **settings: Gate settings standing in for the build's own.
+
+    Returns:
+        name: Every setting beside its value, to cache a panel under.
+    """
+    gate = {**training_settings().preprocessing["SHARAD"], **settings}
+    return "_".join(f"{key}_{value:g}" for key, value in gate.items())
 
 
 def min_max_input(

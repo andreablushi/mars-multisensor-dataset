@@ -115,6 +115,8 @@ def observation_metadata(
     """
     values = getattr(held, layout.measurement)
     measured = measured_mask(held.measured_ground, held.measured_bands, layout, values)
+    started = _label_time(held.label, STARTED) or t_start
+    stopped = _label_time(held.label, STOPPED)
     clutter = getattr(held, "clutter", None)
     simulated = (
         {}
@@ -135,9 +137,9 @@ def observation_metadata(
         shape=tuple(values.shape),
         sample_spacing_m=relative_positioning.sample_spacing_m(held.position, frame),
         separable=held.position.separable,
-        t_start=_label_time(held.label, STARTED) or t_start,
-        t_end=_label_time(held.label, STOPPED),
-        acquisition=acquisition_info(held, frame),
+        t_start=started,
+        t_end=stopped,
+        acquisition=acquisition_info(held, frame, layout.instrument, started, stopped),
         **measured_statistics(values, measured, layout),
         **simulated,
         noise_threshold_db=getattr(held, "noise_threshold_db", None),

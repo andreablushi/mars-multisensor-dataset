@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from functools import partial
 
 import ipywidgets as widgets
 import numpy as np
@@ -14,26 +15,37 @@ from building.preprocessing.common.models.sample import Sample
 from building.preprocessing.sharad.denoise import measured_noise
 from building.preprocessing.sharad.models.sample import SharadSample
 from building.preprocessing.sharad.normalize import radargram_db, surface_aligned
+from common.config import training_settings
 from common.disk.slugify import slugify
 from common.models.tile import Tile
 from visualization import panels
 from visualization.training_qualitative import config, product
 from visualization.training_qualitative.preprocessing import cached_panels, shown_crop
 
+SHARAD_FALSE_ALARM = training_settings().preprocessing["SHARAD"]["false_alarm"]
 
-def plot_sharad_noise() -> widgets.VBox:
-    """Show each SHARAD noise sample aligned, preprocessed, and profiled."""
+
+def plot_sharad_noise(false_alarm: float = SHARAD_FALSE_ALARM) -> widgets.VBox:
+    """Show each SHARAD noise sample aligned, preprocessed, and profiled.
+
+    Args:
+        false_alarm: The share of a crop's pure noise left over its threshold.
+
+    Returns:
+        panels: Every noise sample's rows, then what its crop was taken under.
+    """
     grid = tile_grid()
+    gate = product.sharad_gate_name(false_alarm=false_alarm)
     return widgets.VBox(
         [
             cached_panels(
                 paths.PANELS_ROOT
                 / slugify("SHARAD")
-                / f"noise_{identifier}_{tile}_{product.sharad_gate_name()}.json",
+                / f"noise_{identifier}_{tile}_{gate}.json",
                 "SHARAD",
                 (identifier,),
                 grid.tile_named(tile),
-                noise_images,
+                partial(noise_images, false_alarm=false_alarm),
             )
             for identifier, tile in config.SHARAD_NOISE_SAMPLES
         ]
@@ -56,7 +68,7 @@ def aligned_radargram(identifier: str, sample: SharadSample) -> np.ndarray:
 
 
 def noise_images(
-    name: str, identifiers: Sequence[str], frame: Tile
+    name: str, identifiers: Sequence[str], frame: Tile, false_alarm: float
 ) -> tuple[list[widgets.Widget], list[Sample]]:
     """Draw one SHARAD track aligned, preprocessed and profiled, then its noise.
 
@@ -64,6 +76,7 @@ def noise_images(
         name: The instrument, as the build names it.
         identifiers: The track alone, its files already in the download cache.
         frame: The tile it is cut to.
+        false_alarm: The share of a crop's pure noise left over its threshold.
 
     Returns:
         rows: The radargram aligned and preprocessed beside its mean delay profile,
@@ -71,7 +84,9 @@ def noise_images(
         samples: The crop the build would write.
     """
     (identifier,) = identifiers
-    observation, sample = product.observed_sample(name, identifier, frame)
+    observation, sample = product.observed_sample(
+        name, identifier, frame, false_alarm=false_alarm
+    )
     aligned = aligned_radargram(identifier, sample)
     noise = measured_noise(aligned, observation.gate)
     preprocessed = sample.power[:, sample.valid]
@@ -111,7 +126,7 @@ def noise_images(
         noise.deep, len(profile), color="tab:green", alpha=0.15, label="noise below"
     )
     axis.set_ylim(len(profile), 0)
-    axis.legend(loc="lower left")
+    axis.legend(loc="lower right")
     axis.set_xlabel("dB over surface")
     panels.titled(axis, f"Mean delay profile, {observation.gate.looks} traces")
     for axis in axes:
