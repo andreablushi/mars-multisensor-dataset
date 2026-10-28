@@ -29,6 +29,6 @@ preprocessing:
   # noise beside it, and how far over the noise a row's mean power stands to hold one.
   SHARAD:
     looks: 8
-    false_alarm: 0.2
+    false_alarm: 0.3
     guard_rows: 30
     echo_margin_db: 1.0
