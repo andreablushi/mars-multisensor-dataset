@@ -45,16 +45,16 @@ STRETCHED = (DOWNLOADED, BUILT_STAGES[0])
 
 SHARAD_SAMPLES = {
     "Ice poor, Amazonis Planitia": ("s_00579101", "b217_c0322"),
-    "Ice rich, south polar layered deposits": ("s_08827401", "b016_c0055"),
+    "Ice rich, north polar layered deposits": ("s_00926003", "b327_c0020"),
 }
 
 SHARAD_NOISE_SAMPLES = (
     ("s_07711801", "b217_c0057"),
+    ("s_00926003", "b327_c0020"),
     ("s_00196301", "b284_c0102"),
     ("s_00294501", "b013_c0082"),
+    ("s_00223801", "b028_c0099"),
     ("s_00293902", "b321_c0019"),
-    ("s_02707901", "b217_c0057"),
-    ("s_08827401", "b016_c0055"),
     ("s_00579101", "b217_c0322"),
 )
 

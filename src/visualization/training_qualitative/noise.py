@@ -15,6 +15,7 @@ from building.preprocessing.common.models.sample import Sample
 from building.preprocessing.sharad.denoise import measured_noise
 from building.preprocessing.sharad.models.sample import SharadSample
 from building.preprocessing.sharad.normalize import radargram_db, surface_aligned
+from building.preprocessing.sharad.window import rows_below_atmosphere
 from common.config import training_settings
 from common.disk.slugify import slugify
 from common.models.tile import Tile
@@ -91,7 +92,8 @@ def noise_images(
     noise = measured_noise(aligned, observation.gate)
     preprocessed = sample.power[:, sample.valid]
     zenith = float(np.median(sample.incidence_deg[sample.valid]))
-    figure = Figure(figsize=(17, 7))
+    rows = rows_below_atmosphere(sample.power, sample.valid)
+    figure = Figure(figsize=(17, 14), layout="constrained")
     figure.suptitle(
         f"{identifier} on {frame.name}, solar zenith {zenith:.0f}°", fontsize=14
     )
@@ -104,7 +106,7 @@ def noise_images(
         ),
         strict=False,
     ):
-        shown_crop(figure, axis, values, (values.min(), values.max()), text)
+        shown_crop(figure, axis, values, (values.min(), values.max()), text, rows)
         axis.set_xlabel("Trace")
     profile = 10 * np.log10((10 ** (noise.averaged / 10)).mean(axis=1))
     surface = int(np.median(noise.averaged.argmax(axis=0)))
@@ -125,13 +127,13 @@ def noise_images(
     axis.axhspan(
         noise.deep, len(profile), color="tab:green", alpha=0.15, label="noise below"
     )
+    axis.axhline(rows.start, color="tab:orange", linestyle="--", label="atmosphere cut")
     axis.set_ylim(len(profile), 0)
     axis.legend(loc="lower right")
     axis.set_xlabel("dB over surface")
     panels.titled(axis, f"Mean delay profile, {observation.gate.looks} traces")
     for axis in axes:
         axis.set_ylabel("Delay row")
-    figure.tight_layout()
     measured = (
         f"{noise.mean:.2f}",
         f"{noise.spread:.2f}",

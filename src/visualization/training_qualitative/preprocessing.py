@@ -35,6 +35,7 @@ from building.preprocessing.sharad.normalize import (
     surface_aligned,
 )
 from building.preprocessing.sharad.read import clutter_power
+from building.preprocessing.sharad.window import rows_below_atmosphere
 from common.disk.files import read_json, write_json
 from common.disk.slugify import slugify
 from common.fetch.http import TLS_CONTEXT
@@ -356,15 +357,27 @@ def shown_crop(
     values: np.ndarray,
     edges: tuple[float, float],
     text: str,
+    rows: slice,
 ) -> None:
-    """Draw one crop in grey between two edges, titled, its colour bar beside it."""
+    """Draw some delay rows of one crop in grey between two edges, titled.
+
+    Args:
+        figure: The figure its colour bar is drawn on.
+        axis: The axis it is drawn on.
+        values: The crop, delay rows by traces.
+        edges: The values drawn black and white.
+        text: Its title.
+        rows: The delay rows drawn, each labelled with its own number.
+    """
+    shown = values[rows]
     image = axis.imshow(
-        values,
+        shown,
         cmap="gray",
         aspect="auto",
         interpolation="nearest",
         vmin=edges[0],
         vmax=edges[1],
+        extent=(-0.5, shown.shape[1] - 0.5, rows.stop - 0.5, rows.start - 0.5),
     )
     panels.titled(axis, text)
     figure.colorbar(image, ax=axis)
@@ -443,10 +456,11 @@ def sharad_images(
             shown_range(np.concatenate([one.ravel() for one in models])),
         ),
     }
-    figure = Figure(figsize=(24, 7))
+    figure = Figure(figsize=(24, 14), layout="constrained")
     figure.suptitle(f"{title}: {identifier} on {frame.name}", fontsize=14)
     axes = figure.subplots(2, 4, width_ratios=(2, 1, 1, 1))
     fetched = power.any(axis=0)
+    rows = rows_below_atmosphere(sample.power, sample.valid)
     kinds = config.SHARAD_KINDS
     for axis, whole, kind in zip(axes[:, 0], (power, clutter), kinds, strict=True):
         axis.imshow(
@@ -463,10 +477,14 @@ def sharad_images(
     for column, (text, (pair, shared)) in enumerate(columns.items(), start=1):
         for axis, crop, kind in zip(axes[:, column], pair, kinds, strict=True):
             shown_crop(
-                figure, axis, crop, shared or shown_range(crop), f"{text}\n{kind}"
+                figure,
+                axis,
+                crop,
+                shared or shown_range(crop),
+                f"{text}\n{kind}",
+                rows,
             )
     for axis in axes.flat:
         axis.set_xlabel("Trace")
         axis.set_ylabel("Delay row")
-    figure.tight_layout()
     return [panels.rendered(figure), sharad_ranges(cropped, offsets, models)], [sample]
