@@ -48,6 +48,20 @@ def native(values: np.ndarray) -> np.ndarray:
     return values.astype(values.dtype.newbyteorder("="), copy=False)
 
 
+def stored_array(values: np.ndarray, dtype: str | None) -> np.ndarray:
+    """Return one array in the byte order the machine reads, as it is written.
+
+    Args:
+        values: The array, in any byte order.
+        dtype: The dtype it is written as, or None to keep its own.
+
+    Returns:
+        stored: The array as it is written.
+    """
+    values = native(values)
+    return values.astype(dtype or values.dtype, copy=False)
+
+
 def write_sample(
     held: Sample, layout: Layout, frame: Tile, identifier: str, root: Path
 ) -> Path:
@@ -82,10 +96,9 @@ def write_sample(
         alongside = getattr(held, name)
         if alongside is None:
             raise ValueError(f"{layout.instrument} declares {name} but holds none.")
-        arrays[name] = native(alongside)
-    values = native(getattr(held, layout.measurement))
-    arrays[layout.measurement] = values.astype(
-        layout.stored or values.dtype, copy=False
+        arrays[name] = stored_array(alongside, layout.stored_beside.get(name))
+    arrays[layout.measurement] = stored_array(
+        getattr(held, layout.measurement), layout.stored
     )
     arrays[NORTH] = np.asarray(position.north, dtype=STORED)
     arrays[EAST] = np.asarray(position.east, dtype=STORED)

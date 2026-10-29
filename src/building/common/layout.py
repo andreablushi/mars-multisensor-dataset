@@ -25,6 +25,8 @@ class Layout:
         measurement: The sample attribute holding the main array, and its stored name.
         beside: The other arrays stored with it, by name, with the dims each spans.
         stored: The dtype the measurement is written as, or None to keep its own.
+        stored_beside: The dtype some of the other arrays are written as, by name,
+            the rest keeping their own.
         band_centres_nm: The band centres every sample shares, in nm, or None when
             the instrument has no wavelength axis.
     """
@@ -35,6 +37,7 @@ class Layout:
     measurement: str
     beside: dict[str, tuple[str, ...]] = field(default_factory=dict)
     stored: str | None = None
+    stored_beside: dict[str, str] = field(default_factory=dict)
     band_centres_nm: tuple[float, ...] | None = None
 
     def axis_indices(self, kind: Axis) -> tuple[int, ...]:

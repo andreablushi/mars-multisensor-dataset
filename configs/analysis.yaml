@@ -28,8 +28,8 @@ loc: f
 criteria:
   # The coverage each instrument is asked of a tile, as a share of its area.
   constraints:
-    - {CTX: 0.60}
-    - {CRISM: 0.50}
+    - {CTX: 0.80}
+    - {CRISM: 0.80}
     - {SHARAD: 0.0}
 
   # The pixels an instrument has to land on a tile to count, powers of two preferred
@@ -39,10 +39,10 @@ criteria:
   solar_zenith: {CTX: 90.0, CRISM: 85.0, SHARAD: 100.0}
 
   # How far Mars may turn inside a window, in degrees of Ls; 90 is one season
-  span_ls: 90.0
+  span_ls: 36000.0
 
   # The share of a tile's ground one degree of Ls inside a window costs its score
-  ls_price: 0.0019
+  ls_price: 0.0
 
   # What instruments are excluded from the window, and kept whenever they came
   timeless: [SHARAD]
@@ -76,3 +76,5 @@ ground_truth:
     ice_poor_plains:
       names: [Meridiani Planum, Daedalia Planum, Hesperia Planum, Syrtis Major Planum, Solis Planum]
       latitudes: [[-30.0, 30.0]]
+    medusae_fossae:
+      names: [Lucus Planum, Eumenides Dorsum, Gordii Dorsum, Amazonis Mensa, Medusae Fossae, Medusae Sulci, Zephyria Planum, Aeolis Planum, Zephyria Mensae]

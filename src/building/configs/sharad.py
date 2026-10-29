@@ -44,6 +44,8 @@ LAYOUT = Layout(
         "incidence_deg": ("trace",),
         "spacecraft_altitude_km": ("trace",),
     },
+    stored="f2",
+    stored_beside={"clutter": "f2"},
 )
 
 # What ODE publishes SHARAD under.
