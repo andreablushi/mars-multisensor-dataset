@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable, Iterator, Sequence
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack
 from pathlib import Path
 
@@ -123,18 +123,14 @@ def build_outcomes(
     """
     progress = Progress(len(plan.jobs))
     # A download waits on the network and a build on the cores, so the pools differ.
-    with (
-        cancellable_pool(ProcessPoolExecutor(settings.workers)) as building,
-        ExitStack() as pools,
-        printing.watch(progress),
-    ):
+    with ExitStack() as pools, printing.watch(progress):
         fetching = {
             archive: pools.enter_context(
                 cancellable_pool(ThreadPoolExecutor(downloads))
             )
             for archive, downloads in settings.downloads.items()
         }
-        scheduler = Scheduler(ode, fetching, building, root, settings, progress)
+        scheduler = Scheduler(ode, fetching, pools, root, settings, progress)
         outcomes = scheduler.outcomes(plan.jobs)
         if checkpoint is not None:
             outcomes = _checkpointed(outcomes, plan, root, checkpoint)

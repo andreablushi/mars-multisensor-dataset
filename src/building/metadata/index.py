@@ -7,7 +7,7 @@ from pathlib import Path
 
 from building import paths
 from building.metadata import dataset, observation, tile
-from building.models.job import Outcome, Plan, lacking_tiles
+from building.models.job import Outcome, Plan
 from common.disk import parquet
 
 
@@ -36,7 +36,7 @@ def write_index(
     """Write the index over every crop of the tiles covered, not this run's alone.
 
     Args:
-        plan: What the build set out to do, whose complete tiles alone the index names.
+        plan: What the build set out to do, whose tiles the index names.
         collected: What every job of this run left.
         root: The dataset's own root directory, made when missing.
         on_disk: Whether an earlier record is kept only while its crop is on disk.
@@ -44,8 +44,7 @@ def write_index(
     written = [held for one in collected for held in one.records]
     rewritten = {one.identity for one in written}
     emptied = {name for one in collected for name in one.emptied}
-    left_out = emptied.union(*lacking_tiles(collected).values())
-    tiles = {one.identity: one for one in plan.tiles if one.identity not in left_out}
+    tiles = {one.identity: one for one in plan.tiles if one.identity not in emptied}
     # What an earlier run left, less what this run rewrote or deleted.
     records = [
         one

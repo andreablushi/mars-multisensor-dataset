@@ -171,7 +171,7 @@ def print_summary(
         return
     console.print(f"[yellow]{len(failed)} products failed[/yellow]")
     console.print(
-        f"[yellow]{len(incomplete):,} tiles lack a product and are left out, "
+        f"[yellow]{len(incomplete):,} tiles lack a product, "
         + ", ".join(
             f"{name} on {len(held):,}" for name, held in sorted(lacking.items())
         )

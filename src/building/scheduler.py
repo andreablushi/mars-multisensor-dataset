@@ -8,6 +8,8 @@ import queue
 import threading
 from collections.abc import Iterator
 from concurrent.futures import Future, ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
+from contextlib import ExitStack
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -20,6 +22,7 @@ from building.models.job import Job, Outcome
 from building.models.progress import Progress, Stage
 from building.models.settings import BuildSettings
 from building.preprocessing.common import store
+from common.pool import cancellable_pool
 
 
 class Scheduler:
@@ -29,7 +32,7 @@ class Scheduler:
         self,
         ode: httpx.Client,
         fetching: dict[str, ThreadPoolExecutor],
-        building: ProcessPoolExecutor,
+        pools: ExitStack,
         root: Path,
         settings: BuildSettings,
         progress: Progress,
@@ -39,7 +42,7 @@ class Scheduler:
         Args:
             ode: The client every download is asked through.
             fetching: The threads the downloads run on, by the archive they wait on.
-            building: The processes the builds run on.
+            pools: What every build pool is opened on, and shut down with.
             root: The dataset's own root directory, which every build writes in.
             settings: The settled choices, bounding how many products run at once
                 and handing each reader its own.
@@ -47,7 +50,9 @@ class Scheduler:
         """
         self._ode = ode
         self._fetching = fetching
-        self._building = building
+        self._pools = pools
+        self._workers = settings.workers
+        self._building = self._building_pool()
         self._root = root
         self._preprocessing = settings.preprocessing
         self._progress = progress
@@ -61,6 +66,12 @@ class Scheduler:
         self._arrived = itertools.count()
         self._cores = settings.workers
         self._lock = threading.Lock()
+
+    def _building_pool(self) -> ProcessPoolExecutor:
+        """Return a fresh pool of build processes, shut down when the build ends."""
+        return self._pools.enter_context(
+            cancellable_pool(ProcessPoolExecutor(self._workers))
+        )
 
     def outcomes(self, jobs: tuple[Job, ...]) -> Iterator[Outcome]:
         """Fetch every product and build it the moment a core is free, in any order.
@@ -134,22 +145,26 @@ class Scheduler:
                     return
                 self._cores -= 1
                 _, _, job = heapq.heappop(self._ready)
+                pool = self._building
             self._progress.moved(job, Stage.BUILDING)
             try:
-                started = self._building.submit(
+                started = pool.submit(
                     build_product, job, self._root, self._preprocessing
                 )
             except Exception as error:  # noqa: BLE001
                 # The pool is closing, so this builds nowhere.
                 started = Future()
                 started.set_exception(error)
-            started.add_done_callback(partial(self._built, job))
+            started.add_done_callback(partial(self._built, job, pool))
 
-    def _built(self, job: Job, done: Future[Outcome]) -> None:
+    def _built(
+        self, job: Job, pool: ProcessPoolExecutor, done: Future[Outcome]
+    ) -> None:
         """Record what one build left, give its core back, and start the next.
 
         Args:
             job: The job that was built.
+            pool: The pool it was handed to.
             done: What the build pool left, a worker it lost included.
         """
         try:
@@ -158,6 +173,8 @@ class Scheduler:
             outcome = Outcome(job, error=error)
         with self._lock:
             self._cores += 1
+            if isinstance(outcome.error, BrokenProcessPool) and pool is self._building:
+                self._building = self._building_pool()
         self._finish(outcome)
         self._dispatch()
 
