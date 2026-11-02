@@ -179,14 +179,17 @@ class Scheduler:
         self._dispatch()
 
     def _finish(self, outcome: Outcome) -> None:
-        """Record what one job left and give back its archive's place.
+        """Record what one job left, delete a failed one's download, and free its place.
 
         Args:
             outcome: What the job left, whether it was built or failed.
         """
+        instrument = INSTRUMENTS[outcome.job.instrument]
+        if outcome.failed and instrument.discard:
+            instrument.discard(outcome.job.identifier)
         self._progress.finish(outcome.job)
         self._finished.put(outcome)
-        self._places[INSTRUMENTS[outcome.job.instrument].archive].release()
+        self._places[instrument.archive].release()
 
 
 def build_product(
