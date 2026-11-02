@@ -32,7 +32,7 @@ from common.models.tile import Tile
 
 
 class Archive(StrEnum):
-    """The lanes downloads wait on: one per archive, and the SPICE server."""
+    """The lanes downloads wait on: one per archive, and the SPICE kernels."""
 
     JPL = "jpl"
     WUSTL = "wustl"
@@ -52,7 +52,7 @@ class Instrument:
         archive: Which archive its products are downloaded from.
         worker_bytes: What one build holds of its largest product at once.
         discard: What deletes the built product, or None for a small archive.
-        place: What readies a fetched product on the SPICE server, or None.
+        place: What attaches a fetched product's SPICE kernels, or None.
         observation_id: What reads a kept product's observation, or None.
         grid_of: What names the one product that covers a tile, or None.
     """
@@ -64,7 +64,7 @@ class Instrument:
     archive: Archive
     worker_bytes: int
     discard: Callable[[str], None] | None = None
-    place: Callable[[str], None] | None = None
+    place: Callable[[str, httpx.Client], None] | None = None
     observation_id: Callable[[str], str | None] | None = None
     grid_of: Callable[[Tile], str] | None = None
 

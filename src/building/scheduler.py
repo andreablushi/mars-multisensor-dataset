@@ -105,7 +105,7 @@ class Scheduler:
             if instrument.place is None:
                 self._lined_up(job)
                 return
-            # Placing waits on the SPICE server, so it never holds an archive's thread
+            # Placing waits on the SPICE kernels, so it never holds an archive's thread
             self._progress.moved(job, Stage.PLACING)
             self._fetching[Archive.SPICE].submit(self._placed, job)
         except Exception as error:  # noqa: BLE001
@@ -118,7 +118,7 @@ class Scheduler:
             job: The product to place.
         """
         try:
-            INSTRUMENTS[job.instrument].place(job.identifier)
+            INSTRUMENTS[job.instrument].place(job.identifier, self._ode)
         except Exception as error:  # noqa: BLE001
             self._finish(Outcome(job, error=error))
         else:

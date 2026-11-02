@@ -3,25 +3,15 @@
 from __future__ import annotations
 
 import csv
-import subprocess
-import time
+from datetime import datetime
 
 import httpx
 
 from building.configs import ctx as configs
-from building.download import archive
-from building.preprocessing.ctx.isis import run_isis
+from building.download import archive, kernels
+from building.preprocessing.ctx.isis import read_cube_label, run_isis
 from common.disk.files import write_json
-from common.fetch.gate import Gate
 from common.models.tile import Tile
-
-SPICE_DEADLINE = 1800.0
-
-SPICEINIT_TIMEOUT = 300.0
-
-SPICE_REFUSED = "talking to the server"
-
-SPICE = Gate()
 
 
 def fetch(identifier: str, client: httpx.Client, frames: tuple[Tile, ...]) -> None:
@@ -80,14 +70,15 @@ def index_azimuths(entry: dict) -> dict[str, str]:
     return {key: row[at].strip() for key, at in configs.INDEX_AZIMUTHS.items()}
 
 
-def place(identifier: str) -> None:
-    """Import a fetched raw scan into ISIS and place it with the SPICE server.
+def place(identifier: str, client: httpx.Client) -> None:
+    """Import a fetched raw scan into ISIS and attach the SPICE kernels it was taken at.
 
     Args:
         identifier: The observation to place, its raw scan already fetched.
+        client: The client every kernel is downloaded over.
 
     Raises:
-        RuntimeError: When ISIS fails to import it, or is refused past the deadline.
+        RuntimeError: When ISIS fails to import or place it.
     """
     cube = configs.CACHE.files(identifier, identifier)[configs.CUBE_SUFFIX]
     if cube.exists():
@@ -95,22 +86,8 @@ def place(identifier: str) -> None:
     raw = cube.with_suffix(configs.IMAGE_SUFFIX)
     staged = cube.with_suffix(f".staged{configs.CUBE_SUFFIX}")
     run_isis("mroctx2isis", {"from": raw, "to": staged})
-    # While the server refuses, one lane probes it and the rest wait to be woken
-    give_up_at = time.monotonic() + SPICE_DEADLINE
-    while True:
-        if not SPICE.wait(give_up_at):
-            raise RuntimeError("spiceinit: the SPICE server refused past the deadline")
-        try:
-            run_isis("spiceinit", {"from": staged, "web": "yes"}, SPICEINIT_TIMEOUT)
-        except subprocess.TimeoutExpired:
-            SPICE.refused()
-        except RuntimeError as error:
-            if SPICE_REFUSED not in str(error):
-                SPICE.answered()
-                raise
-            SPICE.refused()
-        else:
-            SPICE.answered()
-            break
+    start = datetime.fromisoformat(read_cube_label(staged)["StartTime"])
+    with kernels.held_kernels(start.replace(tzinfo=None), client):
+        run_isis("spiceinit", {"from": staged})
     staged.replace(cube)
     raw.unlink()

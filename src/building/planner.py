@@ -76,6 +76,11 @@ def build_plan(
             jobs.append(replace(job, frames=tuple(left)))
     # Heaviest first, weighed by the product and not by how many tiles want it.
     jobs.sort(
-        key=lambda job: (-INSTRUMENTS[job.instrument].worker_bytes, -len(job.frames))
+        key=lambda job: (
+            -INSTRUMENTS[job.instrument].worker_bytes,
+            job.t_start.timestamp()
+            if INSTRUMENTS[job.instrument].place and job.t_start
+            else -len(job.frames),
+        )
     )
     return Plan(tuple(jobs), tuple(tiles), skipped=skipped, unread=unread)
