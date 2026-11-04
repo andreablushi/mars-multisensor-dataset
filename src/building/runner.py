@@ -25,7 +25,7 @@ from common.console import print_failure
 from common.fetch.http import TLS_CONTEXT
 from common.pool import cancellable_pool
 
-CHECKPOINT_BYTES = 100 * 1024**3
+CHECKPOINT_BYTES = 5 * 1024**3
 
 
 def build_dataset(

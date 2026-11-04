@@ -28,18 +28,18 @@ resources:
     cpu: 16
     memory: 32Gi
     disk: 64Gi
-  # A build's disk holds 100 GiB of crops before they go up, beside the products still being cut
+  # A build's disk holds 5 GiB of crops before they go up, beside the products still being cut
   build_training:
     profile: cpu
     shared: true
     isis: true
     cpu: 16
     memory: 56Gi
-    disk: 150Gi
+    disk: 64Gi
   build_evaluation:
     profile: cpu
     shared: false
     isis: true
     cpu: 10
     memory: 56Gi
-    disk: 120Gi
+    disk: 64Gi
