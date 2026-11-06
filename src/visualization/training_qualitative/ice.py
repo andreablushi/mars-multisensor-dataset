@@ -8,9 +8,8 @@ import ipywidgets as widgets
 import numpy as np
 
 from analysis.ground_truth.swim.labels import read_ice_labels
-from analysis.ground_truth.swim.models import IceLabel, SwimSettings
-from analysis.ground_truth.swim.sample import grid_points
-from common.config import analysis_settings
+from analysis.ground_truth.swim.models import IceLabel
+from analysis.ground_truth.swim.sample import GRID_POINTS, labels_positions
 from visualization import mosaic, panels
 from visualization.placement import PlacedTile, outlined_board, placed_tile
 from visualization.training_qualitative import config
@@ -18,13 +17,12 @@ from visualization.training_qualitative import config
 
 def plot_ice() -> widgets.HBox:
     """Show each hardcoded tile with the ice SWIM finds between 1 and 5 m over it."""
-    settings = analysis_settings().ground_truth.swim
     by_tile = {label.tile: label for label in read_ice_labels()}
     shown = []
     for title, tile in config.ICE_SAMPLES.items():
         placed = placed_tile(tile)
         space = mosaic.fetched(
-            placed.crop(), partial(ice_map, placed, by_tile[tile], settings, title)
+            placed.crop(), partial(ice_map, placed, by_tile[tile], title)
         )
         space.layout = config.ICE_PANEL
         shown.append(space)
@@ -34,7 +32,6 @@ def plot_ice() -> widgets.HBox:
 def ice_map(
     placed: PlacedTile,
     label: IceLabel,
-    settings: SwimSettings,
     title: str,
     image: bytes,
 ) -> widgets.Image:
@@ -43,17 +40,16 @@ def ice_map(
     Args:
         placed: Where the tile falls in lon and lat.
         label: The ice SWIM finds under its grid.
-        settings: The settled choices the grid was sampled with.
         title: What the map is titled.
         image: The tile's crop, as the mosaic fetched it.
 
     Returns:
         map: The map, rendered.
     """
-    lon, lat = grid_points(
-        np.array([label.centre_lon]), np.array([label.centre_lat]), settings
+    lon, lat = labels_positions(
+        np.array([label.centre_lon]), np.array([label.centre_lat])
     )
-    side = (settings.points, settings.points)
+    side = (GRID_POINTS, GRID_POINTS)
     figure, axis = outlined_board(placed, (7.0, 6.0), image, zorder=3)
     shown = axis.pcolormesh(
         placed.around(lon).reshape(side),

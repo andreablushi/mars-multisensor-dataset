@@ -15,25 +15,25 @@ from analysis.partition import Tessellate
 from common.maths.geodesy import SPHEROID
 from common.maths.physics import METRES_PER_KM
 
-ICY_SHARE = 0.5
+GRID_POINTS = 11
+GRID_SPACING_KM = 3.0
 
 
-def grid_points(
-    centre_lon: np.ndarray, centre_lat: np.ndarray, settings: SwimSettings
+def labels_positions(
+    centre_lon: np.ndarray, centre_lat: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return where every tile's grid points stand, rows from the north.
+    """Return where every tile's labelled points stand, rows from the north.
 
     Args:
         centre_lon: The longitude each tile is centred on, in degrees. (T,)
         centre_lat: The latitude each tile is centred on, in degrees. (T,)
-        settings: The settled choices, sizing the grid.
 
     Returns:
         lon: The longitude of every point, -180 to 180. (T, P * P)
         lat: The latitude of every point. (T, P * P)
     """
-    steps = (np.arange(settings.points) - (settings.points - 1) / 2) * (
-        settings.spacing_km * METRES_PER_KM
+    steps = (np.arange(GRID_POINTS) - (GRID_POINTS - 1) / 2) * (
+        GRID_SPACING_KM * METRES_PER_KM
     )
     north, east = np.meshgrid(steps[::-1], steps, indexing="ij")
     # Placed by the same geodesic east and north of the centre the tokens are
@@ -66,10 +66,10 @@ def ice_labels(grid: Tessellate, settings: SwimSettings) -> list[IceLabel]:
         if -NORTH_LAT <= tile.min_lat and tile.max_lat <= NORTH_LAT
     ]
     centres = np.array([(tile.centre_lon, tile.centre_lat) for tile in mapped])
-    pixels = map_pixels(*grid_points(centres[:, 0], centres[:, 1], settings))
+    pixels = map_pixels(*labels_positions(centres[:, 0], centres[:, 1]))
     shallow, deep = (read_consistency_map(layer)[pixels] for layer in LAYERS)
-    icy_shallow = np.mean(shallow >= settings.threshold_1_5m, axis=1) >= ICY_SHARE
-    icy_deep = np.mean(deep >= settings.threshold_5m, axis=1) >= ICY_SHARE
+    icy_shallow = shallow >= settings.threshold_1_5m
+    icy_deep = deep >= settings.threshold_5m
     return [
         IceLabel(
             tile=tile.name,
@@ -77,8 +77,10 @@ def ice_labels(grid: Tessellate, settings: SwimSettings) -> list[IceLabel]:
             centre_lat=float(lat),
             consistency_1_5m=tuple(shallow[at].tolist()),
             consistency_5m=tuple(deep[at].tolist()),
-            ice_1_5m=bool(icy_shallow[at]),
-            ice_5m=bool(icy_deep[at]),
+            icy_points_1_5m=tuple(icy_shallow[at].tolist()),
+            icy_points_5m=tuple(icy_deep[at].tolist()),
+            ice_1_5m=bool(np.mean(icy_shallow[at]) >= settings.icy_share),
+            ice_5m=bool(np.mean(icy_deep[at]) >= settings.icy_share),
         )
         for at, (tile, (lon, lat)) in enumerate(zip(mapped, centres, strict=True))
     ]
