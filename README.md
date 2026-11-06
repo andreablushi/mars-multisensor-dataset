@@ -77,7 +77,7 @@ uv run --group notebook jupyter lab
 
 - `notebooks/training_qualitative.ipynb`: one tile at a time, picked by latitude and longitude.
 - `notebooks/training_quantitative.ipynb`: what the selection kept of every tile.
-- `notebooks/evaluation_quantitative.ipynb`: the evaluation classes, where they lie, and what the instruments land on them.
+- `notebooks/evaluation_quantitative.ipynb`: the evaluation classes, where they lie, and what the instruments land on them, then the SWIM ice under every tile.
 - `notebooks/annotation.ipynb`: every labelled tile of the evaluation classes on the THEMIS mosaic, in draw order, to accept or reject.
 
 ## Uploading the annotation
