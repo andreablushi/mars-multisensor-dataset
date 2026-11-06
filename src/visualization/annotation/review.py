@@ -9,17 +9,17 @@ from html import escape
 
 import ipywidgets as widgets
 
-from analysis.ground_truth import catalogue
-from analysis.ground_truth.draw import drawn_labels, ranked_tiles
-from analysis.ground_truth.models.label import Label
-from analysis.ground_truth.models.settings import GroundTruthSettings
+from analysis.ground_truth.nomenclature import catalogue
+from analysis.ground_truth.nomenclature.draw import drawn_labels, ranked_tiles
+from analysis.ground_truth.nomenclature.models.label import Label
+from analysis.ground_truth.nomenclature.models.settings import NomenclatureSettings
 from visualization import panels
 from visualization.annotation import config
 from visualization.labelled import TileStepper
 
 
 def plot(
-    labels: Sequence[Label], settings: GroundTruthSettings, verdicts: dict[str, bool]
+    labels: Sequence[Label], settings: NomenclatureSettings, verdicts: dict[str, bool]
 ) -> widgets.Widget:
     """Step through every labelled tile of a class in draw order, to judge it."""
     by_tile = {label.tile: label for label in labels}
@@ -34,7 +34,7 @@ def plot(
 
 
 def table(
-    labels: Sequence[Label], settings: GroundTruthSettings, verdicts: dict[str, bool]
+    labels: Sequence[Label], settings: NomenclatureSettings, verdicts: dict[str, bool]
 ) -> widgets.Widget:
     """Tabulate every class's verdicts so far, and the draw they leave."""
     refused = catalogue.refused_tiles(verdicts)

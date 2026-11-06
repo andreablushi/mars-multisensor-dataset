@@ -14,10 +14,10 @@ from rich.console import Console
 from analysis import paths, planner, runner
 from analysis.console import print_summary
 from analysis.coverage import artifacts as coverage_artifacts
-from analysis.ground_truth import catalogue
-from analysis.ground_truth.candidates import candidate_labels
-from analysis.ground_truth.draw import drawn_labels
-from analysis.ground_truth.models.label import Label
+from analysis.ground_truth.nomenclature import catalogue
+from analysis.ground_truth.nomenclature.candidates import candidate_labels
+from analysis.ground_truth.nomenclature.draw import drawn_labels
+from analysis.ground_truth.nomenclature.models.label import Label
 from analysis.metadata.fetchers.ancillary import write_distortions
 from analysis.selector import select
 from analysis.selector.artifacts import read_selected_tiles

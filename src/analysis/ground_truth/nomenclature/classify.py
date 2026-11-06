@@ -6,13 +6,16 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from analysis.ground_truth.models.feature import ClassifiedFeatures, Feature
-from analysis.ground_truth.models.settings import GroundTruthSettings
+from analysis.ground_truth.nomenclature.models.feature import (
+    ClassifiedFeatures,
+    Feature,
+)
+from analysis.ground_truth.nomenclature.models.settings import NomenclatureSettings
 from common.maths import box
 
 
 def classified_features(
-    features: Sequence[Feature], settings: GroundTruthSettings
+    features: Sequence[Feature], settings: NomenclatureSettings
 ) -> ClassifiedFeatures:
     """Read every feature into the classes it belongs to, and say which ones count.
 

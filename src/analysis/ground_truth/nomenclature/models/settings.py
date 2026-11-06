@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from analysis.ground_truth.models.class_rule import ClassRule
+from analysis.ground_truth.nomenclature.models.class_rule import ClassRule
 
 
 @dataclass(slots=True)
-class GroundTruthSettings:
+class NomenclatureSettings:
     """The settled choices for labelling the tiles the selection kept.
 
     Attributes:

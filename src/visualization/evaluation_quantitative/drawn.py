@@ -6,14 +6,14 @@ from collections.abc import Sequence
 
 import ipywidgets as widgets
 
-from analysis.ground_truth.models.label import Label
-from analysis.ground_truth.models.settings import GroundTruthSettings
+from analysis.ground_truth.nomenclature.models.label import Label
+from analysis.ground_truth.nomenclature.models.settings import NomenclatureSettings
 from visualization import panels
 from visualization.evaluation_quantitative import config
 from visualization.labelled import TileStepper
 
 
-def plot(labels: Sequence[Label], settings: GroundTruthSettings) -> widgets.Widget:
+def plot(labels: Sequence[Label], settings: NomenclatureSettings) -> widgets.Widget:
     """Step through the drawn tiles of every class over the mosaic."""
     grouped = drawn_by_class(labels, settings)
     if not grouped:
@@ -23,7 +23,7 @@ def plot(labels: Sequence[Label], settings: GroundTruthSettings) -> widgets.Widg
 
 
 def drawn_by_class(
-    labels: Sequence[Label], settings: GroundTruthSettings
+    labels: Sequence[Label], settings: NomenclatureSettings
 ) -> dict[str, list[Label]]:
     """Group the drawn tiles of every class holding any, in config order."""
     return {

@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from analysis.ground_truth.models.class_rule import ClassRule
-from analysis.ground_truth.models.feature import ClassifiedFeatures, Feature
+from analysis.ground_truth.nomenclature.models.class_rule import ClassRule
+from analysis.ground_truth.nomenclature.models.feature import (
+    ClassifiedFeatures,
+    Feature,
+)
 from common.maths import box
 from common.maths.geodesy import bbox_centre, northward_m
 from common.maths.physics import METRES_PER_KM

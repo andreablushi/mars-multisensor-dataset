@@ -6,7 +6,7 @@ from __future__ import annotations
 from dhub import build, store
 from digitalhub_runtime_python import handler
 
-from analysis.ground_truth import catalogue
+from analysis.ground_truth.nomenclature import catalogue
 from analysis.selector.artifacts import read_selection
 from analysis.selector.models.selection import Selection
 from building import draw

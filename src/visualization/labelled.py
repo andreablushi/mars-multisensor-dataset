@@ -8,7 +8,7 @@ from html import escape
 
 import ipywidgets as widgets
 
-from analysis.ground_truth.models.label import Label
+from analysis.ground_truth.nomenclature.models.label import Label
 from visualization import config, mosaic, panels
 from visualization.placement import placed_tile, tile_map
 

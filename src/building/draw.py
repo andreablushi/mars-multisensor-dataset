@@ -6,7 +6,7 @@ import random
 from collections.abc import Collection, Sequence
 from dataclasses import replace
 
-from analysis.ground_truth.models.label import Label
+from analysis.ground_truth.nomenclature.models.label import Label
 from analysis.selector.models.selection import Selection
 from building.models.settings import TrainingSettings
 from common.maths import box
