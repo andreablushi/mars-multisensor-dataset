@@ -1,0 +1,46 @@
+"""One tile's ice at two depths, and how the SWIM maps are sampled under it."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(slots=True)
+class SwimSettings:
+    """The settled choices for sampling the SWIM maps under every tile.
+
+    Attributes:
+        points: How many grid points run along each side of a tile.
+        spacing_km: The ground between two neighbouring points, in kilometres.
+        threshold_1_5m: The consistency from which a point is icy between 1 and 5 m.
+        threshold_5m: The consistency from which a point is icy below 5 m.
+    """
+
+    points: int
+    spacing_km: float
+    threshold_1_5m: float
+    threshold_5m: float
+
+
+@dataclass(frozen=True, slots=True)
+class IceLabel:
+    """One tile, and the ice SWIM finds under its grid at two depths.
+
+    Attributes:
+        tile: The tile's name, such as "b123_c0456".
+        centre_lon: The longitude its grid is centred on, -180 to 180.
+        centre_lat: The latitude its grid is centred on, in degrees.
+        consistency_1_5m: The ice consistency between 1 and 5 m at every point,
+            rows from the north and points from the west. (P * P,)
+        consistency_5m: The same below 5 m. (P * P,)
+        ice_1_5m: Whether at least half its points are icy between 1 and 5 m.
+        ice_5m: Whether at least half its points are icy below 5 m.
+    """
+
+    tile: str
+    centre_lon: float
+    centre_lat: float
+    consistency_1_5m: tuple[float, ...]
+    consistency_5m: tuple[float, ...]
+    ice_1_5m: bool
+    ice_5m: bool

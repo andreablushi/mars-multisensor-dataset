@@ -21,6 +21,7 @@ ARTIFACTS = {
     "selection": analysis_paths.SELECTION_ROOT,
     "stats": analysis_paths.STATS_ROOT,
     "labels": analysis_paths.LABELS_ROOT,
+    "swim": analysis_paths.SWIM_ROOT,
 }
 
 

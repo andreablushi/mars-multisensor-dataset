@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from analysis.ground_truth.nomenclature.models.settings import NomenclatureSettings
+from analysis.ground_truth.common.settings import GroundTruthSettings
 from analysis.models.instrument import InstrumentSet
 from analysis.selector.models.criteria import Criteria
 
@@ -34,7 +34,7 @@ class AnalysisSettings:
     loc: str
     workers: int
     criteria: Criteria
-    ground_truth: NomenclatureSettings
+    ground_truth: GroundTruthSettings
     sharad_distortion: str
 
     @property
