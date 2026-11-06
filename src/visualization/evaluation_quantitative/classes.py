@@ -9,8 +9,8 @@ from functools import partial
 import ipywidgets as widgets
 from matplotlib.lines import Line2D
 
-from analysis.ground_truth.models.label import Label
-from analysis.ground_truth.models.settings import GroundTruthSettings
+from analysis.ground_truth.nomenclature.models.label import Label
+from analysis.ground_truth.nomenclature.models.settings import NomenclatureSettings
 from common.maths import geodesy
 from visualization import mosaic, panels
 from visualization.config import MARS_PIXELS
@@ -19,7 +19,7 @@ from visualization.evaluation_quantitative.drawn import drawn_by_class
 from visualization.panels import Row
 
 
-def table(labels: Sequence[Label], settings: GroundTruthSettings) -> widgets.Widget:
+def table(labels: Sequence[Label], settings: NomenclatureSettings) -> widgets.Widget:
     """Tabulate every class: what it is read from, and its tiles and features."""
     labelled = [(label.label, label.feature) for label in labels]
     drawn = [(label.label, label.feature) for label in labels if label.drawn]
@@ -40,7 +40,7 @@ def table(labels: Sequence[Label], settings: GroundTruthSettings) -> widgets.Wid
     return panels.written("Every class and what it is read from", config.CLASSES, rows)
 
 
-def plot(labels: Sequence[Label], settings: GroundTruthSettings) -> widgets.Widget:
+def plot(labels: Sequence[Label], settings: NomenclatureSettings) -> widgets.Widget:
     """Map every drawn tile at its centre, one colour per class."""
     grouped = drawn_by_class(labels, settings)
     if not grouped:

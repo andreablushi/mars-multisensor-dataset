@@ -7,13 +7,15 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 
-from analysis.ground_truth.catalogue import refused_tiles
-from analysis.ground_truth.models.label import Label
-from analysis.ground_truth.models.settings import GroundTruthSettings
+from analysis.ground_truth.nomenclature.catalogue import refused_tiles
+from analysis.ground_truth.nomenclature.models.label import Label
+from analysis.ground_truth.nomenclature.models.settings import NomenclatureSettings
 
 
 def ranked_tiles(
-    labels: Sequence[Label], settings: GroundTruthSettings, verdicts: Mapping[str, bool]
+    labels: Sequence[Label],
+    settings: NomenclatureSettings,
+    verdicts: Mapping[str, bool],
 ) -> dict[str, list[str]]:
     """Rank the tiles of every class in the order the balanced draw takes them.
 
@@ -62,7 +64,9 @@ def ranked_tiles(
 
 
 def drawn_labels(
-    labels: Sequence[Label], settings: GroundTruthSettings, verdicts: Mapping[str, bool]
+    labels: Sequence[Label],
+    settings: NomenclatureSettings,
+    verdicts: Mapping[str, bool],
 ) -> list[Label]:
     """Mark the tiles the draw takes, balanced or every accepted one.
 

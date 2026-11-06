@@ -16,7 +16,7 @@ CTX is calibrated and projected by [USGS ISIS](https://github.com/DOI-USGS/ISIS3
 Run the three scripts in this order, each here by default or on DigitalHub with `--dh`:
 
 ```bash
-uv run python scripts/analysis_pipeline.py   # coverage, ancillary, selection, stats and labels
+uv run python scripts/analysis_pipeline.py   # coverage, ancillary, selection, stats, labels and ice
 uv run python scripts/build_training.py      # the training dataset
 uv run python scripts/build_evaluation.py    # the evaluation dataset
 ```
@@ -65,6 +65,7 @@ chmod +x scripts/dh_download.sh   # once
 | `selection` | `data/analysis/selection/` |
 | `stats` | `data/analysis/stats/` |
 | `labels` | `data/analysis/labels/` |
+| `swim` | `data/analysis/swim/` |
 | `verdicts` | `data/analysis/` |
 
 ## Notebooks
@@ -76,7 +77,7 @@ uv run --group notebook jupyter lab
 
 - `notebooks/training_qualitative.ipynb`: one tile at a time, picked by latitude and longitude.
 - `notebooks/training_quantitative.ipynb`: what the selection kept of every tile.
-- `notebooks/evaluation_quantitative.ipynb`: the evaluation classes, where they lie, and what the instruments land on them.
+- `notebooks/evaluation_quantitative.ipynb`: the evaluation classes, where they lie, and what the instruments land on them, then the SWIM ice under every tile.
 - `notebooks/annotation.ipynb`: every labelled tile of the evaluation classes on the THEMIS mosaic, in draw order, to accept or reject.
 
 ## Uploading the annotation

@@ -6,11 +6,14 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from analysis.ground_truth.claim import crater_claims, texture_claims
-from analysis.ground_truth.classify import classified_features
-from analysis.ground_truth.models.feature import ClassifiedFeatures, Feature
-from analysis.ground_truth.models.label import Label
-from analysis.ground_truth.models.settings import GroundTruthSettings
+from analysis.ground_truth.nomenclature.claim import crater_claims, texture_claims
+from analysis.ground_truth.nomenclature.classify import classified_features
+from analysis.ground_truth.nomenclature.models.feature import (
+    ClassifiedFeatures,
+    Feature,
+)
+from analysis.ground_truth.nomenclature.models.label import Label
+from analysis.ground_truth.nomenclature.models.settings import NomenclatureSettings
 from analysis.selector.models.selection import SelectedTile
 from common.maths import box
 
@@ -18,7 +21,7 @@ from common.maths import box
 def candidate_labels(
     searched: Sequence[SelectedTile],
     features: Sequence[Feature],
-    settings: GroundTruthSettings,
+    settings: NomenclatureSettings,
 ) -> list[Label]:
     """Label every kept tile a single class claims, and leave out every other.
 

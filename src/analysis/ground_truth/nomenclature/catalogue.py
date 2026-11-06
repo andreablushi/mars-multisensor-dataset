@@ -9,8 +9,8 @@ from pathlib import Path
 import httpx
 
 from analysis import paths
-from analysis.ground_truth.models.feature import Feature
-from analysis.ground_truth.models.label import Label
+from analysis.ground_truth.nomenclature.models.feature import Feature
+from analysis.ground_truth.nomenclature.models.label import Label
 from common.disk import parquet
 from common.disk.files import read_json, read_jsonl, write_json, write_jsonl
 from common.fetch.http import TLS_CONTEXT

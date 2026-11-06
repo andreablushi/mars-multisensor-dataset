@@ -84,3 +84,12 @@ VIEWS = {
         (2529.0, 1506.0, 1080.0),
     ),
 }
+
+ICE_SAMPLES = {
+    "Ice rich, Deuteronilus Mensae": "b239_c0035",
+    "Ice poor, Meridiani Planum": "b175_c0657",
+}
+
+ICE_CMAP = "RdBu"
+ICE_ALPHA = 0.5
+ICE_PANEL = widgets.Layout(width="50%")

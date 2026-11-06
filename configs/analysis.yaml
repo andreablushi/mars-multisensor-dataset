@@ -52,29 +52,40 @@ criteria:
 
 # How the tiles the selection kept are labelled.
 ground_truth:
-  # The IAU descriptors the draw keeps tiles clear of first, beside every other class.
-  excluded: [Tholus, Patera, Mons, Vallis, Mensa, Collis, Cavus, Chasma, Catena, Rupes, Dorsum, Sulcus, Labes]
+  # The evaluation classes, read from the IAU nomenclature ODE publishes.
+  nomenclature:
+    # The IAU descriptors the draw keeps tiles clear of first, beside every other class.
+    excluded: [Tholus, Patera, Mons, Vallis, Mensa, Collis, Cavus, Chasma, Catena, Rupes, Dorsum, Sulcus, Labes]
 
-  # Whether every class is drawn to one size, or every accepted tile is drawn instead.
-  balanced: false
+    # Whether every class is drawn to one size, or every accepted tile is drawn instead.
+    balanced: false
 
-  # How many tiles are drawn of every class, or null for as many as the scarcest class holds.
-  per_class: null
+    # How many tiles are drawn of every class, or null for as many as the scarcest class holds.
+    per_class: null
 
-  # The number the draw is made with, so the set is the same every run.
-  seed: 42
+    # The number the draw is made with, so the set is the same every run.
+    seed: 42
 
-  # Every class, by the IAU descriptor or the named features it is read from.
-  classes:
-    crater: {descriptor: Crater, diameter_km: [24, 40]}
-    chaos: {descriptor: Chaos}
-    dune_field: {descriptor: Unda}
-    polar_layered_deposits: {names: [Planum Boreum, Planum Australe]}
-    ice_rich_plains:
-      names: [Arcadia Planitia, Utopia Planitia, Acidalia Planitia, Sisyphi Planum, Argentea Planum, Parva Planum, Malea Planum]
-      latitudes: [[38.0, 50.0], [-72.0, -55.0]]
-    ice_poor_plains:
-      names: [Meridiani Planum, Daedalia Planum, Hesperia Planum, Syrtis Major Planum, Solis Planum]
-      latitudes: [[-30.0, 30.0]]
-    medusae_fossae:
-      names: [Lucus Planum, Eumenides Dorsum, Gordii Dorsum, Amazonis Mensa, Medusae Fossae, Medusae Sulci, Zephyria Planum, Aeolis Planum, Zephyria Mensae]
+    # Every class, by the IAU descriptor or the named features it is read from.
+    classes:
+      crater: {descriptor: Crater, diameter_km: [24, 40]}
+      chaos: {descriptor: Chaos}
+      dune_field: {descriptor: Unda}
+      polar_layered_deposits: {names: [Planum Boreum, Planum Australe]}
+      ice_rich_plains:
+        names: [Arcadia Planitia, Utopia Planitia, Acidalia Planitia, Sisyphi Planum, Argentea Planum, Parva Planum, Malea Planum]
+        latitudes: [[38.0, 50.0], [-72.0, -55.0]]
+      ice_poor_plains:
+        names: [Meridiani Planum, Daedalia Planum, Hesperia Planum, Syrtis Major Planum, Solis Planum]
+        latitudes: [[-30.0, 30.0]]
+      medusae_fossae:
+        names: [Lucus Planum, Eumenides Dorsum, Gordii Dorsum, Amazonis Mensa, Medusae Fossae, Medusae Sulci, Zephyria Planum, Aeolis Planum, Zephyria Mensae]
+
+  # The subsurface ice the SWIM maps place under every tile between 60S and 60N.
+  swim:
+    # The consistency from which a point is icy, per depth (Morgan, Putzig et al. 2025).
+    threshold_1_5m: 0.4
+    threshold_5m: 0.5
+
+    # The share of a tile's points icy at a depth from which the tile is icy there.
+    icy_share: 0.5

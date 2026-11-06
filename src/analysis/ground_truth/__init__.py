@@ -1,1 +1,1 @@
-"""The evaluation labels: each kept tile's geology, and the set held out of training."""
+"""The ground truth of the tiles: their geology, and the ice beneath them."""

@@ -14,19 +14,23 @@ from rich.console import Console
 from analysis import paths, planner, runner
 from analysis.console import print_summary
 from analysis.coverage import artifacts as coverage_artifacts
-from analysis.ground_truth import catalogue
-from analysis.ground_truth.candidates import candidate_labels
-from analysis.ground_truth.draw import drawn_labels
-from analysis.ground_truth.models.label import Label
+from analysis.ground_truth.nomenclature import catalogue
+from analysis.ground_truth.nomenclature.candidates import candidate_labels
+from analysis.ground_truth.nomenclature.draw import drawn_labels
+from analysis.ground_truth.nomenclature.models.label import Label
+from analysis.ground_truth.swim import maps
+from analysis.ground_truth.swim.labels import write_ice_labels
+from analysis.ground_truth.swim.sample import ice_labels
 from analysis.metadata.fetchers.ancillary import write_distortions
 from analysis.selector import select
 from analysis.selector.artifacts import read_selected_tiles
 from analysis.stats.artifacts import write_stats
 from analysis.stats.dataset import dataset_stats
+from analysis.utils.tile_group import every_tile, tile_grid
 from common.config import analysis_settings
 from common.console import PLAIN_LOG_ENV
 
-SELECTION_ARTIFACTS = ("selection", "stats", "labels")
+SELECTION_ARTIFACTS = ("selection", "stats", "labels", "swim")
 
 
 def compute_coverage(force: bool = False, workers: int | None = None) -> int:
@@ -61,7 +65,7 @@ def compute_labels(force: bool) -> list[Label]:
     Returns:
         labels: Every labelled tile, the drawn ones marked so.
     """
-    settings = analysis_settings().ground_truth
+    settings = analysis_settings().ground_truth.nomenclature
     verdicts = catalogue.read_verdicts()
     refused = catalogue.refused_tiles(verdicts)
     labels = drawn_labels(
@@ -83,11 +87,31 @@ def compute_labels(force: bool) -> list[Label]:
     return labels
 
 
+def compute_ice_labels(force: bool) -> None:
+    """Label every tile the SWIM maps cover with the ice under it, and write it.
+
+    Args:
+        force: Whether to fetch the SWIM maps again rather than read them.
+    """
+    settings = analysis_settings().ground_truth.swim
+    maps.download_maps(force)
+    labelled = ice_labels(
+        {tile.name: tile for tile in every_tile(tile_grid())}, settings
+    )
+    write_ice_labels(labelled)
+    shallow = sum(one.ice_1_5m for one in labelled)
+    deep = sum(one.ice_5m for one in labelled)
+    print(
+        f"swim: {len(labelled):,} tiles, {shallow:,} icy at 1 to 5 m,"
+        f" {deep:,} below 5 m"
+    )
+
+
 def compute_selection(force: bool = False, workers: int | None = None) -> None:
     """Search every measured tile under the filter, label it, and read what both left.
 
     Args:
-        force: Whether to fetch the feature catalogue again rather than read it.
+        force: Whether to fetch the feature catalogue and the SWIM maps again.
         workers: How many processes to run on at once, or None for the config.
     """
     workers = analysis_settings(workers).workers
@@ -97,6 +121,7 @@ def compute_selection(force: bool = False, workers: int | None = None) -> None:
     print(f"selection: {kept:,} of {len(selection):,} tiles kept", flush=True)
     write_stats(dataset_stats(measured, selection))
     drawn = {labelled.tile for labelled in compute_labels(force) if labelled.drawn}
+    compute_ice_labels(force)
     write_stats(
         dataset_stats(
             [tile_stats for tile_stats in measured if tile_stats.window.tile in drawn],
@@ -121,6 +146,7 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
         selection: The folder of the tiles and observations kept.
         stats: The folder of what the filter left of the dataset.
         labels: The folder of every labelled tile.
+        swim: The folder of the SWIM maps and every tile they label.
 
     Raises:
         RuntimeError: When the measuring stage reported a failure.
@@ -155,13 +181,14 @@ def run_selection(project, force: bool = False, workers: int | None = None):
 
     Args:
         project: The DigitalHub project the folders are logged into.
-        force: Whether to fetch the feature catalogue again.
+        force: Whether to fetch the feature catalogue and the SWIM maps again.
         workers: How many processes to run on at once, as the job was sized.
 
     Returns:
         selection: The folder of the tiles and observations kept.
         stats: The folder of what the filter left of the dataset.
         labels: The folder of every labelled tile.
+        swim: The folder of the SWIM maps and every tile they label.
     """
     os.environ[PLAIN_LOG_ENV] = "1"
     for name in ("coverage", "metadata", "selection"):

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from analysis.ground_truth.models.settings import GroundTruthSettings
+from analysis.ground_truth.common.settings import GroundTruthSettings
 from analysis.models.instrument import InstrumentSet
 from analysis.selector.models.criteria import Criteria
 

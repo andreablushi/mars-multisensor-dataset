@@ -46,6 +46,7 @@ With no name, every one of them comes down.
   selection    the tiles and looks kept       -> data/analysis/selection
   stats        what the filter left of it     -> data/analysis/stats
   labels       the evaluation labels           -> data/analysis/labels
+  swim         the SWIM maps and ice labels    -> data/analysis/swim
   verdicts     the review of the drawn tiles   -> data/analysis
 EOF
 }
@@ -55,11 +56,11 @@ if [[ ${1-} == -h || ${1-} == --help ]]; then
     exit 0
 fi
 
-(($#)) || set -- coverage metadata selection stats labels verdicts
+(($#)) || set -- coverage metadata selection stats labels swim verdicts
 
 for name in "$@"; do
     case "$name" in
-        coverage | metadata | selection | stats | labels) download_one "$name" "data/analysis/$name" ;;
+        coverage | metadata | selection | stats | labels | swim) download_one "$name" "data/analysis/$name" ;;
         verdicts) download_one verdicts data/analysis shares ;;
         *)
             echo "nothing is published under \`$name\`" >&2

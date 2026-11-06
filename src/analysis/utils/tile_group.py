@@ -44,6 +44,15 @@ def group_of_tile_named(name: str) -> str:
     return group_of(tile_grid().tile_named(name))
 
 
+def every_tile(grid: Tessellate) -> list[Tile]:
+    """Return every tile of one grid, south to north and west to east."""
+    return [
+        grid.tile_of(band, column)
+        for band, count in enumerate(grid.columns)
+        for column in range(count)
+    ]
+
+
 def every_tile_group(grid: Tessellate, tile_group_deg: float) -> list[TileGroup]:
     """Return every group the tiles of one grid are grouped into.
 
@@ -56,10 +65,8 @@ def every_tile_group(grid: Tessellate, tile_group_deg: float) -> list[TileGroup]
     """
     bands = len(grid.columns)
     grouped: dict[str, list[Tile]] = {}
-    for band, count in enumerate(grid.columns):
-        for column in range(count):
-            tile = grid.tile_of(band, column)
-            grouped.setdefault(group_name(bands, tile, tile_group_deg), []).append(tile)
+    for tile in every_tile(grid):
+        grouped.setdefault(group_name(bands, tile, tile_group_deg), []).append(tile)
     groups = []
     for name, tiles in grouped.items():
         circling = any(tile.circles_a_pole for tile in tiles)
