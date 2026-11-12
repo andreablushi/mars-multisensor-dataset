@@ -1,4 +1,4 @@
-"""SHARAD power in dB, and the surface a crop's clutter simulation is aligned on."""
+"""SHARAD power in dB, and the average surface peak of a crop."""
 
 from __future__ import annotations
 
@@ -38,17 +38,3 @@ def mean_surface_peak(db: np.ndarray, measured: np.ndarray) -> float:
     """
     peaks = db[:, measured].max(axis=0)
     return float(np.mean(peaks, where=peaks > configs.CLUTTER_FLOOR_DB))
-
-
-def surface_aligned(db: np.ndarray, measured: np.ndarray) -> np.ndarray:
-    """Return a crop in dB less the average peak of its measured traces.
-
-    Args:
-        db: One crop in dB, delay samples by traces.
-        measured: Which of its traces were measured.
-
-    Returns:
-        aligned: The same grid, 0 dB at the average peak of the measured traces
-            that echo.
-    """
-    return db - mean_surface_peak(db, measured)

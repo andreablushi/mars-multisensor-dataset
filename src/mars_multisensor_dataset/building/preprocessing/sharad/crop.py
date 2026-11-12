@@ -27,7 +27,6 @@ from mars_multisensor_dataset.building.preprocessing.sharad.models.sample import
 )
 from mars_multisensor_dataset.building.preprocessing.sharad.normalize import (
     mean_surface_peak,
-    surface_aligned,
 )
 from mars_multisensor_dataset.common.models.tile import Tile
 
@@ -69,8 +68,8 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
 
     Returns:
         sample: The track cut to that tile, the radargram gated at its noise
-            threshold and the clutter aligned on the average surface of the traces
-            it measured there, or None where it measures none of it or holds no echo.
+            threshold and the clutter as simulated, or None where it measures
+            none of it or holds no echo.
     """
     held = cut.overlap(trace_position(observation.geometry), frame)
     if held is None:
@@ -95,7 +94,7 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
         inside=held.inside,
         valid=valid,
         power=gated,
-        clutter=surface_aligned(observation.clutter[:, traces], measured),
+        clutter=observation.clutter[:, traces],
         traces=traces,
         incidence_deg=geometry[SOLAR_ZENITH_FIELD],
         spacecraft_altitude_km=(

@@ -179,9 +179,9 @@ def model_input(name: str, sample: Sample) -> np.ndarray:
     return np.clip((standardised + config.CLIP) / (2 * config.CLIP), 0.0, 1.0)
 
 
-def sharad_model_input(preprocessed: np.ndarray) -> np.ndarray:
-    """Return a preprocessed SHARAD array standardised by the radargram's constants."""
-    return standardised_values(preprocessed, sharad.LAYOUT.axes, "SHARAD")
+def sharad_model_input(preprocessed: np.ndarray, name: str) -> np.ndarray:
+    """Return a preprocessed SHARAD array standardised by its own constants."""
+    return standardised_values(preprocessed, sharad.LAYOUT.axes, name)
 
 
 def sharad_power(identifier: str) -> np.ndarray:

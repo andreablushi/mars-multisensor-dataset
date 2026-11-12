@@ -11,7 +11,7 @@ def rows_below_atmosphere(power: np.ndarray, measured: np.ndarray) -> slice:
     """Return the delay rows from a guard above a crop's highest surface down.
 
     Args:
-        power: The crop as stored, dB over its surface, delay samples by traces.
+        power: The crop as stored, in dB, delay samples by traces.
         measured: Which of its traces were measured.
 
     Returns:

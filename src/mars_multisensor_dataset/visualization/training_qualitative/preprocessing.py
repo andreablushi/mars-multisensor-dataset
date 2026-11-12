@@ -16,6 +16,7 @@ from matplotlib.figure import Figure
 
 from mars_multisensor_dataset.analysis import paths
 from mars_multisensor_dataset.analysis.utils.tile_group import tile_grid
+from mars_multisensor_dataset.building.common.normalize import CLUTTER
 from mars_multisensor_dataset.building.configs import crism, ctx, sharad
 from mars_multisensor_dataset.building.models.instrument import INSTRUMENTS
 from mars_multisensor_dataset.building.preprocessing.common import cut, geometry
@@ -421,9 +422,8 @@ def sharad_images(
 
     Returns:
         rows: The radargram and its cluttergram whole, cropped in dB, the
-            radargram gated at its noise threshold and the cluttergram aligned on
-            its own surface, then both standardised alike, in one figure, then their
-            ranges.
+            radargram gated at its noise threshold beside the cluttergram as
+            simulated, then both standardised, in one figure, then their ranges.
         samples: The crop the build would write.
     """
     (identifier,) = identifiers
@@ -441,7 +441,12 @@ def sharad_images(
         np.where(sample.valid, values, np.nan)
         for values in (sample.power, sample.clutter)
     )
-    models = tuple(product.sharad_model_input(one) for one in preprocessed)
+    models = tuple(
+        product.sharad_model_input(one, name)
+        for one, name in zip(
+            preprocessed, (sharad.LAYOUT.instrument, CLUTTER), strict=True
+        )
+    )
     columns = {
         "Cropped sample (dB)": (cropped, None),
         "Preprocessed (dB)": (
