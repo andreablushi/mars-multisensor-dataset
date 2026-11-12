@@ -448,15 +448,9 @@ def sharad_images(
         )
     )
     columns = {
-        "Cropped sample (dB)": (cropped, None),
-        "Preprocessed (dB)": (
-            preprocessed,
-            shown_range(np.concatenate([one.ravel() for one in preprocessed])),
-        ),
-        "Model input (z)": (
-            models,
-            shown_range(np.concatenate([one.ravel() for one in models])),
-        ),
+        "Cropped sample (dB)": cropped,
+        "Preprocessed (dB)": preprocessed,
+        "Model input (z)": models,
     }
     figure = Figure(figsize=(24, 14), layout="constrained")
     figure.suptitle(f"{title}: {identifier} on {frame.name}", fontsize=14)
@@ -476,13 +470,13 @@ def sharad_images(
         panels.titled(axis, f"Downloaded sample\n{kind}")
         for edge in (sample.traces[0], sample.traces[-1]):
             axis.axvline(edge, color="tab:orange", linewidth=1.0)
-    for column, (text, (pair, shared)) in enumerate(columns.items(), start=1):
+    for column, (text, pair) in enumerate(columns.items(), start=1):
         for axis, crop, kind in zip(axes[:, column], pair, kinds, strict=True):
             shown_crop(
                 figure,
                 axis,
                 crop,
-                shared or shown_range(crop),
+                shown_range(crop),
                 f"{text}\n{kind}",
                 rows,
             )

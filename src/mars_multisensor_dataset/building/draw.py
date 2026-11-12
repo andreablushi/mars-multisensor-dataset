@@ -26,7 +26,8 @@ def draw_training(
         picked: What the search left of every tile it searched.
         settings: The settled choices for the build, whose share sizes it.
         labels: Every labelled tile, whose drawn boxes training never touches.
-        refused: The tiles the review refused, whose boxes training never touches.
+        refused: The tiles the review refused, whose own and label boxes training
+            never touches.
 
     Returns:
         kept: The selections to build, in the order the selection was written.
@@ -37,7 +38,8 @@ def draw_training(
     if wanted < len(kept):
         taken = sorted(random.Random(settings.seed).sample(taken, wanted))
     held_out = box.bounds_boxes(
-        one for one in labels if one.drawn or one.tile in refused
+        [one for one in labels if one.drawn or one.tile in refused]
+        + [one.tile for one in picked if one.tile.tile in refused]
     )
     # Held out after the draw, so a new evaluation draw never reshuffles training
     return [
