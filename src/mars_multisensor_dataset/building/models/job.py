@@ -41,7 +41,7 @@ class Outcome:
     Attributes:
         job: The job that was run.
         records: What each crop it wrote is, for the index to be built from.
-        emptied: The tiles its crop reached or measured none of, dropped whole.
+        emptied: The tiles its crop measured none of or held no whole patch of.
         error: The error raised, or None on success.
     """
 

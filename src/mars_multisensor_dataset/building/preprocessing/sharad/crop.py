@@ -6,6 +6,7 @@ from collections.abc import Sequence
 
 import numpy as np
 
+from mars_multisensor_dataset.building.configs import sharad as configs
 from mars_multisensor_dataset.building.preprocessing.common import cut
 from mars_multisensor_dataset.building.preprocessing.common.models.position import (
     Position,
@@ -27,6 +28,10 @@ from mars_multisensor_dataset.building.preprocessing.sharad.models.sample import
 )
 from mars_multisensor_dataset.building.preprocessing.sharad.normalize import (
     mean_surface_peak,
+)
+from mars_multisensor_dataset.building.preprocessing.sharad.window import (
+    FEWEST_ROWS,
+    rows_below_atmosphere,
 )
 from mars_multisensor_dataset.common.models.tile import Tile
 
@@ -69,7 +74,8 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
     Returns:
         sample: The track cut to that tile, the radargram gated at its noise
             threshold and the clutter as simulated, or None where it measures
-            none of it or holds no echo.
+            none of it, holds no echo, or keeps under `FEWEST_ROWS` rows below
+            its atmosphere.
     """
     held = cut.overlap(trace_position(observation.geometry), frame)
     if held is None:
@@ -87,6 +93,9 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
         return None
     gated = np.full(power.shape, FILL, power.dtype)
     gated[:, valid] = denoised(noise.averaged, noise.threshold, noise.spread)
+    below = rows_below_atmosphere(gated.astype(configs.LAYOUT.stored), measured)
+    if below.stop - below.start < FEWEST_ROWS:
+        return None
     geometry = observation.geometry[traces]
     return SharadSample(
         position=held.position,

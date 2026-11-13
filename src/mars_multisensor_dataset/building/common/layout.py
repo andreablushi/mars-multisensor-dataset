@@ -30,6 +30,8 @@ class Layout:
         band_centres_nm: The band centres every sample shares, in nm, or None when
             the instrument has no wavelength axis.
         described: The scalar sample attributes written into its description.
+        patch_ground: The samples one model patch spans on every ground axis, the
+            fewest a crop has to hold on each to be kept.
     """
 
     instrument: str
@@ -41,7 +43,14 @@ class Layout:
     stored_beside: dict[str, str] = field(default_factory=dict)
     band_centres_nm: tuple[float, ...] | None = None
     described: tuple[str, ...] = ()
+    patch_ground: int = 1
 
     def axis_indices(self, kind: Axis) -> tuple[int, ...]:
         """Return where every axis holding one kind sits in the measurement."""
         return tuple(at for at, holds in enumerate(self.axes) if holds == kind)
+
+    def holds_patch(self, shape: tuple[int, ...]) -> bool:
+        """Return whether a measurement of this shape holds a whole patch of ground."""
+        return all(
+            shape[at] >= self.patch_ground for at in self.axis_indices(Axis.GROUND)
+        )

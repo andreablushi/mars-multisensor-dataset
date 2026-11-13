@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 GUARD_ROWS = 30
+FEWEST_ROWS = 256
 
 
 def rows_below_atmosphere(power: np.ndarray, measured: np.ndarray) -> slice:

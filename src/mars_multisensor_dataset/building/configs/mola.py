@@ -39,6 +39,7 @@ LAYOUT = Layout(
     measurement="elevation",
     beside={"delay": ("line", "sample"), "delay_inside": ("line", "sample")},
     stored="int16",
+    patch_ground=2,
 )
 
 # What ODE publishes MOLA under.

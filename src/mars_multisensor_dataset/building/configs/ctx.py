@@ -31,6 +31,7 @@ LAYOUT = Layout(
     axes=(Axis.GROUND, Axis.GROUND),
     measurement="image",
     stored="f2",
+    patch_ground=16,
 )
 
 # What ODE publishes CTX under.

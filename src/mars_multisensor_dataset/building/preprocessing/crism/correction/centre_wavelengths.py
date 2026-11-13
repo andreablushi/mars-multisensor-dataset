@@ -138,4 +138,5 @@ LAYOUT = Layout(
     },
     stored="f2",
     band_centres_nm=BANDS_NM,
+    patch_ground=3,
 )

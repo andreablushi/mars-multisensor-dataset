@@ -47,6 +47,7 @@ LAYOUT = Layout(
     stored="f2",
     stored_beside={"clutter": "f2"},
     described=("surface_offset_db",),
+    patch_ground=2,
 )
 
 # What ODE publishes SHARAD under.

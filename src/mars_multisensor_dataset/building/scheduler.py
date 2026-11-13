@@ -229,7 +229,13 @@ def build_product(
                 # A tile failing to cut is kept as the error, and the rest still cut.
                 failed = failed or error
                 continue
-            if sample is None or not sample.measured:
+            if (
+                sample is None
+                or not sample.measured
+                or not instrument.layout.holds_patch(
+                    getattr(sample, instrument.layout.measurement).shape
+                )
+            ):
                 emptied.append(frame.name)
                 continue
             path = store.write_sample(
