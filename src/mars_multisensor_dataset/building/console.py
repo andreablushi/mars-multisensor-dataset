@@ -163,6 +163,9 @@ def print_summary(
         console.print(
             f"[yellow]{len(dropped):,} tiles dropped for an empty crop[/yellow]"
         )
+    discarded = sum(len(one.discarded) for one in outcomes)
+    if discarded:
+        console.print(f"[yellow]{discarded:,} crops dropped, their tiles kept[/yellow]")
     lacking = lacking_tiles(outcomes)
     incomplete = set().union(*lacking.values())
     built = sum(1 for one in plan.tiles if one.identity not in dropped | incomplete)

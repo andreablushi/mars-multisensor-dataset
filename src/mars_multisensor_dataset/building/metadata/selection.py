@@ -15,7 +15,7 @@ from mars_multisensor_dataset.building.models.job import Outcome
 
 
 def exclude_tiles(outcomes: Sequence[Outcome]) -> None:
-    """Drop every tile a build cropped empty, refusing the observations that emptied it.
+    """Drop every tile a build cropped empty, refusing each product that lost a crop.
 
     Args:
         outcomes: What every job of the build left.
@@ -23,9 +23,9 @@ def exclude_tiles(outcomes: Sequence[Outcome]) -> None:
     emptied = {
         (name, one.job.instrument, one.job.identifier)
         for one in outcomes
-        for name in one.emptied
+        for name in one.emptied + one.discarded
     }
-    dropped = {name for name, _, _ in emptied}
+    dropped = {name for one in outcomes for name in one.emptied}
     selections = read_selection()
     write_refused_observations(
         [

@@ -15,9 +15,12 @@ class Gate:
         guard_rows: The rows kept between an echo and the noise beside it.
         echo_margin_db: How far a row's mean power stands over the noise above the
             surface to hold an echo.
+        surface_margin_db: How far a crop's strongest value stands over its
+            threshold to hold a surface.
     """
 
     looks: int
     false_alarm: float
     guard_rows: int
     echo_margin_db: float
+    surface_margin_db: float

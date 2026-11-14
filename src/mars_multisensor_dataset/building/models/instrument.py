@@ -57,6 +57,8 @@ class Instrument:
         place: What readies a fetched product on the SPICE server, or None.
         observation_id: What reads a kept product's observation, or None.
         grid_of: What names the one product that covers a tile, or None.
+        keeps_tile: Whether a tile that loses one of its crops stays while it
+            holds another of this instrument.
     """
 
     layout: Layout
@@ -69,6 +71,7 @@ class Instrument:
     place: Callable[[str], None] | None = None
     observation_id: Callable[[str], str | None] | None = None
     grid_of: Callable[[Tile], str] | None = None
+    keeps_tile: bool = False
 
 
 INSTRUMENTS = {
@@ -117,6 +120,7 @@ INSTRUMENTS = {
             observation_id=sharad_configs.NAMING.observation_id,
             # A radargram, its geometry and its clutter measured 222 MB at peak.
             worker_bytes=256 * 1024**2,
+            keeps_tile=True,
         ),
     )
 }

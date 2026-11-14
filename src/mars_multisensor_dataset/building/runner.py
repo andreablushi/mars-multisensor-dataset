@@ -21,7 +21,7 @@ from mars_multisensor_dataset.building.metadata.index import (
     write_index,
 )
 from mars_multisensor_dataset.building.metadata.selection import exclude_tiles
-from mars_multisensor_dataset.building.models.job import Outcome, Plan
+from mars_multisensor_dataset.building.models.job import Outcome, Plan, settled_outcomes
 from mars_multisensor_dataset.building.models.progress import Progress
 from mars_multisensor_dataset.building.models.settings import (
     BuildSettings,
@@ -68,6 +68,17 @@ def build_dataset(
     )
     with httpx.Client(limits=limits, verify=TLS_CONTEXT) as ode:
         outcomes = build_outcomes(plan, settings, root, ode, console, checkpoint)
+    discarded = {
+        (name, one.job.instrument, one.job.identifier)
+        for one in outcomes
+        for name in one.discarded
+    }
+    held = {
+        (one.tile, one.instrument)
+        for one in read_observation_metadata(root)
+        if one.identity not in discarded
+    }
+    outcomes = settled_outcomes(outcomes, held)
     # A drawn tile is labelled, so the evaluation cannot do without one
     if not isinstance(settings, TrainingSettings):
         outcomes = [replace(one, emptied=()) for one in outcomes]
@@ -76,7 +87,7 @@ def build_dataset(
     dropped = {name for one in outcomes for name in one.emptied}
     elapsed = time.monotonic() - started_at
     printing.print_summary(plan, outcomes, dropped, elapsed, console)
-    if dropped:
+    if isinstance(settings, TrainingSettings) and (discarded or dropped):
         exclude_tiles(outcomes)
     return 1 if any(one.failed for one in outcomes) else 0
 

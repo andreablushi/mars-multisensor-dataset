@@ -30,6 +30,7 @@ def clean_observation(
     label: dict[str, str],
     spikes: dict[str, float],
     levelling: int,
+    join_ratio: tuple[float, float],
 ) -> CrismObservation | None:
     """Clean every detector of one observation and join them onto the survey's grid.
 
@@ -40,9 +41,12 @@ def clean_observation(
         label: What every product the observation was published as says of it.
         spikes: The passes, window and sigma the spikes are removed with.
         levelling: How many lines a column is levelled over along the track.
+        join_ratio: The lowest and highest ratio of the first infrared band to the
+            last visible one an observation keeps.
 
     Returns:
-        observation: The joined observation, or None where a detector measured nothing.
+        observation: The joined observation, or None where a detector measured
+            nothing or the two do not meet at their join.
     """
     cleaned = {}
     for name, (cube, rows) in scans.items():
@@ -80,8 +84,11 @@ def clean_observation(
         observation.measured_bands,
     )
     remove_outliers.level_columns(observation.cube, valid, levelling)
-    return replace(
-        observation,
-        cube=normalize.normalized_spectra(observation.cube, valid),
-        valid=valid,
-    )
+    cube = normalize.normalized_spectra(observation.cube, valid)
+    visible = centre_wavelengths.DETECTOR_SLOTS[configs.Detector.VISIBLE][-1]
+    infrared = centre_wavelengths.DETECTOR_SLOTS[configs.Detector.INFRARED][0]
+    ratio = float(np.nanmedian(cube[valid, infrared] / cube[valid, visible]))
+    if not join_ratio[0] <= ratio <= join_ratio[1]:
+        print(f"note {identifier} [CRISM]: detectors join at {ratio:.2f}", flush=True)
+        return None
+    return replace(observation, cube=cube, valid=valid)

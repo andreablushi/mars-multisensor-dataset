@@ -24,6 +24,7 @@ preprocessing:
   CRISM:
     spikes: {passes: 3, window: 3, sigma: 5.0}
     levelling: 51
+    join_ratio: [0.7, 1.75]
   # How many traces a SHARAD crop is averaged over along each delay row, the share of
   # its pure noise left over the threshold, the rows kept between an echo and the
   # noise beside it, and how far over the noise a row's mean power stands to hold one.
@@ -32,3 +33,4 @@ preprocessing:
     false_alarm: 0.3
     guard_rows: 30
     echo_margin_db: 1.0
+    surface_margin_db: 5.0

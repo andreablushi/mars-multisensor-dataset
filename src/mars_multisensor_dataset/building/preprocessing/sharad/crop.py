@@ -74,8 +74,8 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
     Returns:
         sample: The track cut to that tile, the radargram gated at its noise
             threshold and the clutter as simulated, or None where it measures
-            none of it, holds no echo, or keeps under `FEWEST_ROWS` rows below
-            its atmosphere.
+            none of it, holds no echo or no surface, or keeps under `FEWEST_ROWS`
+            rows below its atmosphere.
     """
     held = cut.overlap(trace_position(observation.geometry), frame)
     if held is None:
@@ -93,6 +93,8 @@ def crop(observation: SharadObservation, frame: Tile) -> SharadSample | None:
         return None
     gated = np.full(power.shape, FILL, power.dtype)
     gated[:, valid] = denoised(noise.averaged, noise.threshold, noise.spread)
+    if gated[:, measured].max() - noise.threshold < observation.gate.surface_margin_db:
+        return None
     below = rows_below_atmosphere(gated.astype(configs.LAYOUT.stored), measured)
     if below.stop - below.start < FEWEST_ROWS:
         return None

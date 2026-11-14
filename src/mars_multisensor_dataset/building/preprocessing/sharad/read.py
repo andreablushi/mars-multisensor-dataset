@@ -24,6 +24,7 @@ def read_observation(
     false_alarm: float,
     guard_rows: int,
     echo_margin_db: float,
+    surface_margin_db: float,
 ) -> SharadObservation:
     """Read one radargram and join it to the geometry it was measured at.
 
@@ -34,6 +35,8 @@ def read_observation(
         guard_rows: The rows kept between an echo and the noise beside it.
         echo_margin_db: How far a row's mean power stands over the noise above the
             surface to hold an echo.
+        surface_margin_db: How far a crop's strongest value stands over its
+            threshold to hold a surface.
 
     Returns:
         observation: The radargram and its clutter simulation in dB, with their
@@ -62,7 +65,7 @@ def read_observation(
         radargram_db(power),
         clutter_db(clutter),
         geometry,
-        Gate(looks, false_alarm, guard_rows, echo_margin_db),
+        Gate(looks, false_alarm, guard_rows, echo_margin_db, surface_margin_db),
     )
 
 

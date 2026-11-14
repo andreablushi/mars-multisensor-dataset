@@ -214,6 +214,7 @@ def build_product(
     instrument = INSTRUMENTS[job.instrument]
     written: list[ObservationMetadata] = []
     emptied: list[str] = []
+    discarded: list[str] = []
     failed: Exception | None = None
     try:
         # Read once however many tiles want it, which is why the product is the unit.
@@ -236,7 +237,7 @@ def build_product(
                     getattr(sample, instrument.layout.measurement).shape
                 )
             ):
-                emptied.append(frame.name)
+                (discarded if instrument.keeps_tile else emptied).append(frame.name)
                 continue
             path = store.write_sample(
                 sample, instrument.layout, frame, job.identifier, root
@@ -255,4 +256,10 @@ def build_product(
         # A product goes once every tile that wanted it is cut; it is a cache.
         if instrument.discard:
             instrument.discard(job.identifier)
-    return Outcome(job, records=tuple(written), emptied=tuple(emptied), error=failed)
+    return Outcome(
+        job,
+        records=tuple(written),
+        emptied=tuple(emptied),
+        discarded=tuple(discarded),
+        error=failed,
+    )

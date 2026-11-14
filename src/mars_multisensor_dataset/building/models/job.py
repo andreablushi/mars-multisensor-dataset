@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 from mars_multisensor_dataset.building.metadata.observation import ObservationMetadata
@@ -42,12 +42,14 @@ class Outcome:
         job: The job that was run.
         records: What each crop it wrote is, for the index to be built from.
         emptied: The tiles its crop measured none of or held no whole patch of.
+        discarded: The tiles that lost its crop but keep their others.
         error: The error raised, or None on success.
     """
 
     job: Job
     records: tuple[ObservationMetadata, ...] = ()
     emptied: tuple[str, ...] = ()
+    discarded: tuple[str, ...] = ()
     error: Exception | None = None
 
     @property
@@ -69,11 +71,46 @@ def lacking_tiles(outcomes: Iterable[Outcome]) -> dict[str, set[str]]:
     for one in outcomes:
         if not one.failed:
             continue
-        covered = {record.tile for record in one.records} | set(one.emptied)
+        covered = (
+            {record.tile for record in one.records}
+            | set(one.emptied)
+            | set(one.discarded)
+        )
         lacking[one.job.instrument].update(
             frame.name for frame in one.job.frames if frame.name not in covered
         )
     return lacking
+
+
+def settled_outcomes(
+    outcomes: Iterable[Outcome], held: Iterable[tuple[str, str]]
+) -> list[Outcome]:
+    """Return the outcomes, a discarded tile with no crop of its instrument emptied.
+
+    Args:
+        outcomes: What every job of the build left.
+        held: The tile and instrument of every crop earlier runs left in the index.
+
+    Returns:
+        outcomes: The same outcomes, a tile no crop of the instrument holds emptied.
+    """
+    outcomes = list(outcomes)
+    kept = set(held) | {
+        (record.tile, one.job.instrument) for one in outcomes for record in one.records
+    }
+    return [
+        replace(
+            one,
+            emptied=one.emptied
+            + tuple(
+                name for name in one.discarded if (name, one.job.instrument) not in kept
+            ),
+            discarded=tuple(
+                name for name in one.discarded if (name, one.job.instrument) in kept
+            ),
+        )
+        for one in outcomes
+    ]
 
 
 @dataclass(frozen=True, slots=True)

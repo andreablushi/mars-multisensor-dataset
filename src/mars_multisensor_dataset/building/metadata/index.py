@@ -44,6 +44,11 @@ def write_index(
     written = [held for one in collected for held in one.records]
     rewritten = {one.identity for one in written}
     emptied = {name for one in collected for name in one.emptied}
+    discarded = {
+        (name, one.job.instrument, one.job.identifier)
+        for one in collected
+        for name in one.discarded
+    }
     tiles = {one.identity: one for one in plan.tiles if one.identity not in emptied}
     # What an earlier run left, less what this run rewrote or deleted.
     records = [
@@ -51,6 +56,7 @@ def write_index(
         for one in read_observation_metadata(root)
         if one.tile in tiles
         and one.identity not in rewritten
+        and one.identity not in discarded
         and (not on_disk or (root / one.path).exists())
     ] + [one for one in written if one.tile in tiles]
     parquet.write_rows(
