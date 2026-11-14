@@ -13,7 +13,7 @@ from mars_multisensor_dataset.common.paths import CONFIGS_ROOT
 
 
 def main() -> int:
-    """Upload the verdicts the annotation notebook wrote.
+    """Upload the verdicts the annotation notebooks wrote.
 
     Returns:
         code: A process exit code, zero once they are up.

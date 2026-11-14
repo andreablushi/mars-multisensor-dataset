@@ -30,6 +30,7 @@ Both builds read what the analysis wrote, so the analysis has to have run first.
 | Flag | Script | What it does |
 | --- | --- | --- |
 | `--only-stats` | `analysis_pipeline.py` | skip the download and the measurement, and select, label and read the stats from what is already on disk |
+| `--only-lavaflow` | `analysis_pipeline.py` | list the lava flow crops alone, here, from the coverage already on disk |
 | `--force` | all | redo finished work rather than skip it |
 | `--dh` | all | submit to DigitalHub instead of running here |
 | `--ref` | all | with `--dh`, the branch, tag, or commit the platform clones |
@@ -72,6 +73,7 @@ chmod +x scripts/dh_download.sh   # once
 | `labels` | `data/<version>/analysis/labels/` |
 | `verdicts` | `data/<version>/analysis/` |
 | `manifest` | `data/<version>/dataset/training/` |
+| `lavaflow` | `data/<version>/dataset/lavaflow/`, crops included, only when named |
 
 ## Notebooks
 
@@ -84,6 +86,7 @@ uv run --group notebook jupyter lab
 - `notebooks/training_quantitative.ipynb`: what the selection kept of every tile.
 - `notebooks/evaluation_quantitative.ipynb`: the evaluation classes, where they lie, and what the instruments land on them, then the SWIM ice under every tile.
 - `notebooks/annotation.ipynb`: every labelled tile of the evaluation classes on the THEMIS mosaic, in draw order, to accept or reject.
+- `notebooks/annotation_lavaflow.ipynb`: every lava flow crop beside its cluttergram, to mark as reflector, none or unsure.
 
 ## Uploading the annotation
 
@@ -93,3 +96,15 @@ The annotation notebook writes its verdicts to `data/<version>/analysis/verdicts
 uv run --group digitalhub python scripts/dh_upload.py
 uv run --group digitalhub python scripts/analysis_pipeline.py --only-stats --dh
 ```
+
+## The lava flow build
+
+A third build holds SHARAD alone, for retrieving buried lava flow reflectors. `ground_truth.lavaflow` in `configs/analysis.yaml` lists the regions where papers report them and the tracks each paper names. The analysis lists one crop per named track and tile of a region, kept by the selection or not, plus `unnamed_per_tile` other tracks over the same tiles. The build cuts those crops and writes `lavaflow_labels.parquet` beside them.
+
+```bash
+uv run python scripts/analysis_pipeline.py --only-lavaflow   # list the crops
+uv run python scripts/build_lavaflow.py                      # build them, or --dh
+./scripts/dh_download.sh lavaflow                            # after a --dh build
+```
+
+Then review the crops in `notebooks/annotation_lavaflow.ipynb`, which writes `data/<version>/analysis/verdicts_lavaflow.json`. Run `build_lavaflow.py` again to copy the verdicts into `lavaflow_labels.parquet`; it builds nothing twice. `dh_upload.py` uploads this file together with `verdicts.json`.

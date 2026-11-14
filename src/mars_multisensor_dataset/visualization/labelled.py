@@ -58,15 +58,23 @@ class TileStepper:
         """Offer the chosen class's tiles, opening on the first one to show."""
         tiles = self._ranked[self._group.value]
         self._tile.unobserve(self._show, names="value")
-        self._tile.options = [(label.tile, label) for label in tiles]
+        self._tile.options = [(self._name(label), label) for label in tiles]
         self._tile.index = self._first(tiles)
         self._tile.observe(self._show, names="value")
         self._show()
 
     def _show(self, _change=None) -> None:
-        """Draw the chosen tile's mosaic crop and note what labelled it."""
-        self._area.children = (label_map(self._tile.value),)
+        """Draw the chosen tile and note what labelled it."""
+        self._area.children = (self._drawn(self._tile.value),)
         self._note.value = escape(self._place())
+
+    def _name(self, label: Label) -> str:
+        """Return what the tile picker calls one tile."""
+        return label.tile
+
+    def _drawn(self, label: Label) -> widgets.Widget:
+        """Draw one tile's mosaic crop."""
+        return label_map(label)
 
     def _place(self) -> str:
         """Return the chosen tile's place in its class and its feature."""

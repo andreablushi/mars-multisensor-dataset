@@ -59,7 +59,13 @@ def build_dataset(
     root = paths.dataset_root(settings.name)
     named = indexed_crops(root, console, force=force)
     published = named if checkpoint else frozenset()
-    plan = planner.build_plan(picked, root, force=force, published=published)
+    plan = planner.build_plan(
+        picked,
+        root,
+        force=force,
+        published=published,
+        instruments=settings.instruments,
+    )
     printing.print_plan(plan, settings, console)
     # Reused, so a run pays for a connection once a host rather than once a file
     connections = sum(settings.downloads.values()) * 2

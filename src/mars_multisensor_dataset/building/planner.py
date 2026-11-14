@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
@@ -25,6 +25,7 @@ def build_plan(
     *,
     force: bool,
     published: frozenset[str],
+    instruments: Collection[str] | None = None,
 ) -> Plan:
     """Work out every product one build has to fetch, and what to cut it to.
 
@@ -33,10 +34,12 @@ def build_plan(
         root: The directory this build of the dataset is written in.
         force: When True, plan products every crop of which is already written.
         published: The crops counted as written though off disk, by relative path.
+        instruments: The instruments built, or None for every one.
 
     Returns:
         plan: The plan, its jobs heaviest first so no long one is picked up last.
     """
+    built = INSTRUMENTS.keys() if instruments is None else instruments
     tiles = [tile_metadata(one.tile) for one in picked]
     wanted: dict[tuple[str, str], list[Tile]] = defaultdict(list)
     taken: dict[tuple[str, str], datetime] = {}
@@ -44,7 +47,9 @@ def build_plan(
     for one, tile in zip(picked, tiles, strict=True):
         # A tile is built whole, every observation this build has an instrument for.
         for kept in one.observations:
-            observation = observation_identifier(kept.iid, kept.pdsid)
+            observation = kept.iid in built and observation_identifier(
+                kept.iid, kept.pdsid
+            )
             # Skip a product no instrument builds, and an id naming no observation.
             if not observation:
                 unread += 1
@@ -60,7 +65,7 @@ def build_plan(
     ]
     # An instrument the selection cannot name is given the grid each tile falls on.
     for name, named in INSTRUMENTS.items():
-        if not named.grid_of:
+        if not named.grid_of or name not in built:
             continue
         for tile in tiles:
             # What it names is mosaicked to one box, so it is asked for alone.

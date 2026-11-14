@@ -49,8 +49,9 @@ With no name, every one of them comes down.
   selection    the tiles and looks kept       -> data/<version>/analysis/selection
   stats        what the filter left of it     -> data/<version>/analysis/stats
   labels       the evaluation labels           -> data/<version>/analysis/labels
-  verdicts     the review of the drawn tiles   -> data/<version>/analysis
+  verdicts     both annotation reviews         -> data/<version>/analysis
   manifest     the training build's manifest   -> data/<version>/dataset/training
+  lavaflow     the lava flow build, crops and all -> data/<version>/dataset/lavaflow
 EOF
 }
 
@@ -66,6 +67,7 @@ for name in "$@"; do
         coverage | metadata | swim) download_one "$name" "data/analysis/$name" ;;
         selection | stats | labels) download_one "$version-$name" "data/$version/analysis/$name" ;;
         verdicts) download_one "$version-verdicts" "data/$version/analysis" shares ;;
+        lavaflow) download_one "$version-dataset-lavaflow" "data/$version/dataset/lavaflow" ;;
         manifest)
             # Only the manifest comes down, never the build's crops
             (cd "$(dirname "$0")" && uv run --group digitalhub python -c \

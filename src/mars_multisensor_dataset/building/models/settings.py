@@ -19,6 +19,7 @@ class BuildSettings:
         preprocessing: What each instrument's reader is handed, by its name.
         reference: The build whose constants this one is standardised by, or None to
             pool its own.
+        instruments: The instruments it builds, or None for every one.
     """
 
     name: str
@@ -26,6 +27,7 @@ class BuildSettings:
     downloads: dict[str, int]
     preprocessing: dict[str, dict[str, Any]]
     reference: str | None = None
+    instruments: list[str] | None = None
 
 
 @dataclass(slots=True)

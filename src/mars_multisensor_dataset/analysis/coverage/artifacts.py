@@ -14,6 +14,7 @@ from mars_multisensor_dataset.analysis.coverage.models.coverage import (
     SetCoverage,
 )
 from mars_multisensor_dataset.analysis.coverage.models.summary import Summary
+from mars_multisensor_dataset.analysis.models.instrument import InstrumentSet
 from mars_multisensor_dataset.analysis.models.job import CoverageJob
 from mars_multisensor_dataset.analysis.utils.tile_group import group_of
 from mars_multisensor_dataset.common.config import analysis_settings
@@ -75,6 +76,27 @@ def measured_groups() -> list[str]:
             )
         ),
     )
+
+
+def read_set_events(
+    instrument_set: InstrumentSet, tiles: Sequence[Tile]
+) -> list[Event]:
+    """Read every observation one instrument set landed on some tiles.
+
+    Args:
+        instrument_set: The set whose observations are read.
+        tiles: The tiles to read them over.
+
+    Returns:
+        events: One row per tile and observation, none for a group never measured.
+    """
+    names = [tile.name for tile in tiles]
+    events = []
+    for group in sorted({group_of(tile) for tile in tiles}):
+        path = paths.GROUPS_ROOT / group / f"{instrument_set.slug}{paths.EVENTS_SUFFIX}"
+        if path.exists():
+            events += parquet.read_rows(Event, EVENTS, path, [("tile", "in", names)])
+    return events
 
 
 def read_tile_coverage(tile: Tile) -> list[SetCoverage]:

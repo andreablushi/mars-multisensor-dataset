@@ -53,6 +53,15 @@ def training_settings(
     )
 
 
+def lavaflow_settings(
+    workers: int | None = None, overrides: Sequence[str] = ()
+) -> BuildSettings:
+    """Read `building_lavaflow.yaml` with its overrides, its workers unless None."""
+    return load_config(
+        "building_lavaflow", BuildSettings, tuple(overrides), workers=workers
+    )
+
+
 def evaluation_settings(
     workers: int | None = None, overrides: Sequence[str] = ()
 ) -> BuildSettings:
