@@ -6,6 +6,7 @@ from collections import Counter
 from collections.abc import Sequence
 from functools import partial
 from html import escape
+from pathlib import Path
 
 import ipywidgets as widgets
 import numpy as np
@@ -66,12 +67,22 @@ def table(labels: Sequence[LavaFlowLabel], verdicts: dict[str, str]) -> widgets.
     return panels.written("Every region, as the review leaves it", config.REVIEW, rows)
 
 
+def crop_path(label: LavaFlowLabel) -> Path:
+    """Return where the lava flow build writes one crop."""
+    return paths.dataset_root(lavaflow_settings().name) / store.sample_path(
+        tile_grid().tile_named(label.tile), sharad.LAYOUT.instrument, label.track
+    )
+
+
+def built_labels(labels: Sequence[LavaFlowLabel]) -> list[LavaFlowLabel]:
+    """Return the candidate crops the build left on disk, in their order."""
+    return [label for label in labels if crop_path(label).exists()]
+
+
 def crop_panel(label: LavaFlowLabel) -> widgets.Widget:
     """Draw one crop's radargram beside its cluttergram, from its surface down."""
     frame = tile_grid().tile_named(label.tile)
-    path = paths.dataset_root(lavaflow_settings().name) / store.sample_path(
-        frame, sharad.LAYOUT.instrument, label.track
-    )
+    path = crop_path(label)
     if not path.exists():
         return panels.unavailable(config.NOT_BUILT)
     with np.load(path) as crop:
@@ -91,7 +102,8 @@ def crop_panel(label: LavaFlowLabel) -> widgets.Widget:
     for axis, values, kind in zip(
         figure.subplots(1, 2), shown, config.KINDS, strict=True
     ):
-        shown_crop(figure, axis, values, shown_range(values[rows]), kind, rows)
+        ranged = values[rows] if np.isfinite(values[rows]).any() else values
+        shown_crop(figure, axis, values, shown_range(ranged), kind, rows)
         axis.set_xlabel("Trace")
         axis.set_ylabel("Delay row")
     return panels.rendered(figure)

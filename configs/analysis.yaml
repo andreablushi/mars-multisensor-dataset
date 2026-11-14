@@ -104,20 +104,6 @@ ground_truth:
         west_lon: 115.0
         east_lon: 121.0
         tracks: [s_00467301, s_00495001, s_00509501, s_00516101, s_00551701, s_00566202, s_00593902, s_01284801, s_01305901, s_01362601, s_01822801, s_02049601, s_02070701, s_02177501, s_02354201, s_02410901, s_02438601, s_02453101, s_02509801, s_02552001, s_02573101, s_02629802]
-      ascraeus:
-        source: Simon et al. 2014
-        min_lat: 8.0
-        max_lat: 25.0
-        west_lon: 240.0
-        east_lon: 258.0
-        tracks: [s_01375301, s_01297501, s_01354201, s_01333101, s_00423301, s_01234201, s_00814901, s_00189901, s_01078601, s_01326501, s_01756402]
-      pavonis:
-        source: Simon et al. 2014
-        min_lat: -12.0
-        max_lat: 0.0
-        west_lon: 240.0
-        east_lon: 252.0
-        tracks: [s_01728801]
       elysium_planitia:
         source: Morgan et al. 2011
         min_lat: 0.5
