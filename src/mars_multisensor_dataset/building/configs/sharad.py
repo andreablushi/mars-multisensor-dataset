@@ -45,7 +45,12 @@ LAYOUT = Layout(
         "spacecraft_altitude_km": ("trace",),
     },
     stored="f2",
-    stored_beside={"clutter": "f2"},
+    stored_beside={
+        "clutter": "f2",
+        "traces": "i4",
+        "incidence_deg": "f4",
+        "spacecraft_altitude_km": "f4",
+    },
     described=("surface_offset_db",),
     patch_ground=2,
 )
