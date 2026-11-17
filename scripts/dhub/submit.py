@@ -11,14 +11,6 @@ from omegaconf import OmegaConf
 from mars_multisensor_dataset.building.preprocessing.ctx import isis
 from mars_multisensor_dataset.common.paths import CONFIGS_ROOT, REPO_ROOT
 
-STAGES = {
-    "pipeline": "scripts.analysis_pipeline:run_pipeline",
-    "selection": "scripts.analysis_pipeline:run_selection",
-    "build_training": "scripts.build_training:run_build",
-    "build_evaluation": "scripts.build_evaluation:run_build",
-    "build_lavaflow": "scripts.build_lavaflow:run_build",
-}
-
 REBUILT = (
     "build the dataset again from nothing, rather than filling in what the last "
     "build left missing"
@@ -65,14 +57,14 @@ def submitted(stage: str, ref: str, overrides: Sequence[str] = (), **parameters)
     )
     handed = [one for one in overrides if not one.startswith("resources.")]
     asked = platform.resources[stage]
-    # The job installs the requirements.txt sent with the function, so no image is built
+    # The job installs the repository's requirements itself, so no image is built
     function = dh.get_or_create_project(platform.project).new_function(
         name=stage.replace("_", "-"),
         kind="python",
         python_version=platform.python_version,
         base_image=platform.base_image,
         code_src=f"git+{platform.repository}#{ref}",
-        handler=STAGES[stage],
+        handler="scripts.dhub.job:run_installed_stage",
         requirements=str(REPO_ROOT / "requirements.txt"),
     )
 
@@ -87,9 +79,13 @@ def submitted(stage: str, ref: str, overrides: Sequence[str] = (), **parameters)
             {"name": "PYTHONPATH", "value": f"{root}:{root}/src:{root}/scripts"},
             *(isis.ENVS if asked.get("isis") else []),
         ],
-        parameters=parameters
-        | {"workers": asked.cpu}
-        | ({"overrides": handed} if handed else {}),
+        parameters={
+            "stage": stage,
+            "arguments": parameters
+            | {"workers": asked.cpu}
+            | ({"overrides": handed} if handed else {}),
+            "requirements": function.spec.requirements,
+        },
         wait=False,
     )
     print(run.key)
