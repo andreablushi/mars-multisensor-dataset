@@ -89,3 +89,15 @@ ground_truth:
 
     # The share of a tile's points icy at a depth from which the tile is icy there.
     icy_share: 0.5
+
+  # The buried lava flow reflectors SHARAD papers report, looked for crop by crop.
+  lavaflow:
+    # Every region a paper reports reflectors in, its box in degrees and the tracks it names.
+    regions:
+      elysium_utopia:
+        source: Meng et al. 2020
+        min_lat: 29.5
+        max_lat: 32.5
+        west_lon: 115.0
+        east_lon: 119.0
+        tracks: [s_00495001, s_00509501, s_00516101, s_00566201, s_00593902, s_01284801, s_01305902, s_01822801, s_02177501, s_02410901, s_02438601, s_02453101, s_02509801, s_02552001, s_02573101, s_02629802]

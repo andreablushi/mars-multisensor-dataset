@@ -26,7 +26,8 @@ ARTIFACTS = {
     "labels": analysis_paths.LABELS_ROOT,
     "swim": analysis_paths.SWIM_ROOT,
 }
-SHARED = ("coverage", "metadata", "swim")
+SHARED = ("coverage", "metadata", "swim", "lavaflow_candidates")
+VERDICTS = (analysis_paths.VERDICTS_PATH, analysis_paths.LAVAFLOW_VERDICTS_PATH)
 
 
 def published_name(name: str) -> str:
@@ -96,6 +97,25 @@ def upload_folder(
     )
 
 
+def delete_folder(project, name: str) -> None:
+    """Delete every object one published folder holds, so it can be built anew.
+
+    Args:
+        project: The DigitalHub project the folder is logged into.
+        name: The folder, its version added unless shared.
+    """
+    client, bucket, prefix = stored_folder(project, name)
+    pages = client.get_paginator("list_objects_v2").paginate(
+        Bucket=bucket, Prefix=prefix
+    )
+    keys = [{"Key": one["Key"]} for page in pages for one in page.get("Contents", [])]
+    print(f"deleting {name}, {len(keys):,} files", flush=True)
+    for start in range(0, len(keys), 1000):
+        client.delete_objects(
+            Bucket=bucket, Delete={"Objects": keys[start : start + 1000]}
+        )
+
+
 def download_folder(
     project,
     name: str,
@@ -135,9 +155,9 @@ def download_folder(
 
 
 def download_verdicts(project) -> None:
-    """Bring the review of the drawn tiles down, beside the version's analysis."""
-    path = analysis_paths.VERDICTS_PATH
-    download_folder(project, "verdicts", path.parent, [path.name])
+    """Bring both reviews down, beside the version's analysis."""
+    names = [path.name for path in VERDICTS]
+    download_folder(project, "verdicts", analysis_paths.VERSION_ANALYSIS_ROOT, names)
 
 
 def download_manifest(project) -> None:
@@ -152,13 +172,15 @@ def download_manifest(project) -> None:
 
 
 def upload_verdicts(project):
-    """Publish the review of the drawn tiles, the one file the annotation writes.
+    """Publish the reviews, the one file each annotation notebook writes.
 
     Args:
-        project: The DigitalHub project to log the review into.
+        project: The DigitalHub project to log the reviews into.
 
     Returns:
         artifact: The logged artifact.
     """
-    path = analysis_paths.VERDICTS_PATH
-    return upload_folder(project, "verdicts", path.parent, [path])
+    written = [path for path in VERDICTS if path.is_file()]
+    return upload_folder(
+        project, "verdicts", analysis_paths.VERSION_ANALYSIS_ROOT, written
+    )

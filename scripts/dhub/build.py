@@ -10,7 +10,10 @@ from pathlib import Path
 from dhub import store, submit
 from mars_multisensor_dataset.analysis.selector.models.selection import Selection
 from mars_multisensor_dataset.building import paths, runner
-from mars_multisensor_dataset.building.models.settings import BuildSettings
+from mars_multisensor_dataset.building.models.settings import (
+    BuildSettings,
+    TrainingSettings,
+)
 from mars_multisensor_dataset.building.preprocessing.ctx.isis import install_isis
 from mars_multisensor_dataset.common.console import PLAIN_LOG_ENV
 
@@ -50,6 +53,8 @@ def published_build[T: BuildSettings](
     selections: Callable[[T], list[Selection]],
     fetched: Sequence[str],
     force: bool,
+    root: Path | None = None,
+    name: str | None = None,
 ):
     """Build one dataset on DigitalHub and publish what it left on disk.
 
@@ -60,6 +65,8 @@ def published_build[T: BuildSettings](
         fetched: The artifacts the build reads, brought down first onto the job's
             empty disk.
         force: Whether to build from nothing rather than fill in what is missing.
+        root: Where the build is written, or None for its name under the datasets.
+        name: What it is published as, or None for "dataset-" and its name.
 
     Returns:
         dataset: The published dataset, one object per crop.
@@ -73,8 +80,8 @@ def published_build[T: BuildSettings](
         install_isis()
     for one in fetched:
         store.download_folder(project, one, store.ARTIFACTS[one])
-    name = f"dataset-{settings.name}"
-    root = paths.dataset_root(settings.name)
+    name = name or f"dataset-{settings.name}"
+    root = root or paths.dataset_root(settings.name)
     # A job starts on an empty disk, so only the index of what is built comes down
     if not force:
         store.download_folder(project, name, root, paths.INDEX_NAMES)
@@ -82,10 +89,12 @@ def published_build[T: BuildSettings](
     published = partial(checkpoint, project, root, name, settings.workers)
     fetch = partial(fetch_build, project, settings.workers)
     failed = runner.build_dataset(
-        settings, selections(settings), force, published, fetch
+        settings, selections(settings), force, published, fetch, root
     )
     dataset = published()
-    store.upload_folder(project, "selection", store.ARTIFACTS["selection"])
+    # Only the training build refuses the observations it cropped empty
+    if isinstance(settings, TrainingSettings):
+        store.upload_folder(project, "selection", store.ARTIFACTS["selection"])
     if failed:
         raise RuntimeError(
             "the build had failures; what was published holds what finished"

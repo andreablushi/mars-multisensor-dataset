@@ -43,3 +43,10 @@ resources:
     cpu: 8
     memory: 56Gi
     disk: 64Gi
+  # SHARAD alone, so no ISIS and a few hundred small crops
+  build_lavaflow:
+    profile: cpu
+    shared: true
+    cpu: 4
+    memory: 16Gi
+    disk: 16Gi

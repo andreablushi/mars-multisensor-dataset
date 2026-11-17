@@ -1,0 +1,12 @@
+# What the lava flow build is called, and the one instrument it holds.
+
+defaults: [building, _self_]
+
+# The directory it is written in and the name it is published under.
+name: lavaflow
+
+# The build whose normalization this one applies, so both sit on one scale.
+reference: training
+
+# The instruments it builds, a tile's other ones left out.
+instruments: [SHARAD]

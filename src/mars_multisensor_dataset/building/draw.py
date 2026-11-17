@@ -6,10 +6,17 @@ import random
 from collections.abc import Collection, Sequence
 from dataclasses import replace
 
+from mars_multisensor_dataset.analysis.ground_truth.lavaflow.models import (
+    LavaFlowLabel,
+)
 from mars_multisensor_dataset.analysis.ground_truth.nomenclature.models.label import (
     Label,
 )
-from mars_multisensor_dataset.analysis.selector.models.selection import Selection
+from mars_multisensor_dataset.analysis.selector.models.selection import (
+    SelectedObservation,
+    Selection,
+)
+from mars_multisensor_dataset.building.configs import sharad
 from mars_multisensor_dataset.building.models.settings import TrainingSettings
 from mars_multisensor_dataset.common.maths import box
 
@@ -66,4 +73,36 @@ def draw_evaluation(
         replace(one, tile=box.recut(one.tile, cut))
         for one in picked
         if (cut := drawn.get(one.tile.tile)) is not None
+    ]
+
+
+def draw_lavaflow(
+    picked: Sequence[Selection], labels: Sequence[LavaFlowLabel]
+) -> list[Selection]:
+    """Keep every tile a lava flow crop lies on, holding its labelled tracks alone.
+
+    Args:
+        picked: What the search left of every tile it searched, kept or not.
+        labels: Every candidate crop, one per track and tile.
+
+    Returns:
+        kept: The selections to build, each tile's own observations replaced by
+            the tracks labelled on it, in selection order.
+    """
+    tracks: dict[str, list[SelectedObservation]] = {}
+    for one in labels:
+        tracks.setdefault(one.tile, []).append(
+            SelectedObservation(
+                tile=one.tile,
+                **sharad.ODE,
+                pt=sharad.PRODUCT_TYPES[sharad.Kind.OBSERVATION],
+                pdsid=one.pdsid,
+                t_start=one.t_start,
+                standing=True,
+            )
+        )
+    return [
+        replace(one, observations=tracks[one.tile.tile])
+        for one in picked
+        if one.tile.tile in tracks
     ]

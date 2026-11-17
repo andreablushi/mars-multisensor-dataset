@@ -16,6 +16,7 @@ STAGES = {
     "selection": "scripts.analysis_pipeline:run_selection",
     "build_training": "scripts.build_training:run_build",
     "build_evaluation": "scripts.build_evaluation:run_build",
+    "build_lavaflow": "scripts.build_lavaflow:run_build",
 }
 
 REBUILT = (

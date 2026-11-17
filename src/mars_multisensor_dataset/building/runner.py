@@ -41,6 +41,7 @@ def build_dataset(
     force: bool,
     checkpoint: Callable[[], None] | None = None,
     fetch: Callable[[str, Path, Sequence[str]], None] | None = None,
+    root: Path | None = None,
 ) -> int:
     """Build one dataset over the tiles it is handed.
 
@@ -50,16 +51,23 @@ def build_dataset(
         force: Whether to build every crop again, rather than only the missing ones.
         checkpoint: What publishes the dataset so far, or None for a local run.
         fetch: What brings objects of a named build back to disk, or None locally.
+        root: Where the build is written, or None for its name under the datasets.
 
     Returns:
         code: A process exit code, non zero when any product failed to build.
     """
     console = Console()
     started_at = time.monotonic()
-    root = paths.dataset_root(settings.name)
+    root = root or paths.dataset_root(settings.name)
     named = indexed_crops(root, console, force=force)
     published = named if checkpoint else frozenset()
-    plan = planner.build_plan(picked, root, force=force, published=published)
+    plan = planner.build_plan(
+        picked,
+        root,
+        force=force,
+        published=published,
+        instruments=settings.instruments,
+    )
     printing.print_plan(plan, settings, console)
     # Reused, so a run pays for a connection once a host rather than once a file
     connections = sum(settings.downloads.values()) * 2
