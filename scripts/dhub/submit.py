@@ -9,7 +9,7 @@ import digitalhub as dh
 from omegaconf import OmegaConf
 
 from mars_multisensor_dataset.building.preprocessing.ctx import isis
-from mars_multisensor_dataset.common.paths import CONFIGS_ROOT
+from mars_multisensor_dataset.common.paths import CONFIGS_ROOT, REPO_ROOT
 
 STAGES = {
     "pipeline": "scripts.analysis_pipeline:run_pipeline",
@@ -65,7 +65,7 @@ def submitted(stage: str, ref: str, overrides: Sequence[str] = (), **parameters)
     )
     handed = [one for one in overrides if not one.startswith("resources.")]
     asked = platform.resources[stage]
-    # The job installs the clone's requirements.txt at start, so no image is built
+    # The job installs the requirements.txt sent with the function, so no image is built
     function = dh.get_or_create_project(platform.project).new_function(
         name=stage.replace("_", "-"),
         kind="python",
@@ -73,6 +73,7 @@ def submitted(stage: str, ref: str, overrides: Sequence[str] = (), **parameters)
         base_image=platform.base_image,
         code_src=f"git+{platform.repository}#{ref}",
         handler=STAGES[stage],
+        requirements=str(REPO_ROOT / "requirements.txt"),
     )
 
     # Start the job, told where the clone lands and what the box holds
