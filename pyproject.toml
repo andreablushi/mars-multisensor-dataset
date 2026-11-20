@@ -41,8 +41,8 @@ notebook = [
     "xarray>=2026.7.0",
 ]
 digitalhub = [
-    "digitalhub>=0.15.11,<0.16",
-    "digitalhub-runtime-python>=0.15.2,<0.16",
+    "digitalhub>=0.16,<0.17",
+    "digitalhub-runtime-python>=0.16,<0.17",
 ]
 
 [tool.ruff]
