@@ -18,6 +18,7 @@ from mars_multisensor_dataset.building.download import crism as crism_download
 from mars_multisensor_dataset.building.download import ctx as ctx_download
 from mars_multisensor_dataset.building.download import mola as mola_download
 from mars_multisensor_dataset.building.download import sharad as sharad_download
+from mars_multisensor_dataset.building.models.settings import Preprocessing
 from mars_multisensor_dataset.building.preprocessing.common.models.sample import Sample
 from mars_multisensor_dataset.building.preprocessing.crism import crop as crism_crop
 from mars_multisensor_dataset.building.preprocessing.crism import read as crism_read
@@ -32,6 +33,12 @@ from mars_multisensor_dataset.building.preprocessing.sharad import crop as shara
 from mars_multisensor_dataset.building.preprocessing.sharad import read as sharad_read
 from mars_multisensor_dataset.common.models.tile import Tile
 
+Fetch = Callable[[str, httpx.Client, tuple[Tile, ...]], None]
+Discard = Callable[[str], None]
+Place = Callable[[str], None]
+ObservationId = Callable[[str], str | None]
+GridOf = Callable[[Tile], str]
+
 
 class Archive(StrEnum):
     """The lanes downloads wait on: one per archive, and the SPICE server."""
@@ -42,14 +49,16 @@ class Archive(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
-class Instrument:
+class Instrument[O]:
     """How one instrument goes from a product ODE holds to a crop in the dataset.
+
+    `O` is the observation its reader hands its crop.
 
     Attributes:
         layout: What its arrays hold, and which of them it is stored for.
         fetch: What brings one product down into the cache, as much as its tiles need.
-        read_observation: What reads a fetched product off disk, given its settings,
-            or None where it measured nothing.
+        read_observation: What reads a fetched product off disk, given the build's
+            reader settings, or None where it measured nothing.
         crop: What cuts that observation to a tile's box, or None where it misses.
         archive: Which archive its products are downloaded from.
         worker_bytes: What one build holds of its largest product at once.
@@ -62,19 +71,19 @@ class Instrument:
     """
 
     layout: Layout
-    fetch: Callable[[str, httpx.Client, tuple[Tile, ...]], None]
-    read_observation: Callable[..., Any]
-    crop: Callable[[Any, Tile], Sample | None]
+    fetch: Fetch
+    read_observation: Callable[[str, Preprocessing], O | None]
+    crop: Callable[[O, Tile], Sample | None]
     archive: Archive
     worker_bytes: int
-    discard: Callable[[str], None] | None = None
-    place: Callable[[str], None] | None = None
-    observation_id: Callable[[str], str | None] | None = None
-    grid_of: Callable[[Tile], str] | None = None
+    discard: Discard | None = None
+    place: Place | None = None
+    observation_id: ObservationId | None = None
+    grid_of: GridOf | None = None
     keeps_tile: bool = False
 
 
-INSTRUMENTS = {
+INSTRUMENTS: dict[str, Instrument[Any]] = {
     one.layout.instrument: one
     for one in (
         Instrument(

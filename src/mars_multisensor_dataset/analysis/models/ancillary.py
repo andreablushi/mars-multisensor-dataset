@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import NamedTuple
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,3 +23,15 @@ class Distortion:
     pdsid: str
     night: float | None
     overall: float
+
+
+class FetchedDistortions(NamedTuple):
+    """What one fetch of SHARAD geometry tables read, and how many it could not.
+
+    Attributes:
+        distortions: One per product and tile its rows fall on.
+        failed: How many tables could not be read, left to the next run.
+    """
+
+    distortions: list[Distortion]
+    failed: int

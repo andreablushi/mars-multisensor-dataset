@@ -1,19 +1,13 @@
-"""Every config file, read through Hydra into the model it settles."""
+"""Reading one config file through Hydra into the model it settles."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from functools import cache
 from pathlib import Path
 
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
-from mars_multisensor_dataset.analysis.models.settings import AnalysisSettings
-from mars_multisensor_dataset.building.models.settings import (
-    BuildSettings,
-    TrainingSettings,
-)
 from mars_multisensor_dataset.common.paths import CONFIGS_ROOT
 
 
@@ -46,27 +40,4 @@ def load_config[T](
     given = {key: value for key, value in values.items() if value is not None}
     return OmegaConf.to_object(
         OmegaConf.merge(OmegaConf.structured(model), read, given)
-    )
-
-
-def analysis_settings(workers: int | None = None) -> AnalysisSettings:
-    """Read `analysis.yaml`, its workers overridden unless None."""
-    return load_config("analysis", AnalysisSettings, workers=workers)
-
-
-def training_settings(
-    workers: int | None = None, overrides: Sequence[str] = ()
-) -> TrainingSettings:
-    """Read `building_training.yaml` with its overrides, its workers unless None."""
-    return load_config(
-        "building_training", TrainingSettings, tuple(overrides), workers=workers
-    )
-
-
-def evaluation_settings(
-    workers: int | None = None, overrides: Sequence[str] = ()
-) -> BuildSettings:
-    """Read `building_evaluation.yaml` with its overrides, its workers unless None."""
-    return load_config(
-        "building_evaluation", BuildSettings, tuple(overrides), workers=workers
     )

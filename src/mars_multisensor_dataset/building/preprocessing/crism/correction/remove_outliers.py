@@ -8,6 +8,7 @@ import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
 from mars_multisensor_dataset.building.configs.crism import FILL
+from mars_multisensor_dataset.building.models.settings import SpikeSettings
 
 
 def flat_field(cube: np.ndarray, refused: np.ndarray) -> None:
@@ -28,17 +29,14 @@ def flat_field(cube: np.ndarray, refused: np.ndarray) -> None:
     cube[refused] = FILL
 
 
-def remove_spikes(
-    cube: np.ndarray, refused: np.ndarray, passes: int, window: int, sigma: float
-) -> None:
+def remove_spikes(cube: np.ndarray, refused: np.ndarray, spikes: SpikeSettings) -> None:
     """Remove spikes in repeated passes over a moving median, as crism_ml does.
 
     Args:
         cube: The flat-fielded values as lines by samples by bands, changed in place.
         refused: Lines by samples, True where the pixel is not a measurement.
-        passes: How many times the cube is filtered.
-        window: How many bands wide the moving median is, truncated at the ends.
-        sigma: How many spreads from the median a value may sit.
+        spikes: The passes, the median's width in bands, truncated at the ends, and
+            how many spreads from the median a value may sit.
     """
     # A refused pixel is flat, so leaving it in would pull the threshold down.
     live = ~refused
@@ -46,8 +44,8 @@ def remove_spikes(
     median = np.empty_like(cube)
     apart = np.empty_like(cube)
     caught = np.empty(cube.shape, dtype=bool)
-    left, right = window // 2, window - window // 2
-    for _ in range(passes):
+    left, right = spikes.window // 2, spikes.window - spikes.window // 2
+    for _ in range(spikes.passes):
         for at in range(cube.shape[-1]):
             near = cube[..., max(at - left, 0) : at + right]
             held = near.shape[-1]
@@ -62,7 +60,7 @@ def remove_spikes(
         np.subtract(median, cube, out=apart)
         np.abs(apart, out=apart)
         # crism_ml judges every sample against the measured cube's own spread.
-        limit = np.mean(apart.mean(axis=-1), where=live) + sigma * np.mean(
+        limit = np.mean(apart.mean(axis=-1), where=live) + spikes.sigma * np.mean(
             apart.std(ddof=1, axis=-1), where=live
         )
         np.greater(apart, limit, out=caught)

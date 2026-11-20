@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
+from pathlib import Path
 
 from mars_multisensor_dataset.building.metadata.observation import ObservationMetadata
 from mars_multisensor_dataset.building.metadata.tile import TileMetadata
 from mars_multisensor_dataset.common.models.tile import Tile
+
+Checkpoint = Callable[[], None]
+FetchBuild = Callable[[str, Path, Sequence[str]], None]
 
 
 @dataclass(frozen=True, slots=True)

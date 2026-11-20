@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from itertools import repeat
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 import digitalhub as dh
@@ -14,9 +15,13 @@ from digitalhub.stores.data.api import get_default_store
 
 from mars_multisensor_dataset.analysis import paths as analysis_paths
 from mars_multisensor_dataset.building import paths as building_paths
-from mars_multisensor_dataset.common.config import training_settings
+from mars_multisensor_dataset.building.config import training_settings
 from mars_multisensor_dataset.common.paths import VERSION
 from mars_multisensor_dataset.common.pool import cancellable_pool
+
+if TYPE_CHECKING:
+    from digitalhub.entities.artifact._base.entity import Artifact
+    from digitalhub.entities.project._base.entity import Project
 
 ARTIFACTS = {
     "coverage": analysis_paths.COVERAGE_ROOT,
@@ -38,7 +43,7 @@ def folder_key(name: str) -> str:
     return name if name in SHARED else f"{VERSION}/{name}"
 
 
-def stored_folder(project, name: str) -> tuple[object, str, str]:
+def stored_folder(project: Project, name: str) -> tuple[object, str, str]:
     """Return the S3 client, bucket and key prefix one published folder lives under.
 
     Args:
@@ -58,13 +63,13 @@ def stored_folder(project, name: str) -> tuple[object, str, str]:
 
 
 def upload_folder(
-    project,
+    project: Project,
     name: str,
     root: Path,
     files: Sequence[Path] | None = None,
     last: Sequence[Path] = (),
     uploads: int = 16,
-):
+) -> Artifact:
     """Publish files of one directory as a folder, many at once and a few after them.
 
     Args:
@@ -95,27 +100,8 @@ def upload_folder(
     )
 
 
-def delete_folder(project, name: str) -> None:
-    """Delete every object one published folder holds, so it can be built anew.
-
-    Args:
-        project: The DigitalHub project the folder is logged into.
-        name: The folder, its version added unless shared.
-    """
-    client, bucket, prefix = stored_folder(project, name)
-    pages = client.get_paginator("list_objects_v2").paginate(
-        Bucket=bucket, Prefix=prefix
-    )
-    keys = [{"Key": one["Key"]} for page in pages for one in page.get("Contents", [])]
-    print(f"deleting {name}, {len(keys):,} files", flush=True)
-    for start in range(0, len(keys), 1000):
-        client.delete_objects(
-            Bucket=bucket, Delete={"Objects": keys[start : start + 1000]}
-        )
-
-
 def download_folder(
-    project,
+    project: Project,
     name: str,
     into: Path,
     names: Sequence[str] | None = None,
@@ -152,13 +138,13 @@ def download_folder(
         )
 
 
-def download_verdicts(project) -> None:
+def download_verdicts(project: Project) -> None:
     """Bring the review down, beside the version's analysis."""
     names = [analysis_paths.VERDICTS_PATH.name]
     download_folder(project, "verdicts", analysis_paths.VERSION_ANALYSIS_ROOT, names)
 
 
-def download_manifest(project) -> None:
+def download_manifest(project: Project) -> None:
     """Bring the training build's manifest down, where the notebooks read it."""
     name = training_settings().name
     download_folder(
@@ -169,7 +155,7 @@ def download_manifest(project) -> None:
     )
 
 
-def upload_verdicts(project):
+def upload_verdicts(project: Project) -> Artifact:
     """Publish the review, the one file the annotation notebook writes.
 
     Args:

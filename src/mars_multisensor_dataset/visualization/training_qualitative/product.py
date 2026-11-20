@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from typing import Any
 
 import ipywidgets as widgets
@@ -13,6 +13,7 @@ from matplotlib.figure import Figure
 from mars_multisensor_dataset.analysis.selector.artifacts import read_selection
 from mars_multisensor_dataset.building import paths as built
 from mars_multisensor_dataset.building.common.layout import Axis
+from mars_multisensor_dataset.building.config import training_settings
 from mars_multisensor_dataset.building.configs import sharad
 from mars_multisensor_dataset.building.metadata.dataset import read_normalization
 from mars_multisensor_dataset.building.metadata.index import read_observation_metadata
@@ -30,7 +31,6 @@ from mars_multisensor_dataset.building.preprocessing.common.models.position impo
 )
 from mars_multisensor_dataset.building.preprocessing.common.models.sample import Sample
 from mars_multisensor_dataset.building.preprocessing.common.store import sample_path
-from mars_multisensor_dataset.common.config import training_settings
 from mars_multisensor_dataset.common.models.tile import Tile
 from mars_multisensor_dataset.common.pds import images
 from mars_multisensor_dataset.visualization import panels
@@ -58,8 +58,11 @@ def observed_sample(
     Raises:
         ValueError: When the product measured nothing or reaches none of the tile.
     """
-    preprocessing = {**training_settings().preprocessing.get(name, {}), **settings}
-    observation = INSTRUMENTS[name].read_observation(identifier, **preprocessing)
+    preprocessing = training_settings().preprocessing
+    if settings:
+        section = replace(getattr(preprocessing, name), **settings)
+        preprocessing = replace(preprocessing, **{name: section})
+    observation = INSTRUMENTS[name].read_observation(identifier, preprocessing)
     sample = None if observation is None else INSTRUMENTS[name].crop(observation, frame)
     if sample is None:
         raise ValueError(f"{name} holds nothing of tile {frame.name}.")
@@ -200,7 +203,7 @@ def sharad_gate_name(**settings: float) -> str:
     Returns:
         name: Every setting beside its value, to cache a panel under.
     """
-    gate = {**training_settings().preprocessing["SHARAD"], **settings}
+    gate = asdict(replace(training_settings().preprocessing.SHARAD, **settings))
     return "_".join(f"{key}_{value:g}" for key, value in gate.items())
 
 

@@ -11,6 +11,7 @@ import numpy as np
 from mars_multisensor_dataset.common.maths.geodesy import (
     POLE,
     TURN,
+    Bounded,
     longitude_span,
     longitude_stretch,
 )
@@ -49,12 +50,12 @@ def bounds_boxes(bounded: Iterable[Boxed]) -> Box:
     return tuple(np.array(list(map(bounds_box, bounded)), dtype=float).reshape(-1, 4).T)
 
 
-def box_edges(bounded) -> dict[str, float]:
+def box_edges(bounded: Bounded) -> dict[str, float]:
     """Return the four edges one tile or one feature is bounded by, by name."""
     return {edge: getattr(bounded, edge) for edge in EDGES}
 
 
-def recut[Bounded](bounded: Bounded, cut) -> Bounded:
+def recut[Record](bounded: Record, cut: Bounded) -> Record:
     """Return a copy of one bounded record, bounded by another's box instead."""
     return replace(bounded, **box_edges(cut))
 

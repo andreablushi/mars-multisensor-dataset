@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 
 from mars_multisensor_dataset.building.configs import sharad as configs
-from mars_multisensor_dataset.building.preprocessing.sharad.models.gate import Gate
+from mars_multisensor_dataset.building.models.settings import Preprocessing
 from mars_multisensor_dataset.building.preprocessing.sharad.models.observation import (
     SharadObservation,
 )
@@ -19,24 +19,13 @@ from mars_multisensor_dataset.common.pds import images, labels, tables
 
 
 def read_observation(
-    identifier: str,
-    looks: int,
-    false_alarm: float,
-    guard_rows: int,
-    echo_margin_db: float,
-    surface_margin_db: float,
+    identifier: str, preprocessing: Preprocessing
 ) -> SharadObservation:
     """Read one radargram and join it to the geometry it was measured at.
 
     Args:
         identifier: The observation, its files already in the download cache.
-        looks: How many traces each delay row of its crops is averaged over.
-        false_alarm: The share of a crop's pure noise left over its threshold.
-        guard_rows: The rows kept between an echo and the noise beside it.
-        echo_margin_db: How far a row's mean power stands over the noise above the
-            surface to hold an echo.
-        surface_margin_db: How far a crop's strongest value stands over its
-            threshold to hold a surface.
+        preprocessing: The build's reader settings, of which SHARAD reads its gate.
 
     Returns:
         observation: The radargram and its clutter simulation in dB, with their
@@ -65,7 +54,7 @@ def read_observation(
         radargram_db(power),
         clutter_db(clutter),
         geometry,
-        Gate(looks, false_alarm, guard_rows, echo_margin_db, surface_margin_db),
+        preprocessing.SHARAD,
     )
 
 

@@ -7,6 +7,7 @@ from dataclasses import replace
 import numpy as np
 
 from mars_multisensor_dataset.building.configs import crism as configs
+from mars_multisensor_dataset.building.models.settings import CrismPreprocessing
 from mars_multisensor_dataset.building.preprocessing.crism import merge
 from mars_multisensor_dataset.building.preprocessing.crism.correction import (
     atmosphere,
@@ -28,9 +29,7 @@ def clean_observation(
     scans: dict[configs.Detector, tuple[np.ndarray, np.ndarray]],
     geometry: np.ndarray,
     label: dict[str, str],
-    spikes: dict[str, float],
-    levelling: int,
-    join_ratio: tuple[float, float],
+    settings: CrismPreprocessing,
 ) -> CrismObservation | None:
     """Clean every detector of one observation and join them onto the survey's grid.
 
@@ -39,10 +38,7 @@ def clean_observation(
         scans: Each detector's raw cube and the detector row of every band.
         geometry: The backplanes that place every pixel.
         label: What every product the observation was published as says of it.
-        spikes: The passes, window and sigma the spikes are removed with.
-        levelling: How many lines a column is levelled over along the track.
-        join_ratio: The lowest and highest ratio of the first infrared band to the
-            last visible one an observation keeps.
+        settings: How spikes are removed, columns levelled and the join checked.
 
     Returns:
         observation: The joined observation, or None where a detector measured
@@ -70,7 +66,7 @@ def clean_observation(
             )
             atmosphere.divide_transmission(block, transmission, depth)
         remove_outliers.flat_field(block, refused)
-        remove_outliers.remove_spikes(block, refused, **spikes)
+        remove_outliers.remove_spikes(block, refused, settings.spikes)
         cleaned[name] = DetectorCube(block, table, columns, refused)
     if dropped := [name for name in configs.Detector if name not in cleaned]:
         missed = ", ".join(dropped)
@@ -83,12 +79,12 @@ def clean_observation(
         observation.valid,
         observation.measured_bands,
     )
-    remove_outliers.level_columns(observation.cube, valid, levelling)
+    remove_outliers.level_columns(observation.cube, valid, settings.levelling)
     cube = normalize.normalized_spectra(observation.cube, valid)
     visible = centre_wavelengths.DETECTOR_SLOTS[configs.Detector.VISIBLE][-1]
     infrared = centre_wavelengths.DETECTOR_SLOTS[configs.Detector.INFRARED][0]
     ratio = float(np.nanmedian(cube[valid, infrared] / cube[valid, visible]))
-    if not join_ratio[0] <= ratio <= join_ratio[1]:
+    if not settings.join_ratio[0] <= ratio <= settings.join_ratio[1]:
         print(f"note {identifier} [CRISM]: detectors join at {ratio:.2f}", flush=True)
         return None
     return replace(observation, cube=cube, valid=valid)

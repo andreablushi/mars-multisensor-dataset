@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import NamedTuple
+from typing import NamedTuple, Protocol
 
 import numpy as np
 from pyproj import Geod
@@ -71,7 +71,27 @@ def longitude_span(west_lon: float, east_lon: float) -> float:
     return raw % TURN
 
 
-def bbox_centre(bounded) -> tuple[float, float]:
+class Bounded(Protocol):
+    """Anything bounded by two latitudes and two longitudes, a tile or a feature."""
+
+    @property
+    def min_lat(self) -> float:
+        """Return the southernmost latitude in degrees."""
+
+    @property
+    def max_lat(self) -> float:
+        """Return the northernmost latitude in degrees."""
+
+    @property
+    def west_lon(self) -> float:
+        """Return the westernmost longitude in degrees."""
+
+    @property
+    def east_lon(self) -> float:
+        """Return the easternmost longitude in degrees."""
+
+
+def bbox_centre(bounded: Bounded) -> tuple[float, float]:
     """Return the centre of the box one tile or one feature is bounded by.
 
     Args:
@@ -87,7 +107,7 @@ def bbox_centre(bounded) -> tuple[float, float]:
     return float(normalise_longitude(centre_lon)), centre_lat
 
 
-def bbox_ring(bounded, step: float) -> tuple[np.ndarray, np.ndarray]:
+def bbox_ring(bounded: Bounded, step: float) -> tuple[np.ndarray, np.ndarray]:
     """Return a densified closed lon/lat ring tracing the box one tile is bounded by.
 
     Args:

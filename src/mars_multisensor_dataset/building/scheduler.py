@@ -12,7 +12,6 @@ from concurrent.futures.process import BrokenProcessPool
 from contextlib import ExitStack
 from functools import partial
 from pathlib import Path
-from typing import Any
 
 import httpx
 
@@ -23,7 +22,10 @@ from mars_multisensor_dataset.building.metadata.observation import (
 from mars_multisensor_dataset.building.models.instrument import INSTRUMENTS, Archive
 from mars_multisensor_dataset.building.models.job import Job, Outcome
 from mars_multisensor_dataset.building.models.progress import Progress, Stage
-from mars_multisensor_dataset.building.models.settings import BuildSettings
+from mars_multisensor_dataset.building.models.settings import (
+    BuildSettings,
+    Preprocessing,
+)
 from mars_multisensor_dataset.building.preprocessing.common import store
 from mars_multisensor_dataset.common.pool import cancellable_pool
 
@@ -195,15 +197,13 @@ class Scheduler:
         self._places[instrument.archive].release()
 
 
-def build_product(
-    job: Job, root: Path, preprocessing: dict[str, dict[str, Any]]
-) -> Outcome:
+def build_product(job: Job, root: Path, preprocessing: Preprocessing) -> Outcome:
     """Cut one downloaded product to every tile that kept it, and write each.
 
     Args:
         job: The product to build, and the tiles to cut it to.
         root: The dataset's own root directory.
-        preprocessing: What each instrument's reader is handed, by its name.
+        preprocessing: What each instrument's reader is handed.
 
     Returns:
         outcome: The outcome, its written samples and the first error a cut raised.
@@ -218,9 +218,7 @@ def build_product(
     failed: Exception | None = None
     try:
         # Read once however many tiles want it, which is why the product is the unit.
-        observation = instrument.read_observation(
-            job.identifier, **preprocessing.get(job.instrument, {})
-        )
+        observation = instrument.read_observation(job.identifier, preprocessing)
         for frame in job.frames:
             try:
                 sample = (

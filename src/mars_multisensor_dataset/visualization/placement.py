@@ -52,7 +52,7 @@ class PlacedTile:
         return box.crop_around(self.lon, self.lat, config.MIN_SPAN_DEG)
 
 
-def placed_tile(name: str, cut=None) -> PlacedTile | None:
+def placed_tile(name: str, cut: geodesy.Bounded | None = None) -> PlacedTile | None:
     """Lay one tile back onto the mosaic.
 
     Args:

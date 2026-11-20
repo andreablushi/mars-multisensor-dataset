@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 from mars_multisensor_dataset.building.configs import mola as configs
+from mars_multisensor_dataset.building.models.settings import Preprocessing
 from mars_multisensor_dataset.building.preprocessing.mola.models.observation import (
     MolaObservation,
 )
 
 
-def read_observation(identifier: str) -> MolaObservation:
+def read_observation(identifier: str, preprocessing: Preprocessing) -> MolaObservation:
     """Read which sheets of one grid a tile could be merged from.
 
     Args:
         identifier: The grid as `configs.GRIDS` names it, its sheets already cached.
+        preprocessing: The build's reader settings, none of which MOLA reads.
 
     Returns:
         observation: The sheets of it that landed, only their paths known yet.

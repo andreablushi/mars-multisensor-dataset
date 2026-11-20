@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from mars_multisensor_dataset.common.config import analysis_settings
+from mars_multisensor_dataset.analysis.config import analysis_settings
 
 
 def config_rank(name: str) -> int:

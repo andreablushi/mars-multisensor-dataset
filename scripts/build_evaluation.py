@@ -3,6 +3,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
+
 from dhub import build
 from digitalhub_runtime_python import handler
 
@@ -10,8 +13,12 @@ from mars_multisensor_dataset.analysis.ground_truth.nomenclature import catalogu
 from mars_multisensor_dataset.analysis.selector.artifacts import read_selection
 from mars_multisensor_dataset.analysis.selector.models.selection import Selection
 from mars_multisensor_dataset.building import draw, paths
+from mars_multisensor_dataset.building.config import evaluation_settings
 from mars_multisensor_dataset.building.models.settings import BuildSettings
-from mars_multisensor_dataset.common.config import evaluation_settings
+
+if TYPE_CHECKING:
+    from digitalhub.entities.artifact._base.entity import Artifact
+    from digitalhub.entities.project._base.entity import Project
 
 
 def evaluation_selections(settings: BuildSettings) -> list[Selection]:
@@ -34,7 +41,12 @@ def evaluation_selections(settings: BuildSettings) -> list[Selection]:
 
 
 @handler(outputs=["dataset"])
-def run_build(project, force: bool = False, workers: int | None = None, overrides=()):
+def run_build(
+    project: Project,
+    force: bool = False,
+    workers: int | None = None,
+    overrides: Sequence[str] = (),
+) -> Artifact:
     """Build the evaluation dataset on DigitalHub and publish what it left on disk.
 
     Args:

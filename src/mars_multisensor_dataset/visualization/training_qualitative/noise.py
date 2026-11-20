@@ -11,6 +11,7 @@ from matplotlib.figure import Figure
 
 from mars_multisensor_dataset.analysis import paths
 from mars_multisensor_dataset.analysis.utils.tile_group import tile_grid
+from mars_multisensor_dataset.building.config import training_settings
 from mars_multisensor_dataset.building.preprocessing.common.models.sample import Sample
 from mars_multisensor_dataset.building.preprocessing.sharad.denoise import (
     measured_noise,
@@ -24,7 +25,6 @@ from mars_multisensor_dataset.building.preprocessing.sharad.normalize import (
 from mars_multisensor_dataset.building.preprocessing.sharad.window import (
     rows_below_atmosphere,
 )
-from mars_multisensor_dataset.common.config import training_settings
 from mars_multisensor_dataset.common.disk.slugify import slugify
 from mars_multisensor_dataset.common.models.tile import Tile
 from mars_multisensor_dataset.visualization import panels

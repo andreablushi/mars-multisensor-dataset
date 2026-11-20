@@ -5,6 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ProcessPoolExecutor
 
 from mars_multisensor_dataset.analysis import console
+from mars_multisensor_dataset.analysis.config import analysis_settings
 from mars_multisensor_dataset.analysis.coverage import artifacts as coverage_artifacts
 from mars_multisensor_dataset.analysis.selector.artifacts import write_selection
 from mars_multisensor_dataset.analysis.selector.merge import merge_track
@@ -19,7 +20,6 @@ from mars_multisensor_dataset.analysis.selector.search import best_survey
 from mars_multisensor_dataset.analysis.stats.models import TileStats, TileTrack
 from mars_multisensor_dataset.analysis.stats.tile import measure_tile
 from mars_multisensor_dataset.analysis.utils.tile_group import tile_grid
-from mars_multisensor_dataset.common.config import analysis_settings
 from mars_multisensor_dataset.common.maths import box
 from mars_multisensor_dataset.common.models.tile import Tile
 from mars_multisensor_dataset.common.pool import cancellable_pool

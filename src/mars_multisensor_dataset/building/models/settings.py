@@ -3,9 +3,71 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from omegaconf import MISSING
+
+from mars_multisensor_dataset.building.preprocessing.sharad.models.gate import Gate
+
+
+@dataclass(slots=True)
+class CtxPreprocessing:
+    """What the CTX reader is handed.
+
+    Attributes:
+        clip: The low and high percentiles a scan's counts are clipped at.
+        stride: How many lines and samples apart a scan's statistics are measured.
+        pool: How many pixels a side every crop is averaged over.
+    """
+
+    clip: list[int]
+    stride: int
+    pool: int
+
+
+@dataclass(slots=True)
+class SpikeSettings:
+    """How CRISM spikes are removed, as crism_ml sets it.
+
+    Attributes:
+        passes: How many times the cube is filtered.
+        window: How many bands wide the moving median is.
+        sigma: How many spreads from the median a value may sit.
+    """
+
+    passes: int
+    window: int
+    sigma: float
+
+
+@dataclass(slots=True)
+class CrismPreprocessing:
+    """What the CRISM reader is handed.
+
+    Attributes:
+        spikes: How spikes are removed.
+        levelling: How many lines a column is levelled over along the track.
+        join_ratio: The lowest and highest ratio of the first infrared band to the
+            last visible one an observation keeps.
+    """
+
+    spikes: SpikeSettings
+    levelling: int
+    join_ratio: list[float]
+
+
+@dataclass(slots=True)
+class Preprocessing:
+    """What each instrument's reader is handed, the same in every build.
+
+    Attributes:
+        CTX: The CTX reader's settings.
+        CRISM: The CRISM reader's settings.
+        SHARAD: The noise gate every SHARAD crop is measured with.
+    """
+
+    CTX: CtxPreprocessing
+    CRISM: CrismPreprocessing
+    SHARAD: Gate
 
 
 @dataclass(slots=True)
@@ -16,7 +78,7 @@ class BuildSettings:
         name: The build's name, its directory and what it is published under.
         workers: How many products are built at once, one per core.
         downloads: How many downloads run at once from each archive, by its name.
-        preprocessing: What each instrument's reader is handed, by its name.
+        preprocessing: What each instrument's reader is handed.
         reference: The build whose constants this one is standardised by, or None to
             pool its own.
         instruments: The instruments it builds, or None for every one.
@@ -25,7 +87,7 @@ class BuildSettings:
     name: str
     workers: int
     downloads: dict[str, int]
-    preprocessing: dict[str, dict[str, Any]]
+    preprocessing: Preprocessing
     reference: str | None = None
     instruments: list[str] | None = None
 

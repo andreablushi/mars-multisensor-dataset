@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import csv
-from collections.abc import Sequence
 
 import numpy as np
 
 from mars_multisensor_dataset.building.configs import ctx as configs
+from mars_multisensor_dataset.building.models.settings import Preprocessing
 from mars_multisensor_dataset.building.preprocessing.ctx.isis import (
     read_cube_label,
     run_isis,
@@ -21,16 +21,12 @@ from mars_multisensor_dataset.building.preprocessing.ctx.normalize import (
 from mars_multisensor_dataset.common.disk.files import read_json
 
 
-def read_observation(
-    identifier: str, clip: Sequence[float], stride: int, pool: int
-) -> CtxObservation:
+def read_observation(identifier: str, preprocessing: Preprocessing) -> CtxObservation:
     """Calibrate one placed scan and sample where its lines fall on the ground.
 
     Args:
         identifier: The observation, its files already in the download cache.
-        clip: The low and high percentiles the scan's counts are clipped at.
-        stride: How many lines and samples apart its statistics are measured.
-        pool: How many pixels a side its crops are averaged over.
+        preprocessing: The build's reader settings, of which CTX reads its own.
 
     Returns:
         observation: The calibrated scan and its sampled ground points.
@@ -78,6 +74,6 @@ def read_observation(
         np.array([float(row["Line"]) for row in rows]),
         np.array([float(row["PlanetocentricLatitude"]) for row in rows]),
         np.array([float(row["PositiveEast360Longitude"]) for row in rows]),
-        scan_statistics(cube, clip, stride),
-        pool,
+        scan_statistics(cube, preprocessing.CTX.clip, preprocessing.CTX.stride),
+        preprocessing.CTX.pool,
     )

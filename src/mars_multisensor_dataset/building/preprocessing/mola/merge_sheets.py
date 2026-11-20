@@ -11,6 +11,7 @@ from mars_multisensor_dataset.building.preprocessing.common.models.position impo
 )
 from mars_multisensor_dataset.building.preprocessing.mola import projection
 from mars_multisensor_dataset.building.preprocessing.mola.models.observation import (
+    MergedSheets,
     MolaObservation,
 )
 from mars_multisensor_dataset.common.maths.geodesy import POLE, TURN
@@ -18,9 +19,7 @@ from mars_multisensor_dataset.common.models.tile import Tile
 from mars_multisensor_dataset.common.pds import images, labels
 
 
-def merge_sheets(
-    observation: MolaObservation, frame: Tile
-) -> tuple[dict[str, str], np.ndarray, Position]:
+def merge_sheets(observation: MolaObservation, frame: Tile) -> MergedSheets:
     """Return the one grid every sheet a tile stands on writes its part of.
 
     Args:
@@ -85,7 +84,7 @@ def merge_sheets(
         raise ValueError(
             f"{frame.name} reaches ground no sheet of {observation.identifier} holds."
         )
-    return (
+    return MergedSheets(
         labels.merge(*read),
         elevation,
         Position(

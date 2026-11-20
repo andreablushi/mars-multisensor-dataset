@@ -7,6 +7,7 @@ from html import escape
 
 import ipywidgets as widgets
 
+from mars_multisensor_dataset.analysis.config import analysis_settings
 from mars_multisensor_dataset.analysis.stats.artifacts import read_tile_selection
 from mars_multisensor_dataset.analysis.stats.order import config_rank
 from mars_multisensor_dataset.analysis.stats.tile import (
@@ -15,7 +16,6 @@ from mars_multisensor_dataset.analysis.stats.tile import (
     read_tile_track,
 )
 from mars_multisensor_dataset.analysis.utils.tile_group import tile_grid
-from mars_multisensor_dataset.common.config import analysis_settings
 from mars_multisensor_dataset.visualization import mosaic, panels, wording
 from mars_multisensor_dataset.visualization.config import NO_BOX
 from mars_multisensor_dataset.visualization.panels import Row

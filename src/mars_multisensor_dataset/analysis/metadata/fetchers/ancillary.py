@@ -20,7 +20,10 @@ from mars_multisensor_dataset.analysis.metadata.loaders.ancillary import (
     load_distortions,
     read_distortions,
 )
-from mars_multisensor_dataset.analysis.models.ancillary import Distortion
+from mars_multisensor_dataset.analysis.models.ancillary import (
+    Distortion,
+    FetchedDistortions,
+)
 from mars_multisensor_dataset.analysis.models.instrument import InstrumentSet
 from mars_multisensor_dataset.analysis.models.settings import AnalysisSettings
 from mars_multisensor_dataset.analysis.models.tile_group import TileGroup
@@ -102,7 +105,7 @@ def fetch_distortions(
     instrument_set: InstrumentSet,
     settings: AnalysisSettings,
     grid: Tessellate,
-) -> tuple[list[Distortion], int]:
+) -> FetchedDistortions:
     """Read a sample of the geometry table of every SHARAD track wanted over its tiles.
 
     Args:
@@ -170,7 +173,7 @@ def fetch_distortions(
             except Exception as error:
                 failed += 1
                 printing.print_failure(pdsid, error, failed)
-    return distortions, failed
+    return FetchedDistortions(distortions, failed)
 
 
 def sample_distortions(

@@ -7,6 +7,9 @@ from functools import partial
 import numpy as np
 
 from mars_multisensor_dataset.building.preprocessing.common import geometry
+from mars_multisensor_dataset.building.preprocessing.common.models.overlap import (
+    KeptSamples,
+)
 from mars_multisensor_dataset.building.preprocessing.common.models.position import (
     Position,
 )
@@ -15,9 +18,7 @@ from mars_multisensor_dataset.common.maths.geodesy import TURN
 from mars_multisensor_dataset.common.models.tile import Tile
 
 
-def cut(
-    position: Position, frame: Tile
-) -> tuple[tuple[np.ndarray, ...], np.ndarray | None] | None:
+def cut(position: Position, frame: Tile) -> KeptSamples | None:
     """Return which samples of one observation placed in degrees the box keeps.
 
     Args:
@@ -41,7 +42,7 @@ def cut(
         ordered = held[np.argsort(eastward[held], kind="stable")]
         if not lines.size or not ordered.size:
             return None
-        return (lines, ordered), None
+        return KeptSamples((lines, ordered), None)
     kept = upward & (eastward <= frame.span)
     if not kept.any():
         return None
@@ -50,7 +51,7 @@ def cut(
         np.arange(int(low), int(high) + 1)
         for low, high in zip(where.min(axis=0), where.max(axis=0), strict=True)
     )
-    return bounds, geometry.partial_mask(geometry.kept_part(kept, bounds))
+    return KeptSamples(bounds, geometry.partial_mask(geometry.kept_part(kept, bounds)))
 
 
 def placed(position: Position, frame: Tile) -> Position:

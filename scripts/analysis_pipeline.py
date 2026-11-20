@@ -6,12 +6,14 @@ from __future__ import annotations
 import os
 import time
 from collections import Counter
+from typing import TYPE_CHECKING
 
 from dhub import store, submit
 from digitalhub_runtime_python import handler
 from rich.console import Console
 
 from mars_multisensor_dataset.analysis import paths, planner, runner
+from mars_multisensor_dataset.analysis.config import analysis_settings
 from mars_multisensor_dataset.analysis.console import print_summary
 from mars_multisensor_dataset.analysis.coverage import artifacts as coverage_artifacts
 from mars_multisensor_dataset.analysis.ground_truth.nomenclature import catalogue
@@ -31,8 +33,11 @@ from mars_multisensor_dataset.analysis.selector import select
 from mars_multisensor_dataset.analysis.selector.artifacts import read_selected_tiles
 from mars_multisensor_dataset.analysis.stats.artifacts import write_stats
 from mars_multisensor_dataset.analysis.stats.dataset import dataset_stats
-from mars_multisensor_dataset.common.config import analysis_settings
 from mars_multisensor_dataset.common.console import PLAIN_LOG_ENV
+
+if TYPE_CHECKING:
+    from digitalhub.entities.artifact._base.entity import Artifact
+    from digitalhub.entities.project._base.entity import Project
 
 SELECTION_ARTIFACTS = ("selection", "stats", "labels")
 
@@ -115,7 +120,9 @@ def compute_selection(force: bool = False, workers: int | None = None) -> None:
 
 
 @handler(outputs=["coverage", "metadata", *SELECTION_ARTIFACTS])
-def run_pipeline(project, force: bool = False, workers: int | None = None):
+def run_pipeline(
+    project: Project, force: bool = False, workers: int | None = None
+) -> tuple[Artifact, ...]:
     """Run every stage on DigitalHub and publish everything each one left on disk.
 
     Args:
@@ -158,7 +165,9 @@ def run_pipeline(project, force: bool = False, workers: int | None = None):
 
 
 @handler(outputs=list(SELECTION_ARTIFACTS))
-def run_selection(project, force: bool = False, workers: int | None = None):
+def run_selection(
+    project: Project, force: bool = False, workers: int | None = None
+) -> tuple[Artifact, ...]:
     """Select the dataset on DigitalHub under the filter, and publish what it leaves.
 
     Args:

@@ -11,13 +11,13 @@ from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.ticker import FuncFormatter, MaxNLocator, PercentFormatter
 
+from mars_multisensor_dataset.analysis.config import analysis_settings
 from mars_multisensor_dataset.analysis.models.instrument import PIXEL_KM2
 from mars_multisensor_dataset.analysis.stats.instrument_sets import (
     landings_per_set,
     timelines_per_set,
 )
 from mars_multisensor_dataset.analysis.stats.tile import read_tile_track
-from mars_multisensor_dataset.common.config import analysis_settings
 from mars_multisensor_dataset.visualization import panels, wording
 from mars_multisensor_dataset.visualization.config import GREY
 from mars_multisensor_dataset.visualization.panels import Colour

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack
 from dataclasses import replace
@@ -21,7 +21,13 @@ from mars_multisensor_dataset.building.metadata.index import (
     write_index,
 )
 from mars_multisensor_dataset.building.metadata.selection import exclude_tiles
-from mars_multisensor_dataset.building.models.job import Outcome, Plan, settled_outcomes
+from mars_multisensor_dataset.building.models.job import (
+    Checkpoint,
+    FetchBuild,
+    Outcome,
+    Plan,
+    settled_outcomes,
+)
 from mars_multisensor_dataset.building.models.progress import Progress
 from mars_multisensor_dataset.building.models.settings import (
     BuildSettings,
@@ -39,8 +45,8 @@ def build_dataset(
     settings: BuildSettings,
     picked: Sequence[Selection],
     force: bool,
-    checkpoint: Callable[[], None] | None = None,
-    fetch: Callable[[str, Path, Sequence[str]], None] | None = None,
+    checkpoint: Checkpoint | None = None,
+    fetch: FetchBuild | None = None,
     root: Path | None = None,
 ) -> int:
     """Build one dataset over the tiles it is handed.
@@ -131,7 +137,7 @@ def build_outcomes(
     root: Path,
     ode: httpx.Client,
     console: Console,
-    checkpoint: Callable[[], None] | None,
+    checkpoint: Checkpoint | None,
 ) -> list[Outcome]:
     """Fetch every product a plan needs and cut each to the tiles that kept it.
 
@@ -166,7 +172,7 @@ def _checkpointed(
     outcomes: Iterator[Outcome],
     plan: Plan,
     root: Path,
-    checkpoint: Callable[[], None],
+    checkpoint: Checkpoint,
 ) -> Iterator[Outcome]:
     """Hand on every outcome, publishing what is built once its crops fill the disk.
 

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from mars_multisensor_dataset.analysis.config import analysis_settings
 from mars_multisensor_dataset.analysis.models.tile_group import TileGroup
 from mars_multisensor_dataset.analysis.partition import Tessellate
-from mars_multisensor_dataset.common.config import analysis_settings
 from mars_multisensor_dataset.common.maths.geodesy import HALF_TURN, TURN
 from mars_multisensor_dataset.common.models.tile import Tile
 

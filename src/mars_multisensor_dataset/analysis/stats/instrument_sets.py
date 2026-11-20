@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from mars_multisensor_dataset.analysis.config import analysis_settings
 from mars_multisensor_dataset.analysis.coverage.models.coverage import SetCoverage
 from mars_multisensor_dataset.analysis.selector.filters.admit import floor_km2
 from mars_multisensor_dataset.analysis.stats.models import Landing, TileTrack, Timeline
-from mars_multisensor_dataset.common.config import analysis_settings
 
 
 def landings_per_set(tile_track: TileTrack) -> list[Landing]:

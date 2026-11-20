@@ -7,6 +7,9 @@ from functools import partial
 import numpy as np
 
 from mars_multisensor_dataset.building.preprocessing.common import geometry
+from mars_multisensor_dataset.building.preprocessing.common.models.overlap import (
+    KeptSamples,
+)
 from mars_multisensor_dataset.building.preprocessing.common.models.position import (
     Position,
 )
@@ -18,9 +21,7 @@ from mars_multisensor_dataset.common.models.tile import Tile
 STEP = 0.1
 
 
-def cut(
-    position: Position, frame: Tile
-) -> tuple[tuple[np.ndarray, ...], np.ndarray | None] | None:
+def cut(position: Position, frame: Tile) -> KeptSamples | None:
     """Return which bins of one grid projected onto a pole the box keeps.
 
     Args:
@@ -65,7 +66,7 @@ def cut(
         )
     if not inside.any():
         return None
-    return (lines, across), geometry.partial_mask(inside)
+    return KeptSamples((lines, across), geometry.partial_mask(inside))
 
 
 def placed(position: Position, frame: Tile) -> Position:

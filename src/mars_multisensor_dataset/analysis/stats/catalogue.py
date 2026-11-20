@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from mars_multisensor_dataset.analysis.config import analysis_settings
 from mars_multisensor_dataset.analysis.coverage import artifacts as coverage_artifacts
 from mars_multisensor_dataset.analysis.coverage.models.summary import Summary
 from mars_multisensor_dataset.analysis.partition import split_bands_columns
@@ -11,7 +12,6 @@ from mars_multisensor_dataset.analysis.stats.models import (
     Spread,
 )
 from mars_multisensor_dataset.analysis.stats.order import config_rank
-from mars_multisensor_dataset.common.config import analysis_settings
 
 
 def read_catalogue() -> CatalogueStats:

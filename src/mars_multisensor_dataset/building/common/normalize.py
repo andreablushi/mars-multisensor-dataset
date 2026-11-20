@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -17,6 +17,7 @@ from mars_multisensor_dataset.building.metadata.dataset import (
 )
 from mars_multisensor_dataset.building.metadata.index import read_observation_metadata
 from mars_multisensor_dataset.building.metadata.observation import ObservationMetadata
+from mars_multisensor_dataset.building.models.job import FetchBuild
 from mars_multisensor_dataset.building.models.settings import BuildSettings
 
 CLUTTER = "clutter"
@@ -25,7 +26,7 @@ CLUTTER = "clutter"
 def record_normalization(
     settings: BuildSettings,
     root: Path,
-    fetch: Callable[[str, Path, Sequence[str]], None] | None,
+    fetch: FetchBuild | None,
 ) -> None:
     """Record in the manifest the mean, std, min and max of each instrument and clutter.
 
@@ -51,7 +52,7 @@ def record_normalization(
 
 
 def _reference_normalization(
-    settings: BuildSettings, fetch: Callable[[str, Path, Sequence[str]], None] | None
+    settings: BuildSettings, fetch: FetchBuild | None
 ) -> dict[str, dict[str, Any]] | None:
     """Return the constants of the build this one is standardised like, if any.
 

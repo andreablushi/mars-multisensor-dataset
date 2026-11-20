@@ -9,6 +9,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from mars_multisensor_dataset.analysis import paths
+from mars_multisensor_dataset.analysis.config import analysis_settings
 from mars_multisensor_dataset.analysis.coverage.models.coverage import (
     Event,
     SetCoverage,
@@ -17,7 +18,6 @@ from mars_multisensor_dataset.analysis.coverage.models.summary import Summary
 from mars_multisensor_dataset.analysis.models.instrument import InstrumentSet
 from mars_multisensor_dataset.analysis.models.job import CoverageJob
 from mars_multisensor_dataset.analysis.utils.tile_group import group_of
-from mars_multisensor_dataset.common.config import analysis_settings
 from mars_multisensor_dataset.common.disk import parquet
 from mars_multisensor_dataset.common.disk.files import atomic_path
 from mars_multisensor_dataset.common.models.tile import Tile

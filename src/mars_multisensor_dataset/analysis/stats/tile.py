@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 
+from mars_multisensor_dataset.analysis.config import analysis_settings
 from mars_multisensor_dataset.analysis.coverage.models.coverage import SetCoverage
 from mars_multisensor_dataset.analysis.selector.merge import merge_track
 from mars_multisensor_dataset.analysis.selector.models.selection import Selection
@@ -14,7 +15,6 @@ from mars_multisensor_dataset.analysis.stats.models import (
     TileStats,
     TileTrack,
 )
-from mars_multisensor_dataset.common.config import analysis_settings
 
 # How many tiles are held read at once, so every panel of one shares it.
 TILE_CACHE = 8

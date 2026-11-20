@@ -4,8 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NamedTuple
+
+import numpy as np
 
 from mars_multisensor_dataset.building.configs.mola import Grid
+from mars_multisensor_dataset.building.preprocessing.common.models.position import (
+    Position,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,3 +27,19 @@ class MolaObservation:
     identifier: str
     grid: Grid
     files: dict[str, Path]
+
+
+class MergedSheets(NamedTuple):
+    """The one grid every sheet a tile stands on writes its part of.
+
+    Attributes:
+        label: What the sheets that write part of the box say about it, merged.
+        elevation: The elevation above the areoid in metres over the box, lines by
+            samples.
+        position: The latitude of every line, falling southward, and the longitude of
+            every sample, rising eastward past a turn.
+    """
+
+    label: dict[str, str]
+    elevation: np.ndarray
+    position: Position

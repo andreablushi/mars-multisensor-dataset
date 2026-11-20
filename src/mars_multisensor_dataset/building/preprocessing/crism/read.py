@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from mars_multisensor_dataset.building.configs import crism as configs
+from mars_multisensor_dataset.building.models.settings import Preprocessing
 from mars_multisensor_dataset.building.preprocessing.crism import clean
 from mars_multisensor_dataset.building.preprocessing.crism.correction import (
     centre_wavelengths,
@@ -16,19 +17,13 @@ from mars_multisensor_dataset.common.pds import images, labels
 
 
 def read_observation(
-    identifier: str,
-    spikes: dict[str, float],
-    levelling: int,
-    join_ratio: tuple[float, float],
+    identifier: str, preprocessing: Preprocessing
 ) -> CrismObservation | None:
     """Read one observation off disk and have it cleaned and joined onto the grid.
 
     Args:
         identifier: The observation, its files already in the download cache.
-        spikes: The passes, window and sigma the spikes are removed with.
-        levelling: How many lines a column is levelled over along the track.
-        join_ratio: The lowest and highest ratio of the first infrared band to the
-            last visible one an observation keeps.
+        preprocessing: The build's reader settings, of which CRISM reads its own.
 
     Returns:
         observation: The observation on the survey's shared grid, or None where a
@@ -58,5 +53,5 @@ def read_observation(
     )
     label = labels.merge(*held, geometry_label)
     return clean.clean_observation(
-        identifier, scans, geometry, label, spikes, levelling, join_ratio
+        identifier, scans, geometry, label, preprocessing.CRISM
     )
