@@ -24,10 +24,8 @@ ARTIFACTS = {
     "selection": analysis_paths.SELECTION_ROOT,
     "stats": analysis_paths.STATS_ROOT,
     "labels": analysis_paths.LABELS_ROOT,
-    "swim": analysis_paths.SWIM_ROOT,
 }
-SHARED = ("coverage", "metadata", "swim", "lavaflow_candidates")
-VERDICTS = (analysis_paths.VERDICTS_PATH, analysis_paths.LAVAFLOW_VERDICTS_PATH)
+SHARED = ("coverage", "metadata")
 
 
 def published_name(name: str) -> str:
@@ -155,8 +153,8 @@ def download_folder(
 
 
 def download_verdicts(project) -> None:
-    """Bring both reviews down, beside the version's analysis."""
-    names = [path.name for path in VERDICTS]
+    """Bring the review down, beside the version's analysis."""
+    names = [analysis_paths.VERDICTS_PATH.name]
     download_folder(project, "verdicts", analysis_paths.VERSION_ANALYSIS_ROOT, names)
 
 
@@ -172,15 +170,15 @@ def download_manifest(project) -> None:
 
 
 def upload_verdicts(project):
-    """Publish the reviews, the one file each annotation notebook writes.
+    """Publish the review, the one file the annotation notebook writes.
 
     Args:
-        project: The DigitalHub project to log the reviews into.
+        project: The DigitalHub project to log the review into.
 
     Returns:
         artifact: The logged artifact.
     """
-    written = [path for path in VERDICTS if path.is_file()]
+    written = [analysis_paths.VERDICTS_PATH]
     return upload_folder(
         project, "verdicts", analysis_paths.VERSION_ANALYSIS_ROOT, written
     )

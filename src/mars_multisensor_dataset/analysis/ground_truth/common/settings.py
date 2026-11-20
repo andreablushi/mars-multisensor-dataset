@@ -4,11 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from mars_multisensor_dataset.analysis.ground_truth.lavaflow.models import (
-    LavaFlowSettings,
-)
-from mars_multisensor_dataset.analysis.ground_truth.swim.models import SwimSettings
-
 from ..nomenclature.models.settings import (
     NomenclatureSettings,
 )
@@ -20,10 +15,6 @@ class GroundTruthSettings:
 
     Attributes:
         nomenclature: How the evaluation classes are read from the IAU nomenclature.
-        swim: How the SWIM ice maps are sampled under every tile.
-        lavaflow: Which SHARAD crops a lava flow reflector is looked for in.
     """
 
     nomenclature: NomenclatureSettings
-    swim: SwimSettings
-    lavaflow: LavaFlowSettings

@@ -7,20 +7,15 @@ from dhub import build
 from digitalhub_runtime_python import handler
 
 from mars_multisensor_dataset.analysis.ground_truth.nomenclature import catalogue
-from mars_multisensor_dataset.analysis.ground_truth.swim.labels import write_ice_labels
-from mars_multisensor_dataset.analysis.ground_truth.swim.sample import ice_labels
 from mars_multisensor_dataset.analysis.selector.artifacts import read_selection
 from mars_multisensor_dataset.analysis.selector.models.selection import Selection
 from mars_multisensor_dataset.building import draw, paths
 from mars_multisensor_dataset.building.models.settings import BuildSettings
-from mars_multisensor_dataset.common.config import (
-    analysis_settings,
-    evaluation_settings,
-)
+from mars_multisensor_dataset.common.config import evaluation_settings
 
 
 def evaluation_selections(settings: BuildSettings) -> list[Selection]:
-    """Write the drawn labels and their ice beside the evaluation build, and read it.
+    """Write the drawn labels beside the evaluation build, and read it.
 
     Args:
         settings: The settled choices for the build, which name its directory.
@@ -29,16 +24,12 @@ def evaluation_selections(settings: BuildSettings) -> list[Selection]:
         picked: The tiles to build, each with the observations its window keeps.
 
     Raises:
-        FileNotFoundError: When the analysis pipeline has written no labels or
-            SWIM maps.
+        FileNotFoundError: When the analysis pipeline has written no labels.
     """
     labels = catalogue.read_labels()
     root = paths.dataset_root(settings.name)
     drawn = [one for one in labels if one.drawn]
     catalogue.write_labels(drawn, root)
-    # Each grid sits on the box its crops are cut to, a crater's own for a crater
-    swim = analysis_settings().ground_truth.swim
-    write_ice_labels(ice_labels({one.tile: one for one in drawn}, swim), root)
     return draw.draw_evaluation(read_selection(), labels)
 
 
@@ -59,7 +50,7 @@ def run_build(project, force: bool = False, workers: int | None = None, override
         project,
         evaluation_settings(workers, overrides),
         evaluation_selections,
-        ("selection", "labels", "swim"),
+        ("selection", "labels"),
         force,
     )
 

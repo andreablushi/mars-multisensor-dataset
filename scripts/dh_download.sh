@@ -45,14 +45,11 @@ With no name, every one of them comes down.
 
   coverage     the coverage measurements       -> data/analysis/coverage
   metadata     the ODE records behind them     -> data/analysis/metadata
-  swim         the SWIM maps and ice labels    -> data/analysis/swim
   selection    the tiles and looks kept       -> data/<version>/analysis/selection
   stats        what the filter left of it     -> data/<version>/analysis/stats
   labels       the evaluation labels           -> data/<version>/analysis/labels
-  verdicts     both annotation reviews         -> data/<version>/analysis
+  verdicts     the annotation review           -> data/<version>/analysis
   manifest     the training build's manifest   -> data/<version>/dataset/training
-  lavaflow     the reviewed lava flow crops     -> data/<version>/dataset/lavaflow
-  lavaflow_candidates  every lava flow candidate -> data/analysis/lavaflow_candidates
 EOF
 }
 
@@ -61,14 +58,13 @@ if [[ ${1-} == -h || ${1-} == --help ]]; then
     exit 0
 fi
 
-(($#)) || set -- coverage metadata selection stats labels swim verdicts manifest
+(($#)) || set -- coverage metadata selection stats labels verdicts manifest
 
 for name in "$@"; do
     case "$name" in
-        coverage | metadata | swim | lavaflow_candidates) download_one "$name" "data/analysis/$name" ;;
+        coverage | metadata) download_one "$name" "data/analysis/$name" ;;
         selection | stats | labels) download_one "$version-$name" "data/$version/analysis/$name" ;;
         verdicts) download_one "$version-verdicts" "data/$version/analysis" shares ;;
-        lavaflow) download_one "$version-dataset-lavaflow" "data/$version/dataset/lavaflow" ;;
         manifest)
             # Only the manifest comes down, never the build's crops
             (cd "$(dirname "$0")" && uv run --group digitalhub python -c \
