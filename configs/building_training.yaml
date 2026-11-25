@@ -2,8 +2,12 @@
 
 defaults: [building, _self_]
 
-# The directory it is written in and the name it is published under.
-name: training
+# The directory it is written in and the name it is published under, a copy beside
+# the published training build.
+name: training-ctx6
+
+# The instruments it builds, CTX alone beside the published training build.
+instruments: [CTX]
 
 # What share of the tiles the selection kept to build, above zero and up to one.
 share: 1
