@@ -37,7 +37,6 @@ class CtxObservation:
         latitude: The planetocentric latitude of every sampled point.
         longitude: The positive east longitude of every sampled point, 0 to 360.
         statistics: What its whole scan is standardised by.
-        pool: How many pixels a side every crop of it is averaged over.
     """
 
     label: dict[str, str]
@@ -47,4 +46,3 @@ class CtxObservation:
     latitude: np.ndarray
     longitude: np.ndarray
     statistics: ScanStatistics
-    pool: int

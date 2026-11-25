@@ -30,7 +30,6 @@ LAYOUT = Layout(
     dims=("line", "sample"),
     axes=(Axis.GROUND, Axis.GROUND),
     measurement="image",
-    stored="f2",
     described=("encoding",),
     patch_ground=16,
 )

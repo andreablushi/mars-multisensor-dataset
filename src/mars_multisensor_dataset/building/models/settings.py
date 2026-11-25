@@ -16,12 +16,10 @@ class CtxPreprocessing:
     Attributes:
         clip: The low and high percentiles a scan's counts are clipped at.
         stride: How many lines and samples apart a scan's statistics are measured.
-        pool: How many pixels a side every crop is averaged over.
     """
 
     clip: list[int]
     stride: int
-    pool: int
 
 
 @dataclass(slots=True)
