@@ -2,8 +2,12 @@
 
 defaults: [building, _self_]
 
-# The directory it is written in and the name it is published under.
-name: evaluation
+# The directory it is written in and the name it is published under, a copy beside
+# the published evaluation build.
+name: evaluation-ctx6
 
 # The build whose normalization this one applies, so both sit on one scale.
-reference: training
+reference: training-ctx6
+
+# The instruments it builds, CTX alone beside the published evaluation build.
+instruments: [CTX]
