@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -16,6 +15,7 @@ from mars_multisensor_dataset.building.preprocessing.common.models.overlap impor
     Overlap,
 )
 from mars_multisensor_dataset.building.preprocessing.ctx import projection
+from mars_multisensor_dataset.building.preprocessing.ctx.encode import encoded_sample
 from mars_multisensor_dataset.building.preprocessing.ctx.isis import (
     export_image,
     read_cube_label,
@@ -32,7 +32,6 @@ from mars_multisensor_dataset.building.preprocessing.ctx.normalize import (
     normalized_pixels,
 )
 from mars_multisensor_dataset.building.preprocessing.ctx.pool import pooled_sample
-from mars_multisensor_dataset.common.disk.blocks import encoded_image
 from mars_multisensor_dataset.common.maths import box
 from mars_multisensor_dataset.common.models.tile import Tile
 from mars_multisensor_dataset.common.pds import labels
@@ -115,8 +114,7 @@ def projected_pixels(
     trimmed, template, projected, image = (
         work.with_suffix(suffix) for suffix in (".cut.cub", ".map", ".map.cub", ".tif")
     )
-    square_at = frame.centre_lat if observation.square_ground else None
-    template.write_text(projection.map_template(frame.grid, square_at))
+    template.write_text(projection.map_template(frame.grid, frame.centre_lat))
     try:
         run_isis(
             "crop",
@@ -184,15 +182,4 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         image=normalized_pixels(pixels, measured, observation.statistics),
     )
     pooled = pooled_sample(sample, observation.pool)
-    codec = observation.codec
-    if codec is None:
-        return pooled
-    statistics = observation.statistics
-    low, high = (
-        (bound - statistics.mean) / statistics.std
-        for bound in (statistics.low, statistics.high)
-    )
-    encoded, encoding = encoded_image(
-        pooled.image, low, high, codec.block, codec.quality, codec.method
-    )
-    return replace(pooled, encoded=encoded, encoding=encoding)
+    return encoded_sample(pooled, observation.statistics)

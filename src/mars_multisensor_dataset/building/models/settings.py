@@ -10,21 +10,6 @@ from mars_multisensor_dataset.building.preprocessing.sharad.models.gate import G
 
 
 @dataclass(slots=True)
-class CtxCodec:
-    """How a CTX crop is stored as blocks of lossy WebP.
-
-    Attributes:
-        quality: The WebP quality, 0 to 100.
-        method: The WebP encoder effort, 0 to 6.
-        block: How many pixels a side one block holds.
-    """
-
-    quality: int
-    method: int
-    block: int
-
-
-@dataclass(slots=True)
 class CtxPreprocessing:
     """What the CTX reader is handed.
 
@@ -32,16 +17,11 @@ class CtxPreprocessing:
         clip: The low and high percentiles a scan's counts are clipped at.
         stride: How many lines and samples apart a scan's statistics are measured.
         pool: How many pixels a side every crop is averaged over.
-        square_ground: Whether an equatorial crop is projected with square ground
-            pixels at its tile's latitude, rather than square in degrees.
-        codec: How every crop is stored as WebP blocks, or None for float16.
     """
 
     clip: list[int]
     stride: int
     pool: int
-    square_ground: bool
-    codec: CtxCodec | None = None
 
 
 @dataclass(slots=True)

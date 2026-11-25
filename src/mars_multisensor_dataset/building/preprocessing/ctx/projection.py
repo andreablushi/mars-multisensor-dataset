@@ -10,10 +10,8 @@ from mars_multisensor_dataset.building.preprocessing.common.models.position impo
 )
 from mars_multisensor_dataset.common.maths.geodesy import HALF_TURN, POLE, PolarGrid
 
-# The projections a scan is written in: square in degrees, square on the ground at
-# the tile's latitude, and on a polar tile.
-EQUATORIAL = "SimpleCylindrical"
-SQUARE = "Equirectangular"
+# The two projections a scan is written in, the second on a polar tile.
+EQUATORIAL = "Equirectangular"
 POLAR = "PolarStereographic"
 
 # The only reading of latitude and longitude this places; the domain does not matter.
@@ -23,21 +21,21 @@ CONVENTIONS = {
 }
 
 
-def map_template(grid: PolarGrid | None, square_at: float | None) -> str:
+def map_template(grid: PolarGrid | None, latitude: float) -> str:
     """Return the ISIS map that projects a scan onto one tile's grid.
 
     Args:
         grid: The polar grid of the tile, or None for an equatorial one.
-        square_at: The latitude an equatorial pixel is square on the ground at, or
-            None for one square in degrees.
+        latitude: The tile's centre latitude, where an equatorial pixel is square on
+            the ground.
 
     Returns:
         template: The map template, as cam2map reads it.
     """
-    if grid is None and square_at is None:
-        return configs.MAP.format(name=EQUATORIAL, latitude=0.0, longitude=HALF_TURN)
     if grid is None:
-        return configs.MAP.format(name=SQUARE, latitude=square_at, longitude=HALF_TURN)
+        return configs.MAP.format(
+            name=EQUATORIAL, latitude=latitude, longitude=HALF_TURN
+        )
     return configs.MAP.format(
         name=POLAR, latitude=POLE if grid.north else -POLE, longitude=grid.centre_lon
     )
@@ -57,7 +55,7 @@ def grid_position(label: dict[str, str]) -> Position:
         ValueError: When the projection or convention cannot be read.
     """
     name = label["ProjectionName"]
-    if name not in (EQUATORIAL, SQUARE, POLAR):
+    if name not in (EQUATORIAL, POLAR):
         raise ValueError(f"Cannot place a {name} grid.")
     for key, wanted in CONVENTIONS.items():
         if label[key] != wanted:
@@ -80,18 +78,10 @@ def grid_position(label: dict[str, str]) -> Position:
                 radius,
             ),
         )
-    if name == SQUARE:
-        scale = float(label["Scale"])
-        across = scale * np.cos(np.radians(float(label["CenterLatitude"])))
-        return Position(
-            (top / resolution - lines) / scale,
-            float(label["CenterLongitude"]) + (left / resolution + samples) / across,
-            True,
-        )
-    # How many degrees one pixel spans, the same in both directions.
-    step = float(np.degrees(resolution / radius))
+    scale = float(label["Scale"])
+    across = scale * np.cos(np.radians(float(label["CenterLatitude"])))
     return Position(
-        np.degrees(top / radius) - lines * step,
-        float(label["CenterLongitude"]) + np.degrees(left / radius) + samples * step,
+        (top / resolution - lines) / scale,
+        float(label["CenterLongitude"]) + (left / resolution + samples) / across,
         True,
     )
