@@ -18,6 +18,10 @@ class CtxSample(Sample):
 
     Attributes:
         image: The brightness as lines by samples.
+        encoded: The arrays the image is stored as instead of float16, or None.
+        encoding: What reads those arrays back, or None likewise.
     """
 
     image: np.ndarray
+    encoded: dict[str, np.ndarray] | None = None
+    encoding: dict[str, object] | None = None

@@ -101,7 +101,11 @@ def build_dataset(
     dropped = {name for one in outcomes for name in one.emptied}
     elapsed = time.monotonic() - started_at
     printing.print_summary(plan, outcomes, dropped, elapsed, console)
-    if isinstance(settings, TrainingSettings) and (discarded or dropped):
+    if (
+        isinstance(settings, TrainingSettings)
+        and settings.prunes_selection
+        and (discarded or dropped)
+    ):
         exclude_tiles(outcomes)
     return 1 if any(one.failed for one in outcomes) else 0
 

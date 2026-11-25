@@ -7,6 +7,8 @@ from pathlib import Path
 
 import numpy as np
 
+from mars_multisensor_dataset.building.models.settings import CtxCodec
+
 
 @dataclass(frozen=True, slots=True)
 class ScanStatistics:
@@ -38,6 +40,8 @@ class CtxObservation:
         longitude: The positive east longitude of every sampled point, 0 to 360.
         statistics: What its whole scan is standardised by.
         pool: How many pixels a side every crop of it is averaged over.
+        square_ground: Whether an equatorial crop has square ground pixels.
+        codec: How every crop of it is stored as WebP blocks, or None for float16.
     """
 
     label: dict[str, str]
@@ -48,3 +52,5 @@ class CtxObservation:
     longitude: np.ndarray
     statistics: ScanStatistics
     pool: int
+    square_ground: bool
+    codec: CtxCodec | None

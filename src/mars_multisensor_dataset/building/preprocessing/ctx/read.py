@@ -76,4 +76,6 @@ def read_observation(identifier: str, preprocessing: Preprocessing) -> CtxObserv
         np.array([float(row["PositiveEast360Longitude"]) for row in rows]),
         scan_statistics(cube, preprocessing.CTX.clip, preprocessing.CTX.stride),
         preprocessing.CTX.pool,
+        preprocessing.CTX.square_ground,
+        preprocessing.CTX.codec,
     )

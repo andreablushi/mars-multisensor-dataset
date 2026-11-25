@@ -14,11 +14,15 @@ downloads:
 preprocessing:
   # The percentiles a CTX scan is clipped at, how many lines and samples apart
   # the counts its statistics are measured on sit, and how many pixels a side
-  # every crop is averaged over.
+  # every crop is averaged over. Then whether an equatorial crop is projected with
+  # square ground pixels at its tile's latitude, and the WebP quality, encoder effort
+  # and block side every crop is stored with, null for float16.
   CTX:
     clip: [1, 99]
     stride: 8
     pool: 8
+    square_ground: false
+    codec: null
   # The passes, window width and sigma CRISM spikes are removed with, the sigma as
   # crism_ml sets it, and how many lines a column is levelled over along the track.
   CRISM:

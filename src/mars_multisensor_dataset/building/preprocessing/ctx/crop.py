@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -31,6 +32,7 @@ from mars_multisensor_dataset.building.preprocessing.ctx.normalize import (
     normalized_pixels,
 )
 from mars_multisensor_dataset.building.preprocessing.ctx.pool import pooled_sample
+from mars_multisensor_dataset.common.disk.blocks import encoded_image
 from mars_multisensor_dataset.common.maths import box
 from mars_multisensor_dataset.common.models.tile import Tile
 from mars_multisensor_dataset.common.pds import labels
@@ -113,7 +115,8 @@ def projected_pixels(
     trimmed, template, projected, image = (
         work.with_suffix(suffix) for suffix in (".cut.cub", ".map", ".map.cub", ".tif")
     )
-    template.write_text(projection.map_template(frame.grid))
+    square_at = frame.centre_lat if observation.square_ground else None
+    template.write_text(projection.map_template(frame.grid, square_at))
     try:
         run_isis(
             "crop",
@@ -162,8 +165,8 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         frame: The local frame of the tile it was kept for.
 
     Returns:
-        sample: The scan cut to that tile and averaged over its blocks, or None
-            where it reaches none of it.
+        sample: The scan cut to that tile, averaged over its blocks and encoded as
+            its codec asks, or None where it reaches none of it.
 
     Raises:
         RuntimeError: When an ISIS application fails.
@@ -180,4 +183,16 @@ def crop(observation: CtxObservation, frame: Tile) -> CtxSample | None:
         valid=geometry.partial_mask(measured),
         image=normalized_pixels(pixels, measured, observation.statistics),
     )
-    return pooled_sample(sample, observation.pool)
+    pooled = pooled_sample(sample, observation.pool)
+    codec = observation.codec
+    if codec is None:
+        return pooled
+    statistics = observation.statistics
+    low, high = (
+        (bound - statistics.mean) / statistics.std
+        for bound in (statistics.low, statistics.high)
+    )
+    encoded, encoding = encoded_image(
+        pooled.image, low, high, codec.block, codec.quality, codec.method
+    )
+    return replace(pooled, encoded=encoded, encoding=encoding)

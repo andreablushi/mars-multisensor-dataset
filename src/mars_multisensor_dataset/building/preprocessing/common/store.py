@@ -97,9 +97,14 @@ def write_sample(
         if alongside is None:
             raise ValueError(f"{layout.instrument} declares {name} but holds none.")
         arrays[name] = stored_array(alongside, layout.stored_beside.get(name))
-    arrays[layout.measurement] = stored_array(
-        getattr(held, layout.measurement), layout.stored
-    )
+    encoded = getattr(held, "encoded", None)
+    if encoded is None:
+        arrays[layout.measurement] = stored_array(
+            getattr(held, layout.measurement), layout.stored
+        )
+    else:
+        arrays |= encoded
+        along |= {name: (name,) for name in encoded}
     arrays[NORTH] = np.asarray(position.north, dtype=STORED)
     arrays[EAST] = np.asarray(position.east, dtype=STORED)
     arrays[MEASURED] = held.measured_ground

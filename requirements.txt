@@ -129,6 +129,8 @@ pandas-stubs==3.0.5.260730
     # via mlcroissant
 pg8000==1.31.6
     # via digitalhub
+pillow==12.3.0
+    # via mars-multisensor-dataset
 pip==26.2.1
     # via digitalhub-runtime-python
 ply==3.11

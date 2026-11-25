@@ -93,8 +93,8 @@ def published_build[T: BuildSettings](
         settings, selections(settings), force, published, fetch, root
     )
     dataset = published()
-    # Only the training build refuses the observations it cropped empty
-    if isinstance(settings, TrainingSettings):
+    # Only a full training build refuses the observations it cropped empty
+    if isinstance(settings, TrainingSettings) and settings.prunes_selection:
         store.upload_folder(project, "selection", store.ARTIFACTS["selection"])
     if failed:
         raise RuntimeError(
